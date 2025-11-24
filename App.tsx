@@ -22,10 +22,15 @@ const App: React.FC = () => {
       {/* relative z-10 ensures this layer sits ON TOP of the absolute background system */}
       <div className="flex w-full h-full relative z-10">
         {/* Left Navigation */}
-        <NavigationPanel isOpen={leftOpen} setIsOpen={setLeftOpen} />
+        <NavigationPanel 
+          isOpen={leftOpen} 
+          setIsOpen={setLeftOpen} 
+          currentTheme={currentTheme}
+          onThemeChange={setCurrentTheme}
+        />
 
         {/* Center Content */}
-        <MainCanvas currentTheme={currentTheme} onThemeChange={setCurrentTheme} />
+        <MainCanvas />
 
         {/* Right AI Panel */}
         <AIPanel isOpen={rightOpen} setIsOpen={setRightOpen} />

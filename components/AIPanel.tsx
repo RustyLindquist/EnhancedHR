@@ -73,7 +73,8 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
           onMouseEnter={() => setIsHandleHovered(true)}
           onMouseLeave={() => setIsHandleHovered(false)}
         >
-           <div className="w-3 h-16 bg-brand-blue-light border border-white/20 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(120,192,240,0.8)] hover:bg-brand-blue-light/90">
+           {/* Interface Modifier Color: #5694C7 (Less bright blue) */}
+           <div className="w-3 h-16 bg-[#5694C7] border border-white/20 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(86,148,199,0.8)] hover:bg-[#5694C7]/90">
              <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
              <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
              <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
@@ -86,20 +87,17 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
          {/* Toggle Button - Placed on border */}
          <button 
            onClick={() => setIsOpen(!isOpen)} 
-           className="absolute -left-3 top-9 bg-slate-800/80 border border-white/20 rounded-full p-1 text-slate-400 hover:text-white hover:border-brand-blue-light/50 hover:shadow-[0_0_10px_rgba(120,192,240,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
+           className="absolute -left-3 top-9 bg-[#5694C7] border border-white/20 rounded-full p-1 text-white hover:bg-[#5694C7]/90 hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
          >
           {isOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
         
         {isOpen && (
           <div className="flex items-center space-x-3 overflow-hidden">
-            <Flame size={18} className="text-brand-blue-light animate-pulse flex-shrink-0" />
-            <div className="flex flex-col">
-                <span className="font-bold text-sm tracking-widest uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] truncate leading-none mb-0.5">
-                  Prometheus
-                </span>
-                <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase opacity-80 leading-none">
-                  Your AI Assistant
+            <Flame size={18} className="text-brand-orange animate-pulse flex-shrink-0" />
+            <div className="flex flex-col justify-center">
+                <span className="font-bold text-sm tracking-widest uppercase text-brand-orange drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none">
+                  Prometheus AI
                 </span>
             </div>
           </div>
@@ -115,10 +113,12 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
             {/* Messages */}
             <div className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar">
               {/* AI Message */}
-              <div className="flex items-start space-x-4 animate-float">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-blue to-brand-blue-light flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(120,192,240,0.3)]">
-                  <Flame size={14} className="text-white fill-white" />
+              <div className="flex items-start space-x-3 animate-float">
+                {/* Simplified Avatar: Just the Icon */}
+                <div className="flex-shrink-0 pt-1">
+                   <Flame size={20} className="text-brand-orange drop-shadow-[0_0_8px_rgba(255,147,0,0.5)]" />
                 </div>
+                
                 <div className="bg-white/10 border border-white/10 p-4 rounded-2xl rounded-tl-none text-sm text-slate-200 leading-relaxed shadow-lg backdrop-blur-md">
                   <p>I noticed you're looking at <span className="text-brand-blue-light font-medium">Leadership</span> courses.</p>
                   <br/>
@@ -127,7 +127,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
               </div>
               
                {/* Suggestion Chips */}
-               <div className="flex flex-wrap gap-2 pl-12">
+               <div className="flex flex-wrap gap-2 pl-9">
                  <button className="text-xs bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all backdrop-blur-sm shadow-sm whitespace-nowrap">
                    Yes, show SHRM credits
                  </button>
@@ -229,11 +229,11 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
             className="flex-1 flex flex-col items-center pt-12 space-y-8 cursor-pointer hover:bg-white/5 transition-colors group" 
             onClick={() => setIsOpen(true)}
           >
-             <div className="vertical-text transform -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase text-slate-500 group-hover:text-brand-blue-light whitespace-nowrap transition-colors drop-shadow-sm">
-               Prometheus
+             <div className="vertical-text transform -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase text-slate-500 group-hover:text-brand-orange whitespace-nowrap transition-colors drop-shadow-sm">
+               Prometheus AI
              </div>
-             <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue-light/30 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(120,192,240,0.4)] transition-all backdrop-blur-sm">
-               <Flame size={18} className="text-brand-blue-light animate-pulse" />
+             <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue-light/30 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(255,147,0,0.4)] transition-all backdrop-blur-sm">
+               <Flame size={18} className="text-brand-orange animate-pulse" />
              </div>
           </div>
         )}

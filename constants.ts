@@ -15,48 +15,471 @@ import {
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme } from './types';
 
+// Default Tech/Abstract Image for fallback
+export const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=2070&auto=format&fit=crop";
+
+export const COURSE_CATEGORIES = [
+  'Business Functions',
+  'Soft Skills',
+  'AI for HR',
+  'Book Club',
+  'HR Stories',
+  'Leadership'
+];
+
 export const MOCK_COURSES: Course[] = [
+  // --- AI FOR HR (7 Items) ---
   { 
-    id: 1, 
+    id: 101, 
     title: "AI Leadership Strategies", 
     author: "Dr. Sarah Chen", 
     progress: 0, 
-    category: "Leadership",
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1000&auto=format&fit=crop",
+    description: "Master the art of leading teams through the AI revolution. Learn to balance automation with human empathy.",
+    duration: "4h 15m",
+    rating: 4.8,
+    badges: ['REQUIRED', 'SHRM'],
+    isSaved: true
   },
   { 
-    id: 2, 
-    title: "Crisis Communication", 
-    author: "Marcus Rodriguez", 
-    progress: 35, 
-    category: "Communication",
+    id: 102, 
+    title: "Generative AI for Recruiters", 
+    author: "Tech HR Labs", 
+    progress: 5, 
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=1000&auto=format&fit=crop",
+    description: "Practical applications of LLMs in sourcing, screening, and communicating with candidates.",
+    duration: "3h 00m",
+    rating: 4.8,
+    badges: ['SHRM'],
+    isSaved: true
   },
-  { 
-    id: 3, 
-    title: "The Future of HR Analytics", 
-    author: "Elena Fisher", 
-    progress: 0, 
-    category: "Analytics",
+  {
+    id: 103,
+    title: "Prompt Engineering 101",
+    author: "Alex Rivera",
+    progress: 45,
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?q=80&w=1000&auto=format&fit=crop",
+    description: "Learn the specific syntax and structures to get the best results from ChatGPT and Claude for HR tasks.",
+    duration: "2h 15m",
+    rating: 4.9,
+    badges: [],
+    isSaved: false
   },
-  { 
-    id: 4, 
-    title: "Strategic HR Management", 
-    author: "James Wilson", 
-    progress: 12, 
-    category: "Strategy",
+  {
+    id: 104,
+    title: "Ethical AI Governance",
+    author: "Legal Dept & IT",
+    progress: 100,
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop",
+    description: "Understanding bias, privacy, and security when deploying AI tools in the workplace.",
+    duration: "1h 30m",
+    rating: 4.5,
+    badges: ['REQUIRED'],
+    isSaved: false
   },
-  { 
-    id: 5, 
-    title: "Diversity & Inclusion", 
-    author: "Maya Patel", 
-    progress: 88, 
-    category: "Culture",
+  {
+    id: 105,
+    title: "Predictive Retention Models",
+    author: "Data Science Team",
+    progress: 10,
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop",
+    description: "Using machine learning to identify flight risks before they hand in their resignation.",
+    duration: "5h 00m",
+    rating: 4.7,
+    badges: ['HRCI'],
+    isSaved: true
   },
+  {
+    id: 106,
+    title: "The Automated Onboarding",
+    author: "People Ops",
+    progress: 0,
+    category: "AI for HR",
+    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=1000&auto=format&fit=crop",
+    description: "Building a seamless, AI-assisted onboarding journey that feels personal at scale.",
+    duration: "3h 45m",
+    rating: 4.2,
+    badges: [],
+    isSaved: false
+  },
+
+  // --- LEADERSHIP (6 Items) ---
   { 
-    id: 6, 
-    title: "Change Management", 
+    id: 201, 
+    title: "Change Management Essentials", 
     author: "Robert Fox", 
     progress: 0, 
     category: "Leadership",
+    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1000&auto=format&fit=crop",
+    description: "Navigating organizational transitions with minimal disruption and maximum employee engagement.",
+    duration: "5h 15m",
+    rating: 4.6,
+    badges: ['HRCI'],
+    isSaved: true
+  },
+  {
+    id: 202,
+    title: "Leading Remote Teams",
+    author: "Sarah Jenks",
+    progress: 75,
+    category: "Leadership",
+    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop",
+    description: "Strategies for maintaining culture, productivity, and connection in a distributed workforce.",
+    duration: "3h 20m",
+    rating: 4.5,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 203,
+    title: "Executive Presence",
+    author: "Marcus Aurelius II",
+    progress: 0,
+    category: "Leadership",
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=1000&auto=format&fit=crop",
+    description: "How to command a room, speak with authority, and influence C-Suite stakeholders.",
+    duration: "4h 00m",
+    rating: 4.9,
+    badges: ['SHRM'],
+    isSaved: true
+  },
+  {
+    id: 204,
+    title: "Strategic Visioning",
+    author: "Board of Directors",
+    progress: 10,
+    category: "Leadership",
+    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop",
+    description: "Moving from tactical execution to long-term strategic planning.",
+    duration: "6h 30m",
+    rating: 4.7,
+    badges: ['REQUIRED'],
+    isSaved: false
+  },
+  {
+    id: 205,
+    title: "Mentorship Masterclass",
+    author: "Elena Fisher",
+    progress: 90,
+    category: "Leadership",
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1000&auto=format&fit=crop",
+    description: "How to effectively mentor junior talent and build the next generation of leaders.",
+    duration: "2h 45m",
+    rating: 4.8,
+    badges: [],
+    isSaved: true
+  },
+  {
+    id: 206,
+    title: "Conflict Resolution",
+    author: "HR Mediation Team",
+    progress: 0,
+    category: "Leadership",
+    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop",
+    description: "Turning workplace conflict into constructive dialogue and growth opportunities.",
+    duration: "3h 15m",
+    rating: 4.6,
+    badges: ['HRCI'],
+    isSaved: false
+  },
+
+  // --- BUSINESS FUNCTIONS (6 Items) ---
+  { 
+    id: 301, 
+    title: "Strategic HR Management", 
+    author: "James Wilson", 
+    progress: 12, 
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop",
+    description: "Aligning human resources with the core business objectives to drive long-term organizational success.",
+    duration: "8h 45m",
+    rating: 4.2,
+    badges: ['REQUIRED'],
+    isSaved: false
+  },
+  {
+    id: 302,
+    title: "Compensation & Benefits",
+    author: "Finance Dept",
+    progress: 0,
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=1000&auto=format&fit=crop",
+    description: "Designing competitive packages that attract talent without breaking the bank.",
+    duration: "5h 30m",
+    rating: 4.4,
+    badges: ['SHRM'],
+    isSaved: true
+  },
+  { 
+    id: 303, 
+    title: "The Future of HR Analytics", 
+    author: "Elena Fisher", 
+    progress: 0, 
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?q=80&w=1000&auto=format&fit=crop",
+    description: "Dive deep into predictive analytics and how data is shaping the future of talent acquisition.",
+    duration: "6h 00m",
+    rating: 4.9,
+    badges: ['SHRM', 'HRCI'],
+    isSaved: true
+  },
+  {
+    id: 304,
+    title: "Labor Law Compliance",
+    author: "Legal Partners LLP",
+    progress: 100,
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=1000&auto=format&fit=crop",
+    description: "An essential update on federal and state labor laws for the current fiscal year.",
+    duration: "4h 00m",
+    rating: 4.3,
+    badges: ['REQUIRED', 'HRCI'],
+    isSaved: false
+  },
+  {
+    id: 305,
+    title: "Agile HR Workflows",
+    author: "Scrum Masters",
+    progress: 20,
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=1000&auto=format&fit=crop",
+    description: "Implementing agile methodologies within the People Operations function.",
+    duration: "3h 15m",
+    rating: 4.6,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 306,
+    title: "Global Mobility",
+    author: "International Team",
+    progress: 0,
+    category: "Business Functions",
+    image: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=1000&auto=format&fit=crop",
+    description: "Managing expatriate assignments, visas, and cross-border taxation issues.",
+    duration: "4h 45m",
+    rating: 4.5,
+    badges: [],
+    isSaved: false
+  },
+
+  // --- SOFT SKILLS (6 Items) ---
+  { 
+    id: 401, 
+    title: "Crisis Communication", 
+    author: "Marcus Rodriguez", 
+    progress: 35, 
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?q=80&w=1000&auto=format&fit=crop",
+    description: "Effective frameworks for handling internal and external communications during organizational crises.",
+    duration: "2h 30m",
+    rating: 4.5,
+    badges: ['HRCI'],
+    isSaved: false
+  },
+  {
+    id: 402,
+    title: "Active Listening Lab",
+    author: "Dr. Lisa Su",
+    progress: 0, 
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000&auto=format&fit=crop",
+    description: "Techniques to truly hear what your employees are saying, not just what they are speaking.",
+    duration: "1h 45m",
+    rating: 4.8,
+    badges: [],
+    isSaved: true
+  },
+  {
+    id: 403,
+    title: "Negotiation Tactics",
+    author: "The Dealmakers",
+    progress: 60,
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1000&auto=format&fit=crop",
+    description: "Getting to 'Yes' in salary negotiations, vendor contracts, and internal disputes.",
+    duration: "3h 00m",
+    rating: 4.7,
+    badges: ['SHRM'],
+    isSaved: false
+  },
+  {
+    id: 404,
+    title: "Emotional Intelligence",
+    author: "Daniel Goleman (Guest)",
+    progress: 0,
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=1000&auto=format&fit=crop",
+    description: "Understanding your own emotions and those of others to manage relationships effectively.",
+    duration: "4h 15m",
+    rating: 4.9,
+    badges: ['REQUIRED'],
+    isSaved: true
+  },
+  {
+    id: 405,
+    title: "Time Management",
+    author: "Productivity Pros",
+    progress: 10,
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=1000&auto=format&fit=crop",
+    description: "Deep work, time blocking, and the art of saying no to non-essential meetings.",
+    duration: "2h 00m",
+    rating: 4.4,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 406,
+    title: "Public Speaking",
+    author: "Toastmasters",
+    progress: 0,
+    category: "Soft Skills",
+    image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1000&auto=format&fit=crop",
+    description: "Overcome stage fright and deliver compelling presentations to large groups.",
+    duration: "3h 30m",
+    rating: 4.6,
+    badges: [],
+    isSaved: false
+  },
+
+  // --- HR STORIES (5 Items) ---
+  { 
+    id: 501, 
+    title: "Diversity & Inclusion Stories", 
+    author: "Maya Patel", 
+    progress: 100, 
+    category: "HR Stories",
+    image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=1000&auto=format&fit=crop",
+    description: "Real-world stories of building inclusive workplace cultures that foster innovation and belonging.",
+    duration: "3h 30m",
+    rating: 4.7,
+    badges: ['SHRM'],
+    isSaved: false
+  },
+  {
+    id: 502,
+    title: "Startup to IPO: A Journey",
+    author: "Founders Collective",
+    progress: 0, 
+    category: "HR Stories",
+    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1000&auto=format&fit=crop",
+    description: "The chaotic, exciting, and difficult HR challenges faced during rapid scaling.",
+    duration: "2h 00m",
+    rating: 4.8,
+    badges: [],
+    isSaved: true
+  },
+  {
+    id: 503,
+    title: "The 4-Day Work Week",
+    author: "Case Study Group",
+    progress: 25,
+    category: "HR Stories",
+    image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=1000&auto=format&fit=crop",
+    description: "Interviews with companies that successfully made the switch, and those that failed.",
+    duration: "1h 45m",
+    rating: 4.5,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 504,
+    title: "From Toxic to Thriving",
+    author: "Culture Turnaround",
+    progress: 0,
+    category: "HR Stories",
+    image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1000&auto=format&fit=crop",
+    description: "A documentary-style look at how one company completely overhauled its toxic culture.",
+    duration: "2h 30m",
+    rating: 4.9,
+    badges: ['SHRM'],
+    isSaved: true
+  },
+  {
+    id: 505,
+    title: "Lessons from the Factory Floor",
+    author: "Manufacturing HR",
+    progress: 0,
+    category: "HR Stories",
+    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop",
+    description: "Unique HR challenges in the manufacturing sector and what corporate can learn from them.",
+    duration: "2h 15m",
+    rating: 4.4,
+    badges: [],
+    isSaved: false
+  },
+
+  // --- BOOK CLUB (5 Items) ---
+  { 
+    id: 601, 
+    title: "Radical Candor Review", 
+    author: "Book Club Group", 
+    progress: 0, 
+    category: "Book Club",
+    image: "https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?q=80&w=1000&auto=format&fit=crop",
+    description: "A deep dive group discussion into Kim Scott's Radical Candor and its application in modern HR.",
+    duration: "1h 30m",
+    rating: 4.9,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 602,
+    title: "Good to Great",
+    author: "Jim Collins (Analysis)",
+    progress: 0,
+    category: "Book Club",
+    image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=80&w=1000&auto=format&fit=crop",
+    description: "Breaking down the seminal text on why some companies make the leap and others don't.",
+    duration: "2h 00m",
+    rating: 4.8,
+    badges: [],
+    isSaved: true
+  },
+  {
+    id: 603,
+    title: "Work Rules!",
+    author: "Google HR Alumni",
+    progress: 50,
+    category: "Book Club",
+    image: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?q=80&w=1000&auto=format&fit=crop",
+    description: "Discussing Laszlo Bock's insights from inside Google to transform how you live and lead.",
+    duration: "1h 45m",
+    rating: 4.7,
+    badges: [],
+    isSaved: false
+  },
+  {
+    id: 604,
+    title: "Dare to Lead",
+    author: "Brené Brown Fan Club",
+    progress: 0,
+    category: "Book Club",
+    image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop",
+    description: "Exploring courage, vulnerability, and values in the workplace context.",
+    duration: "2h 15m",
+    rating: 4.9,
+    badges: ['SHRM'],
+    isSaved: true
+  },
+  {
+    id: 605,
+    title: "The Culture Map",
+    author: "Erin Meyer Discussion",
+    progress: 10,
+    category: "Book Club",
+    image: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1000&auto=format&fit=crop",
+    description: "Breaking through the invisible boundaries of global business.",
+    duration: "1h 50m",
+    rating: 4.6,
+    badges: [],
+    isSaved: false
   },
 ];
 
@@ -68,6 +491,7 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
+  { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
   { id: 'research', label: 'Research', icon: Search, color: 'text-brand-orange' },
   { id: 'to_learn', label: 'To Learn', icon: Clock, color: 'text-brand-blue-light' },
@@ -91,26 +515,32 @@ export const COLLECTION_PORTALS: CollectionPortalConfig[] = [
 export const BACKGROUND_THEMES: BackgroundTheme[] = [
   { 
     id: 'deep-void', 
-    label: 'Deep Void', 
+    label: 'Deep Void (Animated)', 
     type: 'preset', 
-    value: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1a1f2e] via-[#0A0D12] to-black' 
+    value: 'bg-[#0A0D12]' 
   },
   { 
-    id: 'ocean-depths', 
+    id: 'neon-horizon', 
+    label: 'Neon Horizon (Animated)', 
+    type: 'preset', 
+    value: 'bg-[#080512]' 
+  },
+  { 
+    id: 'zen-particles', 
+    label: 'Zen Particles (Animated)', 
+    type: 'preset', 
+    value: 'bg-[#0F0D0A]' 
+  },
+  { 
+    id: 'arctic-aurora', 
+    label: 'Arctic Aurora (Animated)', 
+    type: 'preset', 
+    value: 'bg-[#051114]' 
+  },
+  { 
+    id: 'static-ocean', 
     label: 'Ocean Depths', 
     type: 'preset', 
     value: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-[#054C74]/40 via-[#0A0D12] to-black' 
-  },
-  { 
-    id: 'royal-nebula', 
-    label: 'Royal Nebula', 
-    type: 'preset', 
-    value: 'bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#4c1d95]/30 via-[#0A0D12] to-black' 
-  },
-  {
-    id: 'ember-glow',
-    label: 'Ember Glow',
-    type: 'preset',
-    value: 'bg-[radial-gradient(circle_at_bottom,_var(--tw-gradient-stops))] from-[#7f1d1d]/20 via-[#0A0D12] to-black'
   }
 ];
