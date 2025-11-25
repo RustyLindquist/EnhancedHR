@@ -1,46 +1,88 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Flame, ChevronLeft, ChevronRight, ChevronDown, User, Settings, Image as ImageIcon, LogOut, Upload, Check, ArrowLeft } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
-import { NavItemConfig, BackgroundTheme } from '../types';
+import { NavItemConfig, BackgroundTheme, Course } from '../types';
 
 interface NavigationPanelProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   currentTheme: BackgroundTheme;
   onThemeChange: (theme: BackgroundTheme) => void;
+  courses: Course[];
+  activeCollectionId: string;
+  onSelectCollection: (id: string) => void;
 }
 
-const NavItem: React.FC<{ item: NavItemConfig; isOpen: boolean }> = ({ item, isOpen }) => {
+const NavItem: React.FC<{ 
+  item: NavItemConfig; 
+  isOpen: boolean; 
+  showIcon?: boolean; 
+  customTextClass?: string; 
+  count?: number;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ 
+  item, 
+  isOpen, 
+  showIcon = true,
+  customTextClass,
+  count,
+  isActive,
+  onClick
+}) => {
   const Icon = item.icon;
   
   return (
-    <div className={`
+    <div 
+      onClick={onClick}
+      className={`
       group flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1
-      ${item.isActive 
+      ${isActive 
         ? 'bg-white/10 border border-white/10 shadow-[0_0_15px_rgba(120,192,240,0.1)] backdrop-blur-sm' 
         : 'hover:bg-white/5 border border-transparent hover:border-white/5'}
     `}>
-      <div className={`relative flex items-center justify-center ${!isOpen ? 'w-full' : ''}`}>
-        <Icon 
-          size={20} 
-          className={`
-            transition-colors duration-200
-            ${item.isActive ? 'text-brand-blue-light drop-shadow-[0_0_8px_rgba(120,192,240,0.5)]' : (item.color || 'text-slate-400')}
-            ${!item.isActive && 'group-hover:text-slate-200'}
-          `} 
-        />
-      </div>
+      {showIcon && (
+        <div className={`relative flex items-center justify-center ${!isOpen ? 'w-full' : ''}`}>
+          <Icon 
+            size={20} 
+            className={`
+              transition-colors duration-200
+              ${isActive ? 'text-brand-blue-light drop-shadow-[0_0_8px_rgba(120,192,240,0.5)]' : (item.color || 'text-slate-400')}
+              ${!isActive && 'group-hover:text-slate-200'}
+            `} 
+          />
+        </div>
+      )}
       
       {isOpen && (
-        <span className={`ml-3 text-sm font-medium tracking-wide truncate transition-colors ${item.isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
-          {item.label}
-        </span>
+        <div className="flex-1 flex justify-between items-center ml-3 overflow-hidden">
+            <span className={`
+              truncate transition-colors 
+              ${customTextClass ? customTextClass : (isActive ? 'text-white font-medium' : 'text-slate-400 font-medium group-hover:text-slate-200')}
+              text-sm tracking-wide
+            `}>
+              {item.label}
+            </span>
+            {count !== undefined && count > 0 && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${isActive ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'text-slate-500 bg-white/5 border-white/5 group-hover:text-slate-300'}`}>
+                    {count}
+                </span>
+            )}
+        </div>
       )}
     </div>
   );
 };
 
-const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, currentTheme, onThemeChange }) => {
+const NavigationPanel: React.FC<NavigationPanelProps> = ({ 
+  isOpen, 
+  setIsOpen, 
+  currentTheme, 
+  onThemeChange, 
+  courses,
+  activeCollectionId,
+  onSelectCollection
+}) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds'>('main');
@@ -51,7 +93,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
-        // Optional: Reset to main view when closing so it's fresh next time
         setMenuView('main'); 
       }
     };
@@ -75,11 +116,13 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
         type: 'custom',
         value: imageUrl
       });
-      // Close menu or return to main?
-      // For better UX, let's keep it open so they see the result, or close it.
-      // Let's close the popup to show the new background clearly.
       setIsProfileMenuOpen(false);
     }
+  };
+  
+  // Helper to count items in collections
+  const getCollectionCount = (collectionId: string) => {
+     return courses.filter(c => c.collections.includes(collectionId)).length;
   };
 
   return (
@@ -136,7 +179,13 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
         <div className="px-4 mb-8">
           <div className="space-y-1">
             {MAIN_NAV_ITEMS.map(item => (
-              <NavItem key={item.id} item={item} isOpen={isOpen} />
+              <NavItem 
+                key={item.id} 
+                item={item} 
+                isOpen={isOpen}
+                isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
+                onClick={() => onSelectCollection(item.id)}
+              />
             ))}
           </div>
         </div>
@@ -150,7 +199,14 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
           )}
           <div className="space-y-1">
             {COLLECTION_NAV_ITEMS.map(item => (
-              <NavItem key={item.id} item={item} isOpen={isOpen} />
+              <NavItem 
+                key={item.id} 
+                item={item} 
+                isOpen={isOpen} 
+                count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined} 
+                isActive={activeCollectionId === item.id}
+                onClick={() => onSelectCollection(item.id)}
+              />
             ))}
           </div>
         </div>
@@ -171,11 +227,21 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
             </div>
           )}
           
-          <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isConversationsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-            {CONVERSATION_NAV_ITEMS.map(item => (
-              <NavItem key={item.id} item={item} isOpen={isOpen} />
-            ))}
-          </div>
+          {isOpen && (
+            <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isConversationsOpen && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+              {CONVERSATION_NAV_ITEMS.map(item => (
+                <NavItem 
+                  key={item.id} 
+                  item={item} 
+                  isOpen={isOpen} 
+                  showIcon={false}
+                  customTextClass="font-normal text-xs text-slate-500 group-hover:text-slate-300"
+                  isActive={activeCollectionId === item.id}
+                  onClick={() => onSelectCollection(item.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       
@@ -307,7 +373,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({ isOpen, setIsOpen, cu
               JD
             </div>
             {isOpen && (
-              <div className="ml-3 overflow-hidden">
+              <div className="ml-3 overflow-hidden flex-1">
                 <p className={`text-base font-semibold text-white truncate drop-shadow-sm group-hover:text-brand-blue-light transition-colors ${isProfileMenuOpen ? 'text-brand-blue-light' : ''}`}>Jane Doe</p>
               </div>
             )}

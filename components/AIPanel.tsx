@@ -49,7 +49,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
         flex-shrink-0 
         bg-white/[0.02] backdrop-blur-xl 
         border-l border-white/10 
-        flex flex-col z-30 h-full shadow-[-5px_0_30px_0_rgba(0,0,0,0.3)]
+        flex flex-col z-[60] h-full shadow-[-5px_0_30px_0_rgba(0,0,0,0.3)]
         relative
         ${!isDragging ? 'transition-all duration-300 ease-in-out' : ''}
       `}
@@ -83,7 +83,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
       )}
 
       {/* Header */}
-      <div className={`h-24 flex-shrink-0 flex items-center ${isOpen ? 'justify-between px-6' : 'justify-center'} border-b border-white/5 bg-white/5 backdrop-blur-md relative`}>
+      <div className={`h-24 flex-shrink-0 flex items-center ${isOpen ? 'justify-between pl-10 pr-6' : 'justify-center'} border-b border-white/5 bg-white/5 backdrop-blur-md relative`}>
          {/* Toggle Button - Placed on border */}
          <button 
            onClick={() => setIsOpen(!isOpen)} 
@@ -93,8 +93,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
         </button>
         
         {isOpen && (
-          <div className="flex items-center space-x-3 overflow-hidden">
-            <Flame size={18} className="text-brand-orange animate-pulse flex-shrink-0" />
+          <div className="flex items-center overflow-hidden">
             <div className="flex flex-col justify-center">
                 <span className="font-bold text-sm tracking-widest uppercase text-brand-orange drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none">
                   Prometheus AI
@@ -111,7 +110,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen }) => {
         {isOpen ? (
           <>
             {/* Messages */}
-            <div className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar">
+            <div className="flex-1 px-6 pt-8 pb-6 space-y-6 overflow-y-auto no-scrollbar">
               {/* AI Message */}
               <div className="flex items-start space-x-3 animate-float">
                 {/* Simplified Avatar: Just the Icon */}

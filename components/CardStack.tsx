@@ -3,9 +3,13 @@ import { Plus, Star, Clock, Play, Award, Bookmark, ShieldCheck, CheckCircle } fr
 import { Course } from '../types';
 import { DEFAULT_COURSE_IMAGE } from '../constants';
 
-interface CardStackProps extends Course {}
+interface CardStackProps extends Course {
+  onAddClick?: (courseId: number) => void;
+  onDragStart?: (courseId: number) => void;
+}
 
 const CardStack: React.FC<CardStackProps> = ({ 
+  id,
   title, 
   author, 
   category, 
@@ -15,7 +19,9 @@ const CardStack: React.FC<CardStackProps> = ({
   duration, 
   rating, 
   badges, 
-  isSaved 
+  isSaved,
+  onAddClick,
+  onDragStart
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +32,18 @@ const CardStack: React.FC<CardStackProps> = ({
     const y = e.clientY - rect.top;
     cardRef.current.style.setProperty('--mouse-x', `${x}px`);
     cardRef.current.style.setProperty('--mouse-y', `${y}px`);
+  };
+
+  const handleDragStartEvent = (e: React.DragEvent<HTMLDivElement>) => {
+    // Hide default ghost image
+    const emptyImg = new Image();
+    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(emptyImg, 0, 0);
+    
+    e.dataTransfer.setData('text/plain', id.toString());
+    e.dataTransfer.effectAllowed = 'copy';
+    
+    if (onDragStart) onDragStart(id);
   };
 
   // Determine Image to show
@@ -47,11 +65,13 @@ const CardStack: React.FC<CardStackProps> = ({
   };
 
   return (
-    <div className="relative group cursor-pointer w-full h-[28rem] perspective-1000">
+    <div 
+      className="relative group cursor-grab active:cursor-grabbing w-full h-[28rem] perspective-1000"
+      draggable="true"
+      onDragStart={handleDragStartEvent}
+    >
       
       {/* --- Depth Layer 2 (Bottom) --- */}
-      {/* Default: translate-y-4 (16px, increased from 12px) */}
-      {/* Hover: translate-y-1.5 (6px, reduced from 16px - approx 10px drop) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[94%] h-[98%] 
         bg-slate-700/30 backdrop-blur-[2px] border border-white/10 rounded-2xl shadow-2xl
         transform rotate-3 translate-y-4
@@ -61,8 +81,6 @@ const CardStack: React.FC<CardStackProps> = ({
       </div>
       
       {/* --- Depth Layer 1 (Middle) --- */}
-      {/* Default: translate-y-2.5 (10px, increased from 6px) */}
-      {/* Hover: -translate-y-px (-1px, reduced from 4px - approx 5px drop) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[98%] h-[99%] 
         bg-slate-700/50 backdrop-blur-[4px] border border-white/15 rounded-2xl shadow-xl
         transform -rotate-2 translate-y-2.5
@@ -163,6 +181,10 @@ const CardStack: React.FC<CardStackProps> = ({
 
         {/* --- Add to Collection FAB (Straddling Line) --- */}
         <button 
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent card click logic if any
+            if (onAddClick) onAddClick(id);
+          }}
           className="absolute top-44 right-6 -translate-y-1/2 z-30 w-[25px] h-[25px] bg-brand-orange rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-orange/90 hover:scale-110 transition-all duration-300 group/btn"
           title="Add to collection"
         >

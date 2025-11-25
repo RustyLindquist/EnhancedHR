@@ -13,7 +13,7 @@ import {
   Building,
   MessageSquare
 } from 'lucide-react';
-import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme } from './types';
+import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection } from './types';
 
 // Default Tech/Abstract Image for fallback
 export const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=2070&auto=format&fit=crop";
@@ -26,6 +26,19 @@ export const COURSE_CATEGORIES = [
   'HR Stories',
   'Leadership'
 ];
+
+export const DEFAULT_COLLECTIONS: Collection[] = [
+    { id: 'favorites', label: 'Favorites', color: '#FF2600', isCustom: false },
+    { id: 'research', label: 'Workspace', color: '#FF9300', isCustom: false },
+    { id: 'to_learn', label: 'Watchlist', color: '#78C0F0', isCustom: false },
+];
+
+// Helper to generate a date relative to today
+const getRelativeDate = (daysAgo: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString().split('T')[0];
+};
 
 export const MOCK_COURSES: Course[] = [
   // --- AI FOR HR (7 Items) ---
@@ -40,7 +53,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "4h 15m",
     rating: 4.8,
     badges: ['REQUIRED', 'SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['favorites'],
+    dateAdded: getRelativeDate(2) // 2 days ago
   },
   { 
     id: 102, 
@@ -53,7 +68,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 00m",
     rating: 4.8,
     badges: ['SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['to_learn'],
+    dateAdded: getRelativeDate(10) // 10 days ago
   },
   {
     id: 103,
@@ -66,7 +83,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 15m",
     rating: 4.9,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(1) // Yesterday
   },
   {
     id: 104,
@@ -79,7 +98,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 30m",
     rating: 4.5,
     badges: ['REQUIRED'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(45) // Last month
   },
   {
     id: 105,
@@ -92,20 +113,24 @@ export const MOCK_COURSES: Course[] = [
     duration: "5h 00m",
     rating: 4.7,
     badges: ['HRCI'],
-    isSaved: true
+    isSaved: true,
+    collections: ['research'],
+    dateAdded: getRelativeDate(5)
   },
   {
     id: 106,
     title: "The Automated Onboarding",
     author: "People Ops",
-    progress: 0,
+    progress: 0, 
     category: "AI for HR",
     image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=1000&auto=format&fit=crop",
     description: "Building a seamless, AI-assisted onboarding journey that feels personal at scale.",
     duration: "3h 45m",
     rating: 4.2,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(100)
   },
 
   // --- LEADERSHIP (6 Items) ---
@@ -120,7 +145,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "5h 15m",
     rating: 4.6,
     badges: ['HRCI'],
-    isSaved: true
+    isSaved: true,
+    collections: ['to_learn'],
+    dateAdded: getRelativeDate(20)
   },
   {
     id: 202,
@@ -133,7 +160,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 20m",
     rating: 4.5,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(0) // Today
   },
   {
     id: 203,
@@ -146,7 +175,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "4h 00m",
     rating: 4.9,
     badges: ['SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['favorites'],
+    dateAdded: getRelativeDate(8)
   },
   {
     id: 204,
@@ -159,7 +190,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "6h 30m",
     rating: 4.7,
     badges: ['REQUIRED'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(300)
   },
   {
     id: 205,
@@ -172,7 +205,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 45m",
     rating: 4.8,
     badges: [],
-    isSaved: true
+    isSaved: true,
+    collections: ['research'],
+    dateAdded: getRelativeDate(15)
   },
   {
     id: 206,
@@ -185,7 +220,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 15m",
     rating: 4.6,
     badges: ['HRCI'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(60)
   },
 
   // --- BUSINESS FUNCTIONS (6 Items) ---
@@ -200,7 +237,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "8h 45m",
     rating: 4.2,
     badges: ['REQUIRED'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(200)
   },
   {
     id: 302,
@@ -213,7 +252,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "5h 30m",
     rating: 4.4,
     badges: ['SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['research'],
+    dateAdded: getRelativeDate(4)
   },
   { 
     id: 303, 
@@ -226,7 +267,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "6h 00m",
     rating: 4.9,
     badges: ['SHRM', 'HRCI'],
-    isSaved: true
+    isSaved: true,
+    collections: ['to_learn'],
+    dateAdded: getRelativeDate(1)
   },
   {
     id: 304,
@@ -239,7 +282,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "4h 00m",
     rating: 4.3,
     badges: ['REQUIRED', 'HRCI'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(180)
   },
   {
     id: 305,
@@ -252,20 +297,24 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 15m",
     rating: 4.6,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(25)
   },
   {
     id: 306,
     title: "Global Mobility",
     author: "International Team",
-    progress: 0,
+    progress: 0, 
     category: "Business Functions",
     image: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=1000&auto=format&fit=crop",
     description: "Managing expatriate assignments, visas, and cross-border taxation issues.",
     duration: "4h 45m",
     rating: 4.5,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(40)
   },
 
   // --- SOFT SKILLS (6 Items) ---
@@ -280,7 +329,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 30m",
     rating: 4.5,
     badges: ['HRCI'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(3)
   },
   {
     id: 402,
@@ -293,20 +344,24 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 45m",
     rating: 4.8,
     badges: [],
-    isSaved: true
+    isSaved: true,
+    collections: ['favorites'],
+    dateAdded: getRelativeDate(7)
   },
   {
     id: 403,
     title: "Negotiation Tactics",
     author: "The Dealmakers",
-    progress: 60,
+    progress: 60, 
     category: "Soft Skills",
     image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1000&auto=format&fit=crop",
     description: "Getting to 'Yes' in salary negotiations, vendor contracts, and internal disputes.",
     duration: "3h 00m",
     rating: 4.7,
     badges: ['SHRM'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(90)
   },
   {
     id: 404,
@@ -319,7 +374,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "4h 15m",
     rating: 4.9,
     badges: ['REQUIRED'],
-    isSaved: true
+    isSaved: true,
+    collections: ['to_learn'],
+    dateAdded: getRelativeDate(12)
   },
   {
     id: 405,
@@ -332,7 +389,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 00m",
     rating: 4.4,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(30)
   },
   {
     id: 406,
@@ -345,7 +404,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 30m",
     rating: 4.6,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(55)
   },
 
   // --- HR STORIES (5 Items) ---
@@ -360,7 +421,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "3h 30m",
     rating: 4.7,
     badges: ['SHRM'],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(2)
   },
   {
     id: 502,
@@ -373,7 +436,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 00m",
     rating: 4.8,
     badges: [],
-    isSaved: true
+    isSaved: true,
+    collections: ['research'],
+    dateAdded: getRelativeDate(18)
   },
   {
     id: 503,
@@ -386,7 +451,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 45m",
     rating: 4.5,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(0)
   },
   {
     id: 504,
@@ -399,7 +466,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 30m",
     rating: 4.9,
     badges: ['SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['favorites'],
+    dateAdded: getRelativeDate(6)
   },
   {
     id: 505,
@@ -412,7 +481,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 15m",
     rating: 4.4,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(365)
   },
 
   // --- BOOK CLUB (5 Items) ---
@@ -427,7 +498,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 30m",
     rating: 4.9,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(14)
   },
   {
     id: 602,
@@ -440,7 +513,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 00m",
     rating: 4.8,
     badges: [],
-    isSaved: true
+    isSaved: true,
+    collections: ['research'],
+    dateAdded: getRelativeDate(500)
   },
   {
     id: 603,
@@ -453,7 +528,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 45m",
     rating: 4.7,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(400)
   },
   {
     id: 604,
@@ -466,7 +543,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "2h 15m",
     rating: 4.9,
     badges: ['SHRM'],
-    isSaved: true
+    isSaved: true,
+    collections: ['favorites'],
+    dateAdded: getRelativeDate(22)
   },
   {
     id: 605,
@@ -479,7 +558,9 @@ export const MOCK_COURSES: Course[] = [
     duration: "1h 50m",
     rating: 4.6,
     badges: [],
-    isSaved: false
+    isSaved: false,
+    collections: [],
+    dateAdded: getRelativeDate(28)
   },
 ];
 
@@ -493,9 +574,9 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
-  { id: 'research', label: 'Research', icon: Search, color: 'text-brand-orange' },
-  { id: 'to_learn', label: 'To Learn', icon: Clock, color: 'text-brand-blue-light' },
-  { id: 'company', label: 'Company Collections', icon: Building, color: 'text-slate-400' },
+  { id: 'research', label: 'Workspace', icon: Search, color: 'text-brand-orange' },
+  { id: 'to_learn', label: 'Watchlist', icon: Clock, color: 'text-brand-blue-light' },
+  { id: 'company', label: 'Company', icon: Building, color: 'text-slate-400' },
   { id: 'new', label: 'New Collection', icon: Plus, color: 'text-brand-blue-light' },
 ];
 
@@ -507,8 +588,8 @@ export const CONVERSATION_NAV_ITEMS: NavItemConfig[] = [
 
 export const COLLECTION_PORTALS: CollectionPortalConfig[] = [
   { id: 'favorites', label: 'Favorites', icon: Star, color: '#FF2600' }, // Brand Red
-  { id: 'research', label: 'Research', icon: Search, color: '#FF9300' }, // Brand Orange
-  { id: 'to_learn', label: 'To Learn', icon: Clock, color: '#78C0F0' }, // Brand Light Blue
+  { id: 'research', label: 'Workspace', icon: Search, color: '#FF9300' }, // Brand Orange
+  { id: 'to_learn', label: 'Watchlist', icon: Clock, color: '#78C0F0' }, // Brand Light Blue
   { id: 'new', label: 'New / Other', icon: Plus, color: '#3b82f6' },    // Standard Blue
 ];
 

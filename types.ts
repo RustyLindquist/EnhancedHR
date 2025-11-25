@@ -41,6 +41,15 @@ export interface Course {
   rating: number; // 0.0 to 5.0
   badges: CourseBadge[];
   isSaved: boolean; // True if in a custom collection
+  collections: string[]; // IDs of collections this course belongs to
+  dateAdded: string; // ISO 8601 Date String YYYY-MM-DD
+}
+
+export interface Collection {
+  id: string;
+  label: string;
+  color: string;
+  isCustom: boolean;
 }
 
 export interface NavItemConfig {
