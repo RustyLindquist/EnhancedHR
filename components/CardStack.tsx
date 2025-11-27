@@ -6,6 +6,7 @@ import { DEFAULT_COURSE_IMAGE } from '../constants';
 interface CardStackProps extends Course {
   onAddClick?: (courseId: number) => void;
   onDragStart?: (courseId: number) => void;
+  onClick?: (courseId: number) => void;
 }
 
 const CardStack: React.FC<CardStackProps> = ({ 
@@ -21,7 +22,8 @@ const CardStack: React.FC<CardStackProps> = ({
   badges, 
   isSaved,
   onAddClick,
-  onDragStart
+  onDragStart,
+  onClick
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -66,9 +68,10 @@ const CardStack: React.FC<CardStackProps> = ({
 
   return (
     <div 
-      className="relative group cursor-grab active:cursor-grabbing w-full h-[28rem] perspective-1000"
+      className="relative group cursor-pointer active:cursor-grabbing w-full h-[28rem] perspective-1000"
       draggable="true"
       onDragStart={handleDragStartEvent}
+      onClick={() => onClick && onClick(id)}
     >
       
       {/* --- Depth Layer 2 (Bottom) --- */}
@@ -182,7 +185,7 @@ const CardStack: React.FC<CardStackProps> = ({
         {/* --- Add to Collection FAB (Straddling Line) --- */}
         <button 
           onClick={(e) => {
-            e.stopPropagation(); // Prevent card click logic if any
+            e.stopPropagation(); // Prevent card click logic
             if (onAddClick) onAddClick(id);
           }}
           className="absolute top-44 right-6 -translate-y-1/2 z-30 w-[25px] h-[25px] bg-brand-orange rounded-full flex items-center justify-center text-white shadow-lg hover:bg-brand-orange/90 hover:scale-110 transition-all duration-300 group/btn"

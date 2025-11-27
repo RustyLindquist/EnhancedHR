@@ -3,6 +3,7 @@ import NavigationPanel from './components/NavigationPanel';
 import MainCanvas from './components/MainCanvas';
 import AIPanel from './components/AIPanel';
 import BackgroundSystem from './components/BackgroundSystem';
+import AddCollectionModal from './components/AddCollectionModal';
 import { BACKGROUND_THEMES, MOCK_COURSES, DEFAULT_COLLECTIONS } from './constants';
 import { BackgroundTheme, Course, Collection } from './types';
 
@@ -18,6 +19,10 @@ const App: React.FC = () => {
   const [activeCollectionId, setActiveCollectionId] = useState<string>('academy');
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
 
+  // Global Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalCourse, setModalCourse] = useState<Course | null>(null);
+
   const handleUpdateCourse = (updatedCourses: Course[]) => {
       setCourses(updatedCourses);
   };
@@ -26,11 +31,93 @@ const App: React.FC = () => {
       setCustomCollections(prev => [...prev, newCollection]);
   };
 
+  // Logic to handle saving (triggered from Modal)
+  const handleSaveToCollection = (selectedCollectionIds: string[], newCollection?: { label: string; color: string }) => {
+    // 1. Handle New Collection Creation
+    if (newCollection) {
+        const newId = `custom-${Date.now()}`;
+        const created = { id: newId, label: newCollection.label, color: newCollection.color, isCustom: true };
+        handleCreateCollection(created);
+        // Add new ID to selection
+        if (!selectedCollectionIds.includes(newId)) {
+            selectedCollectionIds.push(newId);
+        }
+    }
+
+    // 2. Update Course Logic (Only if a course was selected)
+    if (modalCourse) {
+       const updatedCourses = courses.map(c => {
+           if (c.id === modalCourse.id) {
+               return {
+                   ...c,
+                   collections: selectedCollectionIds,
+                   isSaved: selectedCollectionIds.length > 0 
+               };
+           }
+           return c;
+       });
+       handleUpdateCourse(updatedCourses);
+    }
+    
+    setIsAddModalOpen(false);
+    setModalCourse(null);
+  };
+
+  const handleOpenModal = (course?: Course) => {
+      setModalCourse(course || null);
+      setIsAddModalOpen(true);
+  };
+
+  const handleSelectCollection = (id: string) => {
+      if (id === 'new') {
+          // Instead of navigating, open the "Create Collection" modal
+          handleOpenModal(undefined);
+      } else {
+          setActiveCollectionId(id);
+      }
+  };
+
+  // Immediate save (for drag and drop on existing portals)
+  const handleImmediateAddToCollection = (courseId: number, collectionId: string) => {
+      const course = courses.find(c => c.id === courseId);
+      if (course) {
+          const currentCollections = course.collections || [];
+          if (!currentCollections.includes(collectionId)) {
+              const updatedCollections = [...currentCollections, collectionId];
+              
+              const updatedCourses = courses.map(c => {
+                  if (c.id === courseId) {
+                      return {
+                          ...c,
+                          collections: updatedCollections,
+                          isSaved: true
+                      };
+                  }
+                  return c;
+              });
+              handleUpdateCourse(updatedCourses);
+          }
+      }
+  };
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
       
       {/* Global Background System */}
       <BackgroundSystem theme={currentTheme} />
+
+      {/* Global Modals */}
+      {isAddModalOpen && (
+        <AddCollectionModal 
+            course={modalCourse}
+            availableCollections={customCollections}
+            onClose={() => {
+                setIsAddModalOpen(false);
+                setModalCourse(null);
+            }}
+            onSave={handleSaveToCollection}
+        />
+      )}
 
       {/* Main Application Layer */}
       <div className="flex w-full h-full relative z-10">
@@ -42,17 +129,17 @@ const App: React.FC = () => {
           onThemeChange={setCurrentTheme}
           courses={courses}
           activeCollectionId={activeCollectionId}
-          onSelectCollection={setActiveCollectionId}
+          onSelectCollection={handleSelectCollection}
         />
 
         {/* Center Content */}
         <MainCanvas 
             courses={courses}
-            onUpdateCourses={handleUpdateCourse}
             activeCollectionId={activeCollectionId}
             onSelectCollection={setActiveCollectionId}
             customCollections={customCollections}
-            onCreateCollection={handleCreateCollection}
+            onOpenModal={handleOpenModal}
+            onImmediateAddToCollection={handleImmediateAddToCollection}
         />
 
         {/* Right AI Panel */}

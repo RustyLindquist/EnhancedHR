@@ -13,7 +13,7 @@ import {
   Building,
   MessageSquare
 } from 'lucide-react';
-import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection } from './types';
+import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
 // Default Tech/Abstract Image for fallback
 export const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=2070&auto=format&fit=crop";
@@ -38,6 +38,41 @@ const getRelativeDate = (daysAgo: number) => {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   return date.toISOString().split('T')[0];
+};
+
+// --- MOCK DATA GENERATORS ---
+
+export const MOCK_AUTHOR_PROFILE: AuthorProfile = {
+  name: "Dr. Sarah Chen",
+  role: "Chief People Scientist",
+  bio: "Dr. Chen has over 15 years of experience in organizational psychology and AI implementation. She previously led People Analytics at TechGlobal and is a frequent keynote speaker on the future of work.",
+  avatar: "" // Using initials in UI
+};
+
+export const generateMockSyllabus = (courseId: number): Module[] => {
+  // Deterministic "randomness" based on courseId
+  const moduleCount = (courseId % 3) + 3; // 3 to 5 modules
+  
+  return Array.from({ length: moduleCount }).map((_, mIdx) => ({
+    id: `m-${courseId}-${mIdx}`,
+    title: `Module ${mIdx + 1}: ${['Foundations', 'Core Concepts', 'Advanced Applications', 'Case Studies', 'Final Project'][mIdx] || 'Topic Deep Dive'}`,
+    lessons: Array.from({ length: (courseId % 2) + 3 }).map((__, lIdx) => ({
+      id: `l-${courseId}-${mIdx}-${lIdx}`,
+      title: `Lesson ${mIdx + 1}.${lIdx + 1}: ${['Introduction', 'Key Theories', 'Practical Frameworks', 'Expert Interview', 'Knowledge Check'][lIdx] || 'Summary'}`,
+      duration: `${10 + (lIdx * 5)} min`,
+      isCompleted: false, // Will be overridden by logic in UI based on course progress
+      type: lIdx === 3 ? 'quiz' : 'video'
+    }))
+  }));
+};
+
+export const generateMockResources = (courseId: number): Resource[] => {
+    return [
+        { id: `r-${courseId}-1`, title: 'Course Syllabus & Guide', type: 'PDF', size: '1.2 MB' },
+        { id: `r-${courseId}-2`, title: 'Lecture Notes: Week 1', type: 'DOC', size: '450 KB' },
+        { id: `r-${courseId}-3`, title: 'Case Study Data Set', type: 'XLS', size: '2.8 MB' },
+        { id: `r-${courseId}-4`, title: 'External References', type: 'LINK' }
+    ];
 };
 
 export const MOCK_COURSES: Course[] = [
@@ -76,7 +111,7 @@ export const MOCK_COURSES: Course[] = [
     id: 103,
     title: "Prompt Engineering 101",
     author: "Alex Rivera",
-    progress: 45,
+    progress: 45, 
     category: "AI for HR",
     image: "https://images.unsplash.com/photo-1678911820864-e2c567c655d7?q=80&w=1000&auto=format&fit=crop",
     description: "Learn the specific syntax and structures to get the best results from ChatGPT and Claude for HR tasks.",
@@ -89,7 +124,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     id: 104,
-    title: "Ethical AI Governance",
+    title: "Ethical AI Governance", 
     author: "Legal Dept & IT",
     progress: 100,
     category: "AI for HR",

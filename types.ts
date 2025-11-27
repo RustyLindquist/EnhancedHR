@@ -85,3 +85,43 @@ export interface BackgroundTheme {
   value: string; // CSS class for preset, URL for custom
   overlayColor?: string; // Optional overlay to ensure text readability
 }
+
+// --- Extended Course Details ---
+
+export interface Lesson {
+  id: string;
+  title: string;
+  duration: string;
+  isCompleted: boolean;
+  type: 'video' | 'quiz' | 'article';
+}
+
+export interface Module {
+  id: string;
+  title: string;
+  lessons: Lesson[];
+}
+
+export interface AuthorProfile {
+  name: string;
+  role: string;
+  bio: string;
+  avatar: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
+  size?: string;
+}
+
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE';
+
+export interface DragItem {
+  type: DragItemType;
+  id: string | number;
+  title?: string;
+  subtitle?: string;
+  image?: string; // For preview
+}
