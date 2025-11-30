@@ -1,8 +1,9 @@
 import { fetchCertificate } from '@/lib/certificates';
 import { NextResponse } from 'next/server';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-    const certificate = await fetchCertificate(params.id);
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+    const { id } = await context.params;
+    const certificate = await fetchCertificate(id);
 
     if (!certificate) {
         return NextResponse.json({ error: 'Certificate not found' }, { status: 404 });
