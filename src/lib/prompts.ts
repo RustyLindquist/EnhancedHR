@@ -1,10 +1,23 @@
 import { createClient } from '@/lib/supabase/client';
 
+export type PromptCategory =
+  | 'General'
+  | 'Growth'
+  | 'Career'
+  | 'Productivity'
+  | 'Wellness'
+  | 'Leadership'
+  | 'Communication'
+  | 'Strategy'
+  | 'Analytics'
+  | 'Reporting'
+  | 'Management';
+
 export interface PromptSuggestion {
     id: string;
     label: string; // Short display text
     prompt: string; // Full engineered prompt
-    category: 'Leadership' | 'Communication' | 'Strategy' | 'Wellness' | 'General' | 'Growth' | 'Career' | 'Productivity';
+    category: PromptCategory;
     order_index?: number;
 }
 

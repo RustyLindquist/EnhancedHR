@@ -125,3 +125,70 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
         trendingCourseIds
     };
 }
+
+// --- ORG ADMIN DASHBOARD DATA ---
+
+export interface OrgDashboardData {
+  totalCoursesCompleted: number;
+  totalLearningHours: number;
+  totalCredits: {
+    shrm: number;
+    hrci: number;
+  };
+  aiAdoptionRate: number; // Percentage or avg interactions
+  seatUtilization: {
+    active: number;
+    total: number;
+  };
+  recentActivity: {
+    user: string;
+    action: string;
+    date: string;
+  }[];
+}
+
+export async function fetchOrgDashboardData(orgId: string): Promise<OrgDashboardData> {
+  const supabase = createClient();
+
+  // 1. Fetch Organization Details (Seats)
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('seats_total, seats_used')
+    .eq('id', orgId)
+    .single();
+
+  // 2. Fetch Aggregated User Progress (Mocking aggregation for now as we lack a direct aggregation table)
+  // In a real scenario, we'd query `user_course_progress` joined with `organization_members`
+  const { data: members } = await supabase
+    .from('organization_members')
+    .select('user_id')
+    .eq('organization_id', orgId);
+  
+  const memberIds = members?.map(m => m.user_id) || [];
+
+  // Mocking stats for the ROI dashboard based on member count
+  // In production, these would be real `count()` queries on `user_course_progress` and `user_credits_ledger`
+  const totalCoursesCompleted = memberIds.length * 5 + 12; 
+  const totalLearningHours = memberIds.length * 15 + 45;
+  
+  const totalCredits = {
+    shrm: memberIds.length * 10 + 25,
+    hrci: memberIds.length * 8 + 15
+  };
+
+  return {
+    totalCoursesCompleted,
+    totalLearningHours,
+    totalCredits,
+    aiAdoptionRate: 78, // Mocked high adoption
+    seatUtilization: {
+      active: org?.seats_used || 0,
+      total: org?.seats_total || 50 // Default to 50 if null
+    },
+    recentActivity: [
+      { user: 'Sarah Jenkins', action: 'Completed "AI Leadership"', date: '2h ago' },
+      { user: 'Mike Ross', action: 'Earned SHRM Credit', date: '5h ago' },
+      { user: 'Jessica Pearson', action: 'Started "Conflict Resolution"', date: '1d ago' }
+    ]
+  };
+}
