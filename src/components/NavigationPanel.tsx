@@ -88,7 +88,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -107,11 +107,13 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
         const fullName = profile?.full_name || user.user_metadata?.full_name || 'User';
         const initials = fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+        const role = user.user_metadata?.role || user.app_metadata?.role;
 
         setUserProfile({
           fullName,
           email: user.email || '',
-          initials
+          initials,
+          role
         });
       }
     };
@@ -159,6 +161,14 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     return courses.filter(c => c.collections.includes(collectionId)).length;
   };
 
+  // Filter Nav Items based on Role
+  const filteredNavItems = MAIN_NAV_ITEMS.filter(item => {
+    if (item.role === 'admin') {
+      return userProfile?.role === 'admin';
+    }
+    return true;
+  });
+
   return (
     <div className={`
       ${isOpen ? 'w-72' : 'w-20'} 
@@ -170,30 +180,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     `}>
       {/* Logo Area */}
       <div className="h-24 flex-shrink-0 flex items-center justify-center relative px-4 border-b border-white/5">
-        <div className="flex items-center justify-center cursor-pointer group">
-          {/* Custom SVG Logo - Blue Flame */}
-          <div className="relative w-10 h-10 flex items-center justify-center">
-            {/* Glow */}
-            <div className="absolute inset-0 bg-brand-blue-light/20 blur-xl rounded-full opacity-40 group-hover:opacity-70 transition-opacity duration-500"></div>
-
-            {/* Logo Icon */}
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(120,192,240,0.5)]">
-              <path d="M14.5 2C14.5 2 9.5 5.5 9.5 10C9.5 12 11 13.5 11 13.5C11 13.5 7.5 13.5 5.5 11C4 8.5 5 5.5 5 5.5C2.5 8 2 12 3.5 15.5C5.5 19.5 10 22 13.5 21C17.5 20 21 15 21 10C21 5.5 18 3 14.5 2Z" fill="url(#flame_grad)" />
-              <defs>
-                <linearGradient id="flame_grad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#78C0F0" />
-                  <stop offset="100%" stopColor="#054C74" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-
-          {isOpen && (
-            <div className="ml-3 animate-fade-in flex flex-col justify-center">
-              <span className="text-xl font-light tracking-widest text-[#FF9300] leading-none drop-shadow-sm filter">
-                ENHANCED
-              </span>
-            </div>
+        <div className="flex items-center justify-center cursor-pointer group w-full px-4 h-full">
+          {isOpen ? (
+            <img
+              src="/images/logos/EnhancedHR-logo-no-mark.png"
+              alt="EnhancedHR"
+              className="h-16 w-auto object-contain transition-all duration-300 drop-shadow-[0_0_15px_rgba(120,192,240,0.3)] p-0.5"
+            />
+          ) : (
+            <img
+              src="/images/logos/EnhancedHR-logo-mark-flame.png"
+              alt="EnhancedHR"
+              className="h-8 w-auto object-contain transition-all duration-300 drop-shadow-[0_0_15px_rgba(120,192,240,0.3)]"
+            />
           )}
         </div>
 
@@ -212,13 +211,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         {/* Main Navigation (Top) */}
         <div className="px-4 mb-8">
           <div className="space-y-1">
-            {MAIN_NAV_ITEMS.map(item => (
+            {filteredNavItems.map(item => (
               <NavItem
                 key={item.id}
                 item={item}
                 isOpen={isOpen}
                 isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
-                onClick={() => onSelectCollection(item.id)}
+                onClick={() => {
+                  if (item.id.startsWith('admin/')) {
+                    router.push(`/${item.id}`);
+                  } else {
+                    onSelectCollection(item.id);
+                  }
+                }}
               />
             ))}
           </div>
@@ -277,6 +282,26 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Bottom Branding (Flame + Tagline) */}
+      <div className={`group flex flex-col items-center justify-center pb-6 transition-opacity duration-500 cursor-default ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
+        <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
+          {/* Glow Effect */}
+          <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 group-hover:bg-brand-orange/20 group-hover:blur-[50px] group-hover:opacity-100"></div>
+
+          {/* Flame Image */}
+          <img
+            src="/images/logos/EnhancedHR-logo-mark-flame.png"
+            alt="Mark"
+            className="h-full w-full object-contain opacity-10 transition-all duration-700 group-hover:opacity-100 group-hover:drop-shadow-[0_0_30px_rgba(255,147,0,0.4)]"
+          />
+        </div>
+
+        {/* Tagline */}
+        <span className="text-[11px] font-black text-[#1e293b] uppercase tracking-[0.2em] drop-shadow-sm select-none transition-all duration-500 group-hover:text-white group-hover:tracking-[0.25em] group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+          World-Class Learning
+        </span>
       </div>
 
       {/* User Profile Summary (Bottom) */}

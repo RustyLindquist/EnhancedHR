@@ -1,5 +1,5 @@
 -- Seed Data for Courses
-INSERT INTO courses (id, title, author, category, description, image_url, duration, rating, badges, created_at) VALUES
+INSERT INTO public.courses (id, title, author, category, description, image_url, duration, rating, badges, created_at) VALUES
 (1, 'Strategic HR Leadership', 'Dr. Sarah Mitchell', 'Leadership', 'Master the art of strategic human resources planning and execution. Learn how to align HR initiatives with organizational goals.', 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop', '4h 30m', 4.8, ARRAY['SHRM','HRCI'], '2024-01-15'),
 (2, 'AI in Human Resources', 'James Chen', 'Technology', 'Explore the transformative power of AI in HR. From recruitment to employee engagement, learn how to leverage AI tools effectively.', 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2832&auto=format&fit=crop', '3h 15m', 4.9, ARRAY['REQUIRED'], '2024-02-01'),
 (3, 'Conflict Resolution Mastery', 'Elena Rodriguez', 'Communication', 'Develop essential skills for managing and resolving workplace conflicts. Create a positive and productive work environment.', 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=2787&auto=format&fit=crop', '2h 45m', 4.7, ARRAY['SHRM'], '2024-01-20'),
@@ -8,7 +8,7 @@ INSERT INTO courses (id, title, author, category, description, image_url, durati
 (6, 'HR Analytics Fundamentals', 'David Thompson', 'Analytics', 'Data-driven decision making in HR. Learn the basics of HR analytics and how to interpret key metrics.', 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2940&auto=format&fit=crop', '5h 15m', 4.8, ARRAY['SHRM','HRCI'], '2024-02-15');
 
 -- Seed Data for Modules (Mock)
-INSERT INTO modules (course_id, title, "order", duration) VALUES
+INSERT INTO public.modules (course_id, title, "order", duration) VALUES
 (1, 'Module 1: Introduction to Leadership', 1, '45m'),
 (1, 'Module 2: Introduction to Leadership', 2, '45m'),
 (1, 'Module 3: Introduction to Leadership', 3, '45m'),

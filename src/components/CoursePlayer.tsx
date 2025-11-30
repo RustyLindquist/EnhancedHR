@@ -13,11 +13,14 @@ interface CoursePlayerProps {
     syllabus: Module[];
     resources: Resource[];
     onBack: () => void;
+    initialLessonId?: string;
+    initialModuleId?: string;
+    userId: string;
 }
 
-const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources, onBack }) => {
-    const [activeModuleId, setActiveModuleId] = useState<string>(syllabus[0]?.id || '');
-    const [activeLessonId, setActiveLessonId] = useState<string>(syllabus[0]?.lessons[0]?.id || '');
+const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources, onBack, initialLessonId, initialModuleId, userId }) => {
+    const [activeModuleId, setActiveModuleId] = useState<string>(initialModuleId || syllabus[0]?.id || '');
+    const [activeLessonId, setActiveLessonId] = useState<string>(initialLessonId || syllabus[0]?.lessons[0]?.id || '');
     const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
@@ -94,6 +97,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                     <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative group shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10">
                         {currentLesson?.type === 'quiz' && currentLesson.quiz_data ? (
                             <QuizPlayer
+                                lessonId={currentLesson.id}
                                 quizData={currentLesson.quiz_data}
                                 onComplete={(score, passed) => {
                                     console.log('Quiz Completed', score, passed);
@@ -108,7 +112,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                 metadata={{
                                     video_id: currentLesson.id,
                                     video_title: currentLesson.title,
-                                    // viewer_user_id: 'user-id-placeholder', // TODO: Get actual user ID
+                                    viewer_user_id: userId,
                                 }}
                                 primaryColor="#78C0F0"
                                 secondaryColor="#000000"
@@ -304,7 +308,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                         {resource.type}
                                     </span>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-1 rounded bg-black/20 text-brand-red hover:text-white"><Download size={10} /></button>
+                                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="p-1 rounded bg-black/20 text-brand-red hover:text-white flex items-center justify-center"><Download size={10} /></a>
                                         <button className="p-1 rounded bg-black/20 text-brand-red hover:text-white"><Plus size={10} /></button>
                                     </div>
                                 </div>

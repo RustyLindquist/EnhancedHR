@@ -53,3 +53,19 @@ export async function signup(formData: FormData) {
     // Email confirmation required
     return { success: true, message: 'Please check your email to confirm your account.' }
 }
+
+export async function resetPassword(formData: FormData) {
+    const supabase = await createClient()
+
+    const email = formData.get('email') as string
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/settings/account`,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true, message: 'Check your email for the password reset link.' }
+}

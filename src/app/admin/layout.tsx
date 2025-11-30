@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, BookOpen, Users, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Settings, LogOut, GraduationCap, MessageSquare } from 'lucide-react';
 
 export default function AdminLayout({
     children,
@@ -13,10 +13,11 @@ export default function AdminLayout({
             <aside className="w-64 flex-shrink-0 border-r border-white/10 bg-[#0f172a]/50 backdrop-blur-xl flex flex-col">
                 <div className="p-6 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-orange to-brand-red flex items-center justify-center font-bold text-white">
-                            E
-                        </div>
-                        <span className="font-bold text-lg tracking-tight">EnhancedHR</span>
+                        <img
+                            src="/images/logos/EnhancedHR-logo.png"
+                            alt="EnhancedHR"
+                            className="h-8 w-auto object-contain"
+                        />
                     </div>
                     <div className="mt-2 px-2 py-1 bg-white/5 rounded text-[10px] font-bold uppercase tracking-widest text-slate-400 w-fit">
                         Admin Console
@@ -25,7 +26,9 @@ export default function AdminLayout({
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <NavItem href="/admin" icon={LayoutDashboard} label="Dashboard" />
-                    <NavItem href="/admin/courses" icon={BookOpen} label="Courses" active />
+                    <NavItem href="/admin/courses" icon={BookOpen} label="Courses" />
+                    <NavItem href="/admin/authors" icon={GraduationCap} label="Authors" />
+                    <NavItem href="/admin/prompts" icon={MessageSquare} label="AI Prompts" />
                     <NavItem href="/admin/users" icon={Users} label="Users" />
                     <NavItem href="/admin/settings" icon={Settings} label="Settings" />
                 </nav>

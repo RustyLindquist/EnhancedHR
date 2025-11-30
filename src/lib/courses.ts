@@ -73,7 +73,36 @@ export async function fetchCourseModules(courseId: number): Promise<Module[]> {
                 duration: l.duration,
                 isCompleted: false, // TODO: Integrate with user_progress
                 type: l.type,
-                video_url: l.video_url
+                video_url: l.video_url,
+                content: l.content,
+                quiz_data: l.quiz_data
             }))
     }));
+}
+
+export async function fetchUserCourseProgress(userId: string, courseId: number): Promise<{ lastViewedLessonId: string | null, completedLessonIds: string[] }> {
+    const supabase = createClient();
+
+    // 1. Fetch all progress records for this user/course
+    const { data, error } = await supabase
+        .from('user_progress')
+        .select('lesson_id, is_completed, last_accessed')
+        .eq('user_id', userId)
+        .eq('course_id', courseId)
+        .order('last_accessed', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching user progress:', error);
+        return { lastViewedLessonId: null, completedLessonIds: [] };
+    }
+
+    // 2. Determine last viewed lesson (first record due to sort)
+    const lastViewedLessonId = data.length > 0 ? data[0].lesson_id : null;
+
+    // 3. Get list of completed lessons
+    const completedLessonIds = data
+        .filter((record: any) => record.is_completed)
+        .map((record: any) => record.lesson_id);
+
+    return { lastViewedLessonId, completedLessonIds };
 }

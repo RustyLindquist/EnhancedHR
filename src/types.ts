@@ -59,6 +59,7 @@ export interface NavItemConfig {
   icon: LucideIcon;
   color?: string;
   isActive?: boolean;
+  role?: 'admin';
 }
 
 export interface CollectionPortalConfig {
@@ -87,6 +88,36 @@ export interface BackgroundTheme {
   overlayColor?: string; // Optional overlay to ensure text readability
 }
 
+// --- Quiz Types ---
+
+export interface QuizOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: QuizOption[];
+  explanation?: string;
+}
+
+export interface QuizData {
+  questions: QuizQuestion[];
+  passingScore: number; // e.g. 80
+}
+
+export interface UserAssessmentAttempt {
+  id: string;
+  user_id: string;
+  lesson_id: string;
+  score: number;
+  responses: Record<string, string>; // questionId -> optionId
+  passed: boolean;
+  created_at: string;
+}
+
 // --- Extended Course Details ---
 
 export interface Lesson {
@@ -96,7 +127,7 @@ export interface Lesson {
   type: 'video' | 'quiz' | 'article';
   video_url?: string; // Mux Playback ID
   content?: string; // Transcript or Article content
-  quiz_data?: any; // JSONB data for quizzes
+  quiz_data?: QuizData; // JSONB data for quizzes
   isCompleted: boolean; // User specific
 }
 
@@ -118,6 +149,7 @@ export interface Resource {
   id: string;
   title: string;
   type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
+  url: string;
   size?: string;
 }
 

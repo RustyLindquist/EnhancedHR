@@ -2,6 +2,7 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { UserPlus, MoreHorizontal, Mail, Shield, Trash2, Copy, Check } from 'lucide-react';
 import InviteLinkButton from '@/components/org/InviteLinkButton'; // We'll create this client component
+import RemoveUserButton from '@/components/org/RemoveUserButton';
 
 export default async function OrgTeamPage() {
     const supabase = await createClient();
@@ -85,9 +86,7 @@ export default async function OrgTeamPage() {
                                     </span>
                                 </td>
                                 <td className="p-4 text-right">
-                                    <button className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
-                                        <MoreHorizontal size={18} />
-                                    </button>
+                                    <RemoveUserButton userId={member.id} userName={member.full_name || member.email} />
                                 </td>
                             </tr>
                         ))}

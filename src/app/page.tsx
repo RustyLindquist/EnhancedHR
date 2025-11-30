@@ -29,7 +29,7 @@ export default function Home() {
   }, []);
 
   // Navigation & Collection State
-  const [activeCollectionId, setActiveCollectionId] = useState<string>('academy');
+  const [activeCollectionId, setActiveCollectionId] = useState<string>('dashboard');
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
 
   // Global Modal State
@@ -113,6 +113,13 @@ export default function Home() {
     }
   };
 
+  // AI Panel State
+  const [aiPanelPrompt, setAiPanelPrompt] = useState('');
+
+  const handleOpenAIPanel = () => {
+    setRightOpen(true);
+  };
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
 
@@ -153,10 +160,16 @@ export default function Home() {
           customCollections={customCollections}
           onOpenModal={handleOpenModal}
           onImmediateAddToCollection={handleImmediateAddToCollection}
+          onOpenAIPanel={handleOpenAIPanel}
+          onSetAIPrompt={setAiPanelPrompt}
         />
 
         {/* Right AI Panel */}
-        <AIPanel isOpen={rightOpen} setIsOpen={setRightOpen} />
+        <AIPanel
+          isOpen={rightOpen}
+          setIsOpen={setRightOpen}
+          initialPrompt={aiPanelPrompt}
+        />
       </div>
 
     </div>

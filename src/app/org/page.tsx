@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, BookOpen, Clock, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import ROIChart from '@/components/ROIChart';
 
 export default async function OrgDashboardPage() {
     const supabase = await createClient();
@@ -58,8 +59,18 @@ export default async function OrgDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-8 h-96">
                     <h3 className="text-lg font-bold text-white mb-6">Learning Activity</h3>
-                    <div className="h-full flex items-center justify-center text-slate-500 border border-dashed border-white/10 rounded-xl">
-                        Chart Placeholder
+                    <div className="h-full flex items-center justify-center">
+                        <ROIChart
+                            data={[
+                                { label: 'Mon', value: 12 },
+                                { label: 'Tue', value: 18 },
+                                { label: 'Wed', value: 10 },
+                                { label: 'Thu', value: 24 },
+                                { label: 'Fri', value: 16 },
+                                { label: 'Sat', value: 8 },
+                                { label: 'Sun', value: 4 },
+                            ]}
+                        />
                     </div>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-8 h-96">

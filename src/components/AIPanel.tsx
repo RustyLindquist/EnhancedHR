@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2 } from 'lucide-react';
+import { getGeminiResponse } from '@/lib/gemini';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -9,15 +10,27 @@ interface AIPanelProps {
     lessonId: string;
     transcript?: any[];
   };
+  initialPrompt?: string;
 }
 
 type AIMode = 'assistant' | 'tutor';
 
-const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context }) => {
+interface Message {
+  role: 'user' | 'model';
+  text: string;
+}
+
+const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPrompt }) => {
   const [width, setWidth] = useState(384); // Default w-96
   const [isDragging, setIsDragging] = useState(false);
   const [isHandleHovered, setIsHandleHovered] = useState(false);
   const [mode, setMode] = useState<AIMode>('assistant');
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialPromptRun = useRef(false);
 
   // Handle Resizing logic
   useEffect(() => {
@@ -50,6 +63,51 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context }) => {
       document.body.style.cursor = 'col-resize';
     };
   }, [isDragging]);
+
+  // Handle Initial Prompt
+  useEffect(() => {
+    if (initialPrompt && !hasInitialPromptRun.current && isOpen) {
+      hasInitialPromptRun.current = true;
+      setInput(initialPrompt); // Set input but maybe don't auto-send? Or auto-send?
+      // User request: "redirect to the full Platform Assistant Chat Interface with the prompt pre-filled."
+      // "Pre-filled" implies it's in the input box, waiting for user to send?
+      // Or "Quick Chat" implies it sends immediately.
+      // Usually "Quick Chat" means send immediately.
+      // But let's check the wording: "prompt pre-filled".
+      // If I just pre-fill, the user has to hit enter.
+      // If I auto-send, it's smoother.
+      // Let's auto-send for better UX.
+      handleSendMessage(initialPrompt);
+    }
+  }, [initialPrompt, isOpen]);
+
+  // Scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    const userMsg: Message = { role: 'user', text };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Convert messages to history format expected by Gemini helper
+      // Note: We only send previous messages as history, not the current one (which is passed as prompt)
+      const history = messages.map(m => ({ role: m.role, parts: m.text }));
+      const responseText = await getGeminiResponse(text, history);
+
+      setMessages(prev => [...prev, { role: 'model', text: responseText }]);
+    } catch (error) {
+      console.error("Failed to get response", error);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div
@@ -139,68 +197,98 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context }) => {
             {/* Messages */}
             <div className="flex-1 px-6 pt-8 pb-6 space-y-6 overflow-y-auto no-scrollbar">
 
-              {/* Dynamic Empty State Message based on Mode */}
-              <div className="flex items-start space-x-3 animate-float">
-                <div className="flex-shrink-0 pt-1">
-                  {mode === 'assistant' ? (
-                    <div className="w-8 h-8 rounded-lg bg-brand-orange/20 border border-brand-orange/30 flex items-center justify-center text-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.2)]">
-                      <Flame size={16} />
+              {messages.length === 0 ? (
+                <>
+                  {/* Dynamic Empty State Message based on Mode */}
+                  <div className="flex items-start space-x-3 animate-float">
+                    <div className="flex-shrink-0 pt-1">
+                      {mode === 'assistant' ? (
+                        <div className="w-8 h-8 rounded-lg bg-brand-orange/20 border border-brand-orange/30 flex items-center justify-center text-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.2)]">
+                          <Flame size={16} />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-brand-blue-light/20 border border-brand-blue-light/30 flex items-center justify-center text-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.2)]">
+                          <GraduationCap size={16} />
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg bg-brand-blue-light/20 border border-brand-blue-light/30 flex items-center justify-center text-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.2)]">
-                      <GraduationCap size={16} />
+
+                    <div className="bg-white/10 border border-white/10 p-4 rounded-2xl rounded-tl-none text-sm text-slate-200 leading-relaxed shadow-lg backdrop-blur-md">
+                      {mode === 'assistant' ? (
+                        <>
+                          <p>I can help you navigate this course. Ask me to:</p>
+                          <ul className="mt-2 space-y-2 list-disc list-inside text-slate-400 text-xs">
+                            <li>Summarize the module</li>
+                            <li>Explain key concepts</li>
+                            <li>Draft an email based on this lesson</li>
+                          </ul>
+                        </>
+                      ) : (
+                        <>
+                          <p>I'm your personal Tutor. I'll help you master this material.</p>
+                          <p className="mt-2 text-slate-400 text-xs">We can roleplay scenarios, I can quiz you on the content, or we can create a personalized study guide.</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Suggestion Chips */}
+                  <div className="flex flex-wrap gap-2 pl-11">
+                    {mode === 'assistant' ? (
+                      <>
+                        <button onClick={() => handleSendMessage("Summarize this module")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          Summarize this module
+                        </button>
+                        <button onClick={() => handleSendMessage("What are the key takeaways?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          What are the key takeaways?
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => handleSendMessage("Quiz me on this")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          Quiz me on this
+                        </button>
+                        <button onClick={() => handleSendMessage("Roleplay a scenario")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          Roleplay a scenario
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Disclaimer Text moved to bottom of history pane */}
+                  <div className="w-full flex justify-center pt-4 pb-2">
+                    <p className="text-[10px] text-center text-slate-500 opacity-60">
+                      Prometheus can make mistakes. Verify important info.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  {messages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
+                        ? 'bg-brand-blue-light text-brand-black rounded-tr-none'
+                        : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/10'
+                        }`}>
+                        <div className="flex items-center gap-2 mb-1 opacity-50 text-[10px] font-bold uppercase tracking-wider">
+                          {msg.role === 'user' ? <User size={10} /> : <Bot size={10} />}
+                          {msg.role === 'user' ? 'You' : 'Prometheus'}
+                        </div>
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-2xl rounded-tl-none flex items-center gap-2 text-slate-400 text-sm">
+                        <Loader2 size={14} className="animate-spin" />
+                        Thinking...
+                      </div>
                     </div>
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
-
-                <div className="bg-white/10 border border-white/10 p-4 rounded-2xl rounded-tl-none text-sm text-slate-200 leading-relaxed shadow-lg backdrop-blur-md">
-                  {mode === 'assistant' ? (
-                    <>
-                      <p>I can help you navigate this course. Ask me to:</p>
-                      <ul className="mt-2 space-y-2 list-disc list-inside text-slate-400 text-xs">
-                        <li>Summarize the module</li>
-                        <li>Explain key concepts</li>
-                        <li>Draft an email based on this lesson</li>
-                      </ul>
-                    </>
-                  ) : (
-                    <>
-                      <p>I'm your personal Tutor. I'll help you master this material.</p>
-                      <p className="mt-2 text-slate-400 text-xs">We can roleplay scenarios, I can quiz you on the content, or we can create a personalized study guide.</p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Suggestion Chips */}
-              <div className="flex flex-wrap gap-2 pl-11">
-                {mode === 'assistant' ? (
-                  <>
-                    <button className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                      Summarize this module
-                    </button>
-                    <button className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                      What are the key takeaways?
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                      Quiz me on this
-                    </button>
-                    <button className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                      Roleplay a scenario
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Disclaimer Text moved to bottom of history pane */}
-              <div className="w-full flex justify-center pt-4 pb-2">
-                <p className="text-[10px] text-center text-slate-500 opacity-60">
-                  Prometheus can make mistakes. Verify important info.
-                </p>
-              </div>
+              )}
             </div>
 
             {/* Input Area (Footer) */}
@@ -224,6 +312,9 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context }) => {
                   <div className="relative bg-[#0A0D12] rounded-xl overflow-hidden">
                     <input
                       type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
                       placeholder={mode === 'assistant' ? "Ask about the course..." : "Start tutoring session..."}
                       className="
                             w-full bg-transparent
@@ -235,7 +326,9 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context }) => {
                           "
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
-                      <button className={`
+                      <button
+                        onClick={() => handleSendMessage(input)}
+                        className={`
                             p-2 rounded-lg 
                             bg-white/5 border border-white/10
                             text-slate-400

@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { Course, Module, Resource, DragItem } from '../types';
 import { DEFAULT_COURSE_IMAGE, MOCK_AUTHOR_PROFILE } from '../constants';
+import RatingModal from './RatingModal';
+import { issueCertificate } from '@/lib/certificates';
+import Link from 'next/link';
 
 interface CourseHomePageProps {
     course: Course;
@@ -35,6 +38,23 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
     const [isClaiming, setIsClaiming] = useState(false);
     const [claimStatus, setClaimStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [earnedCredits, setEarnedCredits] = useState<{ shrm: number, hrci: number } | null>(null);
+    const [isRatingOpen, setIsRatingOpen] = useState(false);
+    const [certificateId, setCertificateId] = useState<string | null>(null);
+
+    // Fetch certificate if completed
+    React.useEffect(() => {
+        const fetchCert = async () => {
+            if (course.progress === 100) {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const id = await issueCertificate(user.id, course.id);
+                    setCertificateId(id);
+                }
+            }
+        };
+        fetchCert();
+    }, [course.progress, course.id]);
 
     const displayImage = course.image || DEFAULT_COURSE_IMAGE;
     const ctaState = course.progress === 100 ? 'COMPLETED' : course.progress > 0 ? 'IN_PROGRESS' : 'NOT_STARTED';
@@ -198,23 +218,60 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                                     </button>
                                 )}
                                 {ctaState === 'COMPLETED' && (
-                                    <button
-                                        onClick={handleClaimCredits}
-                                        disabled={isClaiming || claimStatus === 'success'}
-                                        className={`flex items-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] ${claimStatus === 'success' ? 'bg-green-600 text-white cursor-default' : 'bg-green-500 text-black hover:bg-green-400 hover:scale-105'}`}
-                                    >
-                                        {isClaiming ? (
-                                            <span>Processing...</span>
-                                        ) : claimStatus === 'success' ? (
-                                            <>
-                                                <CheckCircle size={20} /> Credits Claimed
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Award size={20} /> Claim Credits
-                                            </>
+                                    <div className="flex items-center gap-4 relative group/claim">
+                                        <button
+                                            onClick={handleClaimCredits}
+                                            disabled={isClaiming || claimStatus === 'success' || (course.progress < 90)} // Strict 90% check
+                                            className={`
+                                                flex items-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)]
+                                                ${claimStatus === 'success'
+                                                    ? 'bg-green-600 text-white cursor-default'
+                                                    : course.progress < 90
+                                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed border border-white/10 shadow-none'
+                                                        : 'bg-green-500 text-black hover:bg-green-400 hover:scale-105'
+                                                }
+                                            `}
+                                        >
+                                            {isClaiming ? (
+                                                <span>Processing...</span>
+                                            ) : claimStatus === 'success' ? (
+                                                <>
+                                                    <CheckCircle size={20} /> Credits Claimed
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Award size={20} /> Claim Credits
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {/* Tooltip for Insufficient Progress */}
+                                        {course.progress < 90 && claimStatus !== 'success' && (
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 p-4 bg-black/90 border border-white/20 rounded-xl backdrop-blur-xl text-center opacity-0 group-hover/claim:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                                                <p className="text-white font-bold text-xs mb-1">Requirements Not Met</p>
+                                                <p className="text-slate-400 text-[10px]">
+                                                    You must complete at least 90% of the course content to claim credits. Current: {course.progress}%
+                                                </p>
+                                                <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-black/90 border-r border-b border-white/20 rotate-45"></div>
+                                            </div>
                                         )}
-                                    </button>
+
+                                        <button
+                                            onClick={() => setIsRatingOpen(true)}
+                                            className="flex items-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-wider bg-white/10 text-white hover:bg-white/20 transition-all border border-white/10"
+                                        >
+                                            <Star size={20} /> Rate
+                                        </button>
+                                        {certificateId && (
+                                            <Link
+                                                href={`/verify/${certificateId}`}
+                                                target="_blank"
+                                                className="flex items-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-wider bg-brand-blue-light/10 text-brand-blue-light hover:bg-brand-blue-light hover:text-brand-black transition-all border border-brand-blue-light/20"
+                                            >
+                                                <Award size={20} /> Certificate
+                                            </Link>
+                                        )}
+                                    </div>
                                 )}
 
                                 {/* Progress or Duration */}
@@ -494,7 +551,14 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                 </div>
 
             </div>
-        </div>
+
+            <RatingModal
+                isOpen={isRatingOpen}
+                onClose={() => setIsRatingOpen(false)}
+                courseId={course.id}
+                courseTitle={course.title}
+            />
+        </div >
     );
 };
 

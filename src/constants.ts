@@ -11,7 +11,8 @@ import {
   Flame,
   Award,
   Building,
-  MessageSquare
+  MessageSquare,
+  Settings
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -26,7 +27,12 @@ export const COURSE_CATEGORIES = [
   'AI for HR',
   'Book Club',
   'HR Stories',
-  'Leadership'
+  'Leadership',
+  'Technology',
+  'Communication',
+  'Culture',
+  'Management',
+  'Analytics'
 ];
 
 export const DEFAULT_COLLECTIONS: Collection[] = [
@@ -71,10 +77,10 @@ export const generateMockSyllabus = (courseId: number): Module[] => {
 
 export const generateMockResources = (courseId: number): Resource[] => {
   return [
-    { id: `r-${courseId}-1`, title: 'Course Syllabus & Guide', type: 'PDF', size: '1.2 MB' },
-    { id: `r-${courseId}-2`, title: 'Lecture Notes: Week 1', type: 'DOC', size: '450 KB' },
-    { id: `r-${courseId}-3`, title: 'Case Study Data Set', type: 'XLS', size: '2.8 MB' },
-    { id: `r-${courseId}-4`, title: 'External References', type: 'LINK' }
+    { id: `r-${courseId}-1`, title: 'Course Syllabus & Guide', type: 'PDF', size: '1.2 MB', url: '#' },
+    { id: `r-${courseId}-2`, title: 'Lecture Notes: Week 1', type: 'DOC', size: '450 KB', url: '#' },
+    { id: `r-${courseId}-3`, title: 'Case Study Data Set', type: 'XLS', size: '2.8 MB', url: '#' },
+    { id: `r-${courseId}-4`, title: 'External References', type: 'LINK', url: '#' }
   ];
 };
 
@@ -607,6 +613,7 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'certifications', label: 'Certifications', icon: Award },
+  { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: Settings, role: 'admin' },
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [

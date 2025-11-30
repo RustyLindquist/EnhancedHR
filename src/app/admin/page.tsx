@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { BookOpen, Users, BarChart3, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import CSVExportButton from '@/components/CSVExportButton';
 
 export default async function AdminDashboardPage() {
     const supabase = await createClient();
@@ -25,12 +26,18 @@ export default async function AdminDashboardPage() {
                     <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
                     <p className="text-slate-400">Overview of platform activity.</p>
                 </div>
-                <Link
-                    href="/admin/courses/new"
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue-light text-brand-black font-bold uppercase tracking-wider hover:bg-white transition-colors"
-                >
-                    <Plus size={16} /> New Course
-                </Link>
+                <div className="flex gap-4">
+                    <CSVExportButton
+                        data={stats}
+                        filename="platform-stats.csv"
+                    />
+                    <Link
+                        href="/admin/courses/new"
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue-light text-brand-black font-bold uppercase tracking-wider hover:bg-white transition-colors"
+                    >
+                        <Plus size={16} /> New Course
+                    </Link>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -46,6 +53,18 @@ export default async function AdminDashboardPage() {
                         </div>
                     </div>
                 ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Link href="/admin/authors" className="group bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors">
+                    <h3 className="text-lg font-bold text-white mb-2 group-hover:text-brand-blue-light transition-colors">Review Author Applications</h3>
+                    <p className="text-slate-400 text-sm">Approve or reject pending instructor applications.</p>
+                </Link>
+                <Link href="/admin/prompts" className="group bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors">
+                    <h3 className="text-lg font-bold text-white mb-2 group-hover:text-brand-blue-light transition-colors">Manage AI Prompts</h3>
+                    <p className="text-slate-400 text-sm">Update system instructions for Assistant and Tutor agents.</p>
+                </Link>
             </div>
 
             {/* Recent Activity (Placeholder) */}

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Save, ArrowLeft, Plus, Trash2, GripVertical, Video, FileText, ChevronDown, ChevronRight, Layout, Settings, BookOpen, Upload, X } from 'lucide-react';
 import { Course, Module, Lesson } from '@/types';
 import MuxUploaderWrapper from './MuxUploaderWrapper';
+import EmbeddingGenerator from './EmbeddingGenerator';
 
 interface CourseEditorProps {
     courseId?: string; // If undefined, we are creating a new course
@@ -386,12 +387,15 @@ export default function CourseEditor({ courseId, initialData }: CourseEditorProp
                                                                 placeholder="Paste VTT or text transcript here..."
                                                                 className="w-full h-32 bg-black/20 border border-white/10 rounded-lg p-3 text-xs text-slate-300 font-mono focus:outline-none focus:border-white/20"
                                                             />
-                                                            <button
-                                                                onClick={() => alert('Simulating AI Embedding Generation...\n\n1. Chunking text...\n2. Generating vectors...\n3. Saving to knowledge base.\n\nDone!')}
-                                                                className="px-3 py-2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-bold uppercase tracking-wider hover:bg-purple-500/20 transition-colors flex items-center gap-2"
-                                                            >
-                                                                ✨ Generate AI Embeddings
-                                                            </button>
+                                                            {courseId && courseId !== 'new' ? (
+                                                                <EmbeddingGenerator
+                                                                    courseId={Number(courseId)}
+                                                                    lessonId={lesson.id}
+                                                                    transcript={lesson.content}
+                                                                />
+                                                            ) : (
+                                                                <p className="text-xs text-slate-500 italic">Save course to generate embeddings.</p>
+                                                            )}
                                                         </div>
                                                     </details>
                                                 </div>

@@ -166,6 +166,13 @@ export default async function AccountPage() {
                     </section>
 
                 </div>
+
+                <div className="mt-16 pt-8 border-t border-white/5 text-center">
+                    <p className="text-xs text-slate-600">
+                        <a href="/terms" className="hover:text-slate-400 transition-colors mr-4">Terms of Service</a>
+                        <a href="/privacy" className="hover:text-slate-400 transition-colors">Privacy Policy</a>
+                    </p>
+                </div>
             </div>
         </StandardPageLayout>
     );
