@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "_legacy_prototype"
+    "_legacy_prototype",
+    "supabase"
   ]
 }

@@ -7,6 +7,7 @@ import CourseHomePage from './CourseHomePage'; // Import Course Page
 import CoursePlayer from './CoursePlayer';
 import UserDashboard from './Dashboard/UserDashboard';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
+import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
@@ -946,6 +947,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 <div className="bg-[#0f172a]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl pb-6">
                     <div className="max-w-7xl mx-auto px-10 pt-8">
 
+
                         {/* Header / Close */}
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -1254,13 +1256,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             {/* --- Canvas Content Grid --- */}
             {activeCollectionId === 'dashboard' ? (
                 <div className="flex-1 w-full h-full overflow-hidden relative z-10 mt-[60px]">
-                    {/* Check for Employee Role */}
-                    {(user?.user_metadata?.role === 'employee' || user?.app_metadata?.role === 'employee') ? (
+                    {user?.role === 'org_admin' ? (
+                        <OrgAdminDashboard user={user} orgId={user.org_id || 'demo-org'} />
+                    ) : user?.role === 'employee' ? (
                         <EmployeeDashboard
                             user={user}
                             courses={courses}
                             onNavigate={onSelectCollection}
-                            onStartCourse={handleCourseClick}
+                            onStartCourse={handleStartCourse}
                             onOpenAIPanel={onOpenAIPanel}
                             onSetAIPrompt={onSetAIPrompt}
                         />
@@ -1269,7 +1272,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             user={user}
                             courses={courses}
                             onNavigate={onSelectCollection}
-                            onStartCourse={handleCourseClick}
+                            onStartCourse={handleStartCourse}
                             onOpenAIPanel={onOpenAIPanel}
                             onSetAIPrompt={onSetAIPrompt}
                         />
