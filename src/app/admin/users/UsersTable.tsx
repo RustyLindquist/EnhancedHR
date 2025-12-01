@@ -85,8 +85,8 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${user.role === 'admin'
-                                            ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
-                                            : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                        ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
+                                        : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                                         }`}>
                                         {user.role === 'admin' && <Shield size={12} className="mr-1" />}
                                         {user.role}
@@ -171,7 +171,8 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void, onSucces
                         <label className="block text-sm font-medium text-slate-400 mb-1">Role</label>
                         <select name="role" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue">
                             <option value="user">User</option>
-                            <option value="admin">Admin</option>
+                            <option value="admin">Platform Admin</option>
+                            <option value="org_admin">Org Admin</option>
                             <option value="instructor">Instructor</option>
                         </select>
                     </div>
