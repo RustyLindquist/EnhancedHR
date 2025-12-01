@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
@@ -217,13 +217,13 @@ function HomeContent() {
                   ? 'platform_assistant'
                   : 'collection_assistant'
             }
-            contextScope={
+            contextScope={useMemo(() =>
               activeCourseId
                 ? { type: 'COURSE', id: activeCourseId }
                 : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
                   ? { type: 'PLATFORM' }
                   : { type: 'COLLECTION', id: activeCollectionId }
-            }
+              , [activeCourseId, activeCollectionId])}
           />
         )}
       </div>

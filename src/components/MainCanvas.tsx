@@ -482,9 +482,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, [activeCollectionId]);
 
     // Update visible courses when prop changes (e.g. after fetch)
-    useEffect(() => {
-        setVisibleCourses(courses);
-    }, [courses]);
+    // Redundant: The transition engine below handles this update
+    // useEffect(() => {
+    //    setVisibleCourses(courses);
+    // }, [courses]);
 
     // --- Filtering Logic ---
     const applyFilters = (filters: FilterState, sourceCourses: Course[]) => {
