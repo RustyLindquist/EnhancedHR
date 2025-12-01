@@ -11,17 +11,22 @@ import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation } from '../types';
+import PrometheusFullPage from './PrometheusFullPage';
+import ConversationCard from './ConversationCard';
+import DeleteConversationModal from './DeleteConversationModal';
 
 interface MainCanvasProps {
     courses: Course[];
     activeCollectionId: string;
     onSelectCollection: (id: string) => void;
     customCollections: Collection[];
-    onOpenModal: (course?: Course) => void;
+    onOpenModal: (item?: ContextCard) => void;
     onImmediateAddToCollection: (courseId: number, collectionId: string) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
+    onCourseSelect?: (courseId: string | null) => void;
+    initialCourseId?: number | null;
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -740,6 +745,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const getActiveFilterCount = () => {
         let count = 0;
+        if (activeFilters.searchQuery) count++;
         if (activeFilters.category !== 'All') count++;
         if (activeFilters.credits.length > 0) count++;
         if (activeFilters.designations.length > 0) count++;
@@ -750,6 +756,128 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     const activeFilterCount = getActiveFilterCount();
+
+    // --- CONVERSATION STATE & HANDLERS ---
+    const [prometheusConversationTitle, setPrometheusConversationTitle] = useState('New Conversation');
+
+    // Initialize conversations from localStorage
+    const [conversations, setConversations] = useState<Conversation[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('prometheus_conversations');
+            return saved ? JSON.parse(saved) : [];
+        }
+        return [];
+    });
+
+    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+
+    // Persist conversations to localStorage whenever they change
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('prometheus_conversations', JSON.stringify(conversations));
+        }
+    }, [conversations]);
+
+    // Listen for conversation collection updates from the modal
+    useEffect(() => {
+        const handleUpdateCollections = (event: any) => {
+            const { conversationId, collectionIds } = event.detail;
+            setConversations(prev => prev.map(conv => {
+                if (conv.id === conversationId) {
+                    return {
+                        ...conv,
+                        collections: collectionIds,
+                        isSaved: collectionIds.length > 0
+                    };
+                }
+                return conv;
+            }));
+        };
+
+        window.addEventListener('updateConversationCollections', handleUpdateCollections);
+        return () => window.removeEventListener('updateConversationCollections', handleUpdateCollections);
+    }, []);
+
+    const handleConversationStart = (conversationId: string, title: string, updatedMessages: { role: 'user' | 'model'; text: string }[]) => {
+        setPrometheusConversationTitle(title);
+
+        setConversations(prev => {
+            // Use provided ID or fallback (though Prometheus should provide one)
+            const id = conversationId || activeConversation?.id || Date.now().toString();
+            const now = new Date().toISOString();
+
+            const newConv: Conversation = {
+                type: 'CONVERSATION',
+                id: id,
+                title: title,
+                lastMessage: updatedMessages[updatedMessages.length - 1]?.text || '',
+                date: now,
+                messages: updatedMessages,
+                collections: activeConversation?.collections || [],
+                isSaved: activeConversation?.isSaved || false
+            };
+
+            // Update active conversation so subsequent saves use the same ID
+            setActiveConversation(newConv);
+
+            const existingIndex = prev.findIndex(c => c.id === id);
+            if (existingIndex >= 0) {
+                // Update existing
+                const updated = [...prev];
+                updated[existingIndex] = newConv;
+                return updated;
+            } else {
+                // Add new
+                return [newConv, ...prev];
+            }
+        });
+    };
+
+    const handleSaveConversation = () => {
+        if (activeConversation) {
+            onOpenModal(activeConversation);
+        }
+    };
+
+    const handleDeleteConversation = (id: string) => {
+        const conv = conversations.find(c => c.id === id);
+        if (conv) {
+            setConversationToDelete(conv);
+            setDeleteModalOpen(true);
+        }
+    };
+
+    const confirmDeleteConversation = () => {
+        if (conversationToDelete) {
+            setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
+            setDeleteModalOpen(false);
+            setConversationToDelete(null);
+        }
+    };
+
+    const cancelDeleteConversation = () => {
+        setDeleteModalOpen(false);
+        setConversationToDelete(null);
+    };
+
+    const handleOpenConversation = (id: string) => {
+        const conversation = conversations.find(c => c.id === id);
+        if (conversation) {
+            setActiveConversation(conversation);
+            setPrometheusConversationTitle(conversation.title);
+            onSelectCollection('prometheus');
+        }
+    };
+
+    // Reset active conversation when leaving Prometheus
+    useEffect(() => {
+        if (activeCollectionId !== 'prometheus') {
+            setActiveConversation(null);
+            setPrometheusConversationTitle('New Conversation');
+        }
+    }, [activeCollectionId]);
 
     // Dynamic Title Generator
     const getPageTitle = () => {
@@ -773,10 +901,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Helper to determine if a specific collection is effectively empty (contains no courses)
     // This is different from "No Results" due to filtering.
+    const visibleConversations = conversations.filter(c => c.collections?.includes(activeCollectionId));
+
     const isCollectionEmpty =
         activeCollectionId !== 'academy' &&
         activeCollectionId !== 'dashboard' &&
-        courses.filter(c => c.collections.includes(activeCollectionId)).length === 0;
+        courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 &&
+        visibleConversations.length === 0;
 
     const isAcademyView = activeCollectionId === 'academy' && activeFilterCount === 0;
 
@@ -1254,10 +1385,26 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             </div>
 
             {/* --- Canvas Content Grid --- */}
-            {activeCollectionId === 'dashboard' ? (
+            {activeCollectionId === 'prometheus' ? (
+                <div className="flex-1 w-full h-full overflow-hidden relative z-65 mt-[60px]">
+                    <PrometheusFullPage
+                        onTitleChange={setPrometheusConversationTitle}
+                        onConversationStart={handleConversationStart}
+                        initialTitle={activeConversation?.title}
+                        initialMessages={activeConversation?.messages}
+                        onSaveConversation={handleSaveConversation}
+                        isSaved={!!activeConversation?.isSaved}
+                    />
+                </div>
+            ) : activeCollectionId === 'dashboard' ? (
                 <div className="flex-1 w-full h-full overflow-hidden relative z-10 mt-[60px]">
                     {user?.role === 'org_admin' ? (
-                        <OrgAdminDashboard user={user} orgId={user.org_id || 'demo-org'} />
+                        <OrgAdminDashboard
+                            user={user}
+                            orgId={user.org_id || 'demo-org'}
+                            onOpenAIPanel={onOpenAIPanel}
+                            onSetAIPrompt={onSetAIPrompt}
+                        />
                     ) : user?.role === 'employee' ? (
                         <EmployeeDashboard
                             user={user}
@@ -1399,26 +1546,39 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             // --- FLAT GRID VIEW (Collections / Filters) ---
                             <div className="pb-20">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
-                                    {visibleCourses.length > 0 ? (
-                                        visibleCourses.map((course, index) => {
-                                            const delay = Math.min(index, 15) * 50;
-                                            return (
-                                                <LazyCourseCard key={course.id}>
-                                                    <div
-                                                        style={{ transitionDelay: `${delay} ms` }}
-                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
-                                                    >
-                                                        <CardStack
-                                                            {...course}
-                                                            onAddClick={handleAddButtonClick}
-                                                            onDragStart={handleCourseDragStart}
-                                                            onClick={handleCourseClick}
-                                                        />
-                                                    </div>
-                                                </LazyCourseCard>
-                                            );
-                                        })
-                                    ) : isCollectionEmpty ? (
+                                    {/* Render Courses */}
+                                    {visibleCourses.map((course, index) => {
+                                        const delay = Math.min(index, 15) * 50;
+                                        return (
+                                            <LazyCourseCard key={course.id}>
+                                                <div
+                                                    style={{ transitionDelay: `${delay}ms` }}
+                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                >
+                                                    <CardStack
+                                                        {...course}
+                                                        onAddClick={handleAddButtonClick}
+                                                        onDragStart={handleCourseDragStart}
+                                                        onClick={handleCourseClick}
+                                                    />
+                                                </div>
+                                            </LazyCourseCard>
+                                        );
+                                    })}
+
+                                    {/* Render Conversations */}
+                                    {visibleConversations.map((conversation, index) => (
+                                        <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                            <ConversationCard
+                                                {...conversation}
+                                                onClick={handleOpenConversation}
+                                                onDelete={handleDeleteConversation}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    {/* Empty State */}
+                                    {isCollectionEmpty ? (
                                         // --- EMPTY COLLECTION STATES ---
                                         <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
                                             {/* Visual Graphic at Top */}
@@ -1431,11 +1591,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         </div>
                                     ) : (
                                         // --- NO RESULTS (Filter Context) ---
-                                        <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                            <Search size={48} className="text-slate-600 mb-4" />
-                                            <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                            <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                        </div>
+                                        visibleCourses.length === 0 && visibleConversations.length === 0 && (
+                                            <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                <Search size={48} className="text-slate-600 mb-4" />
+                                                <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                            </div>
+                                        )
                                     )}
                                 </div>
 
@@ -1480,6 +1642,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 />
             </div>
 
+            {/* Delete Confirmation Modal */}
+            <DeleteConversationModal
+                isOpen={deleteModalOpen}
+                onCancel={cancelDeleteConversation}
+                onConfirm={confirmDeleteConversation}
+                conversationTitle={conversationToDelete?.title || 'Conversation'}
+            />
         </div>
     );
 };

@@ -80,7 +80,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
 
             {/* --- HERO SECTION: AI ASSISTANT (Full Width / On Canvas) --- */}
             <div className="relative w-full mb-12 group">
-                <div className="absolute inset-0 bg-gradient-to-b from-brand-blue-light/5 via-transparent to-transparent opacity-60 pointer-events-none"></div>
+                <div className="absolute inset-0 pointer-events-none"></div>
 
                 {/* 100px Padding Top */}
                 <div className="pt-[100px] px-8 flex flex-col items-center text-center relative z-10">
@@ -134,7 +134,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                                             key={p.id}
                                             onClick={() => {
                                                 onSetAIPrompt(p.prompt);
-                                                // Ideally auto-submit or focus
+                                                onOpenAIPanel();
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 text-xs text-slate-400 hover:text-white transition-all duration-200"
                                         >

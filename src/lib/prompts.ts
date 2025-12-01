@@ -11,7 +11,10 @@ export type PromptCategory =
   | 'Strategy'
   | 'Analytics'
   | 'Reporting'
-  | 'Management';
+  | 'Management'
+  | 'Inspiration'
+  | 'Content Creation'
+  | 'Financials';
 
 export interface PromptSuggestion {
     id: string;
@@ -21,7 +24,7 @@ export interface PromptSuggestion {
     order_index?: number;
 }
 
-export async function fetchPromptSuggestions(context: 'user_dashboard' | 'employee_dashboard' | 'org_admin_dashboard'): Promise<PromptSuggestion[]> {
+export async function fetchPromptSuggestions(context: 'user_dashboard' | 'employee_dashboard' | 'org_admin_dashboard' | 'instructor_dashboard'): Promise<PromptSuggestion[]> {
     const supabase = createClient();
     const { data, error } = await supabase
         .from('prompt_suggestions')

@@ -2,22 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
-import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
-import { BACKGROUND_THEMES } from '@/constants';
+import { BACKGROUND_THEMES, ADMIN_NAV_ITEMS } from '@/constants';
 import { BackgroundTheme, Course } from '@/types';
 import { fetchCourses } from '@/lib/courses';
+import CanvasHeader from '@/components/CanvasHeader';
 
-interface StandardPageLayoutProps {
+interface AdminPageLayoutProps {
     children: React.ReactNode;
-    activeNavId?: string; // To highlight the correct nav item
 }
 
-export default function StandardPageLayout({ children, activeNavId = 'dashboard' }: StandardPageLayoutProps) {
+export default function AdminPageLayout({ children }: AdminPageLayoutProps) {
     const [leftOpen, setLeftOpen] = useState(true);
-    const [rightOpen, setRightOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [activeCollectionId, setActiveCollectionId] = useState<string>('dashboard');
 
     useEffect(() => {
         async function loadCourses() {
@@ -28,19 +27,17 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
     }, []);
 
     const handleSelectCollection = (id: string) => {
-        // For now, standard pages might not handle collection switching like the home page.
-        // If clicking a nav item, we might want to navigate.
-        // But for this layout, we assume it's used for specific pages (like Billing).
-        // Navigation logic should be handled by the NavigationPanel's router.push if it's a link,
-        // or we might need to inject a handler.
-        // The current NavigationPanel calls onSelectCollection.
-
-        if (id === 'academy') {
-            window.location.href = '/'; // Simple redirect for now
-        } else if (id === 'dashboard') {
-            window.location.href = '/';
+        // Handle navigation for admin items or standard collection items
+        if (id.startsWith('admin/')) {
+            // NavigationPanel handles router.push for these
+        } else {
+            // For standard collections, we might want to redirect to main app or handle differently
+            // For now, let's just set active to show selection state
+            setActiveCollectionId(id);
+            if (id === 'dashboard' || id === 'academy') {
+                window.location.href = '/';
+            }
         }
-        // Add more navigation logic as needed
     };
 
     return (
@@ -58,23 +55,25 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
                     currentTheme={currentTheme}
                     onThemeChange={setCurrentTheme}
                     courses={courses}
-                    activeCollectionId={activeNavId}
+                    activeCollectionId={activeCollectionId}
                     onSelectCollection={handleSelectCollection}
+                    customNavItems={ADMIN_NAV_ITEMS}
                 />
 
                 {/* Center Content (The Canvas) */}
                 <div className="flex-1 flex flex-col relative overflow-hidden bg-transparent">
-                    {children}
-                </div>
 
-                {/* Right AI Panel */}
-                {/* Right AI Panel */}
-                <AIPanel
-                    isOpen={rightOpen}
-                    setIsOpen={setRightOpen}
-                    agentType="platform_assistant"
-                    contextScope={{ type: 'PLATFORM' }}
-                />
+                    {/* Canvas Header */}
+                    <CanvasHeader
+                        context="Platform Administration"
+                        title="Admin Console"
+                    />
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                        {children}
+                    </div>
+                </div>
             </div>
         </div>
     );

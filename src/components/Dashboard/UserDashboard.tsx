@@ -89,7 +89,8 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, onNavigate
 
     const handlePromptClick = (prompt: string) => {
         setAiPrompt(prompt);
-        // Ideally auto-submit or focus
+        onSetAIPrompt(prompt);
+        onOpenAIPanel();
     };
 
     // Format Name
@@ -99,10 +100,9 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, onNavigate
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
 
-            {/* --- HERO SECTION: AI ASSISTANT --- */}
+            {/* --- HERO SECTION: AI ASSISTANT (Full Width / On Canvas) --- */}
             <div className="relative w-full mb-12 group">
-                {/* Background Gradients - Extended to look 'on canvas' */}
-                <div className="absolute inset-0 bg-gradient-to-b from-brand-blue-light/5 via-transparent to-transparent opacity-60 pointer-events-none"></div>
+                <div className="absolute inset-0 pointer-events-none"></div>
 
                 {/* 100px Padding Top */}
                 <div className="pt-[100px] px-8 flex flex-col items-center text-center relative z-10">

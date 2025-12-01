@@ -325,15 +325,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
             </div>
 
             {/* --- RIGHT SIDEBAR (AI Panel) --- */}
-            <AIPanel
-                isOpen={isAiPanelOpen}
-                setIsOpen={setIsAiPanelOpen}
-                context={{
-                    currentTime,
-                    lessonId: activeLessonId,
-                    transcript: [] // TODO: Pass actual transcript
-                }}
-            />
+
 
         </div>
     );

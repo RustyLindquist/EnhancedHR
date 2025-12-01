@@ -22,9 +22,11 @@ import { getGeminiResponse } from '@/lib/gemini';
 interface OrgAdminDashboardProps {
     user: any;
     orgId: string;
+    onOpenAIPanel: () => void;
+    onSetAIPrompt: (prompt: string) => void;
 }
 
-const OrgAdminDashboard: React.FC<OrgAdminDashboardProps> = ({ user, orgId }) => {
+const OrgAdminDashboard: React.FC<OrgAdminDashboardProps> = ({ user, orgId, onOpenAIPanel, onSetAIPrompt }) => {
     const [data, setData] = useState<OrgDashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'paths' | 'analytics'>('overview');
@@ -73,22 +75,15 @@ const OrgAdminDashboard: React.FC<OrgAdminDashboardProps> = ({ user, orgId }) =>
         e?.preventDefault();
         if (!aiInput.trim()) return;
 
-        setIsAiLoading(true);
-        // In a real app, this would redirect to the full chat interface
-        // For now, we'll just simulate the "Quick Chat" handoff
-        console.log('Sending to AI:', aiInput);
-
-        // Simulate delay
-        setTimeout(() => {
-            setIsAiLoading(false);
-            setAiInput('');
-            // Redirect logic would go here: router.push(`/chat?prompt=${encodeURIComponent(aiInput)}`)
-        }, 1000);
+        onSetAIPrompt(aiInput);
+        onOpenAIPanel();
+        setAiInput('');
     };
 
     const handlePromptClick = (promptText: string) => {
         setAiInput(promptText);
-        // Optional: auto-submit
+        onSetAIPrompt(promptText);
+        onOpenAIPanel();
     };
 
     if (isLoading) {
@@ -100,7 +95,7 @@ const OrgAdminDashboard: React.FC<OrgAdminDashboardProps> = ({ user, orgId }) =>
     }
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto no-scrollbar bg-[#0A0D12]">
+        <div className="flex flex-col h-full overflow-y-auto no-scrollbar">
 
             {/* --- AI HERO SECTION --- */}
             <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center px-8 py-24 z-10">

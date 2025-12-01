@@ -7,8 +7,9 @@ import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
-import { BackgroundTheme, Course, Collection } from '@/types';
+import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCourses } from '@/lib/courses';
+import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
   const [leftOpen, setLeftOpen] = useState(true);
@@ -34,7 +35,7 @@ export default function Home() {
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [modalCourse, setModalCourse] = useState<Course | null>(null);
+  const [modalItem, setModalItem] = useState<ContextCard | null>(null);
 
   const handleUpdateCourse = (updatedCourses: Course[]) => {
     setCourses(updatedCourses);
@@ -57,27 +58,40 @@ export default function Home() {
       }
     }
 
-    // 2. Update Course Logic (Only if a course was selected)
-    if (modalCourse) {
-      const updatedCourses = courses.map(c => {
-        if (c.id === modalCourse.id) {
-          return {
-            ...c,
-            collections: selectedCollectionIds,
-            isSaved: selectedCollectionIds.length > 0
-          };
+    // 2. Update Item Logic
+    if (modalItem) {
+      if (modalItem.type === 'COURSE') {
+        const updatedCourses = courses.map(c => {
+          if (c.id === modalItem.id) {
+            return {
+              ...c,
+              collections: selectedCollectionIds,
+              isSaved: selectedCollectionIds.length > 0
+            };
+          }
+          return c;
+        });
+        handleUpdateCourse(updatedCourses);
+      } else if (modalItem.type === 'CONVERSATION') {
+        // Dispatch event for MainCanvas to handle conversation updates
+        if (typeof window !== 'undefined') {
+          // We need to send ALL selected collections, not just one
+          // But our event listener expects { conversationId, collectionId }
+          // We should update the listener or send multiple events
+          // For now, let's send a new event type 'updateConversationCollections'
+          window.dispatchEvent(new CustomEvent('updateConversationCollections', {
+            detail: { conversationId: modalItem.id, collectionIds: selectedCollectionIds }
+          }));
         }
-        return c;
-      });
-      handleUpdateCourse(updatedCourses);
+      }
     }
 
     setIsAddModalOpen(false);
-    setModalCourse(null);
+    setModalItem(null);
   };
 
-  const handleOpenModal = (course?: Course) => {
-    setModalCourse(course || null);
+  const handleOpenModal = (item?: ContextCard) => {
+    setModalItem(item || null);
     setIsAddModalOpen(true);
   };
 
@@ -87,6 +101,9 @@ export default function Home() {
       handleOpenModal(undefined);
     } else {
       setActiveCollectionId(id);
+      // We no longer force close the panel here. 
+      // The render logic handles hiding it for Prometheus, 
+      // so when we leave Prometheus, it will be in its previous state.
     }
   };
 
@@ -111,14 +128,35 @@ export default function Home() {
         handleUpdateCourse(updatedCourses);
       }
     }
+
+    // Also trigger conversation collection update if this is a conversation
+    // The MainCanvas will handle this through its own state
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('addConversationToCollection', {
+        detail: { conversationId: courseId.toString(), collectionId }
+      }));
+    }
   };
 
   // AI Panel State
   const [aiPanelPrompt, setAiPanelPrompt] = useState('');
+  // Lifted state for Context Awareness
+  const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
 
   const handleOpenAIPanel = () => {
-    setRightOpen(true);
+    // Don't open side panel if we are in full screen mode
+    if (activeCollectionId !== 'prometheus') {
+      setRightOpen(true);
+    }
   };
+
+  const handleCourseSelect = (courseId: string | null) => {
+    setActiveCourseId(courseId);
+  };
+
+  const searchParams = useSearchParams();
+  const courseIdParam = searchParams.get('courseId');
+  const initialCourseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
@@ -129,11 +167,11 @@ export default function Home() {
       {/* Global Modals */}
       {isAddModalOpen && (
         <AddCollectionModal
-          course={modalCourse}
+          item={modalItem}
           availableCollections={customCollections}
           onClose={() => {
             setIsAddModalOpen(false);
-            setModalCourse(null);
+            setModalItem(null);
           }}
           onSave={handleSaveToCollection}
         />
@@ -162,14 +200,32 @@ export default function Home() {
           onImmediateAddToCollection={handleImmediateAddToCollection}
           onOpenAIPanel={handleOpenAIPanel}
           onSetAIPrompt={setAiPanelPrompt}
+          onCourseSelect={handleCourseSelect}
+          initialCourseId={initialCourseId}
         />
 
-        {/* Right AI Panel */}
-        <AIPanel
-          isOpen={rightOpen}
-          setIsOpen={setRightOpen}
-          initialPrompt={aiPanelPrompt}
-        />
+        {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
+        {activeCollectionId !== 'prometheus' && (
+          <AIPanel
+            isOpen={rightOpen}
+            setIsOpen={setRightOpen}
+            initialPrompt={aiPanelPrompt}
+            agentType={
+              activeCourseId
+                ? 'course_assistant'
+                : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
+                  ? 'platform_assistant'
+                  : 'collection_assistant'
+            }
+            contextScope={
+              activeCourseId
+                ? { type: 'COURSE', id: activeCourseId }
+                : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
+                  ? { type: 'PLATFORM' }
+                  : { type: 'COLLECTION', id: activeCollectionId }
+            }
+          />
+        )}
       </div>
 
     </div>

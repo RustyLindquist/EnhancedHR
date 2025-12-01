@@ -28,7 +28,7 @@ export default async function AdminDashboardPage() {
                 </div>
                 <div className="flex gap-4">
                     <CSVExportButton
-                        data={stats}
+                        data={stats.map(({ icon, ...rest }) => rest)}
                         filename="platform-stats.csv"
                     />
                     <Link

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Flame, ChevronLeft, ChevronRight, ChevronDown, User, Settings, Image as ImageIcon, LogOut, Upload, Check, ArrowLeft, CreditCard } from 'lucide-react';
+import { Flame, ChevronLeft, ChevronRight, ChevronDown, User, Settings, Image as ImageIcon, LogOut, Upload, Check, ArrowLeft, CreditCard, Briefcase, PenTool, Clock, Users, LayoutDashboard } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course } from '../types';
 
@@ -13,6 +13,7 @@ interface NavigationPanelProps {
   courses: Course[];
   activeCollectionId: string;
   onSelectCollection: (id: string) => void;
+  customNavItems?: NavItemConfig[];
 }
 
 const NavItem: React.FC<{
@@ -83,16 +84,28 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   onThemeChange,
   courses,
   activeCollectionId,
-  onSelectCollection
+  onSelectCollection,
+  customNavItems
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [menuView, setMenuView] = useState<'main' | 'backgrounds'>('main');
+  const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
   const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string } | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
+
+  // Demo Accounts Configuration
+  const DEMO_ACCOUNTS = [
+    { id: 'org_admin', label: 'Org Admin', email: 'demo.admin@enhancedhr.ai', icon: Briefcase, color: 'text-purple-400' },
+    { id: 'author', label: 'Instructor', email: 'demo.instructor@enhancedhr.ai', icon: PenTool, color: 'text-brand-orange' },
+    { id: 'pending_author', label: 'Pending Instructor', email: 'demo.applicant@enhancedhr.ai', icon: Clock, color: 'text-yellow-400' },
+    { id: 'employee', label: 'Employee', email: 'demo.employee@enhancedhr.ai', icon: Users, color: 'text-brand-blue-light' },
+    { id: 'user', label: 'Individual User', email: 'demo.user@enhancedhr.ai', icon: User, color: 'text-slate-400' },
+  ];
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -115,6 +128,12 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           initials,
           role
         });
+
+        // Check for impersonation
+        const backupSession = sessionStorage.getItem('admin_backup_session');
+        if (backupSession) {
+          setIsImpersonating(true);
+        }
       }
     };
     fetchUser();
@@ -123,6 +142,65 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
+  };
+
+  const handleSwitchUser = async (email: string) => {
+    try {
+      // 1. Save current session if not already saved (i.e., if we are the real admin)
+      if (!isImpersonating) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          sessionStorage.setItem('admin_backup_session', JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token
+          }));
+        }
+      }
+
+      // 2. Sign in as target user
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'password123'
+      });
+
+      if (error) throw error;
+
+      // 3. Reload to apply changes
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error switching user:', error);
+      alert('Failed to switch user. Ensure demo accounts are seeded.');
+    }
+  };
+
+  const handleExitView = async () => {
+    const backupSessionStr = sessionStorage.getItem('admin_backup_session');
+    if (!backupSessionStr) return;
+
+    try {
+      const { access_token, refresh_token } = JSON.parse(backupSessionStr);
+
+      // Restore Admin Session
+      const { error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token
+      });
+
+      if (error) throw error;
+
+      // Clear backup
+      sessionStorage.removeItem('admin_backup_session');
+
+      // Reload to reset state
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Failed to restore admin session:', error);
+      alert('Failed to restore admin session. Please log in again.');
+      sessionStorage.removeItem('admin_backup_session');
+      window.location.href = '/login';
+    }
   };
 
   useEffect(() => {
@@ -161,8 +239,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     return courses.filter(c => c.collections.includes(collectionId)).length;
   };
 
-  // Filter Nav Items based on Role
-  const filteredNavItems = MAIN_NAV_ITEMS.filter(item => {
+  // Filter Nav Items based on Role (or use custom items)
+  const filteredNavItems = customNavItems || MAIN_NAV_ITEMS.filter(item => {
     if (item.role === 'admin') {
       return userProfile?.role === 'admin';
     }
@@ -218,7 +296,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 isOpen={isOpen}
                 isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
                 onClick={() => {
-                  if (item.id.startsWith('admin/')) {
+                  if (item.id.startsWith('admin/') || item.id === 'admin') {
                     router.push(`/${item.id}`);
                   } else {
                     onSelectCollection(item.id);
@@ -229,59 +307,28 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         </div>
 
-        {/* Collections */}
-        <div className="px-4 mb-8">
-          {isOpen && (
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
-              My Collections
-            </h4>
-          )}
-          <div className="space-y-1">
-            {COLLECTION_NAV_ITEMS.map(item => (
-              <NavItem
-                key={item.id}
-                item={item}
-                isOpen={isOpen}
-                count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined}
-                isActive={activeCollectionId === item.id}
-                onClick={() => onSelectCollection(item.id)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Conversations */}
-        <div className="px-4">
-          {isOpen && (
-            <div
-              className="flex items-center justify-between mb-4 pl-2 cursor-pointer group select-none"
-              onClick={() => setIsConversationsOpen(!isConversationsOpen)}
-            >
-              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest drop-shadow-sm group-hover:text-slate-300 transition-colors">
-                Conversations
+        {/* Collections (Only show if not in custom mode) */}
+        {!customNavItems && (
+          <div className="px-4 mb-8">
+            {isOpen && (
+              <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
+                My Collections
               </h4>
-              <div className="text-slate-500 group-hover:text-white transition-colors">
-                {isConversationsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </div>
-            </div>
-          )}
-
-          {isOpen && (
-            <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isConversationsOpen && isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-              {CONVERSATION_NAV_ITEMS.map(item => (
+            )}
+            <div className="space-y-1">
+              {COLLECTION_NAV_ITEMS.map(item => (
                 <NavItem
                   key={item.id}
                   item={item}
                   isOpen={isOpen}
-                  showIcon={false}
-                  customTextClass="font-normal text-xs text-slate-500 group-hover:text-slate-300"
+                  count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined}
                   isActive={activeCollectionId === item.id}
                   onClick={() => onSelectCollection(item.id)}
                 />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Branding (Flame + Tagline) */}
@@ -345,6 +392,41 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   <ChevronRight size={14} className="text-slate-500" />
                 </button>
 
+                {/* Admin Dashboard Link */}
+                {userProfile?.role === 'admin' && (
+                  <button
+                    onClick={() => {
+                      if (pathname?.startsWith('/admin')) {
+                        router.push('/');
+                      } else {
+                        router.push('/admin');
+                      }
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <LayoutDashboard size={16} className="mr-3 text-slate-400" />
+                      {pathname?.startsWith('/admin') ? 'Platform Dashboard' : 'Admin Dashboard'}
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
+
+                {/* Admin Role Switcher Entry */}
+                {(userProfile?.role === 'admin' || isImpersonating) && (
+                  <button
+                    onClick={() => setMenuView('roles')}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <Flame size={16} className={`mr-3 ${isImpersonating ? 'text-brand-red animate-pulse' : 'text-slate-400'}`} />
+                      Switch Role
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
+
                 <div className="h-px bg-white/5 my-1 mx-2"></div>
 
                 <button
@@ -355,7 +437,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   Log Out
                 </button>
               </div>
-            ) : (
+            ) : menuView === 'backgrounds' ? (
               /* BACKGROUNDS SELECTION VIEW */
               <div className="flex flex-col h-full max-h-[400px]">
                 <div className="flex items-center px-2 py-3 border-b border-white/5">
@@ -403,6 +485,65 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   />
                 </div>
               </div>
+            ) : (
+              /* ROLES SELECTION VIEW */
+              <div className="flex flex-col h-full max-h-[400px]">
+                <div className="flex items-center px-2 py-3 border-b border-white/5">
+                  <button
+                    onClick={() => setMenuView('main')}
+                    className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors mr-2"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                  <span className="text-sm font-bold text-white">Switch Role</span>
+                </div>
+
+                <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {/* Platform Admin (Exit) */}
+                  <button
+                    onClick={handleExitView}
+                    className={`
+                                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all border border-transparent
+                                ${!isImpersonating
+                        ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/20'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}
+                            `}
+                  >
+                    <div className="p-1 rounded bg-brand-red/10 text-brand-red">
+                      <Flame size={14} />
+                    </div>
+                    <span className="flex-1 text-left">Platform Administrator</span>
+                    {!isImpersonating && <Check size={14} />}
+                  </button>
+
+                  <div className="h-px bg-white/10 my-2 mx-2"></div>
+                  <p className="px-2 text-[10px] text-slate-500 uppercase tracking-widest mb-1">Demo Accounts</p>
+
+                  {DEMO_ACCOUNTS.map(account => {
+                    const Icon = account.icon;
+                    const isActive = userProfile?.email === account.email;
+                    return (
+                      <button
+                        key={account.id}
+                        onClick={() => handleSwitchUser(account.email)}
+                        className={`
+                                        w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all border border-transparent
+                                        ${isActive
+                            ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/20'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                          }
+                                    `}
+                      >
+                        <div className={`p-1 rounded bg-white/5 ${account.color}`}>
+                          <Icon size={14} />
+                        </div>
+                        <span className="flex-1 text-left">{account.label}</span>
+                        {isActive && <Check size={14} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -429,7 +570,10 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
           {/* Content */}
           <div className="relative z-10 flex items-center">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300">
+            <div className={`
+                w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300
+                ${isImpersonating ? 'shadow-[0_0_15px_rgba(220,38,38,0.8)] border-brand-red/50' : ''}
+            `}>
               {userProfile?.initials || '...'}
             </div>
             {isOpen && (

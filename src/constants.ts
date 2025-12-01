@@ -12,7 +12,8 @@ import {
   Award,
   Building,
   MessageSquare,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -87,7 +88,7 @@ export const generateMockResources = (courseId: number): Resource[] => {
 export const MOCK_COURSES: Course[] = [
   // --- AI FOR HR (7 Items) ---
   {
-    id: 101,
+    type: "COURSE", id: 101,
     title: "AI Leadership Strategies",
     author: "Dr. Sarah Chen",
     progress: 0,
@@ -102,7 +103,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(2) // 2 days ago
   },
   {
-    id: 102,
+    type: "COURSE", id: 102,
     title: "Generative AI for Recruiters",
     author: "Tech HR Labs",
     progress: 5,
@@ -117,7 +118,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(10) // 10 days ago
   },
   {
-    id: 103,
+    type: "COURSE", id: 103,
     title: "Prompt Engineering 101",
     author: "Alex Rivera",
     progress: 45,
@@ -132,7 +133,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(1) // Yesterday
   },
   {
-    id: 104,
+    type: "COURSE", id: 104,
     title: "Ethical AI Governance",
     author: "Legal Dept & IT",
     progress: 100,
@@ -147,7 +148,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(45) // Last month
   },
   {
-    id: 105,
+    type: "COURSE", id: 105,
     title: "Predictive Retention Models",
     author: "Data Science Team",
     progress: 10,
@@ -162,7 +163,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(5)
   },
   {
-    id: 106,
+    type: "COURSE", id: 106,
     title: "The Automated Onboarding",
     author: "People Ops",
     progress: 0,
@@ -179,7 +180,7 @@ export const MOCK_COURSES: Course[] = [
 
   // --- LEADERSHIP (6 Items) ---
   {
-    id: 201,
+    type: "COURSE", id: 201,
     title: "Change Management Essentials",
     author: "Robert Fox",
     progress: 0,
@@ -194,7 +195,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(20)
   },
   {
-    id: 202,
+    type: "COURSE", id: 202,
     title: "Leading Remote Teams",
     author: "Sarah Jenks",
     progress: 75,
@@ -209,7 +210,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(0) // Today
   },
   {
-    id: 203,
+    type: "COURSE", id: 203,
     title: "Executive Presence",
     author: "Marcus Aurelius II",
     progress: 0,
@@ -224,7 +225,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(8)
   },
   {
-    id: 204,
+    type: "COURSE", id: 204,
     title: "Strategic Visioning",
     author: "Board of Directors",
     progress: 10,
@@ -239,7 +240,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(300)
   },
   {
-    id: 205,
+    type: "COURSE", id: 205,
     title: "Mentorship Masterclass",
     author: "Elena Fisher",
     progress: 90,
@@ -254,7 +255,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(15)
   },
   {
-    id: 206,
+    type: "COURSE", id: 206,
     title: "Conflict Resolution",
     author: "HR Mediation Team",
     progress: 0,
@@ -271,7 +272,7 @@ export const MOCK_COURSES: Course[] = [
 
   // --- BUSINESS FUNCTIONS (6 Items) ---
   {
-    id: 301,
+    type: "COURSE", id: 301,
     title: "Strategic HR Management",
     author: "James Wilson",
     progress: 12,
@@ -286,7 +287,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(200)
   },
   {
-    id: 302,
+    type: "COURSE", id: 302,
     title: "Compensation & Benefits",
     author: "Finance Dept",
     progress: 0,
@@ -301,7 +302,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(4)
   },
   {
-    id: 303,
+    type: "COURSE", id: 303,
     title: "The Future of HR Analytics",
     author: "Elena Fisher",
     progress: 0,
@@ -316,7 +317,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(1)
   },
   {
-    id: 304,
+    type: "COURSE", id: 304,
     title: "Labor Law Compliance",
     author: "Legal Partners LLP",
     progress: 100,
@@ -331,7 +332,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(180)
   },
   {
-    id: 305,
+    type: "COURSE", id: 305,
     title: "Agile HR Workflows",
     author: "Scrum Masters",
     progress: 20,
@@ -346,7 +347,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(25)
   },
   {
-    id: 306,
+    type: "COURSE", id: 306,
     title: "Global Mobility",
     author: "International Team",
     progress: 0,
@@ -363,7 +364,7 @@ export const MOCK_COURSES: Course[] = [
 
   // --- SOFT SKILLS (6 Items) ---
   {
-    id: 401,
+    type: "COURSE", id: 401,
     title: "Crisis Communication",
     author: "Marcus Rodriguez",
     progress: 35,
@@ -378,7 +379,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(3)
   },
   {
-    id: 402,
+    type: "COURSE", id: 402,
     title: "Active Listening Lab",
     author: "Dr. Lisa Su",
     progress: 0,
@@ -393,7 +394,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(7)
   },
   {
-    id: 403,
+    type: "COURSE", id: 403,
     title: "Negotiation Tactics",
     author: "The Dealmakers",
     progress: 60,
@@ -408,7 +409,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(90)
   },
   {
-    id: 404,
+    type: "COURSE", id: 404,
     title: "Emotional Intelligence",
     author: "Daniel Goleman (Guest)",
     progress: 0,
@@ -423,7 +424,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(12)
   },
   {
-    id: 405,
+    type: "COURSE", id: 405,
     title: "Time Management",
     author: "Productivity Pros",
     progress: 10,
@@ -438,7 +439,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(30)
   },
   {
-    id: 406,
+    type: "COURSE", id: 406,
     title: "Public Speaking",
     author: "Toastmasters",
     progress: 0,
@@ -455,7 +456,7 @@ export const MOCK_COURSES: Course[] = [
 
   // --- HR STORIES (5 Items) ---
   {
-    id: 501,
+    type: "COURSE", id: 501,
     title: "Diversity & Inclusion Stories",
     author: "Maya Patel",
     progress: 100,
@@ -470,7 +471,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(2)
   },
   {
-    id: 502,
+    type: "COURSE", id: 502,
     title: "Startup to IPO: A Journey",
     author: "Founders Collective",
     progress: 0,
@@ -485,7 +486,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(18)
   },
   {
-    id: 503,
+    type: "COURSE", id: 503,
     title: "The 4-Day Work Week",
     author: "Case Study Group",
     progress: 25,
@@ -500,7 +501,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(0)
   },
   {
-    id: 504,
+    type: "COURSE", id: 504,
     title: "From Toxic to Thriving",
     author: "Culture Turnaround",
     progress: 0,
@@ -515,7 +516,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(6)
   },
   {
-    id: 505,
+    type: "COURSE", id: 505,
     title: "Lessons from the Factory Floor",
     author: "Manufacturing HR",
     progress: 0,
@@ -532,7 +533,7 @@ export const MOCK_COURSES: Course[] = [
 
   // --- BOOK CLUB (5 Items) ---
   {
-    id: 601,
+    type: "COURSE", id: 601,
     title: "Radical Candor Review",
     author: "Book Club Group",
     progress: 0,
@@ -547,7 +548,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(14)
   },
   {
-    id: 602,
+    type: "COURSE", id: 602,
     title: "Good to Great",
     author: "Jim Collins (Analysis)",
     progress: 0,
@@ -562,7 +563,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(500)
   },
   {
-    id: 603,
+    type: "COURSE", id: 603,
     title: "Work Rules!",
     author: "Google HR Alumni",
     progress: 50,
@@ -577,7 +578,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(400)
   },
   {
-    id: 604,
+    type: "COURSE", id: 604,
     title: "Dare to Lead",
     author: "Brené Brown Fan Club",
     progress: 0,
@@ -592,7 +593,7 @@ export const MOCK_COURSES: Course[] = [
     dateAdded: getRelativeDate(22)
   },
   {
-    id: 605,
+    type: "COURSE", id: 605,
     title: "The Culture Map",
     author: "Erin Meyer Discussion",
     progress: 10,
@@ -613,7 +614,16 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'certifications', label: 'Certifications', icon: Award },
-  { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: Settings, role: 'admin' },
+];
+
+export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'admin', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'admin/courses', label: 'Courses', icon: BookOpen },
+    { id: 'admin/authors', label: 'Authors', icon: GraduationCap },
+    { id: 'admin/prompts', label: 'System Prompts', icon: MessageSquare },
+    { id: 'admin/prompt-suggestions', label: 'Chat Suggestions', icon: MessageSquare },
+    { id: 'admin/users', label: 'Users', icon: Users },
+    { id: 'admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [

@@ -147,6 +147,133 @@ export interface OrgDashboardData {
   }[];
 }
 
+export interface InstructorCourse extends Course {
+  metrics: {
+    views: number;
+    avgRating: number;
+    aiInteractions: number;
+    watchTimeHours: number;
+  };
+}
+
+export interface InstructorDashboardData {
+  earnings: {
+    currentMonth: number;
+    lifetime: number;
+    currency: string;
+  };
+  impact: {
+    studentsTaught: number;
+    hoursWatched: number;
+    certificationsEnabled: number;
+  };
+  aiReach: {
+    attributionCount: number;
+    weeklyGrowth: number; // percentage
+  };
+  recentActivity: {
+    student: string;
+    action: string; // "Completed Course", "Asked AI", "Rated 5 Stars"
+    course: string;
+    date: string;
+  }[];
+  courses: InstructorCourse[];
+}
+
+export async function fetchInstructorDashboardData(userId: string): Promise<InstructorDashboardData> {
+  const supabase = createClient();
+  
+  // Mock Data for now - in real implementation this would query multiple tables
+  // (viewing_sessions, ai_attribution_logs, user_course_progress)
+  
+  return {
+    earnings: {
+      currentMonth: 1250.00,
+      lifetime: 14500.00,
+      currency: 'USD'
+    },
+    impact: {
+      studentsTaught: 843,
+      hoursWatched: 1240,
+      certificationsEnabled: 156
+    },
+    aiReach: {
+      attributionCount: 1240,
+      weeklyGrowth: 12
+    },
+    recentActivity: [
+      { student: "Sarah Jenkins", action: "Completed Course", course: "Strategic HR Leadership", date: "2 hours ago" },
+      { student: "Mike Ross", action: "Asked AI", course: "Conflict Resolution", date: "5 hours ago" },
+      { student: "Jessica Pearson", action: "Rated 5 Stars", course: "Strategic HR Leadership", date: "1 day ago" },
+    ],
+    courses: [
+        {
+            id: 101,
+            title: "Strategic HR Leadership",
+            author: "You",
+            progress: 0,
+            category: "Leadership",
+            description: "Master the art of strategic human resources planning and execution.",
+            duration: "4h 30m",
+            rating: 4.8,
+            badges: ["SHRM", "HRCI"],
+            isSaved: false,
+            collections: [],
+            dateAdded: "2025-01-15",
+            status: "published",
+            metrics: {
+                views: 1240,
+                avgRating: 4.8,
+                aiInteractions: 450,
+                watchTimeHours: 890
+            }
+        },
+        {
+            id: 102,
+            title: "Conflict Resolution in the Workplace",
+            author: "You",
+            progress: 0,
+            category: "Management",
+            description: "Learn effective techniques for resolving workplace conflicts and building a positive culture.",
+            duration: "2h 15m",
+            rating: 4.5,
+            badges: ["SHRM"],
+            isSaved: false,
+            collections: [],
+            dateAdded: "2025-02-10",
+            status: "published",
+            metrics: {
+                views: 850,
+                avgRating: 4.5,
+                aiInteractions: 320,
+                watchTimeHours: 210
+            }
+        },
+        {
+            id: 103,
+            title: "AI for HR Professionals",
+            author: "You",
+            progress: 0,
+            category: "Technology",
+            description: "A comprehensive guide to using AI tools in HR processes.",
+            duration: "3h 00m",
+            rating: 4.9,
+            badges: ["HRCI"],
+            isSaved: false,
+            collections: [],
+            dateAdded: "2025-03-01",
+            status: "draft",
+            metrics: {
+                views: 0,
+                avgRating: 0,
+                aiInteractions: 0,
+                watchTimeHours: 0
+            }
+        }
+    ]
+  };
+}
+
 export async function fetchOrgDashboardData(orgId: string): Promise<OrgDashboardData> {
   const supabase = createClient();
 

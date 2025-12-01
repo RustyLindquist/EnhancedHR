@@ -4,13 +4,13 @@ import CourseEditor from '@/components/admin/CourseEditor';
 import { notFound } from 'next/navigation';
 
 interface EditCoursePageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function EditCoursePage({ params }: EditCoursePageProps) {
-    const { id } = params;
+    const { id } = await params;
     const supabase = await createClient();
 
     const { data: course, error } = await supabase
@@ -18,6 +18,10 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
         .select('*')
         .eq('id', id)
         .single();
+
+    if (error) {
+        console.error(`Error fetching course ${id}:`, error);
+    }
 
     if (error || !course) {
         notFound();

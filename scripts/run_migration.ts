@@ -13,7 +13,7 @@ async function runMigration() {
     await client.connect();
     console.log('Connected to database');
 
-    const migrationPath = path.join(process.cwd(), 'supabase/migrations/20251130000001_add_org_admin_prompts.sql');
+    const migrationPath = path.join(process.cwd(), 'supabase/migrations/20251130000002_add_instructor_prompts.sql');
     const sql = fs.readFileSync(migrationPath, 'utf8');
 
     console.log('Running migration...');

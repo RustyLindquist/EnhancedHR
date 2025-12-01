@@ -1,30 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2 } from 'lucide-react';
-import { getGeminiResponse } from '@/lib/gemini';
+import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Download, Plus } from 'lucide-react';
+import { getAgentResponse } from '@/lib/ai/engine';
+import { AgentType, ContextScope } from '@/lib/ai/types';
 
 interface AIPanelProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  context?: {
-    currentTime: number;
-    lessonId: string;
-    transcript?: any[];
-  };
+  // New Props for Context Engineering
+  agentType?: AgentType; // Default agent to load
+  contextScope?: ContextScope; // Scope for RAG
   initialPrompt?: string;
 }
-
-type AIMode = 'assistant' | 'tutor';
 
 interface Message {
   role: 'user' | 'model';
   text: string;
 }
 
-const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPrompt }) => {
+const AIPanel: React.FC<AIPanelProps> = ({
+  isOpen,
+  setIsOpen,
+  agentType = 'platform_assistant',
+  contextScope = { type: 'PLATFORM' },
+  initialPrompt
+}) => {
   const [width, setWidth] = useState(384); // Default w-96
   const [isDragging, setIsDragging] = useState(false);
   const [isHandleHovered, setIsHandleHovered] = useState(false);
-  const [mode, setMode] = useState<AIMode>('assistant');
+
+  // Internal Mode State (Only relevant if toggling between Assistant/Tutor in Course Scope)
+  const [mode, setMode] = useState<'assistant' | 'tutor'>('assistant');
+
+  // Derived effective agent type based on internal toggle if in Course Scope
+  const effectiveAgentType: AgentType = (contextScope.type === 'COURSE' && mode === 'tutor')
+    ? 'course_tutor'
+    : (contextScope.type === 'COURSE')
+      ? 'course_assistant'
+      : agentType;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -36,27 +48,20 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      // Panel is on the right, so width is total width - mouse X position
       const newWidth = document.body.clientWidth - e.clientX;
-
-      // Constraints: Min 300px, Max 800px
       if (newWidth >= 300 && newWidth <= 800) {
         setWidth(newWidth);
       }
     };
-
     const handleMouseUp = () => {
       setIsDragging(false);
-      // Re-enable transitions after dragging stops
       document.body.style.cursor = 'default';
     };
-
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = 'col-resize';
     }
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -64,19 +69,12 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
     };
   }, [isDragging]);
 
+  const lastProcessedPromptRef = useRef<string | undefined>(undefined);
+
   // Handle Initial Prompt
   useEffect(() => {
-    if (initialPrompt && !hasInitialPromptRun.current && isOpen) {
-      hasInitialPromptRun.current = true;
-      setInput(initialPrompt); // Set input but maybe don't auto-send? Or auto-send?
-      // User request: "redirect to the full Platform Assistant Chat Interface with the prompt pre-filled."
-      // "Pre-filled" implies it's in the input box, waiting for user to send?
-      // Or "Quick Chat" implies it sends immediately.
-      // Usually "Quick Chat" means send immediately.
-      // But let's check the wording: "prompt pre-filled".
-      // If I just pre-fill, the user has to hit enter.
-      // If I auto-send, it's smoother.
-      // Let's auto-send for better UX.
+    if (initialPrompt && isOpen && initialPrompt !== lastProcessedPromptRef.current) {
+      lastProcessedPromptRef.current = initialPrompt;
       handleSendMessage(initialPrompt);
     }
   }, [initialPrompt, isOpen]);
@@ -95,19 +93,33 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
     setIsLoading(true);
 
     try {
-      // Convert messages to history format expected by Gemini helper
-      // Note: We only send previous messages as history, not the current one (which is passed as prompt)
       const history = messages.map(m => ({ role: m.role, parts: m.text }));
-      const responseText = await getGeminiResponse(text, history);
 
-      setMessages(prev => [...prev, { role: 'model', text: responseText }]);
+      // Use the new AI Engine
+      const response = await getAgentResponse(effectiveAgentType, text, contextScope, history);
+
+      const aiMsg: Message = { role: 'model', text: response.text };
+      setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
-      console.error("Failed to get response", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error." }]);
+      console.error('Error getting AI response:', error);
+      setMessages(prev => [...prev, { role: 'model', text: "I'm having trouble connecting to my knowledge base right now. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Helper to get Agent Display Info
+  const getAgentInfo = () => {
+    switch (effectiveAgentType) {
+      case 'course_assistant': return { name: 'Course Assistant', icon: Bot, color: 'text-brand-blue-light', themeColor: 'bg-brand-blue-light' };
+      case 'course_tutor': return { name: 'Prometheus Tutor', icon: GraduationCap, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
+      case 'collection_assistant': return { name: 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
+      case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
+      default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
+    }
+  };
+
+  const agentInfo = getAgentInfo();
 
   return (
     <div
@@ -161,17 +173,21 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
         {isOpen && (
           <div className="flex items-center overflow-hidden w-full justify-between">
             <div className="flex flex-col justify-center">
-              <span className="font-bold text-sm tracking-widest uppercase text-brand-orange drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none">
-                Prometheus AI
+              <span className={`font-bold text-sm tracking-widest uppercase ${agentInfo.color} drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none`}>
+                {agentInfo.name}
               </span>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
+              </div>
             </div>
             <MoreHorizontal size={16} className="text-slate-500 cursor-pointer hover:text-white transition-colors flex-shrink-0" />
           </div>
         )}
       </div>
 
-      {/* MODE TOGGLE (Only when open) */}
-      {isOpen && (
+      {/* MODE TOGGLE (Only when open and in Course Scope) */}
+      {isOpen && contextScope.type === 'COURSE' && (
         <div className="px-6 py-4 border-b border-white/5">
           <div className="bg-black/30 p-1 rounded-xl flex border border-white/10">
             <button
@@ -199,22 +215,16 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
 
               {messages.length === 0 ? (
                 <>
-                  {/* Dynamic Empty State Message based on Mode */}
+                  {/* Dynamic Empty State Message based on Agent Type */}
                   <div className="flex items-start space-x-3 animate-float">
                     <div className="flex-shrink-0 pt-1">
-                      {mode === 'assistant' ? (
-                        <div className="w-8 h-8 rounded-lg bg-brand-orange/20 border border-brand-orange/30 flex items-center justify-center text-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.2)]">
-                          <Flame size={16} />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-brand-blue-light/20 border border-brand-blue-light/30 flex items-center justify-center text-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.2)]">
-                          <GraduationCap size={16} />
-                        </div>
-                      )}
+                      <div className={`w-8 h-8 rounded-lg ${agentInfo.themeColor}/20 border ${agentInfo.themeColor}/30 flex items-center justify-center ${agentInfo.color} shadow-[0_0_15px_rgba(255,147,0,0.2)]`}>
+                        <agentInfo.icon size={16} />
+                      </div>
                     </div>
 
                     <div className="bg-white/10 border border-white/10 p-4 rounded-2xl rounded-tl-none text-sm text-slate-200 leading-relaxed shadow-lg backdrop-blur-md">
-                      {mode === 'assistant' ? (
+                      {effectiveAgentType === 'course_assistant' && (
                         <>
                           <p>I can help you navigate this course. Ask me to:</p>
                           <ul className="mt-2 space-y-2 list-disc list-inside text-slate-400 text-xs">
@@ -223,10 +233,23 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
                             <li>Draft an email based on this lesson</li>
                           </ul>
                         </>
-                      ) : (
+                      )}
+                      {effectiveAgentType === 'course_tutor' && (
                         <>
                           <p>I'm your personal Tutor. I'll help you master this material.</p>
                           <p className="mt-2 text-slate-400 text-xs">We can roleplay scenarios, I can quiz you on the content, or we can create a personalized study guide.</p>
+                        </>
+                      )}
+                      {effectiveAgentType === 'platform_assistant' && (
+                        <>
+                          <p>I'm Prometheus, your Platform Assistant.</p>
+                          <p className="mt-2 text-slate-400 text-xs">Ask me about any course, help finding content, or general HR questions.</p>
+                        </>
+                      )}
+                      {effectiveAgentType === 'collection_assistant' && (
+                        <>
+                          <p>I'm the Collection Assistant.</p>
+                          <p className="mt-2 text-slate-400 text-xs">I can help you synthesize information across all the items in this collection.</p>
                         </>
                       )}
                     </div>
@@ -234,28 +257,39 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
 
                   {/* Suggestion Chips */}
                   <div className="flex flex-wrap gap-2 pl-11">
-                    {mode === 'assistant' ? (
+                    {effectiveAgentType === 'course_assistant' && (
                       <>
                         <button onClick={() => handleSendMessage("Summarize this module")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
                           Summarize this module
                         </button>
                         <button onClick={() => handleSendMessage("What are the key takeaways?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                          What are the key takeaways?
+                          Key takeaways?
                         </button>
                       </>
-                    ) : (
+                    )}
+                    {effectiveAgentType === 'course_tutor' && (
                       <>
                         <button onClick={() => handleSendMessage("Quiz me on this")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                          Quiz me on this
+                          Quiz me
                         </button>
                         <button onClick={() => handleSendMessage("Roleplay a scenario")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                          Roleplay a scenario
+                          Roleplay
+                        </button>
+                      </>
+                    )}
+                    {effectiveAgentType === 'platform_assistant' && (
+                      <>
+                        <button onClick={() => handleSendMessage("Find courses on Leadership")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          Find Leadership courses
+                        </button>
+                        <button onClick={() => handleSendMessage("How do I earn credits?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          How to earn credits?
                         </button>
                       </>
                     )}
                   </div>
 
-                  {/* Disclaimer Text moved to bottom of history pane */}
+                  {/* Disclaimer Text */}
                   <div className="w-full flex justify-center pt-4 pb-2">
                     <p className="text-[10px] text-center text-slate-500 opacity-60">
                       Prometheus can make mistakes. Verify important info.
@@ -271,8 +305,8 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
                         : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/10'
                         }`}>
                         <div className="flex items-center gap-2 mb-1 opacity-50 text-[10px] font-bold uppercase tracking-wider">
-                          {msg.role === 'user' ? <User size={10} /> : <Bot size={10} />}
-                          {msg.role === 'user' ? 'You' : 'Prometheus'}
+                          {msg.role === 'user' ? <User size={10} /> : <agentInfo.icon size={10} />}
+                          {msg.role === 'user' ? 'You' : agentInfo.name}
                         </div>
                         <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</div>
                       </div>
@@ -299,7 +333,7 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
                 <div
                   className={`
                     absolute -top-4 -left-4 w-16 h-16 
-                    ${mode === 'assistant' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'} rounded-full blur-[20px] 
+                    ${effectiveAgentType === 'course_tutor' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'} rounded-full blur-[20px] 
                     opacity-20 
                     group-hover:opacity-60 group-hover:w-32 group-hover:h-32 group-hover:-top-10 group-hover:-left-10 group-hover:blur-[40px]
                     group-focus-within:opacity-100 group-focus-within:w-48 group-focus-within:h-48 group-focus-within:-top-12 group-focus-within:-left-12 group-focus-within:blur-[60px]
@@ -308,35 +342,35 @@ const AIPanel: React.FC<AIPanelProps> = ({ isOpen, setIsOpen, context, initialPr
                 ></div>
 
                 {/* Input Container */}
-                <div className={`relative rounded-xl p-[1px] bg-gradient-to-br transition-all duration-500 shadow-lg z-10 ${mode === 'assistant' ? 'from-[#FF9300]/30 via-white/10 to-[#78C0F0]/10' : 'from-[#78C0F0]/30 via-white/10 to-[#FF9300]/10'}`}>
+                <div className={`relative rounded-xl p-[1px] bg-gradient-to-br transition-all duration-500 shadow-lg z-10 ${effectiveAgentType === 'course_tutor' ? 'from-[#FF9300]/30 via-white/10 to-[#78C0F0]/10' : 'from-[#78C0F0]/30 via-white/10 to-[#FF9300]/10'}`}>
                   <div className="relative bg-[#0A0D12] rounded-xl overflow-hidden">
                     <input
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
-                      placeholder={mode === 'assistant' ? "Ask about the course..." : "Start tutoring session..."}
+                      placeholder={effectiveAgentType === 'course_tutor' ? "Start tutoring session..." : "Ask a question..."}
                       className="
-                            w-full bg-transparent
-                            rounded-xl py-3.5 px-5 pr-12 
-                            text-sm text-white 
-                            placeholder-slate-500 
-                            focus:outline-none 
-                            transition-all duration-300
-                          "
+                        w-full bg-transparent
+                        rounded-xl py-3.5 px-5 pr-12 
+                        text-sm text-white 
+                        placeholder-slate-500 
+                        focus:outline-none 
+                        transition-all duration-300
+                      "
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
                       <button
                         onClick={() => handleSendMessage(input)}
                         className={`
-                            p-2 rounded-lg 
-                            bg-white/5 border border-white/10
-                            text-slate-400
-                            group-hover:text-white 
-                            transition-all duration-300 
-                            shadow-sm
-                            ${mode === 'assistant' ? 'group-hover:bg-[#FF9300] group-hover:border-[#FF9300]' : 'group-hover:bg-[#78C0F0] group-hover:border-[#78C0F0] group-hover:text-black'}
-                          `}>
+                          p-2 rounded-lg 
+                          bg-white/5 border border-white/10
+                          text-slate-400
+                          group-hover:text-white 
+                          transition-all duration-300 
+                          shadow-sm
+                          ${effectiveAgentType === 'course_tutor' ? 'group-hover:bg-[#FF9300] group-hover:border-[#FF9300]' : 'group-hover:bg-[#78C0F0] group-hover:border-[#78C0F0] group-hover:text-black'}
+                        `}>
                         <MessageSquare size={16} />
                       </button>
                     </div>

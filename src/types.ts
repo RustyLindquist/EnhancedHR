@@ -30,6 +30,7 @@ import { LucideIcon } from 'lucide-react';
 export type CourseBadge = 'REQUIRED' | 'SHRM' | 'HRCI';
 
 export interface Course {
+  type: 'COURSE'; // Discriminator
   id: number;
   title: string;
   author: string;
@@ -78,7 +79,23 @@ export enum CollectionType {
   Course = 'COURSE',
   Module = 'MODULE',
   Lesson = 'LESSON',
+  Conversation = 'CONVERSATION',
 }
+
+export interface Conversation {
+    type: 'CONVERSATION'; // Discriminator
+    id: string;
+    title: string;
+    lastMessage: string;
+    date: string; // ISO Date
+    messages?: { role: 'user' | 'model'; text: string }[];
+    collections?: string[]; // IDs of collections this conversation belongs to
+    collectionId?: string; // If saved to a collection
+    isSaved?: boolean;
+}
+
+// The polymorphic Context Object (Card)
+export type ContextCard = Course | Conversation;
 
 export interface BackgroundTheme {
   id: string;
