@@ -13,7 +13,8 @@ import {
   Building,
   MessageSquare,
   Settings,
-  Users
+  Users,
+  Bot
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -703,6 +704,7 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin/authors', label: 'Authors', icon: GraduationCap },
     { id: 'admin/prompts', label: 'System Prompts', icon: MessageSquare },
     { id: 'admin/prompt-suggestions', label: 'Chat Suggestions', icon: MessageSquare },
+    { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
     { id: 'admin/settings', label: 'Settings', icon: Settings },
 ];

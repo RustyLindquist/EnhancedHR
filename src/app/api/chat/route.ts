@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { message, courseId, agentType } = await req.json();
+        const { message, courseId, agentType, conversationId, pageContext } = await req.json();
 
         if (!message || !agentType) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -142,6 +142,26 @@ export async function POST(req: NextRequest) {
                     if (citationError) console.error('Error logging citations:', citationError);
                 }
             }
+        }
+
+        // 8. Log Conversation to ai_logs
+        const { error: logError } = await supabase
+            .from('ai_logs')
+            .insert({
+                user_id: user.id,
+                conversation_id: conversationId || null,
+                agent_type: agentType,
+                page_context: pageContext || null,
+                prompt: message,
+                response: responseText,
+                metadata: {
+                    sources: contextItems || [],
+                    model: 'gemini-1.5-pro'
+                }
+            });
+
+        if (logError) {
+            console.error('Error logging to ai_logs:', logError);
         }
 
         return NextResponse.json({ response: responseText });

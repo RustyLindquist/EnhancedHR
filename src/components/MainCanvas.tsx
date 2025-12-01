@@ -877,25 +877,32 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // --- CONVERSATION STATE & HANDLERS ---
     const [prometheusConversationTitle, setPrometheusConversationTitle] = useState('New Conversation');
 
-    // Initialize conversations from localStorage
-    const [conversations, setConversations] = useState<Conversation[]>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('prometheus_conversations');
-            return saved ? JSON.parse(saved) : [];
+    // Initialize conversations from API
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+
+    const fetchConversations = async () => {
+        try {
+            const res = await fetch('/api/conversations');
+            if (res.ok) {
+                const data = await res.json();
+                setConversations(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch conversations", error);
         }
-        return [];
-    });
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchConversations();
+        }
+    }, [user]);
 
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
 
-    // Persist conversations to localStorage whenever they change
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('prometheus_conversations', JSON.stringify(conversations));
-        }
-    }, [conversations]);
+    // Removed localStorage effect
 
     // Listen for conversation collection updates from the modal
     useEffect(() => {
@@ -917,37 +924,42 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         return () => window.removeEventListener('updateConversationCollections', handleUpdateCollections);
     }, []);
 
-    const handleConversationStart = (conversationId: string, title: string, updatedMessages: { role: 'user' | 'model'; text: string }[]) => {
+    const handleConversationStart = async (conversationId: string, title: string, updatedMessages: Conversation['messages']) => {
         setPrometheusConversationTitle(title);
 
-        // Use provided ID or fallback (though Prometheus should provide one)
-        const id = conversationId || activeConversation?.id || Date.now().toString();
+        // This handler is now primarily for updating the UI list state
+        // The actual saving of messages happens in PrometheusFullPage via API
+
+        // We should fetch the latest state of this conversation or update local state optimistically
+        // For now, let's update local state to reflect the change immediately
+
+        const id = conversationId || activeConversation?.id;
+        if (!id) return; // Should have an ID by now
+
         const now = new Date().toISOString();
 
-        const newConv: Conversation = {
-            type: 'CONVERSATION',
-            id: id,
-            title: title,
-            lastMessage: updatedMessages[updatedMessages.length - 1]?.text || '',
-            date: now,
-            messages: updatedMessages,
-            collections: activeConversation?.collections || [],
-            isSaved: activeConversation?.isSaved || false
-        };
-
-        // Update active conversation so subsequent saves use the same ID
-        setActiveConversation(newConv);
+        // Map messages to match Conversation interface if needed (though we updated types)
+        // The updatedMessages coming from PrometheusFullPage might still be { role, text }
+        // We need to map 'text' to 'content' if we want to be strict, but let's handle it loosely for now or fix in PrometheusFullPage
 
         setConversations(prev => {
             const existingIndex = prev.findIndex(c => c.id === id);
             if (existingIndex >= 0) {
-                // Update existing
                 const updated = [...prev];
-                updated[existingIndex] = newConv;
+                updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    title,
+                    lastMessage: updatedMessages && updatedMessages.length > 0 ? updatedMessages[updatedMessages.length - 1].content : '',
+                    updated_at: now,
+                    // We don't necessarily need to store all messages in the list view state, but we can
+                };
                 return updated;
             } else {
-                // Add new
-                return [newConv, ...prev];
+                // If it's a new conversation that we just started, we might need to fetch it or create a placeholder
+                // But PrometheusFullPage should have created it via API.
+                // Let's trigger a fetch
+                fetchConversations();
+                return prev;
             }
         });
     };
@@ -966,11 +978,18 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     };
 
-    const confirmDeleteConversation = () => {
+    const confirmDeleteConversation = async () => {
         if (conversationToDelete) {
-            setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
-            setDeleteModalOpen(false);
-            setConversationToDelete(null);
+            try {
+                await fetch(`/api/conversations/${conversationToDelete.id}`, {
+                    method: 'DELETE'
+                });
+                setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
+                setDeleteModalOpen(false);
+                setConversationToDelete(null);
+            } catch (error) {
+                console.error("Failed to delete conversation", error);
+            }
         }
     };
 
@@ -1001,6 +1020,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'academy') return 'All Courses';
         if (activeCollectionId === 'dashboard') return 'Dashboard';
         if (activeCollectionId === 'instructors') return 'Course Instructors';
+        if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
         if (predefined) return predefined.label;
@@ -1015,6 +1035,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'academy') return 'Academy Collection';
         if (activeCollectionId === 'dashboard') return 'My Dashboard';
         if (activeCollectionId === 'instructors') return 'Academy';
+        if (activeCollectionId === 'prometheus') return 'AI Assistant';
         return 'My Collection';
     };
 
@@ -1485,36 +1506,68 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 </div>
 
                 <div className="flex space-x-4 items-center">
-                    {activeCollectionId === 'academy' && activeFilterCount > 0 && (
-                        <button
-                            onClick={handleResetFilters}
-                            className="
-                             px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
-                             bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white
-                         "
-                        >
-                            Clear Filters
-                        </button>
+                    {activeCollectionId === 'prometheus' ? (
+                        /* Prometheus Actions */
+                        <div className="flex items-center gap-3">
+                            {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
+                                <button
+                                    onClick={handleSaveConversation}
+                                    disabled={!!activeConversation?.isSaved}
+                                    className={`
+                                        flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                        ${activeConversation?.isSaved
+                                            ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
+                                            : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
+                                        }
+                                    `}
+                                >
+                                    {activeConversation?.isSaved ? (
+                                        <>
+                                            <Check size={14} /> Saved to Collection
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus size={14} /> Add to Collection
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        /* Standard Actions */
+                        <>
+                            {activeCollectionId === 'academy' && activeFilterCount > 0 && (
+                                <button
+                                    onClick={handleResetFilters}
+                                    className="
+                                     px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                     bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white
+                                 "
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
+
+                            <button
+                                onClick={handleOpenDrawer}
+                                className={`
+                                group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
+                                ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
+                        `}
+                            >
+                                {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
+
+                                <SlidersHorizontal size={14} className="mr-3" />
+                                <span>Search & Filter</span>
+                                {activeFilterCount > 0 && !isDrawerOpen && (
+                                    <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                                        {activeFilterCount}
+                                    </div>
+                                )}
+                                {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
+                            </button>
+                        </>
                     )}
-
-                    <button
-                        onClick={handleOpenDrawer}
-                        className={`
-                        group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
-                        ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
-                `}
-                    >
-                        {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-
-                        <SlidersHorizontal size={14} className="mr-3" />
-                        <span>Search & Filter</span>
-                        {activeFilterCount > 0 && !isDrawerOpen && (
-                            <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                                {activeFilterCount}
-                            </div>
-                        )}
-                        {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
-                    </button>
                 </div>
             </div>
 

@@ -11,7 +11,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
     id,
     title,
     lastMessage,
-    date,
+    updated_at,
     onClick,
     onDelete
 }) => {
@@ -73,7 +73,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
                             </h3>
                             <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
                                 <Clock size={10} />
-                                <span>{formatDate(date)}</span>
+                                <span>{formatDate(updated_at || new Date().toISOString())}</span>
                             </div>
                         </div>
                     </div>

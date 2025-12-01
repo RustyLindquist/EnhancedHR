@@ -106,16 +106,25 @@ export interface Instructor {
   collections?: string[]; // IDs of collections this instructor belongs to
 }
 
+export interface Message {
+    id?: string;
+    role: 'user' | 'model';
+    content: string; // DB uses 'content', frontend used 'text' - we should standardize or map
+    created_at?: string;
+}
+
 export interface Conversation {
     type: 'CONVERSATION'; // Discriminator
     id: string;
     title: string;
-    lastMessage: string;
-    date: string; // ISO Date
-    messages?: { role: 'user' | 'model'; text: string }[];
+    created_at: string;
+    updated_at?: string;
+    lastMessage?: string; // Computed for UI
+    messages?: Message[];
     collections?: string[]; // IDs of collections this conversation belongs to
     collectionId?: string; // If saved to a collection
     isSaved?: boolean;
+    metadata?: Record<string, any>;
 }
 
 // The polymorphic Context Object (Card)

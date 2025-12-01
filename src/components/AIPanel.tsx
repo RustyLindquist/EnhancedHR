@@ -12,10 +12,7 @@ interface AIPanelProps {
   initialPrompt?: string;
 }
 
-interface Message {
-  role: 'user' | 'model';
-  text: string;
-}
+import { Message } from '@/types';
 
 const AIPanel: React.FC<AIPanelProps> = ({
   isOpen,
@@ -84,25 +81,79 @@ const AIPanel: React.FC<AIPanelProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  const createConversation = async (title: string) => {
+    try {
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          metadata: {
+            agentType: effectiveAgentType,
+            contextScope: contextScope
+          }
+        })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (error) {
+      console.error('Failed to create conversation', error);
+    }
+    return null;
+  };
+
+  const saveMessage = async (convId: string, role: 'user' | 'model', content: string) => {
+    try {
+      await fetch(`/api/conversations/${convId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, content })
+      });
+    } catch (error) {
+      console.error('Failed to save message', error);
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    const userMsg: Message = { role: 'user', text };
+    const userMsg: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
+    let activeConvId = conversationId;
+    if (!activeConvId) {
+      const title = contextScope.type === 'COURSE' ? 'Course Assistant Chat' : 'New Conversation';
+      const newConv = await createConversation(title);
+      if (newConv) {
+        activeConvId = newConv.id;
+        setConversationId(activeConvId);
+      }
+    }
+
+    if (activeConvId) {
+      saveMessage(activeConvId, 'user', text);
+    }
+
     try {
-      const history = messages.map(m => ({ role: m.role, parts: m.text }));
+      const history = messages.map(m => ({ role: m.role, parts: m.content }));
 
       // Use the new AI Engine
       const response = await getAgentResponse(effectiveAgentType, text, contextScope, history);
 
-      const aiMsg: Message = { role: 'model', text: response.text };
+      const aiMsg: Message = { role: 'model', content: response.text };
       setMessages(prev => [...prev, aiMsg]);
+
+      if (activeConvId) {
+        saveMessage(activeConvId, 'model', response.text);
+      }
     } catch (error) {
       console.error('Error getting AI response:', error);
-      setMessages(prev => [...prev, { role: 'model', text: "I'm having trouble connecting to my knowledge base right now. Please try again." }]);
+      setMessages(prev => [...prev, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
@@ -308,7 +359,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
                           {msg.role === 'user' ? <User size={10} /> : <agentInfo.icon size={10} />}
                           {msg.role === 'user' ? 'You' : agentInfo.name}
                         </div>
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</div>
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
                       </div>
                     </div>
                   ))}

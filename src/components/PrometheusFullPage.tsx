@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, Loader2, Sparkles, MessageSquare, Flame, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Bot, User, Loader2, Sparkles, MessageSquare, Flame, ArrowRight, ChevronUp, ChevronDown, Zap, Shield, Brain, Lightbulb, Compass, Send } from 'lucide-react';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import { HERO_PROMPTS, SUGGESTION_PANEL_PROMPTS, PromptSuggestion } from '@/lib/prompts';
+import { Message } from '@/types';
 
 interface PrometheusFullPageProps {
     initialPrompt?: string;
@@ -16,10 +17,50 @@ interface PrometheusFullPageProps {
     isSaved?: boolean;
 }
 
-interface Message {
-    role: 'user' | 'model';
-    text: string;
+// Enhanced Capability Card Data
+interface CapabilityCardData {
+    id: string;
+    icon: React.ElementType;
+    title: string;
+    description: string;
+    prompt: string;
+    color: string;
 }
+
+const CAPABILITY_CARDS: CapabilityCardData[] = [
+    {
+        id: 'cap-1',
+        icon: MessageSquare,
+        title: 'Difficult Conversations',
+        description: 'Role-play and prepare for challenging discussions with employees.',
+        prompt: 'I need to have a difficult conversation with an employee who is underperforming. Can you role-play this with me? You act as the employee (defensive but open to feedback), and I will be the manager. Start by asking me for the context of the situation.',
+        color: 'text-blue-400'
+    },
+    {
+        id: 'cap-2',
+        icon: Shield,
+        title: 'Policy & Compliance',
+        description: 'Draft clear, empathetic policies and ensure compliance.',
+        prompt: 'I need to draft an email announcing a new "Return to Office" policy (3 days a week). The tone should be empathetic but firm, emphasizing collaboration while acknowledging the shift. Please draft 3 variations: one direct, one softer, and one focusing purely on the benefits.',
+        color: 'text-emerald-400'
+    },
+    {
+        id: 'cap-3',
+        icon: Brain,
+        title: 'Strategic Analysis',
+        description: 'Analyze leadership styles and organizational trends.',
+        prompt: 'I want to analyze my leadership style based on a recent situation. I will describe a scenario and how I handled it, and I want you to critique it using the Situational Leadership II framework. Ready?',
+        color: 'text-purple-400'
+    },
+    {
+        id: 'cap-4',
+        icon: Lightbulb,
+        title: 'Creative Solutions',
+        description: 'Brainstorm wellness initiatives and team building ideas.',
+        prompt: 'I want to launch a wellness initiative for a remote-first team. It needs to be low-cost but high-impact. Give me 5 creative ideas that go beyond just "yoga classes".',
+        color: 'text-amber-400'
+    }
+];
 
 const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     initialPrompt,
@@ -51,8 +92,6 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         if (initialPrompt && initialPrompt !== lastProcessedPromptRef.current) {
             lastProcessedPromptRef.current = initialPrompt;
             handleSendMessage(initialPrompt);
-            // Clear the prompt in parent to prevent re-running on re-renders if needed
-            // But since we track lastProcessedPromptRef, it should be fine.
         }
     }, [initialPrompt]);
 
@@ -74,20 +113,87 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         }
     }, [messages, isLoading]);
 
+    const saveMessage = async (convId: string, role: 'user' | 'model', content: string) => {
+        try {
+            await fetch(`/api/conversations/${convId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role, content })
+            });
+        } catch (error) {
+            console.error('Failed to save message', error);
+        }
+    };
+
+    const updateConversationTitle = async (convId: string, title: string) => {
+        try {
+            await fetch(`/api/conversations/${convId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+        } catch (error) {
+            console.error('Failed to update title', error);
+        }
+    };
+
+    const createConversation = async (title: string) => {
+        try {
+            const res = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+            if (res.ok) {
+                return await res.json();
+            } else {
+                const text = await res.text();
+                throw new Error(`Failed to create conversation: ${res.status} ${text}`);
+            }
+        } catch (error) {
+            console.error('Failed to create conversation', error);
+            throw error; // Re-throw to be caught in handleSendMessage
+        }
+    };
+
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
 
-        const userMsg: Message = { role: 'user', text };
+        const userMsg: Message = { role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
-        setIsPromptPanelOpen(false); // Close prompt panel if open
+        setIsPromptPanelOpen(false);
+
+        // Ensure we have a conversation ID
+        let activeConvId = currentConversationId;
+        if (!activeConvId) {
+            // Create new conversation on first message
+            // We'll use a temporary title first
+            const newConv = await createConversation('New Conversation');
+            if (newConv) {
+                activeConvId = newConv.id;
+                setCurrentConversationId(activeConvId);
+                if (onConversationStart && activeConvId) {
+                    onConversationStart(activeConvId, 'New Conversation', [userMsg]);
+                }
+            }
+        }
+
+        if (activeConvId) {
+            saveMessage(activeConvId, 'user', text);
+        }
 
         try {
-            const history = messages.map(m => ({ role: m.role, parts: m.text }));
-            const response = await getAgentResponse(agentType, text, contextScope, history);
-            const aiMsg: Message = { role: 'model', text: response.text };
+            const history = messages.map(m => ({ role: m.role, parts: m.content }));
+            if (!activeConvId) throw new Error("No conversation ID");
+            const response = await getAgentResponse(agentType, text, contextScope, history, activeConvId, 'prometheus_full_page');
+            const aiMsg: Message = { role: 'model', content: response.text };
             setMessages(prev => [...prev, aiMsg]);
+
+            if (activeConvId) {
+                saveMessage(activeConvId, 'model', response.text);
+            }
 
             // Build the updated message array
             const updatedMessages = [...messages, userMsg, aiMsg];
@@ -95,44 +201,39 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             // Generate title after first AI response (so we have context)
             if (messages.length === 0 && onTitleChange) {
                 try {
-                    // Ask AI to generate a concise title based on the conversation
                     const titlePrompt = `Based on this conversation where the user asked: "${text}" and you responded with: "${response.text}", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`;
-                    const titleResponse = await getAgentResponse(agentType, titlePrompt, contextScope, []);
-                    const generatedTitle = titleResponse.text.trim().replace(/^["']|["']$/g, ''); // Remove quotes if present
+                    const titleResponse = await getAgentResponse(agentType, titlePrompt, contextScope, [], activeConvId, 'prometheus_full_page_title_gen');
+                    const generatedTitle = titleResponse.text.trim().replace(/^["']|["']$/g, '');
+
                     onTitleChange(generatedTitle);
 
-                    // Auto-save conversation when title is generated
-                    if (onConversationStart) {
-                        const newConvId = currentConversationId || Date.now().toString();
-                        if (!currentConversationId) {
-                            setCurrentConversationId(newConvId);
+                    if (activeConvId) {
+                        updateConversationTitle(activeConvId, generatedTitle);
+                        // Notify parent to update list
+                        if (onConversationStart) {
+                            onConversationStart(activeConvId, generatedTitle, updatedMessages);
                         }
-                        onConversationStart(newConvId, generatedTitle, updatedMessages);
                     }
+
                 } catch (titleError) {
                     console.error('Error generating title:', titleError);
-                    // Fallback to first few words if AI title generation fails
                     const fallbackTitle = text.split(' ').slice(0, 4).join(' ') + '...';
                     onTitleChange(fallbackTitle);
 
-                    // Auto-save with fallback title
-                    if (onConversationStart) {
-                        const newConvId = currentConversationId || Date.now().toString();
-                        if (!currentConversationId) {
-                            setCurrentConversationId(newConvId);
+                    if (activeConvId) {
+                        updateConversationTitle(activeConvId, fallbackTitle);
+                        if (onConversationStart) {
+                            onConversationStart(activeConvId, fallbackTitle, updatedMessages);
                         }
-                        onConversationStart(newConvId, fallbackTitle, updatedMessages);
                     }
                 }
-            } else if (currentConversationId && onConversationStart) {
-                // For subsequent messages, update the existing conversation with full history
-                // We need to get the current title from parent - for now, we'll just update messages
-                // The parent will handle updating the conversation
-                onConversationStart(currentConversationId, '', updatedMessages);
+            } else if (activeConvId && onConversationStart) {
+                // For subsequent messages, update the existing conversation in parent list
+                onConversationStart(activeConvId, '', updatedMessages);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error getting AI response:', error);
-            setMessages(prev => [...prev, { role: 'model', text: "I'm having trouble connecting to my knowledge base right now. Please try again." }]);
+            setMessages(prev => [...prev, { role: 'model', content: `I'm having trouble connecting to my knowledge base right now. Error: ${error.message || error}` }]);
         } finally {
             setIsLoading(false);
         }
@@ -145,140 +246,159 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     const isChatStarted = messages.length > 0;
 
     return (
-        <div className="flex flex-col h-full w-full relative bg-transparent">
+        <div className="flex flex-col h-full w-full relative overflow-hidden bg-transparent">
+
+            {/* --- Dynamic Background Removed to show Platform Background --- */}
 
             {/* Chat Area - scrollable */}
             <div
                 ref={chatContainerRef}
-                className={`flex-1 overflow-y-auto custom-scrollbar relative px-4 py-8 transition-all duration-500 ${isChatStarted ? 'opacity-100' : 'opacity-0'} pb-32`}
-                style={{ zIndex: 10 }}
+                className={`flex-1 overflow-y-auto custom-scrollbar relative px-4 py-8 transition-all duration-700 ease-in-out z-10 ${isChatStarted ? 'opacity-100' : 'opacity-0'} pb-40`}
             >
-                <div className="max-w-3xl mx-auto space-y-8">
-                    <div className="space-y-8 pb-4">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-6 rounded-2xl shadow-xl ${msg.role === 'user'
-                                    ? 'bg-brand-blue-light text-brand-black rounded-tr-none'
-                                    : 'bg-[#1e293b]/80 backdrop-blur-md text-slate-200 rounded-tl-none border border-white/10'
-                                    }`}>
-                                    <div className="flex items-center gap-2 mb-2 opacity-50 text-xs font-bold uppercase tracking-wider">
-                                        {msg.role === 'user' ? <User size={12} /> : <Flame size={12} />}
-                                        {msg.role === 'user' ? 'You' : 'Prometheus'}
+                <div className="max-w-4xl mx-auto space-y-8">
+                    {messages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+                            <div className={`max-w-[80%] p-6 rounded-2xl shadow-lg backdrop-blur-md border ${msg.role === 'user'
+                                ? 'bg-brand-blue-light text-brand-black rounded-tr-none border-brand-blue-light'
+                                : 'bg-white/5 text-slate-200 rounded-tl-none border-white/10'
+                                }`}>
+                                <div className="flex items-center gap-2 mb-2 opacity-60 text-xs font-bold uppercase tracking-wider">
+                                    {msg.role === 'user' ? <User size={12} /> : <Flame size={12} className="text-brand-orange" />}
+                                    {msg.role === 'user' ? 'You' : 'Prometheus'}
+                                </div>
+                                <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                            </div>
+                        </div>
+                    ))}
+                    {isLoading && (
+                        <div className="flex justify-start animate-fade-in">
+                            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl rounded-tl-none flex items-center gap-3 text-slate-400 backdrop-blur-md">
+                                <Loader2 size={18} className="animate-spin text-brand-orange" />
+                                <span className="text-sm font-medium tracking-wide">Thinking...</span>
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+            </div>
+
+            {/* --- Hero Section (Empty State) --- */}
+            <div className={`
+                absolute inset-0 z-20 flex flex-col items-center justify-start pt-32 p-8 transition-all duration-700 ease-in-out
+                ${isChatStarted ? 'opacity-0 pointer-events-none translate-y-[-20px]' : 'opacity-100 translate-y-0'}
+            `}>
+                <div className="max-w-5xl w-full flex flex-col items-center">
+
+                    {/* Logo & Title */}
+                    <div className="flex flex-col items-center mb-12 animate-float">
+                        <div className="relative mb-8">
+                            <div className="absolute inset-0 bg-brand-blue-light/20 blur-[60px] rounded-full animate-pulse-slow"></div>
+                            <img src="/images/logos/EnhancedHR-logo-mark-flame.png" alt="Prometheus AI" className="w-56 h-56 relative z-10 drop-shadow-[0_0_50px_rgba(120,192,240,0.5)] object-contain" />
+                        </div>
+                        <h1 className="text-5xl md:text-6xl font-thin text-white tracking-tight text-center mb-3">
+                            Prometheus <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-brand-yellow">AI</span>
+                        </h1>
+                        <p className="text-lg text-slate-400 font-light tracking-wide">Your personal engine for human relevance.</p>
+                    </div>
+
+                    {/* Capability Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
+                        {CAPABILITY_CARDS.map((card, idx) => (
+                            <button
+                                key={card.id}
+                                onClick={() => handlePromptClick(card.prompt)}
+                                className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl p-6 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] overflow-hidden"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <div className="relative z-10 flex items-start gap-4">
+                                    <div className={`p-3 rounded-xl bg-white/5 border border-white/5 ${card.color} group-hover:scale-110 transition-transform duration-300`}>
+                                        <card.icon size={24} />
                                     </div>
-                                    <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.text}</div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white mb-1 group-hover:text-brand-blue-light transition-colors">{card.title}</h3>
+                                        <p className="text-sm text-slate-400 leading-relaxed">{card.description}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            </button>
                         ))}
-                        {isLoading && (
-                            <div className="flex justify-start">
-                                <div className="bg-[#1e293b]/80 backdrop-blur-md border border-white/10 p-6 rounded-2xl rounded-tl-none flex items-center gap-3 text-slate-400">
-                                    <Loader2 size={18} className="animate-spin" />
-                                    <span className="text-sm">Thinking...</span>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
                     </div>
                 </div>
             </div>
 
-            {/* Input Area Container - Fixed at bottom with high z-index */}
+            {/* --- Input Area (The Command Deck) --- */}
             <div className={`
-                flex-shrink-0 p-8 relative transition-all duration-700 ease-in-out
-                ${isChatStarted
-                    ? 'border-t border-white/5 bg-[#0A0D12]/95 backdrop-blur-xl'
-                    : 'absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center bg-transparent'
-                }
-            `}
-                style={{ zIndex: 70 }}
-            >
-                <div className={`w-full max-w-3xl mx-auto relative flex flex-col gap-6 ${!isChatStarted && 'mb-20'}`}>
+                absolute bottom-36 left-0 w-full z-[70] p-6 md:p-10 pb-0 transition-all duration-700 ease-in-out
+                ${!isChatStarted ? 'translate-y-0' : 'translate-y-0'}
+            `}>
+                <div className="max-w-4xl mx-auto relative group/input">
+                    {/* Glow Effect */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue opacity-20 group-focus-within/input:opacity-100 blur-xl transition-opacity duration-700 rounded-2xl"></div>
 
-                    {/* Hero Content (Logo & Title) - Only visible when no chat */}
-                    {!isChatStarted && (
-                        <div className="flex flex-col items-center gap-4 mb-4 animate-fade-in flex-shrink-0">
-                            <img src="/images/logos/EnhancedHR-logo-mark-flame.png" alt="Prometheus AI" className="w-20 h-20 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain flex-shrink-0" />
-                            <h1 className="text-4xl font-light text-white tracking-tight text-center">Prometheus AI</h1>
-                        </div>
-                    )}
+                    <div className="relative bg-[#0f172a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex items-center p-2 overflow-hidden">
 
-                    {/* Prompts - Above Input */}
-                    {!isChatStarted && (
-                        <div className="w-full animate-fade-in" style={{ animationDelay: '100ms' }}>
-                            <div className="flex flex-wrap gap-3 justify-center mb-4">
-                                {HERO_PROMPTS.map(p => (
-                                    <button
-                                        key={p.id}
-                                        onClick={() => handlePromptClick(p.prompt)}
-                                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 text-sm text-slate-300 hover:text-white transition-all duration-200 shadow-lg backdrop-blur-sm"
-                                    >
-                                        {p.label}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => setIsPromptPanelOpen(!isPromptPanelOpen)}
-                                    className="px-4 py-2 rounded-xl bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/20 text-sm text-brand-blue-light hover:text-white transition-all duration-200 flex items-center gap-2"
-                                >
-                                    <Sparkles size={14} />
-                                    See more
-                                    {isPromptPanelOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        {/* More Prompts Toggle */}
+                        <button
+                            onClick={() => setIsPromptPanelOpen(!isPromptPanelOpen)}
+                            className="p-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors mr-2"
+                            title="More Prompts"
+                        >
+                            <Sparkles size={20} />
+                        </button>
 
-                    {/* Prompt Suggestion Panel (Slide Down from Top Overlay) */}
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
+                            placeholder="Ask Prometheus anything..."
+                            className="flex-1 bg-transparent border-none outline-none text-lg text-white placeholder-slate-500 px-2 font-light h-12"
+                            autoFocus
+                        />
+
+                        <button
+                            onClick={() => handleSendMessage(input)}
+                            disabled={!input.trim() || isLoading}
+                            className={`
+                                p-3 rounded-xl transition-all duration-300 flex items-center justify-center
+                                ${input.trim() && !isLoading
+                                    ? 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.5)]'
+                                    : 'bg-white/5 text-slate-600 cursor-not-allowed'}
+                            `}
+                        >
+                            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                        </button>
+                    </div>
+
+                    {/* Suggestion Panel (Slide Up) */}
                     <div className={`
-                        absolute top-full left-0 w-full z-50 mt-4
-                        overflow-hidden transition-all duration-500 ease-in-out
-                        ${isPromptPanelOpen && !isChatStarted ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}
+                        absolute bottom-full left-0 w-full mb-4
+                        transition-all duration-500 ease-in-out origin-bottom
+                        ${isPromptPanelOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'}
                     `}>
-                        <div className="bg-[#0f141c]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-[#0f172a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                             {SUGGESTION_PANEL_PROMPTS.map(p => (
                                 <button
                                     key={p.id}
                                     onClick={() => handlePromptClick(p.prompt)}
-                                    className="text-left p-4 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group/prompt flex items-start gap-4"
+                                    className="text-left p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group/prompt flex items-start gap-3"
                                 >
-                                    <div className="mt-1 p-2 rounded-lg bg-white/5 text-slate-500 group-hover/prompt:text-brand-blue-light group-hover/prompt:bg-brand-blue-light/10 transition-colors">
-                                        <MessageSquare size={16} />
+                                    <div className="mt-1 text-slate-500 group-hover/prompt:text-brand-orange transition-colors">
+                                        <MessageSquare size={14} />
                                     </div>
                                     <div>
-                                        <div className="text-sm text-slate-200 group-hover/prompt:text-white font-medium mb-1">{p.label}</div>
+                                        <div className="text-sm text-slate-200 group-hover/prompt:text-white font-medium">{p.label}</div>
                                         <div className="text-[10px] text-slate-500 uppercase tracking-wider">{p.category}</div>
                                     </div>
                                 </button>
                             ))}
                         </div>
                     </div>
+                </div>
 
-                    {/* Input Field */}
-                    <div className="relative group/input w-full">
-                        {/* Glow Effect */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-brand-blue-light via-white to-brand-orange opacity-30 group-focus-within/input:opacity-100 blur-lg transition-opacity duration-500 rounded-2xl"></div>
-
-                        <div className="relative bg-[#0A0D12]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                            <div className="flex items-center p-2">
-                                {/* Removed Flame Icon from Input */}
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
-                                    placeholder="Ask Prometheus anything..."
-                                    className="flex-1 bg-transparent border-none outline-none text-lg text-white placeholder-slate-500 px-6 font-light h-14"
-                                    autoFocus
-                                />
-                                <button
-                                    onClick={() => handleSendMessage(input)}
-                                    className="p-3 bg-brand-blue-light text-brand-black rounded-xl hover:bg-white transition-colors"
-                                >
-                                    <ArrowRight size={24} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
+                {/* Footer Text */}
+                <div className={`text-center mt-4 transition-opacity duration-500 ${isChatStarted ? 'opacity-0' : 'opacity-100'}`}>
+                    <p className="text-xs text-slate-600">Prometheus can make mistakes. Verify important information.</p>
                 </div>
             </div>
         </div>
