@@ -804,25 +804,25 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleConversationStart = (conversationId: string, title: string, updatedMessages: { role: 'user' | 'model'; text: string }[]) => {
         setPrometheusConversationTitle(title);
 
+        // Use provided ID or fallback (though Prometheus should provide one)
+        const id = conversationId || activeConversation?.id || Date.now().toString();
+        const now = new Date().toISOString();
+
+        const newConv: Conversation = {
+            type: 'CONVERSATION',
+            id: id,
+            title: title,
+            lastMessage: updatedMessages[updatedMessages.length - 1]?.text || '',
+            date: now,
+            messages: updatedMessages,
+            collections: activeConversation?.collections || [],
+            isSaved: activeConversation?.isSaved || false
+        };
+
+        // Update active conversation so subsequent saves use the same ID
+        setActiveConversation(newConv);
+
         setConversations(prev => {
-            // Use provided ID or fallback (though Prometheus should provide one)
-            const id = conversationId || activeConversation?.id || Date.now().toString();
-            const now = new Date().toISOString();
-
-            const newConv: Conversation = {
-                type: 'CONVERSATION',
-                id: id,
-                title: title,
-                lastMessage: updatedMessages[updatedMessages.length - 1]?.text || '',
-                date: now,
-                messages: updatedMessages,
-                collections: activeConversation?.collections || [],
-                isSaved: activeConversation?.isSaved || false
-            };
-
-            // Update active conversation so subsequent saves use the same ID
-            setActiveConversation(newConv);
-
             const existingIndex = prev.findIndex(c => c.id === id);
             if (existingIndex >= 0) {
                 // Update existing

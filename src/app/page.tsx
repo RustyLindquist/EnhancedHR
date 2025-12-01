@@ -10,6 +10,7 @@ import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCourses } from '@/lib/courses';
 import { useSearchParams } from 'next/navigation';
+import { ContextScope } from '@/lib/ai/types';
 
 function HomeContent() {
   const [leftOpen, setLeftOpen] = useState(true);
@@ -158,6 +159,14 @@ function HomeContent() {
   const courseIdParam = searchParams.get('courseId');
   const initialCourseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
 
+  const contextScope = useMemo<ContextScope>(() =>
+    activeCourseId
+      ? { type: 'COURSE', id: activeCourseId }
+      : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
+        ? { type: 'PLATFORM' }
+        : { type: 'COLLECTION', id: activeCollectionId }
+    , [activeCourseId, activeCollectionId]);
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
 
@@ -217,13 +226,7 @@ function HomeContent() {
                   ? 'platform_assistant'
                   : 'collection_assistant'
             }
-            contextScope={useMemo(() =>
-              activeCourseId
-                ? { type: 'COURSE', id: activeCourseId }
-                : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
-                  ? { type: 'PLATFORM' }
-                  : { type: 'COLLECTION', id: activeCollectionId }
-              , [activeCourseId, activeCollectionId])}
+            contextScope={contextScope}
           />
         )}
       </div>

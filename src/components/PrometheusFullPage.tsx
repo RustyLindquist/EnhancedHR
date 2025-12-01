@@ -26,13 +26,13 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     onSetAIPrompt,
     onTitleChange,
     onConversationStart,
-    initialMessages = [],
+    initialMessages,
     conversationId,
     initialTitle,
     onSaveConversation,
     isSaved
 }) => {
-    const [messages, setMessages] = useState<Message[]>(initialMessages);
+    const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +58,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     // Sync state with props when they change (e.g. switching conversations)
     useEffect(() => {
-        setMessages(initialMessages);
+        if (initialMessages) {
+            setMessages(initialMessages);
+        }
     }, [initialMessages]);
 
     useEffect(() => {
