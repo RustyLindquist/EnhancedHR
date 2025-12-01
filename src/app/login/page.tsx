@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { login, signup, resetPassword } from './actions'
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
+import { useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
-    const [view, setView] = useState<'login' | 'signup' | 'forgot_password'>('login') // Default to Login
+function LoginPageContent() {
+    const searchParams = useSearchParams()
+    const initialView = searchParams.get('view') === 'signup' ? 'signup' : 'login'
+
+    const [view, setView] = useState<'login' | 'signup' | 'forgot_password'>(initialView)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -299,5 +304,13 @@ export default function LoginPage() {
                 </div>
             </main>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen w-full bg-[#051114] flex items-center justify-center text-white">Loading...</div>}>
+            <LoginPageContent />
+        </Suspense>
     )
 }

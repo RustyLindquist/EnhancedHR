@@ -80,6 +80,30 @@ export enum CollectionType {
   Module = 'MODULE',
   Lesson = 'LESSON',
   Conversation = 'CONVERSATION',
+  Instructor = 'INSTRUCTOR',
+}
+
+export interface Instructor {
+  type: 'INSTRUCTOR';
+  id: string;
+  name: string;
+  role: string;
+  bio: string;
+  avatar: string;
+  image: string; // Large portrait for card/page
+  credentials: string[];
+  stats: {
+    courses: number;
+    students: number;
+    rating: number;
+  };
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    website?: string;
+  };
+  featured?: boolean;
+  collections?: string[]; // IDs of collections this instructor belongs to
 }
 
 export interface Conversation {
@@ -95,7 +119,7 @@ export interface Conversation {
 }
 
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation;
+export type ContextCard = Course | Conversation | Instructor;
 
 export interface BackgroundTheme {
   id: string;

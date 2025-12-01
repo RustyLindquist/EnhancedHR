@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award } from 'lucide-react';
 import CardStack from './CardStack';
 import CollectionSurface from './CollectionSurface';
 import AlertBox from './AlertBox';
@@ -15,6 +15,10 @@ import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversati
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
 import DeleteConversationModal from './DeleteConversationModal';
+import InstructorCard from './InstructorCard';
+import InstructorPage from './InstructorPage';
+import { MOCK_INSTRUCTORS } from '../constants';
+import { Instructor } from '../types';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -185,6 +189,59 @@ const CompanyVisual = () => (
     </div>
 );
 
+const InstructorVisual = () => (
+    <div className="flex justify-center gap-6 opacity-80 select-none pointer-events-none scale-90">
+        {/* Card 1: Profile (Left, Tilted) */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-0 overflow-hidden transform -rotate-6 translate-y-8 backdrop-blur-sm relative">
+            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 opacity-50"></div>
+            <div className="absolute bottom-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="w-2/3 h-3 bg-white/20 rounded mb-2"></div>
+                <div className="w-1/2 h-2 bg-white/10 rounded"></div>
+            </div>
+        </div>
+
+        {/* Card 2: Main Instructor (Center) */}
+        <div className="w-60 h-72 rounded-xl border border-brand-blue-light/30 bg-[#0f172a] shadow-2xl flex flex-col p-6 gap-4 transform -translate-y-2 z-10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-blue-light/10 rounded-bl-full"></div>
+
+            <div className="w-20 h-20 rounded-full bg-slate-700 border-2 border-brand-blue-light/20 mx-auto mb-2 flex items-center justify-center">
+                <Users size={32} className="text-brand-blue-light" />
+            </div>
+
+            <div className="space-y-3 text-center">
+                <div className="w-3/4 h-4 bg-white/20 rounded mx-auto"></div>
+                <div className="w-1/2 h-3 bg-brand-blue-light/20 rounded mx-auto"></div>
+            </div>
+
+            <div className="mt-auto flex justify-between items-center px-2">
+                <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-brand-orange"></div>
+                    <div className="w-2 h-2 rounded-full bg-brand-orange"></div>
+                    <div className="w-2 h-2 rounded-full bg-brand-orange"></div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-white/20 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Card 3: Course List (Right, Tilted) */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-4 gap-3 transform rotate-6 translate-y-8 backdrop-blur-sm">
+            <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                <div className="w-6 h-6 rounded bg-brand-blue-light/20 flex items-center justify-center">
+                    <BookOpen size={12} className="text-brand-blue-light" />
+                </div>
+                <div className="w-20 h-2 bg-slate-700 rounded-full"></div>
+            </div>
+            <div className="space-y-2 pt-1">
+                <div className="w-full h-8 bg-white/5 rounded border border-white/5"></div>
+                <div className="w-full h-8 bg-white/5 rounded border border-white/5"></div>
+                <div className="w-full h-8 bg-white/5 rounded border border-white/5"></div>
+            </div>
+        </div>
+    </div>
+);
+
 const GenericVisual = () => (
     <div className="flex justify-center gap-6 opacity-40 select-none pointer-events-none">
         {[1, 2, 3].map((i) => (
@@ -293,6 +350,43 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState }) =
                 <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
                     Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
                 </p>
+            </div>
+        );
+    }
+
+    if (type === 'instructors') {
+        return (
+            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Instructors</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Instructors</h2>
+
+                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
+                    <p>
+                        Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
+                    </p>
+                    <p>
+                        Each instructor brings real-world experience, practical frameworks, and a unique perspective to their courses. You can follow specific instructors to get notified when they release new content.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
+                        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                            <Award size={16} className="text-brand-orange" /> Vetted Experts
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                            Every instructor is rigorously vetted for both subject matter expertise and teaching ability.
+                        </p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
+                        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                            <MessageSquare size={16} className="text-brand-blue-light" /> Direct Access
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                            Many instructors host live Q&A sessions and participate in community discussions.
+                        </p>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -448,6 +542,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [renderKey, setRenderKey] = useState(0);
     const [user, setUser] = useState<any>(null);
 
+    // Instructor State
+    const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
+
     // Fetch User on mount
     useEffect(() => {
         const fetchUser = async () => {
@@ -476,8 +573,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Reset expanded footer when changing collection
     useEffect(() => {
         setExpandedFooter(false);
-        // If collection changes, ensure we exit course view
+        // If collection changes, ensure we exit course/instructor view
         setSelectedCourseId(null);
+        setSelectedInstructorId(null);
         setIsPlayerActive(false);
     }, [activeCollectionId]);
 
@@ -664,6 +762,23 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
         try {
             const syllabus = await fetchCourseModules(courseId);
+
+            // Fetch progress if user is logged in
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                const { completedLessonIds } = await fetchUserCourseProgress(user.id, courseId);
+                // Merge progress
+                syllabus.forEach(m => {
+                    m.lessons.forEach(l => {
+                        if (completedLessonIds.includes(l.id)) {
+                            l.isCompleted = true;
+                        }
+                    });
+                });
+            }
+
             setSelectedCourseSyllabus(syllabus);
 
             // Still using mock resources for now as we haven't seeded resources table yet
@@ -680,6 +795,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const handleBackToCollection = () => {
         setSelectedCourseId(null);
+        setSelectedInstructorId(null);
     };
 
     const handleStartCourse = async () => {
@@ -884,6 +1000,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const getPageTitle = () => {
         if (activeCollectionId === 'academy') return 'All Courses';
         if (activeCollectionId === 'dashboard') return 'Dashboard';
+        if (activeCollectionId === 'instructors') return 'Course Instructors';
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
         if (predefined) return predefined.label;
@@ -897,6 +1014,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const getSubTitle = () => {
         if (activeCollectionId === 'academy') return 'Academy Collection';
         if (activeCollectionId === 'dashboard') return 'My Dashboard';
+        if (activeCollectionId === 'instructors') return 'Academy';
         return 'My Collection';
     };
 
@@ -916,6 +1034,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const renderCollectionVisual = () => {
         if (activeCollectionId === 'conversations') return <ConversationVisual />;
         if (activeCollectionId === 'company') return <CompanyVisual />;
+        if (activeCollectionId === 'instructors') return <InstructorVisual />;
         return <GenericVisual />;
     };
 
@@ -962,6 +1081,20 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // --- Determine Content to Render ---
     const selectedCourse = selectedCourseId ? courses.find(c => c.id === selectedCourseId) : null;
+    const selectedInstructor = selectedInstructorId ? MOCK_INSTRUCTORS.find(i => i.id === selectedInstructorId) : null;
+
+    if (selectedInstructor) {
+        return (
+            <div className="flex-1 w-full h-full relative z-10">
+                <InstructorPage
+                    instructor={selectedInstructor}
+                    courses={courses}
+                    onBack={handleBackToCollection}
+                    onCourseClick={handleCourseClick}
+                />
+            </div>
+        );
+    }
 
 
 
@@ -1578,6 +1711,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         </div>
                                     ))}
 
+                                    {/* Render Instructors */}
+                                    {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                        <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                            <InstructorCard
+                                                instructor={instructor}
+                                                onClick={setSelectedInstructorId}
+                                            />
+                                        </div>
+                                    ))}
+
                                     {/* Empty State */}
                                     {isCollectionEmpty ? (
                                         // --- EMPTY COLLECTION STATES ---
@@ -1592,7 +1735,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         </div>
                                     ) : (
                                         // --- NO RESULTS (Filter Context) ---
-                                        visibleCourses.length === 0 && visibleConversations.length === 0 && (
+                                        visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
                                             <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
                                                 <Search size={48} className="text-slate-600 mb-4" />
                                                 <p className="text-slate-400 text-lg">No courses found matching your filters.</p>

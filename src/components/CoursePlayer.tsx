@@ -5,6 +5,7 @@ import { Course, Module, Resource } from '../types';
 import AIPanel from './AIPanel';
 import SmartTranscript from './SmartTranscript';
 import { useTrialTracker } from '@/hooks/useTrialTracker';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { useRouter } from 'next/navigation';
 import QuizPlayer from './QuizPlayer';
 
@@ -25,8 +26,12 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
     const [currentTime, setCurrentTime] = useState(0);
     const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [videoError, setVideoError] = useState(false);
     const playerRef = React.useRef<any>(null);
     const router = useRouter();
+
+    // Progress Tracker
+    const { markLessonComplete, updateLastAccessed } = useCourseProgress(userId, course.id);
 
     // Trial Tracker
     const { minutesRemaining, isLocked, isLoading: isAuthLoading } = useTrialTracker(isPlaying);
@@ -34,6 +39,23 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
     // Find current active lesson
     const currentModule = syllabus.find(m => m.id === activeModuleId);
     const currentLesson = currentModule?.lessons.find(l => l.id === activeLessonId);
+
+    // Update last accessed when lesson changes
+    React.useEffect(() => {
+        if (activeLessonId) {
+            updateLastAccessed(activeLessonId);
+            setVideoError(false);
+        }
+    }, [activeLessonId]);
+
+    // Local state for completion (initialized from props)
+    const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
+        const completed = new Set<string>();
+        syllabus.forEach(m => m.lessons.forEach(l => {
+            if (l.isCompleted) completed.add(l.id);
+        }));
+        return completed;
+    });
 
     // Toggle Module Expansion
     const [expandedModules, setExpandedModules] = useState<string[]>([syllabus[0]?.id || '']);
@@ -54,13 +76,13 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
     };
 
     return (
-        <div className="flex h-full w-full bg-[#051114] text-white overflow-hidden relative">
+        <div className="flex h-full w-full text-white overflow-hidden relative">
 
             {/* --- MAIN CONTENT AREA (Scrollable) --- */}
             <div className="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar relative z-10">
 
                 {/* Header / Breadcrumbs */}
-                <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-[#051114]/80 backdrop-blur-md sticky top-0 z-30">
+                <div className="h-24 flex items-center justify-between px-8 border-b border-white/5 bg-[#051114]/80 backdrop-blur-md sticky top-0 z-30">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onBack}
@@ -101,28 +123,64 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                 quizData={currentLesson.quiz_data}
                                 onComplete={(score, passed) => {
                                     console.log('Quiz Completed', score, passed);
-                                    // TODO: Save progress to DB
+                                    if (passed) {
+                                        markLessonComplete(currentLesson.id);
+                                        setCompletedLessons(prev => new Set(prev).add(currentLesson.id));
+                                    }
                                 }}
                             />
                         ) : currentLesson?.video_url && !isLocked ? (
-                            <MuxPlayer
-                                ref={playerRef}
-                                streamType="on-demand"
-                                playbackId={currentLesson.video_url}
-                                metadata={{
-                                    video_id: currentLesson.id,
-                                    video_title: currentLesson.title,
-                                    viewer_user_id: userId,
-                                }}
-                                primaryColor="#78C0F0"
-                                secondaryColor="#000000"
-                                accentColor="#FF9300"
-                                className="w-full h-full"
-                                onTimeUpdate={handleTimeUpdate}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                                onEnded={() => setIsPlaying(false)}
-                            />
+                            videoError ? (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-50">
+                                    <div className="text-brand-red mb-4">
+                                        <Monitor size={48} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Video Playback Error</h3>
+                                    <p className="text-slate-400 mb-6 text-center max-w-md">
+                                        We encountered an issue playing this video. Please check your connection or try again.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setVideoError(false);
+                                            if (playerRef.current) {
+                                                playerRef.current.load();
+                                            }
+                                        }}
+                                        className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-colors"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : (
+                                <MuxPlayer
+                                    ref={playerRef}
+                                    streamType="on-demand"
+                                    playbackId={!currentLesson.video_url.startsWith('http') ? currentLesson.video_url : undefined}
+                                    src={currentLesson.video_url.startsWith('http') ? currentLesson.video_url : undefined}
+                                    metadata={{
+                                        video_id: currentLesson.id,
+                                        video_title: currentLesson.title,
+                                        viewer_user_id: userId,
+                                    }}
+                                    primaryColor="#78C0F0"
+                                    secondaryColor="#000000"
+                                    accentColor="#FF9300"
+                                    className="w-full h-full"
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onPlay={() => setIsPlaying(true)}
+                                    onPause={() => setIsPlaying(false)}
+                                    onEnded={() => {
+                                        setIsPlaying(false);
+                                        markLessonComplete(currentLesson.id);
+                                        // Update local state for immediate UI feedback
+                                        setCompletedLessons(prev => new Set(prev).add(currentLesson.id));
+                                    }}
+                                    onError={(err) => {
+                                        console.error("MuxPlayer Error:", err);
+                                        setVideoError(true);
+                                    }}
+                                />
+                            )
                         ) : isLocked ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md z-50">
                                 <Lock size={48} className="text-brand-red mb-4" />
@@ -242,7 +300,10 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                                         <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-brand-blue-light' : 'text-brand-blue-light'}`}>
                                                             Lesson {index + 1}.{module.lessons.indexOf(lesson) + 1}
                                                         </span>
-                                                        <span className="text-[10px] text-slate-500">{lesson.duration}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {completedLessons.has(lesson.id) && <CheckCircle size={12} className="text-green-400" />}
+                                                            <span className="text-[10px] text-slate-500">{lesson.duration}</span>
+                                                        </div>
                                                     </div>
 
                                                     <h4 className={`text-sm font-bold mb-4 line-clamp-2 ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
