@@ -208,6 +208,7 @@ export async function fetchInstructorDashboardData(userId: string): Promise<Inst
     ],
     courses: [
         {
+            type: 'COURSE',
             id: 101,
             title: "Strategic HR Leadership",
             author: "You",
@@ -229,6 +230,7 @@ export async function fetchInstructorDashboardData(userId: string): Promise<Inst
             }
         },
         {
+            type: 'COURSE',
             id: 102,
             title: "Conflict Resolution in the Workplace",
             author: "You",
@@ -250,6 +252,7 @@ export async function fetchInstructorDashboardData(userId: string): Promise<Inst
             }
         },
         {
+            type: 'COURSE',
             id: 103,
             title: "AI for HR Professionals",
             author: "You",

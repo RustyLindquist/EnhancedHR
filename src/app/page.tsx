@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
@@ -11,7 +11,7 @@ import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCourses } from '@/lib/courses';
 import { useSearchParams } from 'next/navigation';
 
-export default function Home() {
+function HomeContent() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
@@ -229,5 +229,13 @@ export default function Home() {
       </div>
 
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-[#0A0D12] text-white">Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

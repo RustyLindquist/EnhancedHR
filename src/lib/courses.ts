@@ -15,6 +15,7 @@ export async function fetchCourses(): Promise<Course[]> {
     }
 
     return data.map((course: any) => ({
+        type: 'COURSE',
         id: course.id,
         title: course.title,
         author: course.author,
