@@ -961,93 +961,93 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     // --- Determine Content to Render ---
-    // If a course is selected, we replace the grid view with the Course Page or Player
-    if (selectedCourseId) {
-        const selectedCourse = courses.find(c => c.id === selectedCourseId);
-        if (selectedCourse) {
-            if (isPlayerActive) {
-                return (
-                    <div className="flex-1 w-full h-full relative z-10">
-                        <CoursePlayer
-                            course={selectedCourse}
-                            syllabus={selectedCourseSyllabus}
-                            resources={selectedCourseResources}
-                            onBack={handleBackToCourseHome}
-                            initialLessonId={resumeLessonId}
-                            initialModuleId={resumeModuleId}
-                            userId={user?.id || ''}
-                        />
-                    </div>
-                );
-            }
+    const selectedCourse = selectedCourseId ? courses.find(c => c.id === selectedCourseId) : null;
 
-            return (
-                <div
-                    className="flex-1 w-full h-full relative z-10"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDragEnd={handleDragEnd}
-                    onDrop={() => setIsDragging(false)}
-                >
-                    {/* Drag Layer still needs to be here for the course page dragging */}
-                    {isDragging && draggedItem && (
-                        <CustomDragLayer
-                            item={draggedItem}
-                            x={mousePos.x}
-                            y={mousePos.y}
-                        />
-                    )}
 
-                    {/* Only render course page here, full screen essentially within canvas area */}
-                    <CourseHomePage
-                        course={selectedCourse}
-                        syllabus={selectedCourseSyllabus}
-                        resources={selectedCourseResources}
-                        onBack={handleBackToCollection}
-                        onStartCourse={handleStartCourse}
-                        onDragStart={handleDragStart}
-                        onAddToCollection={(item) => {
-                            // Mock add logic - in real app would open modal or toast
-                            console.log("Adding item to collection:", item);
-                            setFlaringPortalId('favorites'); // Simulating a drop effect
-                            setTimeout(() => setFlaringPortalId(null), 800);
-                        }}
-                    />
-
-                    {/* Allow drag and drop to footer from Course Page */}
-                    <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
-                        <CollectionSurface
-                            isDragging={isDragging}
-                            activeFlareId={flaringPortalId}
-                            onCollectionClick={() => { }}
-                            onDropCourse={(portalId) => {
-                                if (draggedItem) {
-                                    if (draggedItem.type === 'COURSE') {
-                                        if (portalId === 'new') {
-                                            onOpenModal(courses.find(c => c.id === draggedItem.id));
-                                        } else {
-                                            onImmediateAddToCollection(Number(draggedItem.id), portalId);
-                                            setFlaringPortalId(portalId);
-                                            setTimeout(() => setFlaringPortalId(null), 500);
-                                        }
-                                    } else {
-                                        // Handle non-course items (Mock)
-                                        setFlaringPortalId(portalId);
-                                        setTimeout(() => setFlaringPortalId(null), 500);
-                                    }
-                                    setIsDragging(false);
-                                    setDraggedItem(null);
-                                }
-                            }}
-                        />
-                    </div>
-                </div>
-            );
-        }
-    }
 
     // --- DASHBOARD VIEW MOVED TO MAIN RENDER ---
     // The dashboard is now rendered inside the main layout to preserve the header.
 
+
+    if (selectedCourse) {
+        if (isPlayerActive) {
+            return (
+                <div className="flex-1 w-full h-full relative z-10">
+                    <CoursePlayer
+                        course={selectedCourse}
+                        syllabus={selectedCourseSyllabus}
+                        resources={selectedCourseResources}
+                        onBack={handleBackToCourseHome}
+                        initialLessonId={resumeLessonId}
+                        initialModuleId={resumeModuleId}
+                        userId={user?.id || ''}
+                    />
+                </div>
+            );
+        }
+
+        return (
+            <div
+                className="flex-1 w-full h-full relative z-10"
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnd={handleDragEnd}
+                onDrop={() => setIsDragging(false)}
+            >
+                {/* Drag Layer still needs to be here for the course page dragging */}
+                {isDragging && draggedItem && (
+                    <CustomDragLayer
+                        item={draggedItem}
+                        x={mousePos.x}
+                        y={mousePos.y}
+                    />
+                )}
+
+                {/* Only render course page here, full screen essentially within canvas area */}
+                <CourseHomePage
+                    course={selectedCourse}
+                    syllabus={selectedCourseSyllabus}
+                    resources={selectedCourseResources}
+                    onBack={handleBackToCollection}
+                    onStartCourse={handleStartCourse}
+                    onDragStart={handleDragStart}
+                    onAddToCollection={(item) => {
+                        // Mock add logic - in real app would open modal or toast
+                        console.log("Adding item to collection:", item);
+                        setFlaringPortalId('favorites'); // Simulating a drop effect
+                        setTimeout(() => setFlaringPortalId(null), 800);
+                    }}
+                />
+
+                {/* Allow drag and drop to footer from Course Page */}
+                <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                    <CollectionSurface
+                        isDragging={isDragging}
+                        activeFlareId={flaringPortalId}
+                        onCollectionClick={() => { }}
+                        onDropCourse={(portalId) => {
+                            if (draggedItem) {
+                                if (draggedItem.type === 'COURSE') {
+                                    if (portalId === 'new') {
+                                        onOpenModal(courses.find(c => c.id === draggedItem.id));
+                                    } else {
+                                        onImmediateAddToCollection(Number(draggedItem.id), portalId);
+                                        setFlaringPortalId(portalId);
+                                        setTimeout(() => setFlaringPortalId(null), 500);
+                                    }
+                                } else {
+                                    // Handle non-course items (Mock)
+                                    setFlaringPortalId(portalId);
+                                    setTimeout(() => setFlaringPortalId(null), 500);
+                                }
+                                setIsDragging(false);
+                                setDraggedItem(null);
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
