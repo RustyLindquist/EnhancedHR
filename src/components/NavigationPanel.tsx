@@ -141,7 +141,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    router.push('/');
   };
 
   const handleSwitchUser = async (email: string) => {
@@ -170,7 +170,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
     } catch (error) {
       console.error('Error switching user:', error);
-      alert('Failed to switch user. Ensure demo accounts are seeded.');
+      alert(`Failed to switch user: ${(error as Error).message}`);
     }
   };
 
@@ -258,7 +258,10 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     `}>
       {/* Logo Area */}
       <div className="h-24 flex-shrink-0 flex items-center justify-center relative px-4 border-b border-white/5">
-        <div className="flex items-center justify-center cursor-pointer group w-full px-4 h-full">
+        <div
+          onClick={() => router.push('/')}
+          className="flex items-center justify-center cursor-pointer group w-full px-4 h-full"
+        >
           {isOpen ? (
             <img
               src="/images/logos/EnhancedHR-logo-no-mark.png"

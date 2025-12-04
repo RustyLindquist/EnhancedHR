@@ -20,7 +20,7 @@ export async function login(formData: FormData) {
     }
 
     revalidatePath('/', 'layout')
-    redirect('/')
+    redirect('/dashboard')
 }
 
 export async function signup(formData: FormData) {
@@ -50,8 +50,44 @@ export async function signup(formData: FormData) {
         redirect('/')
     }
 
-    // Email confirmation required
-    return { success: true, message: 'Please check your email to confirm your account.' }
+    return { success: true, message: 'Please check your email to confirm your account.', view: 'verify', email }
+}
+
+export async function verifyEmail(formData: FormData) {
+    const supabase = await createClient()
+
+    const email = formData.get('email') as string
+    const token = formData.get('code') as string
+
+    const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup',
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
+}
+
+export async function resendVerification(formData: FormData) {
+    const supabase = await createClient()
+
+    const email = formData.get('email') as string
+
+    const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true, message: 'Verification code resent.' }
 }
 
 export async function resetPassword(formData: FormData) {

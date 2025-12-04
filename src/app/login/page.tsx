@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
-import { login, signup, resetPassword } from './actions'
+import { login, signup, resetPassword, verifyEmail, resendVerification } from './actions'
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
@@ -12,10 +12,11 @@ function LoginPageContent() {
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') === 'signup' ? 'signup' : 'login'
 
-    const [view, setView] = useState<'login' | 'signup' | 'forgot_password'>(initialView)
+    const [view, setView] = useState<'login' | 'signup' | 'forgot_password' | 'verify'>(initialView)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+    const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
 
     // Membership Selection State
     const [membershipType, setMembershipType] = useState<'free' | 'pro'>('free')
@@ -31,6 +32,13 @@ function LoginPageContent() {
         let action;
         if (view === 'signup') action = signup;
         else if (view === 'login') action = login;
+        else if (view === 'verify') {
+            // Append email if not in form
+            if (!formData.get('email') && verificationEmail) {
+                formData.append('email', verificationEmail)
+            }
+            action = verifyEmail;
+        }
         else action = resetPassword;
 
         // In a real app, we would handle the payment info here if 'pro' is selected
@@ -52,10 +60,27 @@ function LoginPageContent() {
         } else if ('success' in result && result.success && 'message' in result && result.message) {
             setSuccessMessage(result.message)
             setIsLoading(false)
-            if (view === 'forgot_password') {
+
+            if ('view' in result && result.view === 'verify') {
+                setView('verify')
+                if ('email' in result && typeof result.email === 'string') {
+                    setVerificationEmail(result.email)
+                }
+            } else if (view === 'forgot_password') {
                 // Optional: switch back to login after success
             }
         }
+    }
+
+    const handleResendCode = async () => {
+        if (!verificationEmail) return;
+        setIsLoading(true);
+        const formData = new FormData();
+        formData.append('email', verificationEmail);
+        const result = await resendVerification(formData);
+        if (result?.error) setError(result.error);
+        else if (result?.message) setSuccessMessage(result.message);
+        setIsLoading(false);
     }
 
     return (
@@ -91,9 +116,9 @@ function LoginPageContent() {
                         {/* Card Header */}
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-xl font-bold text-white">
-                                {view === 'signup' ? 'Create Account' : (view === 'login' ? 'Welcome Back' : 'Reset Password')}
+                                {view === 'signup' ? 'Create Account' : (view === 'login' ? 'Welcome Back' : (view === 'verify' ? 'Verify Account' : 'Reset Password'))}
                             </h2>
-                            {view !== 'forgot_password' && (
+                            {view !== 'forgot_password' && view !== 'verify' && (
                                 <button
                                     onClick={() => {
                                         setView(view === 'signup' ? 'login' : 'signup')
@@ -105,7 +130,7 @@ function LoginPageContent() {
                                     {view === 'signup' ? 'Sign In' : 'Create Account'}
                                 </button>
                             )}
-                            {view === 'forgot_password' && (
+                            {(view === 'forgot_password' || view === 'verify') && (
                                 <button
                                     onClick={() => {
                                         setView('login')
@@ -121,6 +146,56 @@ function LoginPageContent() {
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
+
+                            {/* VERIFICATION VIEW */}
+                            {view === 'verify' && (
+                                <div className="space-y-6">
+                                    <div className="text-center space-y-2">
+                                        <div className="w-12 h-12 bg-brand-blue-light/10 rounded-full flex items-center justify-center mx-auto text-brand-blue-light mb-4">
+                                            <Mail size={24} />
+                                        </div>
+                                        <p className="text-sm text-slate-300">
+                                            We sent a verification code to <br />
+                                            <span className="text-white font-bold">{verificationEmail}</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Verification Code</label>
+                                        <div className="relative group">
+                                            <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                                <Lock size={16} className="text-slate-500 mr-3" />
+                                                <input
+                                                    name="code"
+                                                    type="text"
+                                                    placeholder="123456"
+                                                    required
+                                                    className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium tracking-widest"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => setView('signup')}
+                                            className="text-slate-500 hover:text-white transition-colors"
+                                        >
+                                            Change Email
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleResendCode}
+                                            className="text-brand-blue-light hover:text-white transition-colors font-bold"
+                                        >
+                                            Resend Code
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SIGNUP VIEW */}
                             {view === 'signup' && (
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
@@ -139,23 +214,26 @@ function LoginPageContent() {
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
-                                <div className="relative group">
-                                    <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
-                                        <Mail size={16} className="text-slate-500 mr-3" />
-                                        <input
-                                            name="email"
-                                            type="email"
-                                            placeholder="name@company.com"
-                                            required
-                                            className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
-                                        />
+                            {view !== 'verify' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+                                    <div className="relative group">
+                                        <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                            <Mail size={16} className="text-slate-500 mr-3" />
+                                            <input
+                                                name="email"
+                                                type="email"
+                                                placeholder="name@company.com"
+                                                required
+                                                defaultValue={verificationEmail || ''}
+                                                className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {view !== 'forgot_password' && (
+                            {view !== 'forgot_password' && view !== 'verify' && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
@@ -288,7 +366,7 @@ function LoginPageContent() {
                                     <Loader2 size={20} className="animate-spin" />
                                 ) : (
                                     <>
-                                        {view === 'signup' ? (membershipType === 'pro' ? 'Complete Purchase' : 'Create Account') : (view === 'login' ? 'Sign In' : 'Send Reset Link')} <ArrowRight size={18} />
+                                        {view === 'signup' ? (membershipType === 'pro' ? 'Complete Purchase' : 'Create Account') : (view === 'login' ? 'Sign In' : (view === 'verify' ? 'Verify Account' : 'Send Reset Link'))} <ArrowRight size={18} />
                                     </>
                                 )}
                             </button>
