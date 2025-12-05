@@ -61,18 +61,25 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
         setStatus('saving');
         const supabase = createClient();
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('ai_system_prompts')
             .update({
                 system_instruction: editedInstruction,
                 model: selectedModel,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', selectedPromptId);
+            .eq('id', selectedPromptId)
+            .select()
+            .single();
 
         if (error) {
             console.error('Error updating prompt:', error);
             setStatus('error');
+            alert(`Error saving: ${error.message}`);
+        } else if (!data) {
+            console.error('No data returned after update. RLS might be blocking it.');
+            setStatus('error');
+            alert('Save failed. You may not have permission to update this record.');
         } else {
             // Update local state
             setPrompts(prompts.map(p => p.id === selectedPromptId ? { ...p, system_instruction: editedInstruction, model: selectedModel } : p));
