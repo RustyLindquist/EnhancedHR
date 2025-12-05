@@ -10,7 +10,7 @@ export interface ContextScope {
 
 export interface ContextItem {
     id: string;
-    type: string; // 'LESSON', 'RESOURCE', 'COURSE', etc.
+    type: string; // 'LESSON', 'RESOURCE', 'COURSE', 'USER_INSIGHTS', etc.
     content: string;
     similarity?: number;
 }

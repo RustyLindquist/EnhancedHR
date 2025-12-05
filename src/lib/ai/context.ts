@@ -80,7 +80,7 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
         if (scope.userId) {
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('full_name, role, org_id')
+                .select('full_name, role, org_id, ai_insights')
                 .eq('id', scope.userId)
                 .single();
             
@@ -90,6 +90,15 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
                     type: 'USER_PROFILE',
                     content: `User: ${profile.full_name}\nRole: ${profile.role}\nOrganization ID: ${profile.org_id}`
                 });
+
+                // Add AI Insights if available
+                if (profile.ai_insights && Array.isArray(profile.ai_insights) && profile.ai_insights.length > 0) {
+                    contextItems.push({
+                        id: `${scope.userId}_insights`,
+                        type: 'USER_INSIGHTS',
+                        content: `Known User Context:\n- ${profile.ai_insights.join('\n- ')}`
+                    });
+                }
             }
         }
 
