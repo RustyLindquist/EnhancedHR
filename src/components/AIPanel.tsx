@@ -10,6 +10,8 @@ interface AIPanelProps {
   agentType?: AgentType; // Default agent to load
   contextScope?: ContextScope; // Scope for RAG
   initialPrompt?: string;
+  conversationId?: string | null;
+  onConversationIdChange?: (id: string) => void;
 }
 
 import { Message } from '@/types';
@@ -19,7 +21,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
   setIsOpen,
   agentType = 'platform_assistant',
   contextScope = { type: 'PLATFORM' },
-  initialPrompt
+  initialPrompt,
+  conversationId: propConversationId,
+  onConversationIdChange
 }) => {
   const [width, setWidth] = useState(384); // Default w-96
   const [isDragging, setIsDragging] = useState(false);
@@ -83,6 +87,33 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
   const [conversationId, setConversationId] = useState<string | null>(null);
 
+  // Sync prop conversationId to local state and fetch messages
+  useEffect(() => {
+    if (propConversationId && propConversationId !== conversationId) {
+      setConversationId(propConversationId);
+      // Fetch messages for this conversation
+      const fetchMessages = async () => {
+        try {
+          const res = await fetch(`/api/conversations/${propConversationId}/messages`);
+          if (res.ok) {
+            const data = await res.json();
+            // Map DB messages to UI messages if needed, assuming API returns compatible format
+            // The API returns { role, content, ... }
+            setMessages(data.map((m: any) => ({ role: m.role, content: m.content })));
+          }
+        } catch (error) {
+          console.error("Failed to load conversation history", error);
+        }
+      };
+      fetchMessages();
+    } else if (propConversationId === null && conversationId !== null) {
+      // Reset if prop explicitly clears it (e.g. context switch)
+      setConversationId(null);
+      setMessages([]);
+    }
+  }, [propConversationId]);
+
+
   const createConversation = async (title: string) => {
     try {
       const res = await fetch('/api/conversations', {
@@ -132,6 +163,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
       if (newConv) {
         activeConvId = newConv.id;
         setConversationId(activeConvId);
+        if (onConversationIdChange && activeConvId) {
+          onConversationIdChange(activeConvId);
+        }
       }
     }
 

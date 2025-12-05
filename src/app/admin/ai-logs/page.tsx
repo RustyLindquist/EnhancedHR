@@ -47,12 +47,7 @@ export default function AdminAILogsPage() {
 
             const { data, error } = await supabase
                 .from('ai_logs')
-                .select(`
-                    *,
-                    user:user_id (
-                        email
-                    )
-                `)
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(100);
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, User, Loader2, Sparkles, MessageSquare, Flame, ArrowRight, ChevronUp, ChevronDown, Zap, Shield, Brain, Lightbulb, Compass, Send } from 'lucide-react';
 import { getAgentResponse } from '@/lib/ai/engine';
+import { createClient } from '@/lib/supabase/client';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import { HERO_PROMPTS, SUGGESTION_PANEL_PROMPTS, PromptSuggestion } from '@/lib/prompts';
 import { Message } from '@/types';
@@ -113,13 +114,19 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         }
     }, [messages, isLoading]);
 
+    const supabase = createClient();
+
     const saveMessage = async (convId: string, role: 'user' | 'model', content: string) => {
         try {
-            await fetch(`/api/conversations/${convId}/messages`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role, content })
-            });
+            const { error } = await supabase
+                .from('conversation_messages')
+                .insert({
+                    conversation_id: convId,
+                    role,
+                    content
+                });
+
+            if (error) throw error;
         } catch (error) {
             console.error('Failed to save message', error);
         }
@@ -127,11 +134,12 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     const updateConversationTitle = async (convId: string, title: string) => {
         try {
-            await fetch(`/api/conversations/${convId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title })
-            });
+            const { error } = await supabase
+                .from('conversations')
+                .update({ title })
+                .eq('id', convId);
+
+            if (error) throw error;
         } catch (error) {
             console.error('Failed to update title', error);
         }
@@ -139,25 +147,32 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     const createConversation = async (title: string) => {
         try {
-            const res = await fetch('/api/conversations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title })
-            });
-            if (res.ok) {
-                return await res.json();
-            } else {
-                const text = await res.text();
-                throw new Error(`Failed to create conversation: ${res.status} ${text}`);
-            }
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("User not authenticated");
+
+            const { data, error } = await supabase
+                .from('conversations')
+                .insert({
+                    user_id: user.id,
+                    title,
+                    is_saved: true // Default to true so it shows up
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
         } catch (error) {
             console.error('Failed to create conversation', error);
-            throw error; // Re-throw to be caught in handleSendMessage
+            throw error;
         }
     };
 
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
+        setErrorMsg(null);
 
         const userMsg: Message = { role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
@@ -170,7 +185,6 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             let activeConvId = currentConversationId;
             if (!activeConvId) {
                 // Create new conversation on first message
-                // We'll use a temporary title first
                 try {
                     const newConv = await createConversation('New Conversation');
                     if (newConv) {
@@ -180,10 +194,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                             onConversationStart(activeConvId, 'New Conversation', [userMsg]);
                         }
                     }
-                } catch (convError) {
+                } catch (convError: any) {
                     console.error("Failed to create conversation:", convError);
-                    // We can continue without a conversation ID for a single turn, or stop.
-                    // Let's stop and show error to avoid "ghost" messages.
+                    setErrorMsg(`Failed to create conversation: ${convError.message || convError}`);
                     throw new Error("Could not start a new conversation. Please try again.");
                 }
             }
@@ -194,7 +207,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
             const history = messages.map(m => ({ role: m.role, parts: m.content }));
 
-            // Pass activeConvId (can be undefined if creation failed and we didn't throw, but we threw above)
+            // Pass activeConvId
             const response = await getAgentResponse(agentType, text, contextScope, history, activeConvId, 'prometheus_full_page');
             const aiMsg: Message = { role: 'model', content: response.text };
             setMessages(prev => [...prev, aiMsg]);
@@ -206,8 +219,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             // Build the updated message array
             const updatedMessages = [...messages, userMsg, aiMsg];
 
-            // Generate title after first AI response (so we have context)
+            // Generate title logic...
             if (messages.length === 0 && onTitleChange) {
+                // ... (keep existing title logic)
                 try {
                     const titlePrompt = `Based on this conversation where the user asked: "${text}" and you responded with: "${response.text}", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`;
                     const titleResponse = await getAgentResponse(agentType, titlePrompt, contextScope, [], activeConvId, 'prometheus_full_page_title_gen');
@@ -217,17 +231,15 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
                     if (activeConvId) {
                         updateConversationTitle(activeConvId, generatedTitle);
-                        // Notify parent to update list
                         if (onConversationStart) {
                             onConversationStart(activeConvId, generatedTitle, updatedMessages);
                         }
                     }
-
                 } catch (titleError) {
                     console.error('Error generating title:', titleError);
+                    // Fallback
                     const fallbackTitle = text.split(' ').slice(0, 4).join(' ') + '...';
                     onTitleChange(fallbackTitle);
-
                     if (activeConvId) {
                         updateConversationTitle(activeConvId, fallbackTitle);
                         if (onConversationStart) {
@@ -236,7 +248,6 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     }
                 }
             } else if (activeConvId && onConversationStart) {
-                // For subsequent messages, update the existing conversation in parent list
                 onConversationStart(activeConvId, '', updatedMessages);
             }
         } catch (error: any) {
@@ -255,6 +266,8 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     return (
         <div className="flex flex-col h-full w-full relative overflow-hidden bg-transparent">
+
+            {/* --- Dynamic Background Removed to show Platform Background --- */}
 
             {/* --- Dynamic Background Removed to show Platform Background --- */}
 

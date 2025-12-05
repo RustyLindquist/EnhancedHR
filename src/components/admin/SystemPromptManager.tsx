@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { getOpenRouterModels, OpenRouterModel } from '@/lib/openrouter';
+import { fetchOpenRouterModels, OpenRouterModel } from '@/app/actions/ai';
 
 interface SystemPrompt {
     id: string;
@@ -34,15 +34,15 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
 
     // Fetch available models on mount
     useEffect(() => {
-        const fetchModels = async () => {
+        const loadModels = async () => {
             setIsLoadingModels(true);
-            const models = await getOpenRouterModels();
+            const models = await fetchOpenRouterModels();
             // Sort models by name
             models.sort((a, b) => a.name.localeCompare(b.name));
             setAvailableModels(models);
             setIsLoadingModels(false);
         };
-        fetchModels();
+        loadModels();
     }, []);
 
     // Sync edited instruction and model when selection changes

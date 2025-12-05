@@ -33,7 +33,16 @@ export async function middleware(request: NextRequest) {
 
     const {
         data: { user },
+        error,
     } = await supabase.auth.getUser()
+
+    if (error) {
+        console.error('[Middleware] Auth error:', error.message)
+    } else if (user) {
+        // console.log('[Middleware] User authenticated:', user.id)
+    } else {
+        // console.log('[Middleware] No user found')
+    }
 
     // Protected routes
     if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {

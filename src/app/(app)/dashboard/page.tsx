@@ -143,6 +143,7 @@ function HomeContent() {
   const [aiPanelPrompt, setAiPanelPrompt] = useState('');
   // Lifted state for Context Awareness
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const handleOpenAIPanel = () => {
     // Don't open side panel if we are in full screen mode
@@ -155,9 +156,54 @@ function HomeContent() {
     setActiveCourseId(courseId);
   };
 
+  // Handle Resuming Conversation from MainCanvas
+  const handleResumeConversation = (conversation: any) => {
+    const { metadata, id } = conversation;
+    const scope = metadata?.contextScope;
+
+    if (scope) {
+      if (scope.type === 'COURSE') {
+        setActiveCourseId(scope.id);
+        setActiveCollectionId('academy'); // Or wherever the course is accessible, usually academy or a collection
+        // We might need to ensure the course page opens. MainCanvas watches activeCourseId?
+        // MainCanvas doesn't watch activeCourseId for navigation, it watches selectedCourseId internal state.
+        // We need to trigger MainCanvas to open the course.
+        // But MainCanvas props don't have a direct "open course" control other than initialCourseId which is only for mount.
+        // Wait, MainCanvas has `onCourseSelect` prop but that's a callback FROM MainCanvas.
+        // We might need to pass `activeCourseId` DOWN to MainCanvas to trigger effect?
+        // Let's look at MainCanvas again. It has `initialCourseId`.
+        // We might need to key MainCanvas to force re-mount or add a prop to force navigation.
+        // Actually, `MainCanvas` has `onCourseSelect` which is a callback.
+        // Let's pass `activeCourseId` as a prop to MainCanvas and have it react?
+        // MainCanvas currently takes `initialCourseId`.
+        // Let's try setting `activeCollectionId` to 'academy' and hope the user navigates? No that's bad.
+        // We need to tell MainCanvas to open a specific course.
+        // Let's add `activeCourseId` prop to MainCanvas.
+      } else if (scope.type === 'COLLECTION') {
+        setActiveCollectionId(scope.id);
+        setActiveCourseId(null);
+      } else if (scope.type === 'PLATFORM') {
+        setActiveCollectionId('prometheus');
+        setActiveCourseId(null);
+      }
+    } else {
+      // Default to platform if no scope
+      setActiveCollectionId('prometheus');
+    }
+
+    setActiveConversationId(id);
+    setRightOpen(true);
+  };
+
   const searchParams = useSearchParams();
   const courseIdParam = searchParams.get('courseId');
   const initialCourseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
+
+  useEffect(() => {
+    if (courseIdParam) {
+      setActiveCourseId(courseIdParam);
+    }
+  }, [courseIdParam]);
 
   const contextScope = useMemo<ContextScope>(() =>
     activeCourseId
@@ -210,7 +256,9 @@ function HomeContent() {
           onOpenAIPanel={handleOpenAIPanel}
           onSetAIPrompt={setAiPanelPrompt}
           onCourseSelect={handleCourseSelect}
-          initialCourseId={initialCourseId}
+          initialCourseId={activeCourseId ? parseInt(activeCourseId, 10) : undefined}
+          onResumeConversation={handleResumeConversation}
+          activeConversationId={activeConversationId}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
@@ -227,6 +275,8 @@ function HomeContent() {
                   : 'collection_assistant'
             }
             contextScope={contextScope}
+            conversationId={activeConversationId}
+            onConversationIdChange={setActiveConversationId}
           />
         )}
       </div>
