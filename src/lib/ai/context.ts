@@ -7,8 +7,15 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
     const contextItems: ContextItem[] = [];
 
     try {
+        // 1. Generate Embedding if query exists
+        let queryEmbedding: number[] = [];
+        if (query) {
+            const { generateEmbedding } = await import('./embedding');
+            queryEmbedding = await generateEmbedding(query);
+        }
+
         if (scope.type === 'COURSE' && scope.id) {
-            // 1. Fetch Course Details
+            // 1. Fetch Course Details (Always useful)
             const { data: course } = await supabase
                 .from('courses')
                 .select('title, description, author')
@@ -23,24 +30,40 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
                 });
             }
 
-            // 2. Fetch Lessons (Text Content)
-            // Note: In a real scenario, we'd use vector search here if query is present
-            // For now, we'll fetch high-level lesson outlines
-            const { data: modules } = await supabase
-                .from('modules')
-                .select('id, title, lessons(id, title, content)')
-                .eq('course_id', scope.id);
+            // 2. Vector Search (RAG)
+            if (queryEmbedding.length > 0) {
+                const { data: chunks, error } = await supabase.rpc('match_course_embeddings', {
+                    query_embedding: queryEmbedding,
+                    match_threshold: 0.7,
+                    match_count: 5,
+                    filter_course_id: parseInt(scope.id)
+                });
 
-            if (modules) {
-                modules.forEach(mod => {
-                    mod.lessons.forEach((lesson: any) => {
+                if (chunks) {
+                    chunks.forEach((chunk: any) => {
                         contextItems.push({
-                            id: lesson.id,
-                            type: 'LESSON',
-                            content: `Lesson: ${lesson.title}\nModule: ${mod.title}\nContent: ${lesson.content ? lesson.content.substring(0, 500) + '...' : 'No transcript available.'}`
+                            id: chunk.id,
+                            type: 'RAG_CONTENT',
+                            content: chunk.content,
+                            similarity: chunk.similarity
                         });
                     });
-                });
+                }
+            } else {
+                // Fallback: If no query (initial load), maybe just list modules?
+                // Do NOT load full transcripts.
+                const { data: modules } = await supabase
+                    .from('modules')
+                    .select('title')
+                    .eq('course_id', scope.id);
+                
+                if (modules) {
+                    contextItems.push({
+                        id: 'outline',
+                        type: 'COURSE_OUTLINE',
+                        content: `Modules: ${modules.map(m => m.title).join(', ')}`
+                    });
+                }
             }
 
         } else if (scope.type === 'COLLECTION' && scope.id) {
@@ -51,29 +74,66 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
                 .eq('collection_id', scope.id);
 
             if (items) {
-                // This is where polymorphism shines. We'd ideally fetch details for each item.
-                // For MVP, we'll just list them or fetch course details if it's a course.
-                for (const item of items) {
-                    if (item.item_type === 'COURSE') {
-                         const { data: c } = await supabase.from('courses').select('title, description').eq('id', item.item_id).single();
-                         if (c) {
-                             contextItems.push({
-                                 id: item.item_id,
-                                 type: 'COURSE',
-                                 content: `Collection Item (Course): ${c.title} - ${c.description}`
-                             });
-                         }
+                const courseIds = items.filter(i => i.item_type === 'COURSE').map(i => i.item_id);
+                
+                // For Collection, we want to search across these courses.
+                // Since match_course_embeddings only takes one ID, we'll do a Global Search 
+                // and then filter in code (suboptimal but works without schema change)
+                // OR just do Global Search and assume relevance sorts it out.
+                // Let's do Global Search if query exists.
+                
+                if (queryEmbedding.length > 0) {
+                     const { data: chunks } = await supabase.rpc('match_course_embeddings', {
+                        query_embedding: queryEmbedding,
+                        match_threshold: 0.5,
+                        match_count: 7, // Slightly more for collections
+                        filter_course_id: null // Global search
+                    });
+
+                    if (chunks) {
+                        // Filter to only items in this collection (if they are courses)
+                        // This assumes chunks have course_id.
+                        const relevantChunks = chunks.filter((c: any) => courseIds.includes(c.course_id.toString()));
+                        
+                        relevantChunks.forEach((chunk: any) => {
+                            contextItems.push({
+                                id: chunk.id,
+                                type: 'RAG_CONTENT',
+                                content: chunk.content,
+                                similarity: chunk.similarity
+                            });
+                        });
                     }
-                    // Add handlers for other types (LESSON, RESOURCE) here
                 }
             }
         } else if (scope.type === 'PLATFORM') {
-            // Global Context - maybe fetch top categories or recent trends
+            // Global Context
             contextItems.push({
                 id: 'platform_global',
                 type: 'PLATFORM',
                 content: 'EnhancedHR is a platform for HR professionals to learn and earn credits. It features AI-powered courses and tools.'
             });
+
+            // Global Vector Search
+            if (queryEmbedding.length > 0) {
+                const { data: chunks } = await supabase.rpc('match_course_embeddings', {
+                    query_embedding: queryEmbedding,
+                    match_threshold: 0.5,
+                    match_count: 5,
+                    filter_course_id: null // Global search
+                });
+
+                if (chunks) {
+                    chunks.forEach((chunk: any) => {
+                        contextItems.push({
+                            id: chunk.id,
+                            type: 'RAG_CONTENT',
+                            content: chunk.content,
+                            similarity: chunk.similarity
+                        });
+                    });
+                }
+            }
         }
 
         // User Context (Always append if userId is present)
