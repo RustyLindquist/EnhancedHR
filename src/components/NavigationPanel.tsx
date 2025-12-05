@@ -503,19 +503,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   </button>
                 )}
 
-                {/* AI Agents Link */}
-                {userProfile?.role === 'admin' && (
-                  <button
-                    onClick={() => {
-                      router.push('/admin/prompts');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <Bot size={16} className="mr-3 text-slate-400" />
-                    AI Agents
-                  </button>
-                )}
+
 
                 {/* Admin Role Switcher Entry */}
                 {(userProfile?.role === 'admin' || isImpersonating) && (

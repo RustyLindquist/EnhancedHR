@@ -702,7 +702,7 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin/courses', label: 'Courses', icon: BookOpen },
     { id: 'admin/authors', label: 'Authors', icon: GraduationCap },
-    { id: 'admin/prompts', label: 'System Prompts', icon: MessageSquare },
+    { id: 'admin/prompts', label: 'AI Agents', icon: MessageSquare },
     { id: 'admin/prompt-suggestions', label: 'Chat Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
