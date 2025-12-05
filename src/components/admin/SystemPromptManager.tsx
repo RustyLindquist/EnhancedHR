@@ -69,17 +69,16 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                 updated_at: new Date().toISOString()
             })
             .eq('id', selectedPromptId)
-            .select()
-            .single();
+            .select();
 
         if (error) {
             console.error('Error updating prompt:', error);
             setStatus('error');
             alert(`Error saving: ${error.message}`);
-        } else if (!data) {
+        } else if (!data || data.length === 0) {
             console.error('No data returned after update. RLS might be blocking it.');
             setStatus('error');
-            alert('Save failed. You may not have permission to update this record.');
+            alert('Save failed. You may not have permission to update this record. Please ensure you are an Admin.');
         } else {
             // Update local state
             setPrompts(prompts.map(p => p.id === selectedPromptId ? { ...p, system_instruction: editedInstruction, model: selectedModel } : p));
