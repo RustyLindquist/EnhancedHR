@@ -545,6 +545,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
 
+    // Prometheus Page Prompt State
+    const [prometheusPagePrompt, setPrometheusPagePrompt] = useState<string | undefined>(undefined);
+
     // Fetch User on mount
     useEffect(() => {
         const fetchUser = async () => {
@@ -798,6 +801,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setSelectedInstructorId(null);
     };
 
+    const handlePrometheusPagePrompt = (prompt: string) => {
+        setPrometheusPagePrompt(prompt);
+        onSelectCollection('prometheus');
+    };
+
     const handleStartCourse = async () => {
         if (selectedCourseId) {
             try {
@@ -1018,7 +1026,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Dynamic Title Generator
     const getPageTitle = () => {
         if (activeCollectionId === 'academy') return 'All Courses';
-        if (activeCollectionId === 'dashboard') return 'Dashboard';
+        if (activeCollectionId === 'dashboard') {
+            const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
+            return `Welcome ${firstName}`;
+        }
         if (activeCollectionId === 'instructors') return 'Course Instructors';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
 
@@ -1581,6 +1592,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         initialMessages={activeConversation?.messages}
                         onSaveConversation={handleSaveConversation}
                         isSaved={!!activeConversation?.isSaved}
+                        initialPrompt={prometheusPagePrompt}
                     />
                 </div>
             ) : activeCollectionId === 'dashboard' ? (
@@ -1606,9 +1618,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             user={user}
                             courses={courses}
                             onNavigate={onSelectCollection}
-                            onStartCourse={handleStartCourse}
+                            onStartCourse={handleCourseClick}
                             onOpenAIPanel={onOpenAIPanel}
                             onSetAIPrompt={onSetAIPrompt}
+                            onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                         />
                     )}
                 </div>

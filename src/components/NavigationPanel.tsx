@@ -181,13 +181,20 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     try {
       const { access_token, refresh_token } = JSON.parse(backupSessionStr);
 
-      // Restore Admin Session
-      const { error } = await supabase.auth.setSession({
+      // 1. Sign out of the demo account first to ensure clean state
+      await supabase.auth.signOut();
+
+      // 2. Restore Admin Session
+      const { data, error } = await supabase.auth.setSession({
         access_token,
         refresh_token
       });
 
       if (error) throw error;
+
+      if (!data.session) {
+        throw new Error('Session restoration returned no session');
+      }
 
       // Clear backup
       sessionStorage.removeItem('admin_backup_session');
@@ -197,7 +204,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
     } catch (error) {
       console.error('Failed to restore admin session:', error);
-      alert('Failed to restore admin session. Please log in again.');
+      // Show more detailed error to help debugging
+      alert(`Failed to restore admin session: ${(error as Error).message}. Please log in again.`);
       sessionStorage.removeItem('admin_backup_session');
       window.location.href = '/login';
     }
@@ -247,6 +255,28 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     return true;
   });
 
+  const [hoveredItem, setHoveredItem] = useState<{ id: string, top: number, label: string, onClick: () => void } | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleItemHover = (item: NavItemConfig, e: React.MouseEvent, onClick: () => void) => {
+    if (isOpen) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoveredItem({
+      id: item.id,
+      top: rect.top,
+      label: item.label,
+      onClick
+    });
+  };
+
+  const handleItemLeave = () => {
+    if (isOpen) return;
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredItem(null);
+    }, 100); // Small delay to allow moving to the tooltip
+  };
+
   return (
     <div className={`
       ${isOpen ? 'w-72' : 'w-20'} 
@@ -255,7 +285,28 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       border-r border-white/10 flex flex-col 
       transition-all duration-300 ease-in-out z-[100] h-full
       shadow-[5px_0_30px_0_rgba(0,0,0,0.3)]
+      relative
     `}>
+      {/* Floating Hover Label (Portal-like behavior but fixed) */}
+      {!isOpen && hoveredItem && (
+        <div
+          className="fixed left-20 z-[150] bg-[#0f141c] border border-white/10 rounded-r-xl py-2.5 px-4 shadow-xl flex items-center animate-fade-in cursor-pointer hover:bg-white/5 transition-colors"
+          style={{ top: hoveredItem.top, height: '44px' }} // Match NavItem height roughly
+          onMouseEnter={() => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+          }}
+          onMouseLeave={() => setHoveredItem(null)}
+          onClick={() => {
+            hoveredItem.onClick();
+            setHoveredItem(null);
+          }}
+        >
+          <span className="text-sm font-medium text-white whitespace-nowrap">
+            {hoveredItem.label}
+          </span>
+        </div>
+      )}
+
       {/* Logo Area */}
       <div className="h-24 flex-shrink-0 flex items-center justify-center relative px-4 border-b border-white/5">
         <div
@@ -293,19 +344,30 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         <div className="px-4 mb-8">
           <div className="space-y-1">
             {filteredNavItems.map(item => (
-              <NavItem
+              <div
                 key={item.id}
-                item={item}
-                isOpen={isOpen}
-                isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
-                onClick={() => {
+                onMouseEnter={(e) => handleItemHover(item, e, () => {
                   if (item.id.startsWith('admin/') || item.id === 'admin') {
                     router.push(`/${item.id}`);
                   } else {
                     onSelectCollection(item.id);
                   }
-                }}
-              />
+                })}
+                onMouseLeave={handleItemLeave}
+              >
+                <NavItem
+                  item={item}
+                  isOpen={isOpen}
+                  isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
+                  onClick={() => {
+                    if (item.id.startsWith('admin/') || item.id === 'admin') {
+                      router.push(`/${item.id}`);
+                    } else {
+                      onSelectCollection(item.id);
+                    }
+                  }}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -320,14 +382,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             )}
             <div className="space-y-1">
               {COLLECTION_NAV_ITEMS.map(item => (
-                <NavItem
+                <div
                   key={item.id}
-                  item={item}
-                  isOpen={isOpen}
-                  count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined}
-                  isActive={activeCollectionId === item.id}
-                  onClick={() => onSelectCollection(item.id)}
-                />
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -400,7 +467,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   <button
                     onClick={() => {
                       if (pathname?.startsWith('/admin')) {
-                        router.push('/');
+                        router.push('/dashboard');
                       } else {
                         router.push('/admin');
                       }
@@ -410,7 +477,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   >
                     <div className="flex items-center">
                       <LayoutDashboard size={16} className="mr-3 text-slate-400" />
-                      {pathname?.startsWith('/admin') ? 'Platform Dashboard' : 'Admin Dashboard'}
+                      {pathname?.startsWith('/admin') ? 'Platform Dashboard' : 'Admin Console'}
                     </div>
                     <ChevronRight size={14} className="text-slate-500" />
                   </button>

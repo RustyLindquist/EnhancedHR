@@ -165,28 +165,36 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         setIsLoading(true);
         setIsPromptPanelOpen(false);
 
-        // Ensure we have a conversation ID
-        let activeConvId = currentConversationId;
-        if (!activeConvId) {
-            // Create new conversation on first message
-            // We'll use a temporary title first
-            const newConv = await createConversation('New Conversation');
-            if (newConv) {
-                activeConvId = newConv.id;
-                setCurrentConversationId(activeConvId);
-                if (onConversationStart && activeConvId) {
-                    onConversationStart(activeConvId, 'New Conversation', [userMsg]);
+        try {
+            // Ensure we have a conversation ID
+            let activeConvId = currentConversationId;
+            if (!activeConvId) {
+                // Create new conversation on first message
+                // We'll use a temporary title first
+                try {
+                    const newConv = await createConversation('New Conversation');
+                    if (newConv) {
+                        activeConvId = newConv.id;
+                        setCurrentConversationId(activeConvId);
+                        if (onConversationStart && activeConvId) {
+                            onConversationStart(activeConvId, 'New Conversation', [userMsg]);
+                        }
+                    }
+                } catch (convError) {
+                    console.error("Failed to create conversation:", convError);
+                    // We can continue without a conversation ID for a single turn, or stop.
+                    // Let's stop and show error to avoid "ghost" messages.
+                    throw new Error("Could not start a new conversation. Please try again.");
                 }
             }
-        }
 
-        if (activeConvId) {
-            saveMessage(activeConvId, 'user', text);
-        }
+            if (activeConvId) {
+                saveMessage(activeConvId, 'user', text);
+            }
 
-        try {
             const history = messages.map(m => ({ role: m.role, parts: m.content }));
-            if (!activeConvId) throw new Error("No conversation ID");
+
+            // Pass activeConvId (can be undefined if creation failed and we didn't throw, but we threw above)
             const response = await getAgentResponse(agentType, text, contextScope, history, activeConvId, 'prometheus_full_page');
             const aiMsg: Message = { role: 'model', content: response.text };
             setMessages(prev => [...prev, aiMsg]);

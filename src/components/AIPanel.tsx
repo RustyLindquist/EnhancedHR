@@ -433,14 +433,14 @@ const AIPanel: React.FC<AIPanelProps> = ({
         ) : (
           /* Collapsed State */
           <div
-            className="flex-1 flex flex-col items-center pt-12 space-y-8 cursor-pointer hover:bg-white/5 transition-colors group"
+            className="flex-1 flex flex-col items-center pt-8 space-y-8 cursor-pointer hover:bg-white/5 transition-colors group"
             onClick={() => setIsOpen(true)}
           >
-            <div className="vertical-text transform -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase text-slate-500 group-hover:text-brand-orange whitespace-nowrap transition-colors drop-shadow-sm">
-              Prometheus AI
-            </div>
             <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue-light/30 flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(255,147,0,0.4)] transition-all backdrop-blur-sm">
               <Flame size={18} className="text-brand-orange animate-pulse" />
+            </div>
+            <div className="vertical-text transform rotate-180 text-[10px] font-bold tracking-[0.3em] uppercase text-slate-500 group-hover:text-brand-orange whitespace-nowrap transition-colors drop-shadow-sm" style={{ writingMode: 'vertical-rl' }}>
+              Ask Prometheus
             </div>
           </div>
         )}
