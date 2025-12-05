@@ -13,8 +13,8 @@ export default async function AdminPromptsPage() {
     return (
         <div className="space-y-6 animate-fade-in h-full flex flex-col">
             <div>
-                <h1 className="text-3xl font-bold text-white mb-2">System Prompts</h1>
-                <p className="text-slate-400">Configure the core instructions for the platform's AI agents.</p>
+                <h1 className="text-3xl font-bold text-white mb-2">AI Agents</h1>
+                <p className="text-slate-400">Configure the core instructions and models for the platform's AI agents.</p>
             </div>
 
             <SystemPromptManager initialPrompts={prompts || []} />

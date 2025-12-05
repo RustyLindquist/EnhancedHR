@@ -1,7 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Flame, ChevronLeft, ChevronRight, ChevronDown, User, Settings, Image as ImageIcon, LogOut, Upload, Check, ArrowLeft, CreditCard, Briefcase, PenTool, Clock, Users, LayoutDashboard } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  Settings,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  User,
+  ImageIcon,
+  Flame,
+  Bot,
+  Briefcase,
+  PenTool,
+  Clock,
+  ArrowLeft,
+  Check,
+  Upload
+} from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course } from '../types';
 
@@ -480,6 +500,20 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       {pathname?.startsWith('/admin') ? 'Platform Dashboard' : 'Admin Console'}
                     </div>
                     <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
+
+                {/* AI Agents Link */}
+                {userProfile?.role === 'admin' && (
+                  <button
+                    onClick={() => {
+                      router.push('/admin/prompts');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <Bot size={16} className="mr-3 text-slate-400" />
+                    AI Agents
                   </button>
                 )}
 
