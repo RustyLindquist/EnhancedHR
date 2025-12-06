@@ -483,7 +483,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 </button>
 
                 {/* Admin Dashboard Link */}
-                {userProfile?.role === 'admin' && (
+                {(userProfile?.role === 'admin' || isImpersonating) && (
                   <button
                     onClick={() => {
                       if (pathname?.startsWith('/admin')) {

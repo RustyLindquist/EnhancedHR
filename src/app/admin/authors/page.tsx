@@ -12,11 +12,11 @@ export default async function AdminAuthorsPage() {
     // Verify Admin
     const { data: adminProfile } = await supabase
         .from('profiles')
-        .select('membership_status')
+        .select('role')
         .eq('id', user.id)
         .single();
 
-    if (adminProfile?.membership_status !== 'admin') {
+    if (adminProfile?.role !== 'admin') {
         return <div>Access Denied</div>;
     }
 

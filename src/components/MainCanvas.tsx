@@ -6,6 +6,7 @@ import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page
 import CoursePlayer from './CoursePlayer';
 import UserDashboard from './Dashboard/UserDashboard';
+import UserDashboardV2 from './Dashboard/UserDashboardV2';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
 import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
@@ -33,6 +34,7 @@ interface MainCanvasProps {
     initialCourseId?: number | null;
     onResumeConversation?: (conversation: Conversation) => void;
     activeConversationId?: string | null;
+    useDashboardV2?: boolean;
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -515,7 +517,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onCourseSelect,
     initialCourseId,
     onResumeConversation,
-    activeConversationId
+    activeConversationId,
+    useDashboardV2 = false
 }) => {
 
     // --- State ---
@@ -1643,6 +1646,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onStartCourse={handleStartCourse}
                                 onOpenAIPanel={onOpenAIPanel}
                                 onSetAIPrompt={onSetAIPrompt}
+                            />
+                        ) : useDashboardV2 ? (
+                            <UserDashboardV2
+                                user={user}
+                                courses={courses}
+                                onNavigate={onSelectCollection}
+                                onStartCourse={handleCourseClick}
+                                onOpenAIPanel={onOpenAIPanel}
+                                onSetAIPrompt={onSetAIPrompt}
+                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                             />
                         ) : (
                             <UserDashboard
