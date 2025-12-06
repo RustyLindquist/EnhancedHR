@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import { HERO_PROMPTS, SUGGESTION_PANEL_PROMPTS, PromptSuggestion } from '@/lib/prompts';
 import { Message } from '@/types';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface PrometheusFullPageProps {
     initialPrompt?: string;
@@ -287,7 +288,11 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                                     {msg.role === 'user' ? <User size={12} /> : <Flame size={12} className="text-brand-orange" />}
                                     {msg.role === 'user' ? 'You' : 'Prometheus'}
                                 </div>
-                                <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                                {msg.role === 'user' ? (
+                                    <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                                ) : (
+                                    <MarkdownRenderer content={msg.content} className="text-base leading-relaxed" />
+                                )}
                             </div>
                         </div>
                     ))}

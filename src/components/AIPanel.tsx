@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Download, Plus } from 'lucide-react';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -393,7 +394,11 @@ const AIPanel: React.FC<AIPanelProps> = ({
                           {msg.role === 'user' ? <User size={10} /> : <agentInfo.icon size={10} />}
                           {msg.role === 'user' ? 'You' : agentInfo.name}
                         </div>
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                        {msg.role === 'user' ? (
+                          <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                        ) : (
+                          <MarkdownRenderer content={msg.content} className="text-sm leading-relaxed" />
+                        )}
                       </div>
                     </div>
                   ))}
