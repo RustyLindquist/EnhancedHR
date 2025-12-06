@@ -132,14 +132,14 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
-            {/* Content starts closer to top since stats are now in header */}
-            <div className="max-w-6xl mx-auto px-8 pt-4">
+            {/* Scrollable content with 200px padding from header (140px + 60px from mt-[60px] container) */}
+            <div className="max-w-6xl mx-auto px-8 pt-[140px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
                     PROMETHEUS AI SECTION - Tightened & Refined
-                    Added mb-24 (96px ≈ 100px) for gap before Trending section
+                    mb-36 for ~150px gap before Trending section (current 96px + 50px = 144px)
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="flex flex-col items-center relative z-10 mb-24">
+                <div className="flex flex-col items-center relative z-10 mb-36">
 
                     {/* Logo & Title - Condensed */}
                     <div className="flex flex-col items-center mb-6 group cursor-default">
@@ -249,6 +249,9 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                 </form>
                             </div>
                         </div>
+
+                        {/* AI Disclaimer */}
+                        <p className="text-center text-[10px] text-slate-600/60 mt-3">AI can make mistakes. Verify important information.</p>
                     </div>
                 </div>
 
