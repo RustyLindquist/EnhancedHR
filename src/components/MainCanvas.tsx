@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap } from 'lucide-react';
 import CardStack from './CardStack';
 import CollectionSurface from './CollectionSurface';
 import AlertBox from './AlertBox';
@@ -14,6 +14,7 @@ import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
 import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation } from '../types';
+import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
 import DeleteConversationModal from './DeleteConversationModal';
@@ -560,6 +561,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Prometheus Page Prompt State
     const [prometheusPagePrompt, setPrometheusPagePrompt] = useState<string | undefined>(undefined);
 
+    // Dashboard Stats for V3 Header
+    const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+        totalTime: '0h 0m',
+        coursesCompleted: 0,
+        creditsEarned: 0,
+        streak: 0
+    });
+    const [statsLoading, setStatsLoading] = useState(true);
+
     // Fetch User on mount
     useEffect(() => {
         const fetchUser = async () => {
@@ -571,6 +581,24 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         };
         fetchUser();
     }, []);
+
+    // Fetch Dashboard Stats for V3 Header
+    useEffect(() => {
+        if (useDashboardV3 && activeCollectionId === 'dashboard' && user?.id) {
+            const loadStats = async () => {
+                try {
+                    const data = await fetchDashboardData(user.id);
+                    setDashboardStats(data.stats);
+                    setStatsLoading(false);
+                } catch (error) {
+                    console.error('Failed to load dashboard stats', error);
+                    setStatsLoading(false);
+                }
+            };
+            loadStats();
+        }
+    }, [useDashboardV3, activeCollectionId, user?.id]);
+
 
     // Track mouse for custom drag layer
     useEffect(() => {
@@ -1580,6 +1608,55 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     </button>
                                 )}
                             </div>
+                        ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
+                            /* Dashboard V3 Stats in Header */
+                            <div className="flex items-center gap-6">
+                                <div className="group relative flex items-center gap-2 cursor-default">
+                                    <div className="p-2 bg-brand-blue-light/10 rounded-lg text-brand-blue-light group-hover:bg-brand-blue-light/20 transition-colors">
+                                        <Clock size={16} />
+                                    </div>
+                                    <span className="text-xl font-extralight text-white">{statsLoading ? '—' : dashboardStats.totalTime}</span>
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        Total Learning Time
+                                    </div>
+                                </div>
+
+                                <div className="w-px h-6 bg-white/10" />
+
+                                <div className="group relative flex items-center gap-2 cursor-default">
+                                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                                        <BookOpen size={16} />
+                                    </div>
+                                    <span className="text-xl font-extralight text-white">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        Courses Completed
+                                    </div>
+                                </div>
+
+                                <div className="w-px h-6 bg-white/10" />
+
+                                <div className="group relative flex items-center gap-2 cursor-default">
+                                    <div className="p-2 bg-brand-orange/10 rounded-lg text-brand-orange group-hover:bg-brand-orange/20 transition-colors">
+                                        <Award size={16} />
+                                    </div>
+                                    <span className="text-xl font-extralight text-white">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        Credits Earned
+                                    </div>
+                                </div>
+
+                                <div className="w-px h-6 bg-white/10" />
+
+                                <div className="group relative flex items-center gap-2 cursor-default">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                                        <Zap size={16} />
+                                    </div>
+                                    <span className="text-xl font-extralight text-white">{statsLoading ? '—' : dashboardStats.streak}</span>
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        Day Streak
+                                    </div>
+                                </div>
+                            </div>
                         ) : (
                             /* Standard Actions */
                             <>
@@ -1615,6 +1692,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 </button>
                             </>
                         )}
+
                     </div>
                 </div>
 

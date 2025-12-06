@@ -55,8 +55,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [heroPrompts, setHeroPrompts] = useState<PromptSuggestion[]>([]);
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
 
-    // Tab State
-    const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('trending');
+    // Tab State - Recommended is now first/default
+    const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
@@ -132,48 +132,14 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
-            <div className="max-w-6xl mx-auto px-8 pt-10">
-
-                {/* ══════════════════════════════════════════════════════════════════
-                    ULTRA-MINIMALIST STATS BAR
-                    Clean horizontal layout with subtle separators
-                ══════════════════════════════════════════════════════════════════ */}
-                <div className="flex items-center justify-center gap-12 mb-12 py-4">
-                    <div className="flex items-center gap-3 group">
-                        <Clock size={16} className="text-slate-500 group-hover:text-brand-blue-light transition-colors" />
-                        <span className="text-2xl font-extralight text-white tracking-tight">{loading ? '—' : stats.totalTime}</span>
-                        <span className="text-[10px] text-slate-600 uppercase tracking-widest">time</span>
-                    </div>
-
-                    <div className="w-px h-6 bg-white/10" />
-
-                    <div className="flex items-center gap-3 group">
-                        <BookOpen size={16} className="text-slate-500 group-hover:text-purple-400 transition-colors" />
-                        <span className="text-2xl font-extralight text-white tracking-tight">{loading ? '—' : stats.coursesCompleted}</span>
-                        <span className="text-[10px] text-slate-600 uppercase tracking-widest">completed</span>
-                    </div>
-
-                    <div className="w-px h-6 bg-white/10" />
-
-                    <div className="flex items-center gap-3 group">
-                        <Award size={16} className="text-slate-500 group-hover:text-brand-orange transition-colors" />
-                        <span className="text-2xl font-extralight text-white tracking-tight">{loading ? '—' : stats.creditsEarned}</span>
-                        <span className="text-[10px] text-slate-600 uppercase tracking-widest">credits</span>
-                    </div>
-
-                    <div className="w-px h-6 bg-white/10" />
-
-                    <div className="flex items-center gap-3 group">
-                        <Zap size={16} className="text-slate-500 group-hover:text-emerald-400 transition-colors" />
-                        <span className="text-2xl font-extralight text-white tracking-tight">{loading ? '—' : stats.streak}</span>
-                        <span className="text-[10px] text-slate-600 uppercase tracking-widest">streak</span>
-                    </div>
-                </div>
+            {/* Content starts closer to top since stats are now in header */}
+            <div className="max-w-6xl mx-auto px-8 pt-4">
 
                 {/* ══════════════════════════════════════════════════════════════════
                     PROMETHEUS AI SECTION - Tightened & Refined
+                    Added mb-24 (96px ≈ 100px) for gap before Trending section
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="flex flex-col items-center relative z-10 mb-16">
+                <div className="flex flex-col items-center relative z-10 mb-24">
 
                     {/* Logo & Title - Condensed */}
                     <div className="flex flex-col items-center mb-6 group cursor-default">
@@ -290,30 +256,30 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     TABBED LEARNING SECTION - Trending / Recommended
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="mb-14">
-                    {/* Tab Navigation */}
+                    {/* Tab Navigation - Recommended is now first */}
                     <div className="flex items-center gap-1 mb-6">
-                        <button
-                            onClick={() => setActiveTab('trending')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'trending'
-                                    ? 'bg-white/10 text-white'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-                                }`}
-                        >
-                            <span className="flex items-center gap-2">
-                                <TrendingUp size={14} />
-                                Trending Now
-                            </span>
-                        </button>
                         <button
                             onClick={() => setActiveTab('recommended')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'recommended'
-                                    ? 'bg-white/10 text-white'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                ? 'bg-white/10 text-white'
+                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                                 }`}
                         >
                             <span className="flex items-center gap-2">
                                 <Sparkles size={14} />
                                 Recommended
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('trending')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'trending'
+                                ? 'bg-white/10 text-white'
+                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <TrendingUp size={14} />
+                                Trending Now
                             </span>
                         </button>
                     </div>
