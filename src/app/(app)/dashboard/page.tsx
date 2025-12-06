@@ -12,6 +12,8 @@ import { fetchCourses } from '@/lib/courses';
 import { useSearchParams } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 
+export const dynamic = 'force-dynamic';
+
 function HomeContent() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
