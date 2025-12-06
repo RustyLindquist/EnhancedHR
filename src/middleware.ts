@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     let response = NextResponse.next({
         request: {
             headers: request.headers,
@@ -37,7 +37,11 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (error) {
-        // console.error('[Proxy] Auth error:', error.message)
+        console.error('[Middleware] Auth error:', error.message)
+    } else if (user) {
+        // console.log('[Middleware] User authenticated:', user.id)
+    } else {
+        // console.log('[Middleware] No user found')
     }
 
     // Protected routes
