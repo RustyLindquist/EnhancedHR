@@ -5,8 +5,6 @@ import CollectionSurface from './CollectionSurface';
 import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page
 import CoursePlayer from './CoursePlayer';
-import UserDashboard from './Dashboard/UserDashboard';
-import UserDashboardV2 from './Dashboard/UserDashboardV2';
 import UserDashboardV3 from './Dashboard/UserDashboardV3';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
 import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
@@ -36,7 +34,6 @@ interface MainCanvasProps {
     initialCourseId?: number | null;
     onResumeConversation?: (conversation: Conversation) => void;
     activeConversationId?: string | null;
-    useDashboardV2?: boolean;
     useDashboardV3?: boolean;
 }
 
@@ -521,7 +518,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     initialCourseId,
     onResumeConversation,
     activeConversationId,
-    useDashboardV2 = false,
     useDashboardV3 = false
 }) => {
 
@@ -1729,28 +1725,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onOpenAIPanel={onOpenAIPanel}
                                 onSetAIPrompt={onSetAIPrompt}
                             />
-                        ) : useDashboardV3 ? (
-                            <UserDashboardV3
-                                user={user}
-                                courses={courses}
-                                onNavigate={onSelectCollection}
-                                onStartCourse={handleCourseClick}
-                                onOpenAIPanel={onOpenAIPanel}
-                                onSetAIPrompt={onSetAIPrompt}
-                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                            />
-                        ) : useDashboardV2 ? (
-                            <UserDashboardV2
-                                user={user}
-                                courses={courses}
-                                onNavigate={onSelectCollection}
-                                onStartCourse={handleCourseClick}
-                                onOpenAIPanel={onOpenAIPanel}
-                                onSetAIPrompt={onSetAIPrompt}
-                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                            />
                         ) : (
-                            <UserDashboard
+                            <UserDashboardV3
                                 user={user}
                                 courses={courses}
                                 onNavigate={onSelectCollection}

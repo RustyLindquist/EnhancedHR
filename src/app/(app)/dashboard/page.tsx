@@ -245,7 +245,7 @@ function HomeContent() {
           onSelectCollection={handleSelectCollection}
         />
 
-        {/* Center Content */}
+        {/* Center Content - Using Dashboard V3 */}
         <MainCanvas
           courses={courses}
           activeCollectionId={activeCollectionId}
@@ -259,6 +259,7 @@ function HomeContent() {
           initialCourseId={activeCourseId ? parseInt(activeCourseId, 10) : undefined}
           onResumeConversation={handleResumeConversation}
           activeConversationId={activeConversationId}
+          useDashboardV3={true}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
