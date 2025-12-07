@@ -62,16 +62,24 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
         loadModels();
     }, []);
 
-    // Sync edited instruction and model when selection changes
+    // Sync edited instruction, model, and model tab when selection changes
     useEffect(() => {
         if (selectedPromptId) {
             const prompt = prompts.find(p => p.id === selectedPromptId);
             if (prompt) {
                 setEditedInstruction(prompt.system_instruction);
-                setSelectedModel(prompt.model || 'google/gemini-2.0-flash-001');
+                const model = prompt.model || 'google/gemini-2.0-flash-001';
+                setSelectedModel(model);
+
+                // Determine which tab based on model format
+                // Developer models are direct Gemini IDs (e.g., 'gemini-2.0-flash')
+                // Production models are OpenRouter format (e.g., 'google/gemini-2.0-flash-001')
+                const isDeveloperModel = GEMINI_MODELS.some(gm => gm.id === model);
+                setModelTab(isDeveloperModel ? 'developer' : 'production');
             }
         }
     }, [selectedPromptId, prompts]);
+
 
     const handleSave = async () => {
         if (!selectedPromptId) return;
