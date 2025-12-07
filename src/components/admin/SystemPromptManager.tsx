@@ -23,6 +23,22 @@ const DEFAULT_PROMPTS = [
     { agent_type: 'course_tutor', system_instruction: 'You are the Course Tutor. Your goal is not just to answer, but to teach. Use Socratic methods, ask probing questions, and help the user apply the course concepts to their specific role and company context.', model: 'google/gemini-2.0-flash-001' }
 ];
 
+// Google Gemini models available via Google AI Studio API
+interface GeminiModel {
+    id: string;
+    name: string;
+}
+
+const GEMINI_MODELS: GeminiModel[] = [
+    { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro Preview (06-05)' },
+    { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash Preview (05-20)' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
+];
+
 export default function SystemPromptManager({ initialPrompts }: SystemPromptManagerProps) {
     const [prompts, setPrompts] = useState<SystemPrompt[]>(initialPrompts);
     const [selectedPromptId, setSelectedPromptId] = useState<string | null>(initialPrompts.length > 0 ? initialPrompts[0].id : null);
@@ -31,6 +47,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
     const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error' | 'seeding'>('idle');
     const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
+    const [modelTab, setModelTab] = useState<'production' | 'developer'>('production');
 
     // Fetch available models on mount
     useEffect(() => {
@@ -200,37 +217,78 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
 
                         <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
 
-                            {/* Model Selection */}
-                            <div className="space-y-2">
+                            {/* Model Selection with Production/Developer Tabs */}
+                            <div className="space-y-3">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                                     <Cpu size={14} /> AI Model
                                 </label>
+
+                                {/* Tab Navigation - Dashboard V3 Style */}
+                                <div className="flex items-center gap-1 mb-3">
+                                    <button
+                                        onClick={() => setModelTab('production')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${modelTab === 'production'
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Cpu size={14} />
+                                            Production Models
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => setModelTab('developer')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${modelTab === 'developer'
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Bot size={14} />
+                                            Developer Models
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {/* Model Dropdown */}
                                 <div className="relative">
                                     <select
                                         value={selectedModel}
                                         onChange={(e) => setSelectedModel(e.target.value)}
                                         className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20 appearance-none"
-                                        disabled={isLoadingModels}
+                                        disabled={modelTab === 'production' && isLoadingModels}
                                     >
                                         <option value="" disabled>Select a model...</option>
-                                        {availableModels.length > 0 ? (
-                                            availableModels.map(model => (
+                                        {modelTab === 'production' ? (
+                                            availableModels.length > 0 ? (
+                                                availableModels.map(model => (
+                                                    <option key={model.id} value={model.id}>
+                                                        {model.name}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                <option value={selectedModel}>{selectedModel} (Current)</option>
+                                            )
+                                        ) : (
+                                            GEMINI_MODELS.map(model => (
                                                 <option key={model.id} value={model.id}>
                                                     {model.name}
                                                 </option>
                                             ))
-                                        ) : (
-                                            <option value={selectedModel}>{selectedModel} (Current)</option>
                                         )}
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                        {isLoadingModels ? <RefreshCw size={14} className="animate-spin" /> : '▼'}
+                                        {modelTab === 'production' && isLoadingModels ? <RefreshCw size={14} className="animate-spin" /> : '▼'}
                                     </div>
                                 </div>
                                 <p className="text-xs text-slate-500">
-                                    {isLoadingModels ? 'Loading available models...' : 'Select the AI model that powers this agent.'}
+                                    {modelTab === 'production'
+                                        ? (isLoadingModels ? 'Loading available production models from OpenRouter...' : 'Production models are served via OpenRouter for reliability and fallback support.')
+                                        : 'Developer models use Google AI Studio API directly. Best for testing new Gemini features.'}
                                 </p>
                             </div>
+
 
                             {/* System Instruction */}
                             <div className="space-y-2 flex-1 flex flex-col">
