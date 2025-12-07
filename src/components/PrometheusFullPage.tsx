@@ -208,24 +208,66 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
             const history = messages.map(m => ({ role: m.role, parts: m.content }));
 
-            // Pass activeConvId
-            const response = await getAgentResponse(agentType, text, contextScope, history, activeConvId, 'prometheus_full_page');
-            const aiMsg: Message = { role: 'model', content: response.text };
-            setMessages(prev => [...prev, aiMsg]);
+            // Create placeholder message for streaming
+            setMessages(prev => [...prev, { role: 'model', content: '' }]);
 
-            if (activeConvId) {
-                saveMessage(activeConvId, 'model', response.text);
+            // Use streaming API
+            const response = await fetch('/api/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    agentType,
+                    contextScope,
+                    history,
+                    conversationId: activeConvId,
+                    pageContext: 'prometheus_full_page'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Streaming failed');
             }
 
-            // Build the updated message array
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullText += chunk;
+
+                    // Update the last message with accumulated text
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        if (updated.length > 0) {
+                            updated[updated.length - 1] = { role: 'model', content: fullText };
+                        }
+                        return updated;
+                    });
+                }
+            }
+
+            // Save the complete message
+            if (activeConvId && fullText) {
+                saveMessage(activeConvId, 'model', fullText);
+            }
+
+            // Build the updated message array for title generation
+            const aiMsg: Message = { role: 'model', content: fullText };
             const updatedMessages = [...messages, userMsg, aiMsg];
 
             // Generate title logic...
-            if (messages.length === 0 && onTitleChange) {
-                // ... (keep existing title logic)
+            if (messages.length === 0 && onTitleChange && fullText) {
                 try {
-                    const titlePrompt = `Based on this conversation where the user asked: "${text}" and you responded with: "${response.text}", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`;
-                    const titleResponse = await getAgentResponse(agentType, titlePrompt, contextScope, [], activeConvId, 'prometheus_full_page_title_gen');
+                    // Use non-streaming for title generation (simpler)
+                    const titleResponse = await getAgentResponse(agentType,
+                        `Based on this conversation where the user asked: "${text}" and you responded with: "${fullText.substring(0, 200)}...", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`,
+                        contextScope, [], activeConvId, 'prometheus_full_page_title_gen');
                     const generatedTitle = titleResponse.text.trim().replace(/^["']|["']$/g, '');
 
                     onTitleChange(generatedTitle);
@@ -253,11 +295,16 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             }
         } catch (error: any) {
             console.error('Error getting AI response:', error);
-            setMessages(prev => [...prev, { role: 'model', content: `I'm having trouble connecting to my knowledge base right now. Error: ${error.message || error}` }]);
+            setMessages(prev => {
+                // Remove empty placeholder and add error message
+                const updated = prev.filter(m => m.content !== '');
+                return [...updated, { role: 'model', content: `I'm having trouble connecting to my knowledge base right now. Error: ${error.message || error}` }];
+            });
         } finally {
             setIsLoading(false);
         }
     };
+
 
     const handlePromptClick = (prompt: string) => {
         handleSendMessage(prompt);

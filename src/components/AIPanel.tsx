@@ -177,18 +177,62 @@ const AIPanel: React.FC<AIPanelProps> = ({
     try {
       const history = messages.map(m => ({ role: m.role, parts: m.content }));
 
-      // Use the new AI Engine
-      const response = await getAgentResponse(effectiveAgentType, text, contextScope, history);
+      // Create placeholder message for streaming
+      const placeholderIndex = messages.length + 1; // +1 for user message we just added
+      setMessages(prev => [...prev, { role: 'model', content: '' }]);
 
-      const aiMsg: Message = { role: 'model', content: response.text };
-      setMessages(prev => [...prev, aiMsg]);
+      // Use streaming API
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          agentType: effectiveAgentType,
+          contextScope,
+          history,
+          conversationId: activeConvId,
+          pageContext: 'ai_panel'
+        })
+      });
 
-      if (activeConvId) {
-        saveMessage(activeConvId, 'model', response.text);
+      if (!response.ok) {
+        throw new Error('Streaming failed');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullText += chunk;
+
+          // Update the last message with accumulated text
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated.length > 0) {
+              updated[updated.length - 1] = { role: 'model', content: fullText };
+            }
+            return updated;
+          });
+        }
+      }
+
+      // Save the complete message
+      if (activeConvId && fullText) {
+        saveMessage(activeConvId, 'model', fullText);
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
-      setMessages(prev => [...prev, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again." }]);
+      setMessages(prev => {
+        // Remove the empty placeholder and add error message
+        const updated = prev.filter(m => m.content !== '');
+        return [...updated, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again." }];
+      });
     } finally {
       setIsLoading(false);
     }
@@ -296,8 +340,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
       <div className="flex-1 flex flex-col relative overflow-hidden bg-gradient-to-b from-transparent to-black/20">
         {isOpen ? (
           <>
-            {/* Messages */}
-            <div className="flex-1 px-6 pt-8 pb-6 space-y-6 overflow-y-auto no-scrollbar">
+            {/* Messages - pb-32 prevents overlap with input area */}
+            <div className="flex-1 px-6 pt-8 pb-32 space-y-6 overflow-y-auto no-scrollbar">
 
               {messages.length === 0 ? (
                 <>
