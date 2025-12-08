@@ -108,6 +108,40 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         setCurrentConversationId(conversationId);
     }, [conversationId]);
 
+    // Fetch messages if not provided
+    useEffect(() => {
+        const fetchMessages = async () => {
+            if (conversationId && (!initialMessages || initialMessages.length === 0)) {
+                try {
+                    setIsLoading(true);
+                    const { data, error } = await supabase
+                        .from('conversation_messages')
+                        .select('*')
+                        .eq('conversation_id', conversationId)
+                        .order('created_at', { ascending: true });
+
+                    if (error) throw error;
+
+                    if (data) {
+                        const loadedMessages: Message[] = data.map((msg: any) => ({
+                            role: msg.role,
+                            content: msg.content
+                        }));
+                        setMessages(loadedMessages);
+                    }
+                } catch (error) {
+                    console.error('Failed to load conversation messages:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        if (conversationId) {
+            fetchMessages();
+        }
+    }, [conversationId, initialMessages]);
+
     // Scroll to bottom
     useEffect(() => {
         if (chatContainerRef.current) {
