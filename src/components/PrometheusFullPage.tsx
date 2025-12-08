@@ -319,10 +319,10 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
             {/* --- Dynamic Background Removed to show Platform Background --- */}
 
-            {/* Chat Area - scrollable */}
+            {/* Chat Area - scrollable with generous padding to avoid input overlap */}
             <div
                 ref={chatContainerRef}
-                className={`flex-1 overflow-y-auto custom-scrollbar relative px-4 py-8 transition-all duration-700 ease-in-out z-10 ${isChatStarted ? 'opacity-100' : 'opacity-0'} pb-40`}
+                className={`flex-1 overflow-y-auto custom-scrollbar relative px-4 py-8 transition-all duration-700 ease-in-out z-10 ${isChatStarted ? 'opacity-100' : 'opacity-0'} pb-56`}
             >
                 <div className="max-w-4xl mx-auto space-y-8">
                     {messages.map((msg, idx) => (
@@ -399,11 +399,8 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                 </div>
             </div>
 
-            {/* --- Input Area (The Command Deck) --- */}
-            <div className={`
-                absolute bottom-36 left-0 w-full z-[70] p-6 md:p-10 pb-0 transition-all duration-700 ease-in-out
-                ${!isChatStarted ? 'translate-y-0' : 'translate-y-0'}
-            `}>
+            {/* --- Input Area (Fixed at bottom) --- */}
+            <div className="absolute bottom-0 left-0 w-full z-[70] bg-gradient-to-t from-[#0A0D12] via-[#0A0D12]/95 to-transparent pt-8 pb-6 px-6 md:px-10">
                 <div className="max-w-4xl mx-auto relative group/input">
                     {/* Glow Effect */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue opacity-20 group-focus-within/input:opacity-100 blur-xl transition-opacity duration-700 rounded-2xl"></div>

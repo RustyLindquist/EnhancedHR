@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getContextForScope } from '@/lib/ai/context';
-import { ContextScope, AgentType } from '@/lib/ai/types';
+import { ContextScope } from '@/lib/ai/types';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const SITE_NAME = 'EnhancedHR';
+
+// Developer models use direct Gemini API (format: gemini-xxx)
+// Production models use OpenRouter (format: provider/model-name)
+function isDeveloperModel(model: string): boolean {
+    return model.startsWith('gemini-') && !model.includes('/');
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -44,7 +51,110 @@ export async function POST(req: NextRequest) {
         const contextItems = await getContextForScope(scope, message);
         const contextString = contextItems.map(item => `[${item.type}] ${item.content}`).join('\n\n');
 
-        // 3. Build messages array with system instruction and context
+        const encoder = new TextEncoder();
+        let fullResponse = '';
+
+        // Log helper
+        const logInteraction = async () => {
+            try {
+                await supabase.from('ai_logs').insert({
+                    user_id: user.id,
+                    conversation_id: conversationId || null,
+                    agent_type: agentType,
+                    page_context: pageContext || 'streaming_chat',
+                    prompt: message,
+                    response: fullResponse,
+                    metadata: {
+                        model,
+                        streaming: true,
+                        isDeveloper: isDeveloperModel(model),
+                        sources: contextItems.map(c => ({ type: c.type, id: c.id }))
+                    }
+                });
+            } catch (logErr) {
+                console.error('Failed to log AI interaction:', logErr);
+            }
+        };
+
+        // ========== GEMINI DEVELOPER MODELS ==========
+        if (isDeveloperModel(model)) {
+            if (!GEMINI_API_KEY) {
+                return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+            }
+
+            // Build Gemini request
+            const geminiHistory = history.map((h: { role: string; parts: string }) => ({
+                role: h.role === 'model' ? 'model' : 'user',
+                parts: [{ text: h.parts }]
+            }));
+
+            const geminiRequest = {
+                contents: [
+                    ...geminiHistory,
+                    { role: 'user', parts: [{ text: message }] }
+                ],
+                systemInstruction: {
+                    parts: [{ text: `${systemInstruction}\n\nCONTEXT:\n${contextString}` }]
+                },
+                generationConfig: {
+                    maxOutputTokens: 8192
+                }
+            };
+
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+            
+            const response = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(geminiRequest)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Gemini streaming error:', errorText);
+                return NextResponse.json({ error: `Gemini API Error: ${response.status}` }, { status: 500 });
+            }
+
+            const decoder = new TextDecoder();
+            const transformStream = new TransformStream({
+                async transform(chunk, controller) {
+                    const text = decoder.decode(chunk);
+                    const lines = text.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+                            if (!data) continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                                if (content) {
+                                    fullResponse += content;
+                                    controller.enqueue(encoder.encode(content));
+                                }
+                            } catch {
+                                // Skip invalid JSON
+                            }
+                        }
+                    }
+                },
+                async flush() {
+                    await logInteraction();
+                }
+            });
+
+            const stream = response.body?.pipeThrough(transformStream);
+            return new Response(stream, {
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                }
+            });
+        }
+
+        // ========== OPENROUTER PRODUCTION MODELS ==========
         const systemMessage = {
             role: 'system',
             content: `${systemInstruction}\n\nCONTEXT:\n${contextString}`
@@ -61,7 +171,6 @@ export async function POST(req: NextRequest) {
             { role: 'user', content: message }
         ];
 
-        // 4. Make streaming request to OpenRouter
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -83,12 +192,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: `OpenRouter API Error: ${response.status}` }, { status: 500 });
         }
 
-        // 5. Create a TransformStream to process SSE and forward clean text
-        const encoder = new TextEncoder();
         const decoder = new TextDecoder();
-
-        let fullResponse = '';
-
         const transformStream = new TransformStream({
             async transform(chunk, controller) {
                 const text = decoder.decode(chunk);
@@ -98,24 +202,6 @@ export async function POST(req: NextRequest) {
                     if (line.startsWith('data: ')) {
                         const data = line.slice(6);
                         if (data === '[DONE]') {
-                            // Stream complete - log the interaction
-                            try {
-                                await supabase.from('ai_logs').insert({
-                                    user_id: user.id,
-                                    conversation_id: conversationId || null,
-                                    agent_type: agentType,
-                                    page_context: pageContext || 'streaming_chat',
-                                    prompt: message,
-                                    response: fullResponse,
-                                    metadata: {
-                                        model,
-                                        streaming: true,
-                                        sources: contextItems.map(c => ({ type: c.type, id: c.id }))
-                                    }
-                                });
-                            } catch (logErr) {
-                                console.error('Failed to log AI interaction:', logErr);
-                            }
                             return;
                         }
 
@@ -127,16 +213,17 @@ export async function POST(req: NextRequest) {
                                 controller.enqueue(encoder.encode(content));
                             }
                         } catch {
-                            // Skip invalid JSON lines
+                            // Skip invalid JSON
                         }
                     }
                 }
+            },
+            async flush() {
+                await logInteraction();
             }
         });
 
-        // Pipe the response through our transform
         const stream = response.body?.pipeThrough(transformStream);
-
         return new Response(stream, {
             headers: {
                 'Content-Type': 'text/plain; charset=utf-8',
