@@ -1,4 +1,38 @@
 import { createClient } from '@/lib/supabase/client';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export async function linkStripeCustomer(userId: string, stripeCustomerId: string) {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('profiles')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', userId);
+
+    if (error) {
+        console.error('Error linking Stripe customer:', error);
+        throw error;
+    }
+}
+
+export async function updateSubscriptionStatus(stripeCustomerId: string, status: string) {
+    const supabase = createAdminClient();
+    
+    // Map Stripe status to our internal status
+    let membershipStatus: MembershipStatus = 'inactive';
+    if (status === 'active' || status === 'trialing') {
+        membershipStatus = 'active';
+    }
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ membership_status: membershipStatus })
+        .eq('stripe_customer_id', stripeCustomerId);
+
+    if (error) {
+        console.error('Error updating subscription status:', error);
+        throw error;
+    }
+}
 
 export type MembershipStatus = 'trial' | 'active' | 'inactive' | 'employee' | 'org_admin';
 

@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { login, signup, resetPassword, verifyEmail, resendVerification } from './actions'
-import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Building } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
 import { useSearchParams } from 'next/navigation'
@@ -20,6 +20,7 @@ function LoginPageContent() {
 
     // Membership Selection State
     const [membershipType, setMembershipType] = useState<'free' | 'pro'>('free')
+    const [accountType, setAccountType] = useState<'individual' | 'org'>('individual')
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -28,6 +29,7 @@ function LoginPageContent() {
         setSuccessMessage(null)
 
         const formData = new FormData(event.currentTarget)
+        formData.append('accountType', accountType); // Append account type
 
         let action;
         if (view === 'signup') action = signup;
@@ -197,18 +199,57 @@ function LoginPageContent() {
 
                             {/* SIGNUP VIEW */}
                             {view === 'signup' && (
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                                    <div className="relative group">
-                                        <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
-                                            <User size={16} className="text-slate-500 mr-3" />
-                                            <input
-                                                name="fullName"
-                                                type="text"
-                                                placeholder="John Doe"
-                                                required={view === 'signup'}
-                                                className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
-                                            />
+                                <div className="space-y-4">
+                                    {/* Account Type Toggle */}
+                                    <div className="flex p-1 bg-[#0A0D12] border border-white/10 rounded-lg mb-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAccountType('individual')}
+                                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'individual' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            Individual
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAccountType('org')}
+                                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'org' ? 'bg-brand-blue-light/20 text-brand-blue-light shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            Organization
+                                        </button>
+                                    </div>
+
+                                    {/* Org Name Input */}
+                                    {accountType === 'org' && (
+                                        <div className="space-y-2 animate-fade-in">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Company Name</label>
+                                            <div className="relative group">
+                                                <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                                    <Building size={16} className="text-slate-500 mr-3" />
+                                                    <input
+                                                        name="orgName"
+                                                        type="text"
+                                                        placeholder="Acme Corp"
+                                                        required={accountType === 'org'}
+                                                        className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{accountType === 'org' ? 'Admin Name' : 'Full Name'}</label>
+                                        <div className="relative group">
+                                            <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                                <User size={16} className="text-slate-500 mr-3" />
+                                                <input
+                                                    name="fullName"
+                                                    type="text"
+                                                    placeholder="John Doe"
+                                                    required={view === 'signup'}
+                                                    className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -279,13 +320,15 @@ function LoginPageContent() {
                                             className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'free' ? 'bg-brand-blue-light/10 border-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
                                         >
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className={`text-sm font-bold ${membershipType === 'free' ? 'text-brand-blue-light' : 'text-white'}`}>Free Trial</span>
+                                                <span className={`text-sm font-bold ${membershipType === 'free' ? 'text-brand-blue-light' : 'text-white'}`}>
+                                                    {accountType === 'org' ? 'Org Free Trial' : 'Free Trial'}
+                                                </span>
                                                 <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${membershipType === 'free' ? 'border-brand-blue-light bg-brand-blue-light' : 'border-slate-600'}`}>
                                                     {membershipType === 'free' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                                                 </div>
                                             </div>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                Access to limited courses. Upgrade anytime.<br />
+                                                {accountType === 'org' ? 'Trial access for your team.' : 'Access to limited courses.'} Upgrade anytime.<br />
                                                 <span className="text-brand-blue-light/80 text-[10px] uppercase tracking-wider">No credit card required</span>
                                             </p>
                                         </div>
@@ -296,14 +339,16 @@ function LoginPageContent() {
                                             className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'pro' ? 'bg-brand-orange/10 border-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
                                         >
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className={`text-sm font-bold ${membershipType === 'pro' ? 'text-brand-orange' : 'text-white'}`}>Professional Membership</span>
+                                                <span className={`text-sm font-bold ${membershipType === 'pro' ? 'text-brand-orange' : 'text-white'}`}>
+                                                    {accountType === 'org' ? 'Organization Pro' : 'Professional Membership'}
+                                                </span>
                                                 <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${membershipType === 'pro' ? 'border-brand-orange bg-brand-orange' : 'border-slate-600'}`}>
                                                     {membershipType === 'pro' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                                                 </div>
                                             </div>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                Unlimited access to all courses & AI tools.<br />
-                                                <span className="text-white font-bold">$19/month</span> <span className="text-slate-500">billed monthly</span>
+                                                {accountType === 'org' ? 'Unlimited access for your team.' : 'Unlimited access to all courses & AI tools.'}<br />
+                                                <span className="text-white font-bold">{accountType === 'org' ? '$30/seat/mo' : '$30/month'}</span> <span className="text-slate-500">billed monthly</span>
                                             </p>
                                         </div>
                                     </div>

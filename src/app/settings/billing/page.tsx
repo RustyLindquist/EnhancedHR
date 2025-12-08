@@ -1,6 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
+import { UpgradeButton, ManageSubscriptionButton, OrgSubscriptionButton } from '@/components/settings/BillingButtons';
 import { CheckCircle, Shield, Clock } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
@@ -13,7 +13,7 @@ export default async function BillingPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, trial_minutes_used, billing_period_end')
+        .select('membership_status, trial_minutes_used, billing_period_end,stripe_customer_id, org_id')
         .eq('id', user.id)
         .single();
 

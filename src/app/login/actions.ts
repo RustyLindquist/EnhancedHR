@@ -30,12 +30,17 @@ export async function signup(formData: FormData) {
     const password = formData.get('password') as string
     const fullName = formData.get('fullName') as string
 
+    const accountType = formData.get('accountType') as string
+    const orgName = formData.get('orgName') as string
+
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
             data: {
                 full_name: fullName,
+                // Pass metadata to trigger triggers if needed, or update profile manually after
+                account_type: accountType,
             },
         },
     })
@@ -44,7 +49,36 @@ export async function signup(formData: FormData) {
         return { error: error.message }
     }
 
-    if (data?.session) {
+    if (data?.user && data?.session) {
+        // If Org Account, create the Organization and Link User
+        if (accountType === 'org' && orgName) {
+            // 1. Create Organization
+            const { data: org, error: orgError } = await supabase
+                .from('organizations')
+                .insert({ name: orgName })
+                .select()
+                .single();
+            
+            if (orgError) {
+                console.error("Failed to create org:", orgError);
+                // Fallback? or Error? For now logging.
+            } else if (org) {
+                // 2. Update User Profile with Org ID and Admin Status
+                await supabase
+                    .from('profiles')
+                    .update({ 
+                        org_id: org.id,
+                        membership_status: 'org_admin',
+                        role: 'admin' // Explicitly set role if needed by RLS
+                    })
+                    .eq('id', data.user.id);
+            }
+        } else {
+             // Ensure individual default is correct? Default is usually free/trial from schema defaults.
+             // If Pro was selected we need to handle that, but for now we let them in as free/trial 
+             // and they can upgrade in dashboard.
+        }
+
         // User is signed in immediately (email confirmation disabled)
         revalidatePath('/', 'layout')
         redirect('/')

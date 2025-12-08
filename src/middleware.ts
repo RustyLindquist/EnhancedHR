@@ -44,14 +44,40 @@ export async function middleware(request: NextRequest) {
         // console.log('[Middleware] No user found')
     }
 
-    // Protected routes
-    if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    // Protected routes pattern
+    const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
+                            request.nextUrl.pathname.startsWith('/courses') ||
+                            request.nextUrl.pathname.startsWith('/instructors');
+    
+    // Billing page check
+    const isBillingPage = request.nextUrl.pathname.startsWith('/settings');
+
+    if (!user && isProtectedRoute) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
     // Redirect to dashboard if logged in and trying to access login
     if (user && request.nextUrl.pathname === '/login') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Access Control: Check Membership Status
+    if (user && isProtectedRoute && !isBillingPage && !request.nextUrl.pathname.startsWith('/api')) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('membership_status, trial_minutes_used')
+            .eq('id', user.id)
+            .single();
+
+        if (profile) {
+            const isInactive = profile.membership_status === 'inactive';
+            const isTrialExpired = profile.membership_status === 'trial' && (profile.trial_minutes_used || 0) >= 60;
+
+            if (isInactive || isTrialExpired) {
+                // Redirect to billing, but include a query param to show a message if needed
+                return NextResponse.redirect(new URL('/settings/billing?require_upgrade=true', request.url));
+            }
+        }
     }
 
     return response
