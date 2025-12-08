@@ -1932,37 +1932,39 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     </div>
                 )}
 
-                {/* --- Collection Surface (Footer) --- */}
-                <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
-                    <CollectionSurface
-                        isDragging={isDragging}
-                        activeFlareId={flaringPortalId}
-                        onCollectionClick={(id) => {
-                            if (id === 'new') {
-                                onOpenModal();
-                            } else {
-                                onSelectCollection(id);
-                            }
-                        }}
-                        onDropCourse={(portalId) => {
-                            if (draggedItem) {
-                                // Only supporting Course Drop to portals for now as per previous logic, 
-                                // but MainCanvas supports generic items if we extended App logic.
-                                if (draggedItem.type === 'COURSE') {
-                                    if (portalId === 'new') {
-                                        onOpenModal(courses.find(c => c.id === draggedItem.id));
-                                    } else {
-                                        onImmediateAddToCollection(Number(draggedItem.id), portalId);
-                                        setFlaringPortalId(portalId);
-                                        setTimeout(() => setFlaringPortalId(null), 500);
-                                    }
+                {/* --- Collection Surface (Footer) - Hidden for Dashboard V3 --- */}
+                {!(useDashboardV3 && activeCollectionId === 'dashboard') && (
+                    <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                        <CollectionSurface
+                            isDragging={isDragging}
+                            activeFlareId={flaringPortalId}
+                            onCollectionClick={(id) => {
+                                if (id === 'new') {
+                                    onOpenModal();
+                                } else {
+                                    onSelectCollection(id);
                                 }
-                                setIsDragging(false);
-                                setDraggedItem(null);
-                            }
-                        }}
-                    />
-                </div>
+                            }}
+                            onDropCourse={(portalId) => {
+                                if (draggedItem) {
+                                    // Only supporting Course Drop to portals for now as per previous logic, 
+                                    // but MainCanvas supports generic items if we extended App logic.
+                                    if (draggedItem.type === 'COURSE') {
+                                        if (portalId === 'new') {
+                                            onOpenModal(courses.find(c => c.id === draggedItem.id));
+                                        } else {
+                                            onImmediateAddToCollection(Number(draggedItem.id), portalId);
+                                            setFlaringPortalId(portalId);
+                                            setTimeout(() => setFlaringPortalId(null), 500);
+                                        }
+                                    }
+                                    setIsDragging(false);
+                                    setDraggedItem(null);
+                                }
+                            }}
+                        />
+                    </div>
+                )}
 
                 {/* Delete Confirmation Modal */}
                 <DeleteConversationModal

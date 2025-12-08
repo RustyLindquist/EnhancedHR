@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
         };
 
         // ========== GEMINI DEVELOPER MODELS ==========
+        console.log('[Stream API] Model detection:', { model, isDeveloper: isDeveloperModel(model) });
+        
         if (isDeveloperModel(model)) {
             if (!GEMINI_API_KEY) {
                 return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
@@ -111,8 +113,16 @@ export async function POST(req: NextRequest) {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Gemini streaming error:', errorText);
-                return NextResponse.json({ error: `Gemini API Error: ${response.status}` }, { status: 500 });
+                console.error('Gemini streaming error:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    model,
+                    url: geminiUrl.replace(GEMINI_API_KEY, '[REDACTED]'),
+                    error: errorText
+                });
+                return NextResponse.json({ 
+                    error: `Gemini API Error: ${response.status} - ${errorText.substring(0, 200)}` 
+                }, { status: 500 });
             }
 
             const decoder = new TextDecoder();
