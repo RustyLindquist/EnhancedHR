@@ -1,6 +1,8 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton, OrgSubscriptionButton } from '@/components/settings/BillingButtons';
+import SeatManager from '@/components/settings/SeatManager';
+import { stripe } from '@/lib/stripe';
 import { CheckCircle, Shield, Clock } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
@@ -16,6 +18,39 @@ export default async function BillingPage() {
         .select('membership_status, trial_minutes_used, billing_period_end,stripe_customer_id, org_id')
         .eq('id', user.id)
         .single();
+
+    let activeMembers = 0;
+    let stripeQuantity = 0;
+
+    if (profile?.org_id) {
+        // Get Active Member Count
+        const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('org_id', profile.org_id)
+            .neq('membership_status', 'inactive')
+        activeMembers = count || 0
+
+        // Get Stripe Quantity
+        // Optimization: We could store this in DB, but Stripe is source of truth.
+        // We need customer ID from Org table first.
+        const { data: org } = await supabase
+            .from('organizations')
+            .select('stripe_customer_id')
+            .eq('id', profile.org_id)
+            .single()
+
+        if (org?.stripe_customer_id) {
+            const subs = await stripe.subscriptions.list({
+                customer: org.stripe_customer_id,
+                status: 'active',
+                limit: 1
+            })
+            if (subs.data.length > 0) {
+                stripeQuantity = subs.data[0].items.data[0].quantity || 0
+            }
+        }
+    }
 
     const isPro = profile?.membership_status === 'active' || profile?.membership_status === 'org_admin' || profile?.membership_status === 'employee';
     const isTrial = profile?.membership_status === 'trial';
@@ -58,6 +93,16 @@ export default async function BillingPage() {
                             {isPro ? <ManageSubscriptionButton /> : <UpgradeButton />}
                         </div>
                     </div>
+
+
+                    {/* Org Seat Management */}
+                    {profile?.membership_status === 'org_admin' && stripeQuantity > 0 && (
+                        <SeatManager
+                            orgId={profile.org_id!}
+                            currentSeats={stripeQuantity}
+                            activeMembers={activeMembers}
+                        />
+                    )}
 
                     {/* Features List */}
                     {!isPro && (
