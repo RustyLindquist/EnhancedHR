@@ -77,9 +77,17 @@ export async function POST(req: NextRequest) {
         };
 
         // ========== GEMINI DEVELOPER MODELS ==========
-        console.log('[Stream API] Model detection:', { model, isDeveloper: isDeveloperModel(model) });
+        console.log('[Stream API] Request received:', { 
+            agentType, 
+            model, 
+            isDeveloper: isDeveloperModel(model),
+            historyLength: history.length,
+            messagePreview: message.substring(0, 100)
+        });
         
         if (isDeveloperModel(model)) {
+            console.log('[Stream API] Using Gemini API for developer model:', model);
+            console.log('[Stream API] GEMINI_API_KEY set:', !!GEMINI_API_KEY, 'length:', GEMINI_API_KEY.length);
             if (!GEMINI_API_KEY) {
                 return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
             }
@@ -105,6 +113,13 @@ export async function POST(req: NextRequest) {
 
             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
             
+            console.log('[Stream API] Gemini request:', {
+                url: geminiUrl.replace(GEMINI_API_KEY, '[REDACTED]'),
+                contentsLength: geminiRequest.contents.length,
+                firstContent: JSON.stringify(geminiRequest.contents[0]).substring(0, 200),
+                systemInstructionLength: geminiRequest.systemInstruction.parts[0].text.length
+            });
+            
             const response = await fetch(geminiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -116,7 +131,7 @@ export async function POST(req: NextRequest) {
                 console.error('Gemini streaming error:', {
                     status: response.status,
                     statusText: response.statusText,
-                    model,
+                    model: model,
                     url: geminiUrl.replace(GEMINI_API_KEY, '[REDACTED]'),
                     error: errorText
                 });
@@ -165,6 +180,9 @@ export async function POST(req: NextRequest) {
         }
 
         // ========== OPENROUTER PRODUCTION MODELS ==========
+        console.log('[Stream API] Using OpenRouter for production model:', model);
+        console.log('[Stream API] OPENROUTER_API_KEY set:', !!OPENROUTER_API_KEY, 'length:', OPENROUTER_API_KEY.length);
+        
         const systemMessage = {
             role: 'system',
             content: `${systemInstruction}\n\nCONTEXT:\n${contextString}`
@@ -198,8 +216,29 @@ export async function POST(req: NextRequest) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenRouter streaming error:', errorText);
-            return NextResponse.json({ error: `OpenRouter API Error: ${response.status}` }, { status: 500 });
+            console.error('OpenRouter streaming error:', {
+                status: response.status,
+                statusText: response.statusText,
+                model,
+                error: errorText
+            });
+            
+            // Parse error for better user feedback
+            let errorMessage = `OpenRouter API Error: ${response.status}`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                if (errorJson.error?.message) {
+                    errorMessage = errorJson.error.message;
+                }
+                // If 429 rate limit on a free model, suggest adding :free suffix
+                if (response.status === 429 && !model.includes(':free')) {
+                    errorMessage += ` (Tip: For free models, try adding ':free' to the model name, e.g., '${model}:free')`;
+                }
+            } catch {
+                // Keep default error message
+            }
+            
+            return NextResponse.json({ error: errorMessage }, { status: 500 });
         }
 
         const decoder = new TextDecoder();
@@ -244,6 +283,10 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error('Streaming chat error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ 
+            error: error.message || 'Internal Server Error',
+            stack: error.stack?.substring(0, 500),
+            name: error.name
+        }, { status: 500 });
     }
 }

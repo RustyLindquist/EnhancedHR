@@ -196,7 +196,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Streaming failed');
+        const errorBody = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorBody.error || `Streaming failed: ${response.status} ${response.statusText}`);
       }
 
       const reader = response.body?.getReader();
@@ -231,7 +232,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       setMessages(prev => {
         // Remove the empty placeholder and add error message
         const updated = prev.filter(m => m.content !== '');
-        return [...updated, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again." }];
+        return [...updated, { role: 'model', content: `I'm having trouble connecting to my knowledge base right now. Error: ${(error as any).message || String(error)}` }];
       });
     } finally {
       setIsLoading(false);

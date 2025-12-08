@@ -197,8 +197,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     }
                 } catch (convError: any) {
                     console.error("Failed to create conversation:", convError);
-                    setErrorMsg(`Failed to create conversation: ${convError.message || convError}`);
-                    throw new Error("Could not start a new conversation. Please try again.");
+                    const realError = convError.message || convError;
+                    setErrorMsg(`Failed to create conversation: ${realError}`);
+                    throw new Error(`Could not start a new conversation: ${realError}`);
                 }
             }
 
@@ -226,7 +227,13 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             });
 
             if (!response.ok) {
-                throw new Error('Streaming failed');
+                const errorBody = await response.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('[PrometheusFullPage] API Error:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorBody
+                });
+                throw new Error(errorBody.error || 'Streaming failed');
             }
 
             const reader = response.body?.getReader();

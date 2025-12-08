@@ -1932,8 +1932,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     </div>
                 )}
 
-                {/* --- Collection Surface (Footer) - Hidden for Dashboard V3 --- */}
-                {!(useDashboardV3 && activeCollectionId === 'dashboard') && (
+                {/* --- Collection Surface (Footer) - Hidden for Dashboard V3 and Prometheus --- */}
+                {!(useDashboardV3 && activeCollectionId === 'dashboard') && activeCollectionId !== 'prometheus' && (
                     <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
                         <CollectionSurface
                             isDragging={isDragging}
