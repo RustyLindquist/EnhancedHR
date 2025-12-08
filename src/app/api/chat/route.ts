@@ -27,9 +27,32 @@ export async function POST(req: NextRequest) {
             .from('ai_system_prompts')
             .select('system_instruction')
             .eq('agent_type', agentType)
+            .eq('agent_type', agentType)
             .single();
 
-        const systemInstruction = promptData?.system_instruction || 'You are a helpful assistant.';
+        let systemInstruction = promptData?.system_instruction || 'You are a helpful assistant.';
+
+        // [NEW] Dynamic Context Injection for Tutor
+        if (agentType === 'course_tutor' || agentType === 'platform_assistant') {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role, author_bio, org_id') // fetching basic info
+                .eq('id', user.id)
+                .single();
+
+            // Fetch Organization Name if org_id exists
+            let orgName = 'Unknown Company';
+            if (profile?.org_id) {
+                const { data: org } = await supabase.from('organizations').select('name').eq('id', profile.org_id).single();
+                if (org) orgName = org.name;
+            }
+
+            // Replace Placeholders
+            systemInstruction = systemInstruction
+                .replace('{{user_role}}', profile?.role || 'Learner')
+                .replace('{{user_industry}}', 'HR') // Defaulting for now, or fetch from profile if column exists
+                .replace('{{user_org}}', orgName);
+        }
 
         // 2. Generate Embedding for Query
         const embeddingResult = await embeddingModel.embedContent(message);
