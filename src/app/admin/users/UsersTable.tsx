@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AdminUser, promoteUser, createUser } from '@/app/actions/users';
-import { User, Shield, MoreVertical, Plus, Search, Check, X } from 'lucide-react';
+import { AdminUser, promoteUser, createUser, deleteUser } from '@/app/actions/users';
+import { User, Shield, MoreVertical, Plus, Search, Check, X, Trash2, AlertTriangle } from 'lucide-react';
 
 interface UsersTableProps {
     initialUsers: AdminUser[];
@@ -12,6 +12,7 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
     const [users, setUsers] = useState<AdminUser[]>(initialUsers);
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Filter users
@@ -31,6 +32,21 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
         } catch (error) {
             alert('Failed to update role');
             console.error(error);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string) => {
+        try {
+            const res = await deleteUser(userId);
+            if (res?.error) {
+                alert(res.error);
+            } else {
+                setUsers(prev => prev.filter(u => u.id !== userId));
+                setUserToDelete(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+            alert('Failed to delete user');
         }
     };
 
@@ -99,12 +115,21 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                     {user.lastSignIn ? new Date(user.lastSignIn).toLocaleDateString() : 'Never'}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button
-                                        onClick={() => handlePromote(user.id, user.role)}
-                                        className="text-sm text-brand-blue-light hover:text-white transition-colors"
-                                    >
-                                        {user.role === 'admin' ? 'Demote' : 'Promote'}
-                                    </button>
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() => handlePromote(user.id, user.role)}
+                                            className="text-sm text-brand-blue-light hover:text-white transition-colors"
+                                        >
+                                            {user.role === 'admin' ? 'Demote' : 'Promote'}
+                                        </button>
+                                        <button
+                                            onClick={() => setUserToDelete(user)}
+                                            className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                                            title="Delete User"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -121,6 +146,40 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                         setIsCreateModalOpen(false);
                     }}
                 />
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {userToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in-up">
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 text-red-500">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h2 className="text-xl font-bold text-white mb-2">Delete User?</h2>
+                            <p className="text-slate-400">
+                                Are you sure you want to delete <span className="text-white font-medium">{userToDelete.fullName}</span>?
+                                <br />
+                                This action is permanent and cannot be undone.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setUserToDelete(null)}
+                                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleDeleteUser(userToDelete.id)}
+                                className="flex-1 px-4 py-2.5 bg-red-500 text-white hover:bg-red-600 rounded-xl font-bold transition-colors"
+                            >
+                                Delete User
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

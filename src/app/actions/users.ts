@@ -122,3 +122,25 @@ export async function createUser(prevState: any, formData: FormData) {
   revalidatePath('/admin/users');
   return { success: true };
 }
+
+export async function deleteUser(userId: string) {
+    const supabase = createAdminClient();
+
+    // 1. Delete from Auth (This usually cascades to public.users/profiles if set up, but we'll try straight auth delete first)
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+
+    if (authError) {
+        console.error('Error deleting auth user:', authError);
+        return { error: `Failed to delete user: ${authError.message}` };
+    }
+
+    // 2. Explicitly delete profile if cascade didn't happen (or to be sure)
+    const { error: profileError } = await supabase.from('profiles').delete().eq('id', userId);
+    
+    if (profileError) {
+         console.error('Error deleting profile:', profileError);
+    }
+
+    revalidatePath('/admin/users');
+    return { success: true };
+}

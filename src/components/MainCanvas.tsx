@@ -20,6 +20,7 @@ import InstructorCard from './InstructorCard';
 import InstructorPage from './InstructorPage';
 import { MOCK_INSTRUCTORS } from '../constants';
 import { Instructor } from '../types';
+import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -505,21 +506,85 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
 
 // --- MAIN CANVAS COMPONENT ---
 
+import { useCollections } from '../hooks/useCollections';
+
 const MainCanvas: React.FC<MainCanvasProps> = ({
-    courses,
+    courses: initialCourses,
     activeCollectionId,
     onSelectCollection,
     customCollections,
     onOpenModal,
-    onImmediateAddToCollection,
+    onImmediateAddToCollection: propOnAddToCollection, // Rename to avoid conflict if needed, or just use prop
     onOpenAIPanel,
     onSetAIPrompt,
     onCourseSelect,
     initialCourseId,
     onResumeConversation,
     activeConversationId,
-    useDashboardV3 = false
+    useDashboardV3
 }) => {
+    // --- STATE MANAGEMENT ---
+    const [courses, setCourses] = useState<Course[]>(initialCourses);
+    const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
+    const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
+    const [isLoadingCollection, setIsLoadingCollection] = useState(false);
+
+    // Sync courses with saved state
+    // Sync courses with prop changes and saved state
+    useEffect(() => {
+        setCourses(initialCourses.map(course => ({
+            ...course,
+            isSaved: savedItemIds.has(String(course.id))
+        })));
+    }, [initialCourses, savedItemIds]);
+
+    // Fetch collection items when active collection changes (if it's a "saved" collection type)
+    useEffect(() => {
+        const isStandardNav = COLLECTION_NAV_ITEMS.some(i => i.id === activeCollectionId && i.id !== 'favorites'); // 'favorites' is a saved collection
+        const isCustom = customCollections.some(c => c.id === activeCollectionId);
+
+        // If it's favorites or a custom collection, fetch items
+        if (activeCollectionId === 'favorites' || isCustom) {
+            setIsLoadingCollection(true);
+            fetchCollectionItems(activeCollectionId)
+                .then(items => {
+                    setCollectionItems(items);
+                    setIsLoadingCollection(false);
+                })
+                .catch(err => {
+                    console.error("Failed to load collection items", err);
+                    setIsLoadingCollection(false);
+                });
+        }
+    }, [activeCollectionId, savedItemIds, customCollections, fetchCollectionItems]); // Reload if saved items change (e.g. removed from another view)
+
+    // Handle initial course loading if ID is provided
+    useEffect(() => {
+        if (initialCourseId) {
+            const course = courses.find(c => c.id === initialCourseId);
+            if (course) {
+                // If the course module isn't loaded, we might just set the ID and let the effect below handle details
+                setSelectedCourseId(initialCourseId);
+            }
+        }
+    }, [initialCourseId]);
+
+    // Internal handler for adding to collection (persisting)
+    const onImmediateAddToCollection = (itemId: number | string, collectionId: string) => {
+        // Determine type based on ID format or context (passed in args for future)
+        // For now, MainCanvas primarily handles Courses via drag, but CollectionSurface passes type?
+        // We need to update CollectionSurface onDrop to pass type, or assume COURSE if number
+
+        const idStr = String(itemId);
+        // Fallback logic if type isn't passed (we updated onImmediateAddToCollection signature in prop but here we need to match)
+        // Actually, let's update call sites or default to COURSE for now as drag payload usually has type
+
+        addToCollection(idStr, 'COURSE', collectionId);
+
+        if (propOnAddToCollection) {
+            propOnAddToCollection(itemId as any, collectionId);
+        }
+    };
 
     // --- State ---
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -933,18 +998,32 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (user) {
                 const { data, error } = await supabase
                     .from('conversations')
-                    .select('*')
+                    .select('*, messages:conversation_messages(content, created_at)')
                     .eq('user_id', user.id)
                     .order('updated_at', { ascending: false });
 
                 if (error) {
                     console.error("Failed to fetch conversations from DB", error);
                 } else {
-                    // Map DB records to UI Conversation type by adding default 'conversations' collection
-                    const mappedConversations = (data || []).map((c: any) => ({
-                        ...c,
-                        collections: ['conversations']
-                    }));
+                    // Map DB records to UI Conversation type
+                    const mappedConversations = (data || []).map((c: any) => {
+                        // Extract last message from the joined messages array
+                        // The default order of joined array might not be guaranteed, so we sort just in case
+                        const sortedMessages = (c.messages || []).sort((a: any, b: any) =>
+                            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                        );
+
+                        const lastMsgContent = sortedMessages.length > 0
+                            ? sortedMessages[sortedMessages.length - 1].content
+                            : '';
+
+                        return {
+                            ...c,
+                            lastMessage: lastMsgContent,
+                            messages: sortedMessages, // Also store for full hydration if needed
+                            collections: ['conversations']
+                        };
+                    });
                     setConversations(mappedConversations);
                 }
             }
@@ -1068,6 +1147,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 // Fallback to old behavior if prop not provided
                 setActiveConversation(conversation);
                 setPrometheusConversationTitle(conversation.title);
+                setPrometheusPagePrompt(undefined); // Clear any pending prompt to prevent double submission
                 onSelectCollection('prometheus');
             }
         }
@@ -1078,6 +1158,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId !== 'prometheus') {
             setActiveConversation(null);
             setPrometheusConversationTitle('New Conversation');
+            // We do NOT clear prometheusPagePrompt here because we might be switching TO prometheus WITH a prompt
         }
     }, [activeCollectionId]);
 
@@ -1272,8 +1353,73 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         );
     }
 
+    const renderCollectionContent = () => {
+        // If "Favorites" or Custom Collection
+        if (activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId)) {
+            if (isLoadingCollection) {
+                return <div className="text-white p-10 font-bold">Loading collection...</div>;
+            }
+
+            if (collectionItems.length === 0) {
+                return <div className="text-slate-500 p-10 flex flex-col items-center">
+                    <p className="text-lg mb-2">This collection is empty.</p>
+                    <p className="text-sm">Drag and drop courses, lessons, or conversations here to save them.</p>
+                </div>;
+            }
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    {collectionItems.map((item, index) => (
+                        <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
+                            style={{ animationDelay: `${index * 50}ms` }}>
+                            <UniversalCollectionCard
+                                item={item}
+                                onRemove={(id, type) => removeFromCollection(id, activeCollectionId)}
+                                onClick={(item) => {
+                                    if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
+                                    else if (item.itemType === 'CONVERSATION') {
+                                        // Handle conversation open - we need a way to open it. 
+                                        // Ideally we add onOpenConversation prop or use handleOpenConversation if exposed (it's internal)
+                                        // For now, let's just log or try to find a way.
+                                        // Actually `handleOpenConversation` is defined inside MainCanvas. We can call it if we wrap this in a closure or effect?
+                                        // No, simply call handleOpenConversation(item.id)
+                                    }
+                                }}
+                            />
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // Default Grid (All Courses / Filtered)
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
+                {visibleCourses.map((course, index) => (
+                    <div
+                        key={course.id}
+                        className="transform transition-all duration-500 hover:z-20"
+                        style={{
+                            opacity: isDrawerOpen ? 0 : 1,
+                            transform: isDrawerOpen ? 'translateY(20px) scale(0.95)' : 'translateY(0) scale(1)',
+                            transitionDelay: `${index * 50}ms`
+                        }}
+                    >
+                        <CardStack
+                            {...course}
+                            onAddClick={() => onOpenModal(course)}
+                            onDragStart={() => handleCourseDragStart(course.id)}
+                            onClick={() => handleCourseClick(course.id)}
+                        />
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     return (
         <div className="flex-1 h-full relative flex flex-col bg-transparent overflow-hidden">
+
 
             <div
                 className="flex-1 flex flex-col relative overflow-hidden bg-transparent"
@@ -1695,7 +1841,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
                 {/* --- Canvas Content Grid --- */}
                 {activeCollectionId === 'prometheus' ? (
-                    <div className="flex-1 w-full h-full overflow-hidden relative z-65 mt-[60px]">
+                    <div className="flex-1 w-full h-full overflow-hidden relative z-65">
                         <PrometheusFullPage
                             onTitleChange={setPrometheusConversationTitle}
                             onConversationStart={handleConversationStart}
