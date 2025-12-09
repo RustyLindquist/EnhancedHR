@@ -22,6 +22,7 @@ import { MOCK_INSTRUCTORS } from '../constants';
 import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
 import TopContextPanel from './TopContextPanel';
+import GlobalTopPanel from './GlobalTopPanel';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -1419,7 +1420,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const renderCollectionContent = () => {
         // If "Favorites", Custom Collection, or Personal Context
         if (activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId) || activeCollectionId === 'personal-context') {
-            if (isLoadingCollection) {
+            if (isLoadingCollection && activeCollectionId !== 'personal-context') {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
             }
 
@@ -1432,6 +1433,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     const virtualProfile: any = {
                         id: 'virtual-profile-placeholder',
                         itemType: 'PROFILE',
+                        type: 'PROFILE',
                         title: 'My Profile',
                         content: {},
                         created_at: new Date().toISOString(),
@@ -1499,6 +1501,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             );
         }
 
+
+        // Determine what to render based on active collection
+        const isSpecialCollection = activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId) || activeCollectionId === 'personal-context';
+
+
+
         // Default Grid (All Courses / Filtered)
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
@@ -1538,6 +1546,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     setIsDragging(false);
                 }}
             >
+
                 {isDragging && draggedItem && (
                     <CustomDragLayer
                         item={draggedItem}
@@ -1546,271 +1555,262 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     />
                 )}
 
-                {/* --- Drawer Overlay --- */}
-                <div
-                    className={`
-            absolute top-0 left-0 w-full z-[80]
-                transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${isDrawerOpen ? 'translate-y-0' : '-translate-y-full'}
-                `}
+                {/* --- Drawer Overlay - REFACTORED TO GLOBAL TOP PANEL --- */}
+                <GlobalTopPanel
+                    isOpen={isDrawerOpen}
+                    onClose={() => setIsDrawerOpen(false)}
+                    title={
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            {activeFilters.category === 'All' ? 'All Courses' : activeFilters.category}
+                        </h2>
+                    }
+                    headerActions={
+                        <div className="flex items-center gap-4">
+                            {activeFilters.category !== 'All' && (
+                                <button
+                                    onClick={() => {
+                                        setPendingFilters(INITIAL_FILTERS);
+                                        setActiveFilters(INITIAL_FILTERS);
+                                    }}
+                                    className="text-xs font-normal text-brand-orange hover:text-brand-orange-light transition-colors flex items-center gap-1"
+                                >
+                                    <X size={12} /> Clear Filter
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setPendingFilters(INITIAL_FILTERS)}
+                                className="flex items-center text-sm text-slate-400 hover:text-white transition-colors"
+                            >
+                                <RefreshCw size={16} className="mr-2" /> Reset
+                            </button>
+                            <button
+                                onClick={handleApplyFilters}
+                                className="
+                                    bg-brand-blue-light text-brand-black px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide
+                                    hover:bg-brand-orange hover:text-white transition-colors shadow-[0_0_20px_rgba(120,192,240,0.4)]
+                                "
+                            >
+                                Show {applyFilters(pendingFilters, courses).length} Results
+                            </button>
+                        </div>
+                    }
                 >
-                    <div className="bg-[#0f172a]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl pb-6">
-                        <div className="max-w-7xl mx-auto px-10 pt-8">
+                    {/* Search Input */}
+                    <div className="relative mb-8 group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
+                        <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
+                            <Search size={20} className="text-slate-500 mr-4" />
+                            <input
+                                type="text"
+                                value={pendingFilters.searchQuery}
+                                onChange={(e) => setPendingFilters({ ...pendingFilters, searchQuery: e.target.value })}
+                                placeholder="Search for courses, authors, or topics..."
+                                className="bg-transparent border-none outline-none text-lg text-white placeholder-slate-600 w-full"
+                            />
+                        </div>
+                    </div>
 
+                    {/* Filter Grid */}
+                    <div className="grid grid-cols-5 gap-8 mb-8">
 
-                            {/* Header / Close */}
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    {activeFilters.category === 'All' ? 'All Courses' : activeFilters.category}
-                                    {activeFilters.category !== 'All' && (
-                                        <button
-                                            onClick={() => {
-                                                setPendingFilters(INITIAL_FILTERS);
-                                                setActiveFilters(INITIAL_FILTERS);
-                                            }}
-                                            className="ml-4 text-xs font-normal text-brand-orange hover:text-brand-orange-light transition-colors flex items-center gap-1"
-                                        >
-                                            <X size={12} /> Clear Filter
-                                        </button>
-                                    )}
-                                </h2>
-                            </div>     {/* Search Input */}
-                            <div className="relative mb-8 group">
-                                <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
-                                <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
-                                    <Search size={20} className="text-slate-500 mr-4" />
-                                    <input
-                                        type="text"
-                                        value={pendingFilters.searchQuery}
-                                        onChange={(e) => setPendingFilters({ ...pendingFilters, searchQuery: e.target.value })}
-                                        placeholder="Search for courses, authors, or topics..."
-                                        className="bg-transparent border-none outline-none text-lg text-white placeholder-slate-600 w-full"
-                                    />
+                        {/* Col 1: Credits & Designations */}
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Credits</h3>
+                                <div className="space-y-2">
+                                    {['SHRM', 'HRCI'].map(credit => (
+                                        <label key={credit} className="flex items-center space-x-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.credits.includes(credit) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                {pendingFilters.credits.includes(credit) && <Check size={12} className="text-black" />}
+                                            </div>
+                                            <span className={`text-sm transition-colors ${pendingFilters.credits.includes(credit) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{credit}</span>
+                                            <input type="checkbox" className="hidden" checked={pendingFilters.credits.includes(credit)} onChange={() => toggleArrayFilter('credits', credit)} />
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Designation</h3>
+                                <div className="space-y-2">
+                                    {['REQUIRED', 'RECOMMENDED'].map(item => (
+                                        <label key={item} className="flex items-center space-x-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.designations.includes(item) ? 'bg-brand-orange border-brand-orange' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                {pendingFilters.designations.includes(item) && <Check size={12} className="text-white" />}
+                                            </div>
+                                            <span className={`text-sm transition-colors ${pendingFilters.designations.includes(item) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>
+                                                {item.charAt(0) + item.slice(1).toLowerCase()}
+                                            </span>
+                                            <input type="checkbox" className="hidden" checked={pendingFilters.designations.includes(item)} onChange={() => toggleArrayFilter('designations', item)} />
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-                            {/* Filter Grid */}
-                            <div className="grid grid-cols-5 gap-8 mb-8">
-
-                                {/* Col 1: Credits & Designations */}
-                                <div className="space-y-6">
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Credits</h3>
-                                        <div className="space-y-2">
-                                            {['SHRM', 'HRCI'].map(credit => (
-                                                <label key={credit} className="flex items-center space-x-3 cursor-pointer group">
-                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.credits.includes(credit) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                        {pendingFilters.credits.includes(credit) && <Check size={12} className="text-black" />}
-                                                    </div>
-                                                    <span className={`text-sm transition-colors ${pendingFilters.credits.includes(credit) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{credit}</span>
-                                                    <input type="checkbox" className="hidden" checked={pendingFilters.credits.includes(credit)} onChange={() => toggleArrayFilter('credits', credit)} />
-                                                </label>
-                                            ))}
+                        {/* Col 2: Categories */}
+                        <div className="col-span-1">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categories</h3>
+                            <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
+                                {COURSE_CATEGORIES.map(cat => (
+                                    <label key={cat} className="flex items-center gap-3 cursor-pointer group">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.category === cat ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                            {pendingFilters.category === cat && <Check size={12} className="text-black" />}
                                         </div>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Designation</h3>
-                                        <div className="space-y-2">
-                                            {['REQUIRED', 'RECOMMENDED'].map(item => (
-                                                <label key={item} className="flex items-center space-x-3 cursor-pointer group">
-                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.designations.includes(item) ? 'bg-brand-orange border-brand-orange' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                        {pendingFilters.designations.includes(item) && <Check size={12} className="text-white" />}
-                                                    </div>
-                                                    <span className={`text-sm transition-colors ${pendingFilters.designations.includes(item) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>
-                                                        {item.charAt(0) + item.slice(1).toLowerCase()}
-                                                    </span>
-                                                    <input type="checkbox" className="hidden" checked={pendingFilters.designations.includes(item)} onChange={() => toggleArrayFilter('designations', item)} />
-                                                </label>
-                                            ))}
+                                        <span className={`text-sm truncate transition-colors ${pendingFilters.category === cat ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{cat}</span>
+                                        <input
+                                            type="checkbox"
+                                            className="hidden"
+                                            checked={pendingFilters.category === cat}
+                                            onChange={() => {
+                                                setPendingFilters(prev => ({
+                                                    ...prev,
+                                                    category: prev.category === cat ? 'All' : cat
+                                                }));
+                                            }}
+                                        />
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Col 3: Status */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status</h3>
+                            <div className="space-y-2">
+                                {[
+                                    { id: 'NOT_STARTED', label: 'Not Started' },
+                                    { id: 'IN_PROGRESS', label: 'In Progress' },
+                                    { id: 'COMPLETED', label: 'Completed' }
+                                ].map(stat => (
+                                    <label key={stat.id} className="flex items-center space-x-3 cursor-pointer group">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.status.includes(stat.id) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                            {pendingFilters.status.includes(stat.id) && <Check size={12} className="text-black" />}
                                         </div>
-                                    </div>
-                                </div>
+                                        <span className={`text-sm transition-colors ${pendingFilters.status.includes(stat.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{stat.label}</span>
+                                        <input type="checkbox" className="hidden" checked={pendingFilters.status.includes(stat.id)} onChange={() => toggleArrayFilter('status', stat.id)} />
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
 
-                                {/* Col 2: Categories */}
-                                <div className="col-span-1">
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categories</h3>
-                                    <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
-                                        {COURSE_CATEGORIES.map(cat => (
-                                            <label key={cat} className="flex items-center gap-3 cursor-pointer group">
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.category === cat ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                    {pendingFilters.category === cat && <Check size={12} className="text-black" />}
-                                                </div>
-                                                <span className={`text-sm truncate transition-colors ${pendingFilters.category === cat ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{cat}</span>
-                                                <input
-                                                    type="checkbox"
-                                                    className="hidden"
-                                                    checked={pendingFilters.category === cat}
-                                                    onChange={() => {
-                                                        setPendingFilters(prev => ({
-                                                            ...prev,
-                                                            category: prev.category === cat ? 'All' : cat
-                                                        }));
-                                                    }}
-                                                />
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Col 3: Status */}
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status</h3>
-                                    <div className="space-y-2">
-                                        {[
-                                            { id: 'NOT_STARTED', label: 'Not Started' },
-                                            { id: 'IN_PROGRESS', label: 'In Progress' },
-                                            { id: 'COMPLETED', label: 'Completed' }
-                                        ].map(stat => (
-                                            <label key={stat.id} className="flex items-center space-x-3 cursor-pointer group">
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.status.includes(stat.id) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                    {pendingFilters.status.includes(stat.id) && <Check size={12} className="text-black" />}
-                                                </div>
-                                                <span className={`text-sm transition-colors ${pendingFilters.status.includes(stat.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{stat.label}</span>
-                                                <input type="checkbox" className="hidden" checked={pendingFilters.status.includes(stat.id)} onChange={() => toggleArrayFilter('status', stat.id)} />
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Col 4: Ratings */}
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Minimum Rating</h3>
-                                    <div className="space-y-2">
-                                        {/* Any Rating */}
-                                        <button
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'ALL' }))}
-                                            className={`
+                        {/* Col 4: Ratings */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Minimum Rating</h3>
+                            <div className="space-y-2">
+                                {/* Any Rating */}
+                                <button
+                                    onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'ALL' }))}
+                                    className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'ALL'
-                                                    ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                                    : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                                }
+                                            ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                            : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                        }
                 `}
-                                        >
-                                            <span>Any Rating</span>
-                                            {pendingFilters.ratingFilter === 'ALL' && <Check size={14} className="text-brand-orange" />}
-                                        </button>
+                                >
+                                    <span>Any Rating</span>
+                                    {pendingFilters.ratingFilter === 'ALL' && <Check size={14} className="text-brand-orange" />}
+                                </button>
 
-                                        {/* Rated Options */}
-                                        {[
-                                            { val: '4_PLUS', label: '4+ Stars' },
-                                            { val: '3_PLUS', label: '3+ Stars' },
-                                            { val: '2_PLUS', label: '2+ Stars' },
-                                            { val: '1_PLUS', label: '1+ Stars' },
-                                        ].map(opt => (
-                                            <button
-                                                key={opt.val}
-                                                onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: opt.val as RatingFilterType }))}
-                                                className={`
+                                {/* Rated Options */}
+                                {[
+                                    { val: '4_PLUS', label: '4+ Stars' },
+                                    { val: '3_PLUS', label: '3+ Stars' },
+                                    { val: '2_PLUS', label: '2+ Stars' },
+                                    { val: '1_PLUS', label: '1+ Stars' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.val}
+                                        onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: opt.val as RatingFilterType }))}
+                                        className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === opt.val
-                                                        ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                                        : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                                    }
+                                                ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                                : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                            }
                 `}
-                                            >
-                                                <span>{opt.label}</span>
-                                                {pendingFilters.ratingFilter === opt.val && <Check size={14} className="text-brand-orange" />}
-                                            </button>
-                                        ))}
+                                    >
+                                        <span>{opt.label}</span>
+                                        {pendingFilters.ratingFilter === opt.val && <Check size={14} className="text-brand-orange" />}
+                                    </button>
+                                ))}
 
-                                        {/* Not Yet Rated */}
-                                        <button
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'NOT_RATED' }))}
-                                            className={`
+                                {/* Not Yet Rated */}
+                                <button
+                                    onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'NOT_RATED' }))}
+                                    className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'NOT_RATED'
-                                                    ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                                    : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                                }
+                                            ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                            : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                        }
                 `}
-                                        >
-                                            <span>Not Yet Rated</span>
-                                            {pendingFilters.ratingFilter === 'NOT_RATED' && <Check size={14} className="text-brand-orange" />}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Col 5: Date Added */}
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Date Added</h3>
-                                    <div className="space-y-2">
-                                        {/* All Time */}
-                                        <button
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'ALL' }))}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'ALL' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                        >
-                                            <span>All Time</span>
-                                            {pendingFilters.dateFilterType === 'ALL' && <Check size={14} className="text-brand-orange" />}
-                                        </button>
-
-                                        {/* Since Last Login */}
-                                        <button
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'SINCE_LOGIN' }))}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'SINCE_LOGIN' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                        >
-                                            <span>Since Last Login</span>
-                                            {pendingFilters.dateFilterType === 'SINCE_LOGIN' && <Check size={14} className="text-brand-orange" />}
-                                        </button>
-
-                                        {/* This Month */}
-                                        <button
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'THIS_MONTH' }))}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'THIS_MONTH' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                        >
-                                            <span>This Month</span>
-                                            {pendingFilters.dateFilterType === 'THIS_MONTH' && <Check size={14} className="text-brand-orange" />}
-                                        </button>
-
-                                        {/* Last X Days */}
-                                        <div className={`p-2 rounded border transition-all ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'bg-brand-orange/10 border-brand-orange' : 'border-slate-700'} `}>
-                                            <button
-                                                onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
-                                                className="w-full flex items-center justify-between mb-2"
-                                            >
-                                                <span className={`text-sm ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'text-white' : 'text-slate-400'} `}>Last ___ Days</span>
-                                                {pendingFilters.dateFilterType === 'LAST_X_DAYS' && <Check size={14} className="text-brand-orange" />}
-                                            </button>
-                                            <div className="flex items-center space-x-2">
-                                                <input
-                                                    type="number"
-                                                    value={pendingFilters.customDays}
-                                                    onChange={(e) => setPendingFilters(prev => ({ ...prev, customDays: e.target.value, dateFilterType: 'LAST_X_DAYS' }))}
-                                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
-                                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-sm text-white focus:border-brand-orange outline-none"
-                                                />
-                                                <span className="text-xs text-slate-500">Days</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Footer Actions */}
-                            <div className="flex justify-between items-center pt-6 border-t border-white/10">
-                                <button
-                                    onClick={() => setPendingFilters(INITIAL_FILTERS)}
-                                    className="flex items-center text-sm text-slate-400 hover:text-white transition-colors"
                                 >
-                                    <RefreshCw size={16} className="mr-2" /> Reset Filters
-                                </button>
-                                <button
-                                    onClick={handleApplyFilters}
-                                    className="
-                        bg-brand-blue-light text-brand-black px-8 py-3 rounded-lg font-bold text-sm uppercase tracking-wide
-                        hover:bg-brand-orange hover:text-white transition-colors shadow-[0_0_20px_rgba(120,192,240,0.4)]
-                     "
-                                >
-                                    Show {applyFilters(pendingFilters, courses).length} Results
+                                    <span>Not Yet Rated</span>
+                                    {pendingFilters.ratingFilter === 'NOT_RATED' && <Check size={14} className="text-brand-orange" />}
                                 </button>
                             </div>
                         </div>
+
+                        {/* Col 5: Date Added */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Date Added</h3>
+                            <div className="space-y-2">
+                                {/* All Time */}
+                                <button
+                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'ALL' }))}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'ALL' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                >
+                                    <span>All Time</span>
+                                    {pendingFilters.dateFilterType === 'ALL' && <Check size={14} className="text-brand-orange" />}
+                                </button>
+
+                                {/* Since Last Login */}
+                                <button
+                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'SINCE_LOGIN' }))}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'SINCE_LOGIN' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                >
+                                    <span>Since Last Login</span>
+                                    {pendingFilters.dateFilterType === 'SINCE_LOGIN' && <Check size={14} className="text-brand-orange" />}
+                                </button>
+
+                                {/* This Month */}
+                                <button
+                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'THIS_MONTH' }))}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'THIS_MONTH' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                >
+                                    <span>This Month</span>
+                                    {pendingFilters.dateFilterType === 'THIS_MONTH' && <Check size={14} className="text-brand-orange" />}
+                                </button>
+
+                                {/* Last X Days */}
+                                <div className={`p-2 rounded border transition-all ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'bg-brand-orange/10 border-brand-orange' : 'border-slate-700'} `}>
+                                    <button
+                                        onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
+                                        className="w-full flex items-center justify-between mb-2"
+                                    >
+                                        <span className={`text-sm ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'text-white' : 'text-slate-400'} `}>Last ___ Days</span>
+                                        {pendingFilters.dateFilterType === 'LAST_X_DAYS' && <Check size={14} className="text-brand-orange" />}
+                                    </button>
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="number"
+                                            value={pendingFilters.customDays}
+                                            onChange={(e) => setPendingFilters(prev => ({ ...prev, customDays: e.target.value, dateFilterType: 'LAST_X_DAYS' }))}
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
+                                            className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-sm text-white focus:border-brand-orange outline-none"
+                                        />
+                                        <span className="text-xs text-slate-500">Days</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="w-full h-screen bg-black/50 backdrop-blur-sm" onClick={handleCloseDrawer}></div>
-                </div>
+
+                </GlobalTopPanel>
 
                 {/* --- Header --- */}
-                <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
+                < div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative" >
                     <div>
                         <div className="flex items-center space-x-2 mb-1">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
@@ -1965,280 +1965,289 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         )}
 
                     </div>
-                </div>
+                </div >
 
                 {/* --- Canvas Content Grid --- */}
-                {activeCollectionId === 'prometheus' ? (
-                    <div className="flex-1 w-full h-full overflow-hidden relative z-65">
-                        <PrometheusFullPage
-                            onTitleChange={setPrometheusConversationTitle}
-                            onConversationStart={handleConversationStart}
-                            initialTitle={activeConversation?.title || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.title : undefined)}
-                            initialMessages={activeConversation?.messages || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.messages : undefined)}
-                            conversationId={activeConversation?.id || activeConversationId || undefined}
-                            onSaveConversation={handleSaveConversation}
-                            isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
-                            initialPrompt={prometheusPagePrompt}
-                        />
-                    </div>
-                ) : activeCollectionId === 'dashboard' ? (
-                    <div className={`flex-1 w-full h-full overflow-hidden relative z-10 ${useDashboardV3 ? '' : 'mt-[60px]'}`}>
-                        {user?.role === 'org_admin' ? (
-                            <OrgAdminDashboard
-                                user={user}
-                                orgId={user.org_id || 'demo-org'}
-                                onOpenAIPanel={onOpenAIPanel}
-                                onSetAIPrompt={onSetAIPrompt}
+                {
+                    activeCollectionId === 'prometheus' ? (
+                        <div className="flex-1 w-full h-full overflow-hidden relative z-65">
+                            <PrometheusFullPage
+                                onTitleChange={setPrometheusConversationTitle}
+                                onConversationStart={handleConversationStart}
+                                initialTitle={activeConversation?.title || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.title : undefined)}
+                                initialMessages={activeConversation?.messages || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.messages : undefined)}
+                                conversationId={activeConversation?.id || activeConversationId || undefined}
+                                onSaveConversation={handleSaveConversation}
+                                isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
+                                initialPrompt={prometheusPagePrompt}
                             />
-                        ) : user?.role === 'employee' ? (
-                            <EmployeeDashboard
-                                user={user}
-                                courses={courses}
-                                onNavigate={onSelectCollection}
-                                onStartCourse={handleStartCourse}
-                                onOpenAIPanel={onOpenAIPanel}
-                                onSetAIPrompt={onSetAIPrompt}
-                            />
-                        ) : (
-                            <UserDashboardV3
-                                user={user}
-                                courses={courses}
-                                onNavigate={onSelectCollection}
-                                onStartCourse={handleCourseClick}
-                                onOpenAIPanel={onOpenAIPanel}
-                                onSetAIPrompt={onSetAIPrompt}
-                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                            />
-                        )}
-                    </div>
-                ) : (
-                    <div className={`flex-1 w-[calc(100%-4rem)] max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
-                        <div className="w-full" key={renderKey}>
-
-
-                            {/* Alert Box - Only show in Academy View */}
-                            {isAcademyView && isAlertVisible && (
-                                <AlertBox
-                                    title="AI-Enhanced Learning"
-                                    description="Make sure to try out the Prometheus AI Tutor in any course, for an AI-Enhanced, fully-personalized learning experience!"
-                                    onDismiss={() => setIsAlertVisible(false)}
-                                    className={`mb-[30px] ${transitionState === 'exiting' ? 'opacity-0 -translate-y-5 blur-md' : 'opacity-100 translate-y-0 blur-0'} `}
+                        </div>
+                    ) : activeCollectionId === 'dashboard' ? (
+                        <div className={`flex-1 w-full h-full overflow-hidden relative z-10 ${useDashboardV3 ? '' : 'mt-[60px]'}`}>
+                            {user?.role === 'org_admin' ? (
+                                <OrgAdminDashboard
+                                    user={user}
+                                    orgId={user.org_id || 'demo-org'}
+                                    onOpenAIPanel={onOpenAIPanel}
+                                    onSetAIPrompt={onSetAIPrompt}
+                                />
+                            ) : user?.role === 'employee' ? (
+                                <EmployeeDashboard
+                                    user={user}
+                                    courses={courses}
+                                    onNavigate={onSelectCollection}
+                                    onStartCourse={handleStartCourse}
+                                    onOpenAIPanel={onOpenAIPanel}
+                                    onSetAIPrompt={onSetAIPrompt}
+                                />
+                            ) : (
+                                <UserDashboardV3
+                                    user={user}
+                                    courses={courses}
+                                    onNavigate={onSelectCollection}
+                                    onStartCourse={handleCourseClick}
+                                    onOpenAIPanel={onOpenAIPanel}
+                                    onSetAIPrompt={onSetAIPrompt}
+                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                                 />
                             )}
+                        </div>
+                    ) : (
+                        <div className={`flex-1 w-[calc(100%-4rem)] max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
+                            <div className="w-full" key={renderKey}>
 
-                            {isAcademyView ? (
-                                // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
-                                <div className="space-y-12 pb-20">
 
-                                    {/* Category Quick Nav */}
-                                    <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
-                                        <button
-                                            onClick={() => {
-                                                setPendingFilters(INITIAL_FILTERS);
-                                                setActiveFilters(INITIAL_FILTERS);
-                                            }}
-                                            className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
-                                                ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
-                                                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
-                                                } `}
-                                        >
-                                            All
-                                        </button>
-                                        {COURSE_CATEGORIES.map((category) => (
+                                {/* Alert Box - Only show in Academy View */}
+                                {isAcademyView && isAlertVisible && (
+                                    <AlertBox
+                                        title="AI-Enhanced Learning"
+                                        description="Make sure to try out the Prometheus AI Tutor in any course, for an AI-Enhanced, fully-personalized learning experience!"
+                                        onDismiss={() => setIsAlertVisible(false)}
+                                        className={`mb-[30px] ${transitionState === 'exiting' ? 'opacity-0 -translate-y-5 blur-md' : 'opacity-100 translate-y-0 blur-0'} `}
+                                    />
+                                )}
+
+                                {isAcademyView ? (
+                                    // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
+                                    <div className="space-y-12 pb-20">
+
+                                        {/* Category Quick Nav */}
+                                        <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
                                             <button
-                                                key={category}
                                                 onClick={() => {
-                                                    const newFilters = { ...INITIAL_FILTERS, category };
-                                                    setPendingFilters(newFilters);
-                                                    setActiveFilters(newFilters);
+                                                    setPendingFilters(INITIAL_FILTERS);
+                                                    setActiveFilters(INITIAL_FILTERS);
                                                 }}
-                                                className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
                                                     ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
                                                     : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
                                                     } `}
                                             >
-                                                {category}
+                                                All
                                             </button>
-                                        ))}
-                                    </div>
+                                            {COURSE_CATEGORIES.map((category) => (
+                                                <button
+                                                    key={category}
+                                                    onClick={() => {
+                                                        const newFilters = { ...INITIAL_FILTERS, category };
+                                                        setPendingFilters(newFilters);
+                                                        setActiveFilters(newFilters);
+                                                    }}
+                                                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                        ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
+                                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                                                        } `}
+                                                >
+                                                    {category}
+                                                </button>
+                                            ))}
+                                        </div>
 
-                                    {COURSE_CATEGORIES.map((category, catIndex) => {
-                                        const categoryCourses = visibleCourses.filter(c => c.category === category);
-                                        if (categoryCourses.length === 0) return null;
+                                        {COURSE_CATEGORIES.map((category, catIndex) => {
+                                            const categoryCourses = visibleCourses.filter(c => c.category === category);
+                                            if (categoryCourses.length === 0) return null;
 
-                                        const isCollapsed = collapsedCategories.includes(category);
+                                            const isCollapsed = collapsedCategories.includes(category);
 
-                                        return (
-                                            <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
-                                                {/* Category Header */}
-                                                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
-                                                    <div
-                                                        className="flex items-center gap-3 cursor-pointer group/title select-none"
-                                                        onClick={() => toggleCategory(category)}
-                                                    >
-                                                        <div className={`
+                                            return (
+                                                <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
+                                                    {/* Category Header */}
+                                                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
+                                                        <div
+                                                            className="flex items-center gap-3 cursor-pointer group/title select-none"
+                                                            onClick={() => toggleCategory(category)}
+                                                        >
+                                                            <div className={`
                 p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
                 group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     `}>
-                                                            {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                            </div>
+
+                                                            <div className="flex items-baseline gap-3">
+                                                                <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
+                                                                <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
+                                                            </div>
                                                         </div>
 
-                                                        <div className="flex items-baseline gap-3">
-                                                            <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
-                                                            <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
-                                                        </div>
+                                                        {!isCollapsed && (
+                                                            <button
+                                                                onClick={() => handleCategorySelect(category)}
+                                                                className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
+                                                            >
+                                                                View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                                                            </button>
+                                                        )}
                                                     </div>
 
+                                                    {/* Horizontal Scroll Row */}
                                                     {!isCollapsed && (
-                                                        <button
-                                                            onClick={() => handleCategorySelect(category)}
-                                                            className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
-                                                        >
-                                                            View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                                                        </button>
+                                                        <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
+                                                            {categoryCourses.map((course, index) => {
+                                                                const delay = Math.min(index, 10) * 50;
+                                                                return (
+                                                                    <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
+                                                                        <LazyCourseCard>
+                                                                            <div
+                                                                                style={{ transitionDelay: `${delay} ms` }}
+                                                                                className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
+                                                                            >
+                                                                                <CardStack
+                                                                                    {...course}
+                                                                                    onAddClick={handleAddButtonClick}
+                                                                                    onDragStart={handleCourseDragStart}
+                                                                                    onClick={handleCourseClick}
+                                                                                />
+                                                                            </div>
+                                                                        </LazyCourseCard>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     )}
                                                 </div>
-
-                                                {/* Horizontal Scroll Row */}
-                                                {!isCollapsed && (
-                                                    <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
-                                                        {categoryCourses.map((course, index) => {
-                                                            const delay = Math.min(index, 10) * 50;
-                                                            return (
-                                                                <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
-                                                                    <LazyCourseCard>
-                                                                        <div
-                                                                            style={{ transitionDelay: `${delay} ms` }}
-                                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
-                                                                        >
-                                                                            <CardStack
-                                                                                {...course}
-                                                                                onAddClick={handleAddButtonClick}
-                                                                                onDragStart={handleCourseDragStart}
-                                                                                onClick={handleCourseClick}
-                                                                            />
-                                                                        </div>
-                                                                    </LazyCourseCard>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                // --- FLAT GRID VIEW (Collections / Filters) ---
-                                <div className="pb-20">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
-                                        {/* Render Courses */}
-                                        {visibleCourses.map((course, index) => {
-                                            const delay = Math.min(index, 15) * 50;
-                                            return (
-                                                <LazyCourseCard key={course.id}>
-                                                    <div
-                                                        style={{ transitionDelay: `${delay}ms` }}
-                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                    >
-                                                        <CardStack
-                                                            {...course}
-                                                            onAddClick={handleAddButtonClick}
-                                                            onDragStart={handleCourseDragStart}
-                                                            onClick={handleCourseClick}
-                                                        />
-                                                    </div>
-                                                </LazyCourseCard>
                                             );
                                         })}
-
-                                        {/* Render Conversations */}
-                                        {visibleConversations.map((conversation, index) => (
-                                            <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                <ConversationCard
-                                                    {...conversation}
-                                                    onClick={handleOpenConversation}
-                                                    onDelete={handleDeleteConversation}
-                                                />
-                                            </div>
-                                        ))}
-
-                                        {/* Render Instructors */}
-                                        {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                <InstructorCard
-                                                    instructor={instructor}
-                                                    onClick={setSelectedInstructorId}
-                                                />
-                                            </div>
-                                        ))}
-
-                                        {/* Empty State */}
-                                        {isCollectionEmpty ? (
-                                            // --- EMPTY COLLECTION STATES ---
-                                            <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
-                                                {/* Visual Graphic at Top */}
-                                                <div className="mb-12 animate-float">
-                                                    {renderCollectionVisual()}
-                                                </div>
-
-                                                {/* Text Content */}
-                                                <CollectionInfo type={activeCollectionId} isEmptyState={true} />
-                                            </div>
-                                        ) : (
-                                            // --- NO RESULTS (Filter Context) ---
-                                            visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                    <Search size={48} className="text-slate-600 mb-4" />
-                                                    <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                    <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                                </div>
-                                            )
-                                        )}
                                     </div>
+                                ) : (
+                                    // --- FLAT GRID VIEW (Collections / Filters) ---
+                                    <div className="pb-20">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
+                                            {/* Render Courses */}
+                                            {visibleCourses.map((course, index) => {
+                                                const delay = Math.min(index, 15) * 50;
+                                                return (
+                                                    <LazyCourseCard key={course.id}>
+                                                        <div
+                                                            style={{ transitionDelay: `${delay}ms` }}
+                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                        >
+                                                            <CardStack
+                                                                {...course}
+                                                                onAddClick={handleAddButtonClick}
+                                                                onDragStart={handleCourseDragStart}
+                                                                onClick={handleCourseClick}
+                                                            />
+                                                        </div>
+                                                    </LazyCourseCard>
+                                                );
+                                            })}
 
-                                    {/* Populated Footer (Collection Info) */}
-                                    {visibleCourses.length > 0 && renderCollectionFooter()}
-                                </div>
-                            )}
+                                            {/* Render Conversations */}
+                                            {visibleConversations.map((conversation, index) => (
+                                                <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                                    <ConversationCard
+                                                        {...conversation}
+                                                        onClick={handleOpenConversation}
+                                                        onDelete={handleDeleteConversation}
+                                                    />
+                                                </div>
+                                            ))}
 
+                                            {/* Render Instructors */}
+                                            {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                                <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                    <InstructorCard
+                                                        instructor={instructor}
+                                                        onClick={setSelectedInstructorId}
+                                                    />
+                                                </div>
+                                            ))}
+
+                                            {/* Empty State */}
+                                            {isCollectionEmpty ? (
+                                                activeCollectionId === 'personal-context' ? (
+                                                    <div className="col-span-full">
+                                                        {renderCollectionContent()}
+                                                    </div>
+                                                ) : (
+                                                    // --- EMPTY COLLECTION STATES ---
+                                                    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
+                                                        {/* Visual Graphic at Top */}
+                                                        <div className="mb-12 animate-float">
+                                                            {renderCollectionVisual()}
+                                                        </div>
+
+                                                        {/* Text Content */}
+                                                        <CollectionInfo type={activeCollectionId} isEmptyState={true} />
+                                                    </div>
+                                                )) : (
+                                                // --- NO RESULTS (Filter Context) ---
+                                                visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
+                                                    <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                        <Search size={48} className="text-slate-600 mb-4" />
+                                                        <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                        <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+
+                                        {/* Populated Footer (Collection Info) */}
+                                        {visibleCourses.length > 0 && renderCollectionFooter()}
+                                    </div>
+                                )}
+
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* --- Collection Surface (Footer) - Hidden for Dashboard V3 and Prometheus --- */}
-                {!(useDashboardV3 && activeCollectionId === 'dashboard') && activeCollectionId !== 'prometheus' && (
-                    <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
-                        <CollectionSurface
-                            isDragging={isDragging}
-                            activeFlareId={flaringPortalId}
-                            onCollectionClick={(id) => {
-                                if (id === 'new') {
-                                    onOpenModal();
-                                } else {
-                                    onSelectCollection(id);
-                                }
-                            }}
-                            onDropCourse={(portalId) => {
-                                if (draggedItem) {
-                                    // Only supporting Course Drop to portals for now as per previous logic, 
-                                    // but MainCanvas supports generic items if we extended App logic.
-                                    if (draggedItem.type === 'COURSE') {
-                                        if (portalId === 'new') {
-                                            onOpenModal(courses.find(c => c.id === draggedItem.id));
-                                        } else {
-                                            onImmediateAddToCollection(Number(draggedItem.id), portalId);
-                                            setFlaringPortalId(portalId);
-                                            setTimeout(() => setFlaringPortalId(null), 500);
-                                        }
+                {
+                    !(useDashboardV3 && activeCollectionId === 'dashboard') && activeCollectionId !== 'prometheus' && (
+                        <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                            <CollectionSurface
+                                isDragging={isDragging}
+                                activeFlareId={flaringPortalId}
+                                onCollectionClick={(id) => {
+                                    if (id === 'new') {
+                                        onOpenModal();
+                                    } else {
+                                        onSelectCollection(id);
                                     }
-                                    setIsDragging(false);
-                                    setDraggedItem(null);
-                                }
-                            }}
-                        />
-                    </div>
-                )}
+                                }}
+                                onDropCourse={(portalId) => {
+                                    if (draggedItem) {
+                                        // Only supporting Course Drop to portals for now as per previous logic, 
+                                        // but MainCanvas supports generic items if we extended App logic.
+                                        if (draggedItem.type === 'COURSE') {
+                                            if (portalId === 'new') {
+                                                onOpenModal(courses.find(c => c.id === draggedItem.id));
+                                            } else {
+                                                onImmediateAddToCollection(Number(draggedItem.id), portalId);
+                                                setFlaringPortalId(portalId);
+                                                setTimeout(() => setFlaringPortalId(null), 500);
+                                            }
+                                        }
+                                        setIsDragging(false);
+                                        setDraggedItem(null);
+                                    }
+                                }}
+                            />
+                        </div>
+                    )
+                }
 
                 {/* Delete Confirmation Modal */}
                 <DeleteConversationModal
@@ -2257,8 +2266,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     initialType={contextTypeToAdd}
                     userId={useCollections(courses).savedItemIds ? 'current-user-implied-by-server-action' : ''}
                 />
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

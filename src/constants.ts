@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Settings,
   Users,
-  Bot
+  Bot,
+  Brain
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -696,6 +697,7 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'instructors', label: 'Instructors', icon: Users },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'certifications', label: 'Certifications', icon: Award },
+  { id: 'personal-context', label: 'Personal Context', icon: Brain },
 ];
 
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
