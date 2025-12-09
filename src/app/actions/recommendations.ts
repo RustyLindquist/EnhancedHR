@@ -47,7 +47,7 @@ export async function getRecommendedCourses(userId: string): Promise<Course[]> {
     try {
         // Use a fast model for recommendations
         const response = await generateOpenRouterResponse(
-            'google/gemini-2.0-flash-001',
+            'google/gemma-2-27b-it:free',
             prompt,
             [],
             { agentType: 'recommendation_engine', userId }

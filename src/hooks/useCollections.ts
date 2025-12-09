@@ -187,6 +187,25 @@ export function useCollections(initialCourses: Course[]) {
         } else promises.push(Promise.resolve([]));
 
 
+        // 4. Fetch Context Items (Native to Collection)
+        let contextItemsQuery = supabase
+            .from('user_context_items')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (collectionId === 'personal-context') {
+            contextItemsQuery = contextItemsQuery.is('collection_id', null);
+        } else {
+             contextItemsQuery = contextItemsQuery.eq('collection_id', collectionId);
+        }
+
+        const { data: contextItems, error: contextError } = await contextItemsQuery;
+        
+        const mappedContextItems = contextItems?.map((item: any) => ({
+            ...item,
+            itemType: item.type // 'AI_INSIGHT', 'CUSTOM_CONTEXT', etc. match DB enum
+        })) || [];
+
         const [courses, conversations, modules, lessons, resources] = await Promise.all(promises);
 
         return [
@@ -194,7 +213,8 @@ export function useCollections(initialCourses: Course[]) {
             ...conversations,
             ...modules,
             ...lessons,
-            ...resources
+            ...resources,
+            ...mappedContextItems
         ];
     };
 

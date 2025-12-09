@@ -11,7 +11,7 @@ import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
@@ -21,6 +21,7 @@ import InstructorPage from './InstructorPage';
 import { MOCK_INSTRUCTORS } from '../constants';
 import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
+import TopContextPanel from './TopContextPanel';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -544,7 +545,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         const isCustom = customCollections.some(c => c.id === activeCollectionId);
 
         // If it's favorites or a custom collection, fetch items
-        if (activeCollectionId === 'favorites' || isCustom) {
+        if (activeCollectionId === 'favorites' || isCustom || activeCollectionId === 'personal-context') {
             setIsLoadingCollection(true);
             fetchCollectionItems(activeCollectionId)
                 .then(items => {
@@ -598,6 +599,26 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
 
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // --- CONTEXT EDITOR STATE ---
+    const [isContextEditorOpen, setIsContextEditorOpen] = useState(false);
+    const [editingContextItem, setEditingContextItem] = useState<UserContextItem | null>(null);
+    const [contextTypeToAdd, setContextTypeToAdd] = useState<ContextItemType>('CUSTOM_CONTEXT');
+
+    const handleOpenContextEditor = (type: ContextItemType = 'CUSTOM_CONTEXT', item: UserContextItem | null = null) => {
+        setContextTypeToAdd(type);
+        setEditingContextItem(item);
+        setIsContextEditorOpen(true);
+    };
+
+    const handleCloseContextEditor = () => {
+        setIsContextEditorOpen(false);
+        setEditingContextItem(null);
+        // Refresh items after close (in case of save)
+        if (activeCollectionId === 'personal-context' || customCollections.some(c => c.id === activeCollectionId)) {
+            fetchCollectionItems(activeCollectionId).then(setCollectionItems);
+        }
+    };
     const [flaringPortalId, setFlaringPortalId] = useState<string | null>(null);
 
     const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
@@ -633,14 +654,54 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Fetch User on mount
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchUserAndMigrate = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 setUser(user);
+
+                // --- AUTO MIGRATION LOGIC (Client-Side) ---
+                // 1. Instantiate Profile Card
+                const { data: existingProfile } = await supabase
+                    .from('user_context_items')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('type', 'PROFILE')
+                    .single();
+
+                if (!existingProfile) {
+                    console.log('Migrator: Instantiating Profile Card...');
+                    await supabase.from('user_context_items').insert({
+                        user_id: user.id,
+                        collection_id: null,
+                        type: 'PROFILE',
+                        title: 'My Profile',
+                        content: { role: 'HR Professional' }
+                    });
+                } else {
+                    console.log('Migrator: Profile Card Exists.');
+                }
+
+                // 2. Migrate AI Insights
+                const { data: memories } = await supabase.from('user_ai_memory').select('*').eq('user_id', user.id);
+                if (memories && memories.length > 0) {
+                    for (const memory of memories) {
+                        const { data: existing } = await supabase.from('user_context_items').select('id').eq('type', 'AI_INSIGHT').contains('content', { insight: memory.content }).single();
+                        if (!existing) {
+                            console.log('Migrator: Modyifing AI Insight...');
+                            await supabase.from('user_context_items').insert({
+                                user_id: user.id,
+                                collection_id: null,
+                                type: 'AI_INSIGHT',
+                                title: 'Insight from Conversation',
+                                content: { insight: memory.content, type: memory.insight_type, migrated: true }
+                            });
+                        }
+                    }
+                }
             }
         };
-        fetchUser();
+        fetchUserAndMigrate();
     }, []);
 
     // Fetch Dashboard Stats for V3 Header
@@ -1185,6 +1246,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'academy') return 'Academy Collection';
         if (activeCollectionId === 'dashboard') return 'My Dashboard';
         if (activeCollectionId === 'instructors') return 'Academy';
+        if (activeCollectionId === 'personal-context') return 'Personal Context';
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
         return 'My Collection';
     };
@@ -1212,6 +1274,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const renderCollectionFooter = () => {
         // Don't show footer in Academy view (catalog view)
         if (activeCollectionId === 'academy' || activeCollectionId === 'dashboard') return null;
+        // Should show for personal-context now
 
         return (
             <div className="mt-[100px] mb-10 flex flex-col items-center justify-center animate-fade-in">
@@ -1354,22 +1417,46 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     const renderCollectionContent = () => {
-        // If "Favorites" or Custom Collection
-        if (activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId)) {
+        // If "Favorites", Custom Collection, or Personal Context
+        if (activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId) || activeCollectionId === 'personal-context') {
             if (isLoadingCollection) {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
             }
 
-            if (collectionItems.length === 0) {
+            let displayItems = [...collectionItems];
+
+            // VIRTUAL PROFILE CARD LOGIC (Robust)
+            if (activeCollectionId === 'personal-context') {
+                const hasProfile = displayItems.some(i => i.itemType === 'PROFILE');
+                if (!hasProfile) {
+                    const virtualProfile: any = {
+                        id: 'virtual-profile-placeholder',
+                        itemType: 'PROFILE',
+                        title: 'My Profile',
+                        content: {},
+                        created_at: new Date().toISOString(),
+                        user_id: user?.id || ''
+                    };
+                    displayItems = [virtualProfile, ...displayItems];
+                }
+            }
+
+            if (displayItems.length === 0) {
                 return <div className="text-slate-500 p-10 flex flex-col items-center">
                     <p className="text-lg mb-2">This collection is empty.</p>
-                    <p className="text-sm">Drag and drop courses, lessons, or conversations here to save them.</p>
+                    {activeCollectionId === 'personal-context'
+                        ? <p className="text-sm">Add custom context to help the AI understand you better.</p>
+                        : <p className="text-sm">Drag and drop courses, lessons, or conversations here to save them.</p>
+                    }
                 </div>;
             }
 
+
+
+
             return (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-                    {collectionItems.map((item, index) => (
+                    {displayItems.map((item, index) => (
                         <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}>
                             <UniversalCollectionCard
@@ -1378,16 +1465,36 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onClick={(item) => {
                                     if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
                                     else if (item.itemType === 'CONVERSATION') {
-                                        // Handle conversation open - we need a way to open it. 
-                                        // Ideally we add onOpenConversation prop or use handleOpenConversation if exposed (it's internal)
-                                        // For now, let's just log or try to find a way.
-                                        // Actually `handleOpenConversation` is defined inside MainCanvas. We can call it if we wrap this in a closure or effect?
-                                        // No, simply call handleOpenConversation(item.id)
+                                        // Handle conversation open
+                                    }
+                                    else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
+                                        handleOpenContextEditor(item.itemType, item as any);
                                     }
                                 }}
                             />
                         </div>
                     ))}
+
+                    {/* --- Personal Context Helper Footer --- */}
+                    {activeCollectionId === 'personal-context' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-20 pb-10 opacity-60">
+                            {/* Vector Graphic Placeholder */}
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Sparkles className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <FileText className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Customize Your AI Experience</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                The context you add here (Personal Profile, Documents, Key Insights) is automatically shared with your AI Tutors to give you highly personalized guidance across the entire platform.
+                            </p>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -1707,13 +1814,17 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     <div>
                         <div className="flex items-center space-x-2 mb-1">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
-                                {getSubTitle()}
+                                {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
                             </span>
                         </div>
                         {activeFilterCount > 0 ? (
                             <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg flex items-center gap-2">
                                 Filtered <span className="font-bold text-white">Results</span>
                                 <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
+                            </h1>
+                        ) : activeCollectionId === 'personal-context' ? (
+                            <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
+                                Personal <span className="font-bold text-white">Context</span>
                             </h1>
                         ) : (
                             <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
@@ -1723,6 +1834,23 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     </div>
 
                     <div className="flex space-x-4 items-center">
+                        {(activeCollectionId === 'personal-context' || customCollections.some(c => c.id === activeCollectionId)) && (
+                            <div className="flex items-center gap-2 mr-4">
+                                <button
+                                    onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                >
+                                    <Plus size={14} /> Add Context
+                                </button>
+                                <button
+                                    onClick={() => handleOpenContextEditor('FILE')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                >
+                                    <Plus size={14} /> Add File
+                                </button>
+                            </div>
+                        )}
+
                         {activeCollectionId === 'prometheus' ? (
                             /* Prometheus Actions */
                             <div className="flex items-center gap-3">
@@ -2118,6 +2246,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     onCancel={cancelDeleteConversation}
                     onConfirm={confirmDeleteConversation}
                     conversationTitle={conversationToDelete?.title || 'Conversation'}
+                />
+
+                {/* --- Top Context Panel --- */}
+                <TopContextPanel
+                    isOpen={isContextEditorOpen}
+                    onClose={handleCloseContextEditor}
+                    activeCollectionId={activeCollectionId}
+                    itemToEdit={editingContextItem}
+                    initialType={contextTypeToAdd}
+                    userId={useCollections(courses).savedItemIds ? 'current-user-implied-by-server-action' : ''}
                 />
             </div>
         </div>

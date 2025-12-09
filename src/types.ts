@@ -127,8 +127,81 @@ export interface Conversation {
     metadata?: Record<string, any>;
 }
 
+// --- Personal Context Types ---
+
+export type ContextItemType = 'AI_INSIGHT' | 'CUSTOM_CONTEXT' | 'FILE' | 'PROFILE';
+
+export interface UserContextItem {
+    id: string;
+    user_id: string;
+    collection_id: string | null;
+    type: ContextItemType;
+    title: string;
+    content: any; // Typed below by discrimination
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AIInsight {
+    type: 'AI_INSIGHT';
+    id: string;
+    title: string; // Source Conversation Title
+    content: {
+        insight: string;
+        conversation_id: string;
+        source_message_id?: string;
+    };
+    created_at: string;
+    collections?: string[];
+}
+
+export interface CustomContext {
+    type: 'CUSTOM_CONTEXT';
+    id: string;
+    title: string;
+    content: {
+        text: string;
+    };
+    created_at: string;
+    collections?: string[];
+}
+
+export interface ContextFile {
+    type: 'FILE';
+    id: string;
+    title: string;
+    content: {
+        fileName: string;
+        fileSize: string;
+        fileType: string;
+        url: string; // Storage URL
+    };
+    created_at: string;
+    collections?: string[];
+}
+
+export interface ProfileDetails {
+    type: 'PROFILE';
+    id: string;
+    title: string; // "My Profile"
+    content: {
+        role?: string;
+        yearsInRole?: string;
+        yearsInCompany?: string;
+        yearsInHR?: string;
+        linkedInUrl?: string;
+        objectives?: string;
+        measuresOfSuccess?: string;
+        directReports?: string;
+        areasOfConcern?: string;
+        areasOfInterest?: string;
+    };
+    created_at: string;
+    collections?: string[];
+}
+
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails;
 
 export interface BackgroundTheme {
   id: string;

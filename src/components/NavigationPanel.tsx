@@ -20,7 +20,8 @@ import {
   Clock,
   ArrowLeft,
   Check,
-  Upload
+  Upload,
+  Brain
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course } from '../types';
@@ -469,6 +470,17 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 >
                   <User size={16} className="mr-3 text-slate-400" />
                   My Account
+                </button>
+
+                <button
+                  onClick={() => {
+                    onSelectCollection('personal-context');
+                    setIsProfileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <Brain size={16} className="mr-3 text-slate-400" />
+                  Personal Context
                 </button>
 
                 <button

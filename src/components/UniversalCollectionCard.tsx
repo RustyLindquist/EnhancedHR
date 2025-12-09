@@ -1,8 +1,8 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails } from '../types';
 import CardStack from './CardStack';
 import ConversationCard from './ConversationCard';
-import { FileText, Video, List, BookOpen, Trash2, Shield, PlayCircle, Box } from 'lucide-react';
+import { PlayCircle, FileText, MessageSquare, BookOpen, Trash2, Brain, User, Upload, Video, List, Box, Shield } from 'lucide-react';
 
 // Unified type for all renderable items in a collection
 export type CollectionItemDetail =
@@ -10,7 +10,11 @@ export type CollectionItemDetail =
     | (Conversation & { itemType: 'CONVERSATION' })
     | (Module & { itemType: 'MODULE'; courseTitle?: string })
     | (Lesson & { itemType: 'LESSON'; courseTitle?: string; moduleTitle?: string })
-    | (Resource & { itemType: 'RESOURCE'; courseTitle?: string });
+    | (Resource & { itemType: 'RESOURCE'; courseTitle?: string })
+    | (AIInsight & { itemType: 'AI_INSIGHT' })
+    | (CustomContext & { itemType: 'CUSTOM_CONTEXT' })
+    | (ContextFile & { itemType: 'FILE' })
+    | (ProfileDetails & { itemType: 'PROFILE' });
 
 interface UniversalCollectionCardProps {
     item: CollectionItemDetail;
@@ -62,6 +66,109 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
         );
     }
 
+    // --- AI INSIGHT ---
+    if (item.itemType === 'AI_INSIGHT') {
+        const insight = item as any; // Cast to AIInsight
+        return (
+            <div onClick={() => onClick(item)} className="relative group cursor-pointer w-full h-auto min-h-[160px] p-5 bg-gradient-to-br from-purple-900/40 to-[#0f172a] border border-purple-500/20 rounded-2xl flex flex-col hover:border-purple-500/50 transition-all hover:translate-y-[-2px] hover:shadow-lg hover:shadow-purple-500/10">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 text-purple-400">
+                        <Brain size={16} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">AI Insight</span>
+                    </div>
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-2 line-clamp-1">{insight.title}</h4>
+                <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                    {insight.content?.insight || "No insight content"}
+                </p>
+                {/* Remove Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(item.id, item.itemType);
+                    }}
+                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        );
+    }
+
+    // --- CUSTOM CONTEXT ---
+    if (item.itemType === 'CUSTOM_CONTEXT') {
+        const context = item as any;
+        return (
+            <div onClick={() => onClick(item)} className="relative group cursor-pointer w-full h-auto min-h-[160px] p-5 bg-gradient-to-br from-amber-900/20 to-[#0f172a] border border-amber-500/20 rounded-2xl flex flex-col hover:border-amber-500/50 transition-all hover:translate-y-[-2px] hover:shadow-lg hover:shadow-amber-500/10">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 text-amber-400">
+                        <FileText size={16} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Note</span>
+                    </div>
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-2">{context.title}</h4>
+                <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                    {context.content?.text}
+                </p>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(item.id, item.itemType);
+                    }}
+                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        );
+    }
+
+    // --- PROFILE ---
+    if (item.itemType === 'PROFILE') {
+        const profile = item as any;
+        return (
+            <div onClick={() => onClick(item)} className="relative group cursor-pointer w-full h-auto min-h-[160px] p-5 bg-gradient-to-br from-emerald-900/20 to-[#0f172a] border border-emerald-500/20 rounded-2xl flex flex-col hover:border-emerald-500/50 transition-all hover:translate-y-[-2px] hover:shadow-lg hover:shadow-emerald-500/10">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                        <User size={16} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Profile</span>
+                    </div>
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-2">My Profile Details</h4>
+                <div className="space-y-1">
+                    {profile.content?.role && <p className="text-xs text-slate-300">Role: <span className="text-slate-500">{profile.content.role}</span></p>}
+                    {profile.content?.yearsInRole && <p className="text-xs text-slate-300">Exp: <span className="text-slate-500">{profile.content.yearsInRole} yrs</span></p>}
+                </div>
+            </div>
+        );
+    }
+
+    // --- FILE ---
+    if (item.itemType === 'FILE') {
+        const file = item as any;
+        return (
+            <div onClick={() => onClick(item)} className="relative group cursor-pointer w-full h-auto min-h-[160px] p-5 bg-gradient-to-br from-blue-900/20 to-[#0f172a] border border-blue-500/20 rounded-2xl flex flex-col hover:border-blue-500/50 transition-all hover:translate-y-[-2px] hover:shadow-lg hover:shadow-blue-500/10">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 text-blue-400">
+                        <Upload size={16} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">File</span>
+                    </div>
+                </div>
+                <h4 className="text-sm font-semibold text-white mb-2 truncate">{file.title}</h4>
+                <p className="text-xs text-slate-400">{file.content?.fileType || 'Document'}</p>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(item.id, item.itemType);
+                    }}
+                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        );
+    }
+
     // --- GENERIC CARD (Module, Lesson, Resource) ---
     // We'll create a generic glass card for these smaller items
 
@@ -107,8 +214,8 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 <div className="p-5 border-b border-white/5 flex justify-between items-start">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${item.itemType === 'MODULE' ? 'bg-purple-500/10 text-purple-400' :
-                                item.itemType === 'LESSON' ? 'bg-brand-blue/10 text-brand-blue' :
-                                    'bg-emerald-500/10 text-emerald-400'
+                            item.itemType === 'LESSON' ? 'bg-brand-blue/10 text-brand-blue' :
+                                'bg-emerald-500/10 text-emerald-400'
                             }`}>
                             <Icon size={20} />
                         </div>
