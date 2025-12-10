@@ -15,6 +15,31 @@ export interface OpenRouterModel {
     };
 }
 
+// Helper to fetch and interpolate prompts from Prompt Library
+export async function getBackendPrompt(key: string, variables: Record<string, string>): Promise<{ text: string, model: string | null }> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+
+    const { data } = await supabase
+        .from('ai_prompt_library')
+        .select('prompt_text, model')
+        .eq('key', key)
+        .single();
+
+    if (!data) {
+        console.warn(`[getBackendPrompt] Prompt key '${key}' not found. Using empty string.`);
+        return { text: '', model: null };
+    }
+
+    let interpolated = data.prompt_text;
+    for (const [varName, value] of Object.entries(variables)) {
+        // Replace {varName} or { varName } globally
+        interpolated = interpolated.replace(new RegExp(`\\{\\s*${varName}\\s*\\}`, 'g'), value);
+    }
+
+    return { text: interpolated, model: data.model };
+}
+
 export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
     if (!OPENROUTER_API_KEY) {
         console.warn("Missing OPENROUTER_API_KEY environment variable.");

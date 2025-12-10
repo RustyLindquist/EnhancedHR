@@ -23,7 +23,7 @@ export async function createContextItem(data: CreateContextItemDTO) {
         .from('user_context_items')
         .insert({
             user_id: user.id,
-            collection_id: data.collection_id || null, // Ensure null if undefined/empty for global
+            collection_id: await resolveCollectionId(supabase, data.collection_id, user.id),
             type: data.type,
             title: data.title,
             content: data.content
@@ -100,12 +100,14 @@ export async function getContextItems(collectionId?: string) {
         .order('created_at', { ascending: false });
 
     // Filter by collection ID
-    if (collectionId === 'personal-context' || !collectionId) {
-        // Fetch Global items (null collection_id)
-        query = query.is('collection_id', null);
+    const targetId = await resolveCollectionId(supabase, collectionId, user.id);
+    
+    if (targetId) {
+        query = query.eq('collection_id', targetId);
     } else {
-        // Fetch Local items
-        query = query.eq('collection_id', collectionId);
+        // Only if truly meant to be global/null (which we aren't using for Personal Context anymore technically, 
+        // but let's keep it robust)
+        query = query.is('collection_id', null);
     }
 
     const { data, error } = await query;
@@ -121,4 +123,29 @@ export async function getContextItems(collectionId?: string) {
 // Fetch GLOBAL items specifically (for AI injection)
 export async function getGlobalContextItems() {
     return getContextItems('personal-context');
+}
+// Helper to resolve "personal-context" and other default IDs to real DB ID
+async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
+    if (!collectionId) return null;
+
+    const labelMap: Record<string, string> = {
+        'personal-context': 'Personal Context',
+        'favorites': 'Favorites',
+        'research': 'Workspace',
+        'to_learn': 'Watchlist'
+    };
+
+    const targetLabel = labelMap[collectionId];
+
+    if (targetLabel) {
+        const { data } = await supabase
+            .from('user_collections')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('label', targetLabel)
+            .single();
+        return data?.id || null;
+    }
+
+    return collectionId;
 }

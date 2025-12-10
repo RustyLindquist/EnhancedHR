@@ -540,6 +540,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         })));
     }, [initialCourses, savedItemIds]);
 
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
     // Fetch collection items when active collection changes (if it's a "saved" collection type)
     useEffect(() => {
         const isStandardNav = COLLECTION_NAV_ITEMS.some(i => i.id === activeCollectionId && i.id !== 'favorites'); // 'favorites' is a saved collection
@@ -558,7 +560,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     setIsLoadingCollection(false);
                 });
         }
-    }, [activeCollectionId, savedItemIds, customCollections, fetchCollectionItems]); // Reload if saved items change (e.g. removed from another view)
+    }, [activeCollectionId, savedItemIds, customCollections, fetchCollectionItems, refreshTrigger]); // Reload if saved items change (e.g. removed from another view)
+
+
 
     // Handle initial course loading if ID is provided
     useEffect(() => {
@@ -663,14 +667,30 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
                 // --- AUTO MIGRATION LOGIC (Client-Side) ---
                 // 1. Instantiate Profile Card
-                const { data: existingProfile } = await supabase
+                // 1. Instantiate Profile Card (and simplify/dedupe)
+                const { data: existingProfiles } = await supabase
                     .from('user_context_items')
-                    .select('id')
+                    .select('id, content')
                     .eq('user_id', user.id)
-                    .eq('type', 'PROFILE')
-                    .single();
+                    .eq('type', 'PROFILE');
 
-                if (!existingProfile) {
+                if (existingProfiles && existingProfiles.length > 0) {
+                    if (existingProfiles.length > 1) {
+                        console.log('Migrator: Cleaning up duplicate profiles...');
+                        const [keep, ...remove] = existingProfiles;
+                        await supabase.from('user_context_items').delete().in('id', remove.map(i => i.id));
+                    } else {
+                        // Check for bad data "Verified Final V2"
+                        const profile = existingProfiles[0];
+                        if (profile.content && (profile.content as any).role === 'Verified Final V2') {
+                            console.log('Migrator: Cleaning up "Verified Final V2"...');
+                            await supabase.from('user_context_items').update({
+                                content: { ...(profile.content as any), role: 'HR Professional' }
+                            }).eq('id', profile.id);
+                        }
+                        console.log('Migrator: Profile Card Exists.');
+                    }
+                } else {
                     console.log('Migrator: Instantiating Profile Card...');
                     await supabase.from('user_context_items').insert({
                         user_id: user.id,
@@ -679,8 +699,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         title: 'My Profile',
                         content: { role: 'HR Professional' }
                     });
-                } else {
-                    console.log('Migrator: Profile Card Exists.');
                 }
 
                 // 2. Migrate AI Insights
@@ -1427,9 +1445,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             let displayItems = [...collectionItems];
 
             // VIRTUAL PROFILE CARD LOGIC (Robust)
+            // VIRTUAL PROFILE CARD LOGIC (Robust)
             if (activeCollectionId === 'personal-context') {
-                const hasProfile = displayItems.some(i => i.itemType === 'PROFILE');
-                if (!hasProfile) {
+                // Dedupe Profiles
+                const profiles = displayItems.filter(i => i.itemType === 'PROFILE');
+                const others = displayItems.filter(i => i.itemType !== 'PROFILE');
+
+                if (profiles.length === 0) {
                     const virtualProfile: any = {
                         id: 'virtual-profile-placeholder',
                         itemType: 'PROFILE',
@@ -1439,7 +1461,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         created_at: new Date().toISOString(),
                         user_id: user?.id || ''
                     };
-                    displayItems = [virtualProfile, ...displayItems];
+                    displayItems = [virtualProfile, ...others];
+                } else {
+                    // Even if only 1 profile, ensure it is FIRST in the list
+                    displayItems = [profiles[0], ...others];
                 }
             }
 
@@ -1834,22 +1859,27 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     </div>
 
                     <div className="flex space-x-4 items-center">
-                        {(activeCollectionId === 'personal-context' || customCollections.some(c => c.id === activeCollectionId)) && (
-                            <div className="flex items-center gap-2 mr-4">
-                                <button
-                                    onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                >
-                                    <Plus size={14} /> Add Context
-                                </button>
-                                <button
-                                    onClick={() => handleOpenContextEditor('FILE')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                >
-                                    <Plus size={14} /> Add File
-                                </button>
-                            </div>
-                        )}
+                        {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                        {(activeCollectionId === 'personal-context' ||
+                            activeCollectionId === 'favorites' ||
+                            activeCollectionId === 'research' ||
+                            activeCollectionId === 'to_learn' ||
+                            customCollections.some(c => c.id === activeCollectionId)) && (
+                                <div className="flex items-center gap-2 mr-4">
+                                    <button
+                                        onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                    >
+                                        <Plus size={14} /> Add Context
+                                    </button>
+                                    <button
+                                        onClick={() => handleOpenContextEditor('FILE')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                    >
+                                        <Plus size={14} /> Add File
+                                    </button>
+                                </div>
+                            )}
 
                         {activeCollectionId === 'prometheus' ? (
                             /* Prometheus Actions */
@@ -2174,6 +2204,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                 </div>
                                             ))}
 
+                                            {/* DEBUG INFO */}
+                                            <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                Items: {collectionItems.length} |
+                                                Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                Active: {activeCollectionId} |
+                                                User: {user?.id}
+                                            </div>
+
                                             {/* Empty State */}
                                             {isCollectionEmpty ? (
                                                 activeCollectionId === 'personal-context' ? (
@@ -2265,6 +2303,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     itemToEdit={editingContextItem}
                     initialType={contextTypeToAdd}
                     userId={useCollections(courses).savedItemIds ? 'current-user-implied-by-server-action' : ''}
+                    onSaveSuccess={() => setRefreshTrigger(prev => prev + 1)}
                 />
             </div >
         </div >

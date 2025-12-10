@@ -103,7 +103,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2 text-amber-400">
                         <FileText size={16} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Note</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Custom Context</span>
                     </div>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-2">{context.title}</h4>
@@ -135,9 +135,15 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                     </div>
                 </div>
                 <h4 className="text-sm font-semibold text-white mb-2">My Profile Details</h4>
-                <div className="space-y-1">
-                    {profile.content?.role && <p className="text-xs text-slate-300">Role: <span className="text-slate-500">{profile.content.role}</span></p>}
-                    {profile.content?.yearsInRole && <p className="text-xs text-slate-300">Exp: <span className="text-slate-500">{profile.content.yearsInRole} yrs</span></p>}
+                <div className="space-y-3">
+                    {/* Preview of text content */}
+                    {(profile.content?.objectives || profile.content?.measuresOfSuccess || profile.content?.areasOfConcern) ? (
+                        <div className="text-xs text-slate-400 line-clamp-3 leading-relaxed italic border-l-2 border-emerald-500/30 pl-3">
+                            "{profile.content.objectives || profile.content.measuresOfSuccess || profile.content.areasOfConcern}"
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500 italic">No detailed context added yet.</p>
+                    )}
                 </div>
             </div>
         );

@@ -23,10 +23,20 @@ export async function getRecommendedCourses(userId: string): Promise<Course[]> {
     // 2. Fetch All Courses
     const allCourses = await fetchCourses();
 
-    // 3. Construct Prompt for Gemini
+    // 3. Construct Prompt (Using Backend AI Library)
     const courseList = allCourses.map(c => `- ID: ${c.id}, Title: "${c.title}", Category: ${c.category}, Description: "${c.description}"`).join('\n');
     
-    const prompt = `
+    // Fetch dynamic prompt
+    const { text: promptText, model: overrideModel } = await import('@/app/actions/ai').then(m => m.getBackendPrompt('generate_recommendations', {
+        role: profile.role || 'HR Professional',
+        industry: profile.industry || 'General',
+        interests: profile.interests ? profile.interests.join(', ') : 'General HR',
+        insights: profile.ai_insights ? profile.ai_insights.join('; ') : 'None',
+        course_list: courseList
+    }));
+
+    // Fallback if prompt not found in DB yet (for safety during migration)
+    const finalPrompt = promptText || `
         You are an expert HR Learning & Development consultant.
         
         USER PROFILE:
@@ -45,12 +55,12 @@ export async function getRecommendedCourses(userId: string): Promise<Course[]> {
     `;
 
     try {
-        // Use a fast model for recommendations
+        // Use a fast model for recommendations, or the override if specified
         const response = await generateOpenRouterResponse(
-            'google/gemma-2-27b-it:free',
-            prompt,
+            overrideModel || 'google/gemma-2-27b-it:free',
+            finalPrompt,
             [],
-            { agentType: 'recommendation_engine', userId }
+            { agentType: 'backend_ai', userId }
         );
 
         // Clean response (remove markdown code blocks if present)
