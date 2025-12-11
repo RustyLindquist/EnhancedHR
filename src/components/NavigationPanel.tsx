@@ -428,18 +428,18 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       <div className={`group flex flex-col items-center justify-center pb-6 transition-opacity duration-500 cursor-default ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
         <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
           {/* Glow Effect */}
-          <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 group-hover:bg-brand-orange/20 group-hover:blur-[50px] group-hover:opacity-100"></div>
+          <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 opacity-0 group-hover:opacity-20"></div>
 
           {/* Flame Image */}
           <img
             src="/images/logos/EnhancedHR-logo-mark-flame.png"
             alt="Mark"
-            className="h-full w-full object-contain opacity-10 transition-all duration-700 group-hover:opacity-100 group-hover:drop-shadow-[0_0_30px_rgba(255,147,0,0.4)]"
+            className="h-full w-full object-contain opacity-20 transition-all duration-700 group-hover:opacity-100"
           />
         </div>
 
         {/* Tagline */}
-        <span className="text-[11px] font-black text-[#1e293b] uppercase tracking-[0.2em] drop-shadow-sm select-none transition-all duration-500 group-hover:text-white group-hover:tracking-[0.25em] group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+        <span className="text-[11px] font-black text-[#1e293b] uppercase tracking-[0.2em] drop-shadow-sm select-none transition-all duration-500 group-hover:text-white group-hover:tracking-[0.25em]">
           World-Class Learning
         </span>
       </div>

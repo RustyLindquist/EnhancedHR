@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Course } from '@/types';
+import { getCollectionDetailsAction } from '@/app/actions/context';
 
 export interface UserCollectionItem {
     id: string;
@@ -17,6 +18,53 @@ export function useCollections(initialCourses: Course[]) {
     // For now we primarily use this to track 'isSaved' state for courses
     
     const supabase = createClient();
+
+    // Helper to resolve collection aliases (favorites, research, etc.) to actual UUIDs
+    const resolveCollectionId = async (userId: string, alias: string): Promise<string | null> => {
+        const labelMap: Record<string, string> = {
+            'favorites': 'Favorites',
+            'research': 'Workspace',
+            'to_learn': 'Watchlist',
+            'personal-context': 'Personal Context'
+        };
+        
+        const targetLabel = labelMap[alias];
+        if (!targetLabel) return alias; // Already a UUID, return as-is
+        
+        const { data, error } = await supabase
+            .from('user_collections')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('label', targetLabel)
+            .eq('user_id', userId)
+            .eq('label', targetLabel)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+        
+        if (error) {
+            console.error('[resolveCollectionId] Error:', error);
+            return null;
+        }
+        
+        if (!data) {
+            // Auto-create the collection if it doesn't exist
+            console.log(`[resolveCollectionId] Creating missing collection: ${targetLabel}`);
+            const { data: newData, error: createError } = await supabase
+                .from('user_collections')
+                .insert({ user_id: userId, label: targetLabel })
+                .select('id')
+                .single();
+            
+            if (createError) {
+                console.error('[resolveCollectionId] Failed to create:', createError);
+                return null;
+            }
+            return newData.id;
+        }
+        
+        return data.id;
+    };
 
     // Fetch collections on mount
     useEffect(() => {
@@ -47,36 +95,49 @@ export function useCollections(initialCourses: Course[]) {
         fetchCollections();
     }, []);
 
-    const addToCollection = async (itemId: string, itemType: string, collectionId: string) => {
+    const addToCollection = useCallback(async (itemId: string, itemType: string, collectionId: string) => {
         // Optimistic update
         setSavedItemIds(prev => new Set(prev).add(itemId));
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Check if we need to lookup collection ID for 'personal-context' (though usually we pass ID)
-        // For add, we typically have the real ID.
+        // Resolve alias to actual UUID
+        const resolvedId = await resolveCollectionId(user.id, collectionId);
+        if (!resolvedId) {
+            console.error('[addToCollection] Failed to resolve collection:', collectionId);
+            setSavedItemIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(itemId);
+                return newSet;
+            });
+            return;
+        }
 
+        // Insert using correct column name (course_id, not item_id)
         const { error } = await supabase
             .from('collection_items')
             .insert({
                 item_id: itemId,
                 item_type: itemType,
-                collection_id: collectionId
+                course_id: parseInt(itemId, 10),
+                collection_id: resolvedId
             });
 
         if (error) {
-            console.error('Failed to add to collection:', error);
+            console.error('[addToCollection] Failed:', error);
             // Revert optimistic update
             setSavedItemIds(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(itemId);
                 return newSet;
             });
+        } else {
+            console.log('[addToCollection] Success! Course', itemId, 'added to', resolvedId);
         }
-    };
+    }, [supabase]);
 
-    const removeFromCollection = async (itemId: string, collectionId: string) => {
+    const removeFromCollection = useCallback(async (itemId: string, collectionId: string) => {
         // Optimistic update
         setSavedItemIds(prev => {
             const newSet = new Set(prev);
@@ -87,171 +148,56 @@ export function useCollections(initialCourses: Course[]) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Resolve alias to actual UUID
+        const resolvedId = await resolveCollectionId(user.id, collectionId);
+        if (!resolvedId) {
+            console.error('[removeFromCollection] Failed to resolve collection:', collectionId);
+            setSavedItemIds(prev => new Set(prev).add(itemId));
+            return;
+        }
+
         const { error } = await supabase
             .from('collection_items')
             .delete()
-            .eq('item_id', itemId)
-            .eq('collection_id', collectionId);
+            .match({ collection_id: resolvedId })
+            .or(`course_id.eq.${parseInt(itemId, 10)},item_id.eq.${itemId}`);
             
          if (error) {
-             console.error('Failed to remove from collection:', error);
+             console.error('[removeFromCollection] Failed:', error);
              // Revert
              setSavedItemIds(prev => new Set(prev).add(itemId));
          }
-    };
+    }, [supabase]);
 
     // Fetches full details for items in a specific collection
-    const fetchCollectionItems = async (collectionId: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+    const fetchCollectionItems = useCallback(async (collectionId: string) => {
+        try {
+            console.log(`[fetchCollectionItems] Fetching for: ${collectionId}`);
+            
+            // Use Server Action to bypass RLS and get consistent resolution
+            const { courses, contextItems } = await getCollectionDetailsAction(collectionId);
+            
+            console.log(`[fetchCollectionItems] Received: ${courses.length} courses, ${contextItems.length} context items`);
 
-        let rawItems: any[] = [];
-        let error: any = null;
+            // Map Context Items for Display
+            const mappedContext = contextItems.map(item => ({
+                ...item,
+                itemType: (() => {
+                    if (item.type === 'AI_INSIGHT') return 'AI_INSIGHT';
+                    if (item.type === 'PROFILE') return 'PROFILE';
+                    if (item.type === 'FILE') return 'FILE';
+                    return 'CUSTOM_CONTEXT';
+                })()
+            }));
 
-        if (collectionId !== 'personal-context') {
-             const result = await supabase
-                 .from('collection_items')
-                 .select('*')
-                 .eq('collection_id', collectionId);
-             
-             if (result.error) {
-                 error = result.error;
-                 console.error('Error fetching collection items:', error);
-             } else if (result.data) {
-                 rawItems = result.data;
-             }
+            // Combine and Return
+            return [...courses, ...mappedContext];
+
+        } catch (error) {
+            console.error('Error in fetchCollectionItems:', error);
+            return [];
         }
-
-        if (error) {
-             return [];
-        }
-
-        // 2. Group by type
-        const courseIds = rawItems.filter(i => i.item_type === 'COURSE').map(i => i.item_id); // Course ID is number in DB? mixed
-        const conversationIds = rawItems.filter(i => i.item_type === 'CONVERSATION').map(i => i.item_id);
-        const moduleIds = rawItems.filter(i => i.item_type === 'MODULE').map(i => i.item_id);
-        const lessonIds = rawItems.filter(i => i.item_type === 'LESSON').map(i => i.item_id);
-        const resourceIds = rawItems.filter(i => i.item_type === 'RESOURCE').map(i => i.item_id);
-
-        // 3. Parallel Fetch Details
-        const promises = [];
-
-        // Courses
-        if (courseIds.length > 0) {
-            promises.push(
-                supabase.from('courses').select('*').in('id', courseIds)
-                .then(({ data }) => data?.map((c: any) => ({
-                    ...c, 
-                    type: 'COURSE', 
-                    itemType: 'COURSE',
-                    // Map generic fields if needed
-                    progress: 0, rating: Number(c.rating), badges: c.badges || []
-                })) || [])
-            );
-        } else promises.push(Promise.resolve([]));
-
-        // Conversations
-        if (conversationIds.length > 0) {
-             promises.push(
-                supabase.from('conversations').select('*').in('id', conversationIds)
-                .then(({ data }) => data?.map((c: any) => ({
-                    ...c, 
-                    type: 'CONVERSATION', 
-                    itemType: 'CONVERSATION'
-                })) || [])
-            );
-        } else promises.push(Promise.resolve([]));
-
-        // Modules
-         if (moduleIds.length > 0) {
-             promises.push(
-                supabase.from('modules').select('*, course:courses(title)').in('id', moduleIds)
-                .then(({ data }) => data?.map((m: any) => ({
-                    ...m, 
-                    type: 'MODULE', // To match drag types
-                    itemType: 'MODULE',
-                    courseTitle: m.course?.title
-                })) || [])
-            );
-        } else promises.push(Promise.resolve([]));
-
-        // Lessons
-         if (lessonIds.length > 0) {
-             promises.push(
-                supabase.from('lessons').select('*, module:modules(title, course:courses(title))').in('id', lessonIds)
-                .then(({ data }) => data?.map((l: any) => ({
-                    ...l, 
-                    type: l.type, // video/quiz etc
-                    itemType: 'LESSON',
-                    moduleTitle: l.module?.title,
-                    courseTitle: l.module?.course?.title
-                })) || [])
-            );
-        } else promises.push(Promise.resolve([]));
-        
-        // Resources (Assuming 'resources' table exists, if not strictly need to check)
-        if (resourceIds.length > 0) {
-            promises.push(
-                supabase.from('resources').select('*, course:courses(title)').in('id', resourceIds)
-                .then(({ data }) => data?.map((r: any) => ({
-                    ...r,
-                    itemType: 'RESOURCE',
-                    courseTitle: r.course?.title
-                })) || [])
-            );
-        } else promises.push(Promise.resolve([]));
-
-
-        // 4. Fetch Context Items (Native to Collection)
-        let contextItemsQuery = supabase
-            .from('user_context_items')
-            .select('*')
-            // .eq('user_id', user.id) // RLS should handle this, verifying if this is the issue
-            .order('created_at', { ascending: false });
-
-        if (collectionId === 'personal-context') {
-             console.log('[useCollections] Fetching personal-context for user:', user.id);
-             
-             // Lookup the collection ID for "Personal Context"
-             const { data: colData } = await supabase
-                .from('user_collections')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('label', 'Personal Context')
-                .single();
-             
-             if (colData) {
-                 console.error('[useCollections] Resolved Personal Context ID:', colData.id, 'for User:', user.id);
-                 contextItemsQuery = contextItemsQuery.eq('collection_id', colData.id);
-             } else {
-                 console.warn('[useCollections] Personal Context collection NOT FOUND for user. Falling back to global/null context.', user.id);
-                 // Fallback: Fetch items with NULL collection_id (how they are saved if collection row is missing)
-                 contextItemsQuery = contextItemsQuery.is('collection_id', null);
-             }
-        } else {
-             contextItemsQuery = contextItemsQuery.eq('collection_id', collectionId);
-        }
-
-        const { data: contextItems, error: contextError } = await contextItemsQuery;
-
-        console.log('[useCollections] Fetched context items for', collectionId, contextItems);
-        
-        const mappedContextItems = contextItems?.map((item: any) => ({
-             ...item,
-             itemType: item.type // 'AI_INSIGHT', 'CUSTOM_CONTEXT', etc. match DB enum
-        })) || [];
-
-        const [courses, conversations, modules, lessons, resources] = await Promise.all(promises);
-
-        return [
-            ...courses,
-            ...conversations,
-            ...modules,
-            ...lessons,
-            ...resources,
-            ...mappedContextItems
-        ];
-    };
+    }, []);
 
     return {
         savedItemIds,

@@ -619,8 +619,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         const isStandardNav = COLLECTION_NAV_ITEMS.some(i => i.id === activeCollectionId && i.id !== 'favorites'); // 'favorites' is a saved collection
         const isCustom = customCollections.some(c => c.id === activeCollectionId);
 
-        // If it's favorites or a custom collection, fetch items
-        if (activeCollectionId === 'favorites' || isCustom || activeCollectionId === 'personal-context') {
+        // If it's favorites, default collections, or a custom collection, fetch items
+        if (activeCollectionId === 'favorites' ||
+            activeCollectionId === 'research' ||
+            activeCollectionId === 'to_learn' ||
+            isCustom ||
+            activeCollectionId === 'personal-context') {
             setIsLoadingCollection(true);
             fetchCollectionItems(activeCollectionId)
                 .then(items => {
@@ -648,7 +652,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, [initialCourseId]);
 
     // Internal handler for adding to collection (persisting)
-    const onImmediateAddToCollection = (itemId: number | string, collectionId: string) => {
+    const onImmediateAddToCollection = async (itemId: number | string, collectionId: string) => {
         // Determine type based on ID format or context (passed in args for future)
         // For now, MainCanvas primarily handles Courses via drag, but CollectionSurface passes type?
         // We need to update CollectionSurface onDrop to pass type, or assume COURSE if number
@@ -657,7 +661,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         // Fallback logic if type isn't passed (we updated onImmediateAddToCollection signature in prop but here we need to match)
         // Actually, let's update call sites or default to COURSE for now as drag payload usually has type
 
-        addToCollection(idStr, 'COURSE', collectionId);
+        await addToCollection(idStr, 'COURSE', collectionId);
+
+        // Force refresh of collection items so it appears immediately
+        setRefreshTrigger(prev => prev + 1);
 
         if (propOnAddToCollection) {
             propOnAddToCollection(itemId as any, collectionId);
@@ -1595,8 +1602,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     const renderCollectionContent = () => {
-        // If "Favorites", Custom Collection, or Personal Context
-        if (activeCollectionId === 'favorites' || customCollections.some(c => c.id === activeCollectionId) || activeCollectionId === 'personal-context') {
+        // Expanded to include 'research' (Workspace) and 'to_learn' (Watchlist)
+        const isUniversalCollection = activeCollectionId === 'favorites' ||
+            activeCollectionId === 'research' ||
+            activeCollectionId === 'to_learn' ||
+            activeCollectionId === 'personal-context' ||
+            customCollections.some(c => c.id === activeCollectionId);
+
+        if (isUniversalCollection) {
             if (isLoadingCollection && activeCollectionId !== 'personal-context') {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
             }
@@ -2033,24 +2046,24 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 </GlobalTopPanel>
 
                 {/* --- Header --- */}
-                < div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative" >
+                <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                     <div>
                         <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">
                                 {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
                             </span>
                         </div>
                         {activeFilterCount > 0 ? (
-                            <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg flex items-center gap-2">
+                            <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
                                 Filtered <span className="font-bold text-white">Results</span>
                                 <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
                             </h1>
                         ) : activeCollectionId === 'personal-context' ? (
-                            <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
+                            <h1 className="text-3xl font-light text-white tracking-tight">
                                 Personal <span className="font-bold text-white">Context</span>
                             </h1>
                         ) : (
-                            <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
+                            <h1 className="text-3xl font-light text-white tracking-tight">
                                 {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
                             </h1>
                         )}
@@ -2368,98 +2381,108 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         </div>
                                     ) : (
                                         // --- FLAT GRID VIEW (Collections / Filters) ---
-                                        <div className="pb-20">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
-                                                {/* Render Courses */}
-                                                {visibleCourses.map((course, index) => {
-                                                    const delay = Math.min(index, 15) * 50;
-                                                    return (
-                                                        <LazyCourseCard key={course.id}>
-                                                            <div
-                                                                style={{ transitionDelay: `${delay}ms` }}
-                                                                className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                            >
-                                                                <CardStack
-                                                                    {...course}
-                                                                    onAddClick={handleAddButtonClick}
-                                                                    onDragStart={handleCourseDragStart}
-                                                                    onClick={handleCourseClick}
-                                                                />
-                                                            </div>
-                                                        </LazyCourseCard>
-                                                    );
-                                                })}
-
-                                                {/* Render Conversations */}
-                                                {visibleConversations.map((conversation, index) => (
-                                                    <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                        <ConversationCard
-                                                            {...conversation}
-                                                            onClick={handleOpenConversation}
-                                                            onDelete={handleDeleteConversation}
-                                                        />
-                                                    </div>
-                                                ))}
-
-                                                {/* Render Instructors */}
-                                                {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                    <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                        <InstructorCard
-                                                            instructor={instructor}
-                                                            onClick={setSelectedInstructorId}
-                                                        />
-                                                    </div>
-                                                ))}
-
-                                                {/* DEBUG INFO */}
-                                                <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
-                                                    Items: {collectionItems.length} |
-                                                    Types: {collectionItems.map(i => i.itemType).join(',')} |
-                                                    Active: {activeCollectionId} |
-                                                    User: {user?.id}
-                                                </div>
-
-                                                {/* Empty State */}
-                                                {isCollectionEmpty ? (
-                                                    activeCollectionId === 'personal-context' ? (
-                                                        <div className="col-span-full">
-                                                            {renderCollectionContent()}
-                                                        </div>
-                                                    ) : (
-                                                        // --- EMPTY COLLECTION STATES ---
-                                                        <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
-                                                            {/* Visual Graphic at Top - Hide for Conversations */}
-                                                            {activeCollectionId !== 'conversations' && (
-                                                                <div className="mb-12 animate-float">
-                                                                    {renderCollectionVisual()}
+                                        // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
+                                        (activeCollectionId === 'favorites' ||
+                                            activeCollectionId === 'research' ||
+                                            activeCollectionId === 'to_learn' ||
+                                            activeCollectionId === 'personal-context' ||
+                                            customCollections.some(c => c.id === activeCollectionId)) ? (
+                                            <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
+                                                {renderCollectionContent()}
+                                            </div>
+                                        ) : (
+                                            <div className="pb-20">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
+                                                    {/* Render Courses */}
+                                                    {visibleCourses.map((course, index) => {
+                                                        const delay = Math.min(index, 15) * 50;
+                                                        return (
+                                                            <LazyCourseCard key={course.id}>
+                                                                <div
+                                                                    style={{ transitionDelay: `${delay}ms` }}
+                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                >
+                                                                    <CardStack
+                                                                        {...course}
+                                                                        onAddClick={handleAddButtonClick}
+                                                                        onDragStart={handleCourseDragStart}
+                                                                        onClick={handleCourseClick}
+                                                                    />
                                                                 </div>
-                                                            )}
+                                                            </LazyCourseCard>
+                                                        );
+                                                    })}
 
-                                                            {/* Text Content */}
-                                                            <CollectionInfo
-                                                                type={activeCollectionId}
-                                                                isEmptyState={true}
-                                                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                                                onOpenDrawer={() => toggleDrawer('prompts')}
-                                                                onOpenHelp={() => toggleDrawer('help')}
+                                                    {/* Render Conversations */}
+                                                    {visibleConversations.map((conversation, index) => (
+                                                        <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                                            <ConversationCard
+                                                                {...conversation}
+                                                                onClick={handleOpenConversation}
+                                                                onDelete={handleDeleteConversation}
                                                             />
                                                         </div>
-                                                    )) : (
-                                                    // --- NO RESULTS (Filter Context) ---
-                                                    visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                        <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                            <Search size={48} className="text-slate-600 mb-4" />
-                                                            <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                            <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
+                                                    ))}
 
-                                            {/* Populated Footer (Collection Info) */}
-                                            {visibleCourses.length > 0 && renderCollectionFooter()}
-                                        </div>
-                                    )}
+                                                    {/* Render Instructors */}
+                                                    {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                                        <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                            <InstructorCard
+                                                                instructor={instructor}
+                                                                onClick={setSelectedInstructorId}
+                                                            />
+                                                        </div>
+                                                    ))}
+
+                                                    {/* DEBUG INFO */}
+                                                    <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                        Items: {collectionItems.length} |
+                                                        Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                        Active: {activeCollectionId} |
+                                                        User: {user?.id}
+                                                    </div>
+
+                                                    {/* Empty State */}
+                                                    {isCollectionEmpty ? (
+                                                        activeCollectionId === 'personal-context' ? (
+                                                            <div className="col-span-full">
+                                                                {renderCollectionContent()}
+                                                            </div>
+                                                        ) : (
+                                                            // --- EMPTY COLLECTION STATES ---
+                                                            <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                                {/* Visual Graphic at Top - Hide for Conversations */}
+                                                                {activeCollectionId !== 'conversations' && (
+                                                                    <div className="mb-12 animate-float">
+                                                                        {renderCollectionVisual()}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Text Content */}
+                                                                <CollectionInfo
+                                                                    type={activeCollectionId}
+                                                                    isEmptyState={true}
+                                                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                                    onOpenDrawer={() => toggleDrawer('prompts')}
+                                                                    onOpenHelp={() => toggleDrawer('help')}
+                                                                />
+                                                            </div>
+                                                        )) : (
+                                                        // --- NO RESULTS (Filter Context) ---
+                                                        visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
+                                                            <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                                <Search size={48} className="text-slate-600 mb-4" />
+                                                                <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                                <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+
+                                                {/* Populated Footer (Collection Info) */}
+                                                {visibleCourses.length > 0 && renderCollectionFooter()}
+                                            </div>
+                                        ))}
                                 </div>
                             </div>
                         </div>
