@@ -98,7 +98,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
             onClose();
         } catch (error) {
             console.error("Failed to save context", error);
-            alert("Failed to save context item.");
+            alert(error instanceof Error ? error.message : "Failed to save context item.");
         } finally {
             setIsSaving(false);
         }
