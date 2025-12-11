@@ -12,22 +12,29 @@ export interface AdminUser {
   createdAt: string;
 }
 
+import { Pool } from 'pg';
+
 export async function getUsers(): Promise<AdminUser[]> {
   const supabase = createAdminClient();
   
   // Fetch Auth Users
-  const { data: { users }, error } = await supabase.auth.admin.listUsers();
+  const { data, error } = await supabase.auth.admin.listUsers();
   
   if (error) {
-    console.error('Error fetching users:', error);
-    throw new Error('Failed to fetch users');
+    console.warn('Supabase Admin API failed, attempting direct DB fallback...', error);
+    try {
+        return await getUsersDirect();
+    } catch (dbError) {
+         console.error('Error fetching users (API + DB):', dbError);
+         throw new Error(`Failed to fetch users: ${error.message}`);
+    }
   }
 
   // Fetch Profiles
   const { data: profiles } = await supabase.from('profiles').select('id, full_name, role');
   const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-  return users.map(user => {
+  return data.users.map(user => {
     const profile = profileMap.get(user.id);
     return {
       id: user.id,
@@ -38,6 +45,49 @@ export async function getUsers(): Promise<AdminUser[]> {
       createdAt: user.created_at
     };
   });
+}
+
+async function getUsersDirect(): Promise<AdminUser[]> {
+    // Fallback connection string for local dev if env var missing
+    const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+    
+    // Create a new pool for this request (safe for server actions, though caching pool globally is better for high load)
+    const pool = new Pool({ connectionString, connectionTimeoutMillis: 5000 }); // 5s timeout
+    
+    try {
+        const client = await pool.connect();
+        // Join auth.users with profiles to get complete data
+        const query = `
+            SELECT 
+                au.id, 
+                au.email, 
+                au.created_at, 
+                au.last_sign_in_at,
+                au.raw_user_meta_data,
+                p.full_name as profile_name,
+                p.role as profile_role
+            FROM auth.users au
+            LEFT JOIN public.profiles p ON au.id = p.id
+            ORDER BY au.created_at DESC
+        `;
+        const res = await client.query(query);
+        client.release();
+        await pool.end();
+
+        return res.rows.map(row => ({
+            id: row.id,
+            email: row.email,
+            // Prioritize Profile name/role, fallback to metadata or defaults
+            fullName: row.profile_name || row.raw_user_meta_data?.full_name || 'N/A',
+            role: row.profile_role || row.raw_user_meta_data?.role || 'user',
+            lastSignIn: row.last_sign_in_at ? new Date(row.last_sign_in_at).toISOString() : null,
+            createdAt: new Date(row.created_at).toISOString()
+        }));
+    } catch (e) {
+        await pool.end(); // Ensure pool is closed
+        console.error('Direct DB fallback failed:', e);
+        throw e;
+    }
 }
 
 export async function promoteUser(userId: string, role: string) {

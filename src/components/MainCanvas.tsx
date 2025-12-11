@@ -13,6 +13,7 @@ import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
 import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
+import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
 import DeleteConversationModal from './DeleteConversationModal';
@@ -23,6 +24,8 @@ import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
 import TopContextPanel from './TopContextPanel';
 import GlobalTopPanel from './GlobalTopPanel';
+import PrometheusDashboardWidget from './PrometheusDashboardWidget';
+import PrometheusHelpContent from './PrometheusHelpContent';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -274,48 +277,117 @@ const GenericVisual = () => (
 interface CollectionInfoProps {
     type: string;
     isEmptyState: boolean;
+    onSetPrometheusPagePrompt?: (prompt: string) => void;
+    onOpenDrawer?: () => void; // Recycled for opening prompt drawer
+    onOpenHelp?: () => void;
 }
 
-const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState }) => {
+const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onSetPrometheusPagePrompt, onOpenDrawer, onOpenHelp }) => {
     // Helper for alignment: Centered if empty state, otherwise left aligned (but container centered)
     const alignmentClass = isEmptyState ? 'text-center' : 'text-left';
     const headerClass = 'text-center'; // Headers usually look best centered above content blocks
 
     if (type === 'conversations') {
+        const platformCardTitleClass = "text-red-500"; // Red title as requested
+
         return (
             <div className={`max-w-4xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>You haven’t had any conversations with Prometheus AI yet.</h2>
-                <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Conversations</h2>
-                <p className={`text-slate-400 text-lg mb-10 ${alignmentClass}`}>Prometheus AI is your learning assistant. You can access Prometheus from several places.</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                    <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
-                        <h3 className="text-brand-blue-light font-bold mb-3 flex items-center gap-2">
-                            <GraduationCap size={18} /> Within a Course
-                        </h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                            Prometheus will answer questions about the course, summarize it, highlight key principles, interactively assess your understanding, or even act as a personal tutor to learn and apply the lessons in the course.
-                        </p>
-                    </div>
+                {/* EMPTY STATE */}
+                {isEmptyState && (
+                    <>
+                        <div className="pt-[50px]"></div>
 
-                    <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
-                        <h3 className="text-brand-orange font-bold mb-3 flex items-center gap-2">
-                            <Layers size={18} /> Within a Collection
-                        </h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                            Prometheus is trained on everything you place in a collection, so you can ask it questions specific to the content you’ve organized within that collection.
-                        </p>
-                    </div>
+                        {/* Prometheus Dashboard Widget */}
+                        <div className="mb-8">
+                            {onSetPrometheusPagePrompt && onOpenDrawer ? (
+                                <PrometheusDashboardWidget
+                                    onSetPrometheusPagePrompt={onSetPrometheusPagePrompt}
+                                    onOpenDrawer={onOpenDrawer}
+                                />
+                            ) : null}
+                        </div>
 
-                    <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
-                        <h3 className="text-brand-blue font-bold mb-3 flex items-center gap-2">
-                            <Flame size={18} /> General Prometheus
-                        </h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                            Click on “Prometheus” from the left nav to get access to a version of Prometheus trained on all content across the platform and is specifically trained on HR and Leadership as a discipline.
-                        </p>
-                    </div>
-                </div>
+                        <div className="pt-[100px]"></div>
+
+                        <div className="max-w-2xl mx-auto space-y-4">
+                            <p className={`text-slate-300 text-base font-light leading-relaxed ${alignmentClass}`}>
+                                This is where you'll find your conversation history with Prometheus, your AI assistant for deeply personalized learning. Start your first conversation now!
+                            </p>
+
+                            <p className={`text-slate-500 text-sm ${alignmentClass} pb-[50px]`}>
+                                Note: You can access Prometheus from several places.
+                            </p>
+                        </div>
+
+
+
+
+                    </>
+                )}
+
+                {/* POPULATED STATE (in footer) */}
+                {!isEmptyState && (
+                    <>
+                        <div className="pt-[50px]"></div>
+                        <div className="text-center mb-10">
+                            <button onClick={onOpenHelp} className="text-brand-blue-light hover:text-white underline text-lg font-light transition-colors">
+                                Learn how to make the most out of Prometheus AI
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {/* Cards - Show for Empty State (as per spec item 9) logic implies these are always here? 
+                   User said: "If they have any conversations ... Show ... 50px ... Link".
+                   The cards were mentioned in Empty State list item 9.
+                   They were NOT explicitly mentioned for Populated State list, but "Learn how to..." might replace them or sit below?
+                   Existing code showed cards. I will keep cards for empty state. 
+                   For populated state, the user instruction was specific: Padding -> Images (Footer handles this) -> Padding -> Link.
+                   So cards are probably empty state only or hidden behind the link?
+                   Let's keep cards for Empty State as requested. 
+                */}
+
+                {isEmptyState && (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                            <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
+                                <h3 className="text-brand-blue-light font-bold mb-3 flex items-center gap-2">
+                                    <GraduationCap size={18} /> Within a Course
+                                </h3>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    Prometheus will answer questions about the course, summarize it, highlight key principles, interactively assess your understanding, or even act as a personal tutor to learn and apply the lessons in the course.
+                                </p>
+                            </div>
+
+                            <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
+                                <h3 className="text-brand-orange font-bold mb-3 flex items-center gap-2">
+                                    <Layers size={18} /> Within a Collection
+                                </h3>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    Prometheus is trained on everything you place in a collection, so you can ask it questions specific to the content you’ve organized within that collection.
+                                </p>
+                            </div>
+
+                            <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
+                                <h3 className={`${platformCardTitleClass} font-bold mb-3 flex items-center gap-2`}>
+                                    <Flame size={18} /> Platform Assistant
+                                </h3>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    Click on “Prometheus” from the left nav to get access to a version of Prometheus trained on all content across the platform and is specifically trained on HR and Leadership as a discipline.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="pt-[50px]"></div>
+
+                        <div className="text-center mb-10">
+                            <button onClick={onOpenHelp} className="text-brand-blue-light hover:text-white text-lg font-light transition-colors">
+                                Learn how to make the most out of Prometheus AI
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         );
     }
@@ -599,6 +671,17 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [activeFilters, setActiveFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [pendingFilters, setPendingFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [visibleCourses, setVisibleCourses] = useState<Course[]>(courses);
+    const [userProgress, setUserProgress] = useState<Record<number, any>>({});
+    const [drawerMode, setDrawerMode] = useState<'filters' | 'prompts' | 'help'>('filters');
+    const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
+
+    useEffect(() => {
+        const loadPrompts = async () => {
+            const prompts = await fetchPromptSuggestions('user_dashboard');
+            setPanelPrompts(prompts.slice(4));
+        };
+        loadPrompts();
+    }, []);
 
     const [isDragging, setIsDragging] = useState(false);
     const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
@@ -887,10 +970,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // --- Handlers ---
 
-    const handleOpenDrawer = () => {
-        setPendingFilters(activeFilters);
+    const toggleDrawer = (mode: 'filters' | 'prompts' | 'help' = 'filters') => {
+        if (mode === 'filters') setPendingFilters(activeFilters);
+        setDrawerMode(mode);
         setIsDrawerOpen(true);
     };
+
+    const handleOpenDrawer = () => toggleDrawer('filters');
 
     const handleCloseDrawer = () => {
         setIsDrawerOpen(false);
@@ -1159,7 +1245,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         const now = new Date().toISOString();
 
         // Map messages to match Conversation interface if needed (though we updated types)
-        // The updatedMessages coming from PrometheusFullPage might still be { role, text }
+        // The updatedMessages coming from PrometheusFullPage might still be {role, text}
         // We need to map 'text' to 'content' if we want to be strict, but let's handle it loosely for now or fix in PrometheusFullPage
 
         setConversations(prev => {
@@ -1233,14 +1319,82 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     };
 
-    // Reset active conversation when leaving Prometheus
+    // Reset active conversation when leaving Prometheus (with 5-minute persistence)
+    const [lastPrometheusExitTime, setLastPrometheusExitTime] = useState<number | null>(null);
+
     useEffect(() => {
         if (activeCollectionId !== 'prometheus') {
-            setActiveConversation(null);
-            setPrometheusConversationTitle('New Conversation');
-            // We do NOT clear prometheusPagePrompt here because we might be switching TO prometheus WITH a prompt
+            if (activeCollectionId && activeCollectionId !== 'dashboard') { // Don't track if just loading? No, track exit.
+                setLastPrometheusExitTime(Date.now());
+            }
+            // Logic moved to entry (below), but we need to possibly clear if timeout
+            // We clear it on entry if needed.
+        } else {
+            // Entering Prometheus
+            const now = Date.now();
+            const persistenceDuration = 5 * 60 * 1000; // 5 minutes
+
+            if (lastPrometheusExitTime && (now - lastPrometheusExitTime < persistenceDuration)) {
+                // Restore logic happens automatically if state wasn't cleared.
+                // But we were clearing it.
+            } else {
+                // If persistent time exceeded (or first load and no previous active), clear it.
+                // BUT, if user clicked a specific conversation (from nav), onSelectCollection set activeConversation.
+                // We shouldn't overwrite that.
+                // We only clear if activeConversation was set from a previous session and we want to reset.
+                // However, onSelectCollection typically resets activeConversation unless handleOpenConversation set it.
+
+                // If I am navigating via manual click on "Prometheus" nav item:
+                // onSelectCollection('prometheus') -> activeConversation might remain if we don't clear it.
+                // My previous effect cleared it on *leaving* (line 1313).
+                // I need to REMOVE that clear-on-leave and replace with this logic.
+            }
         }
     }, [activeCollectionId]);
+
+    // Better Re-entry Logic:
+    // We retain state in activeConversation.
+    // We only clear it if we leave and stay away > 5 mins.
+    // OR we clear it on re-entry if > 5 mins active.
+
+    // Let's modify the previous useEffect completely.
+    useEffect(() => {
+        if (activeCollectionId === 'prometheus') {
+            const now = Date.now();
+            const persistenceDuration = 5 * 60 * 1000; // 5 mins
+
+            if (lastPrometheusExitTime && (now - lastPrometheusExitTime > persistenceDuration)) {
+                // Expired
+                if (!activeConversation?.collections?.length) {
+                    setActiveConversation(null);
+                    setPrometheusConversationTitle('New Conversation');
+                }
+                // If saved, we also clear to force reload/reset
+                setActiveConversation(null);
+                setPrometheusConversationTitle('New Conversation');
+            }
+            // If (!lastPrometheusExitTime), it's first entry (or manual nav) - DO NOT CLEAR.
+            // If (now - last < duration), persistence active - DO NOT CLEAR.
+            // If within 5 mins, we do nothing (state persisted).
+        } else {
+            // Leaving Prometheus
+            setLastPrometheusExitTime(Date.now());
+            // Do NOT clear activeConversation here.
+        }
+    }, [activeCollectionId]);
+
+    const handlePrometheusPromptConsumed = () => {
+        setPrometheusPagePrompt(undefined);
+    };
+
+    const handleNewConversation = () => {
+        setActiveConversation(null);
+        setPrometheusConversationTitle('New Conversation');
+        setPrometheusPagePrompt(''); // Clear prompt
+        // Force refresh? 
+        // PrometheusFullPage uses currentConversationId. If we set activeConversation to null, we pass undefined.
+        // It should start new.
+    };
 
     // Dynamic Title Generator
     const getPageTitle = () => {
@@ -1324,8 +1478,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 mt-8 overflow-hidden transition-all duration-500 ease-in-out w-full
                   ${expandedFooter ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}
                 `}>
-                    <div className="p-8 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm max-w-4xl mx-auto">
-                        <CollectionInfo type={activeCollectionId} isEmptyState={false} />
+                    <div className="mt-[100px] mb-10 flex flex-col items-center animate-fade-in relative z-10 w-full mx-auto max-w-7xl px-4">
+                        {renderCollectionVisual()}
+                        <CollectionInfo
+                            type={activeCollectionId}
+                            isEmptyState={false}
+                            onOpenHelp={() => toggleDrawer('help')}
+                        />
                     </div>
                 </div>
             </div >
@@ -1585,253 +1744,292 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     isOpen={isDrawerOpen}
                     onClose={() => setIsDrawerOpen(false)}
                     title={
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            {activeFilters.category === 'All' ? 'All Courses' : activeFilters.category}
-                        </h2>
+                        drawerMode === 'help' ? (
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Sparkles size={20} className="text-brand-orange" /> Help & Resources
+                            </h2>
+                        ) : drawerMode === 'prompts' ? (
+                            <h2 className="text-lg font-light text-white flex items-center gap-2">
+                                <Sparkles size={16} className="text-brand-blue-light" /> Prompt Library
+                            </h2>
+                        ) : (
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                {activeFilters.category === 'All' ? 'All Courses' : activeFilters.category}
+                            </h2>
+                        )
                     }
                     headerActions={
-                        <div className="flex items-center gap-4">
-                            {activeFilters.category !== 'All' && (
+                        drawerMode === 'filters' ? (
+                            <div className="flex items-center gap-4">
+                                {activeFilters.category !== 'All' && (
+                                    <button
+                                        onClick={() => {
+                                            setPendingFilters(INITIAL_FILTERS);
+                                            setActiveFilters(INITIAL_FILTERS);
+                                        }}
+                                        className="text-xs font-normal text-brand-orange hover:text-brand-orange-light transition-colors flex items-center gap-1"
+                                    >
+                                        <X size={12} /> Clear Filter
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => {
-                                        setPendingFilters(INITIAL_FILTERS);
-                                        setActiveFilters(INITIAL_FILTERS);
-                                    }}
-                                    className="text-xs font-normal text-brand-orange hover:text-brand-orange-light transition-colors flex items-center gap-1"
+                                    onClick={() => setPendingFilters(INITIAL_FILTERS)}
+                                    className="flex items-center text-sm text-slate-400 hover:text-white transition-colors"
                                 >
-                                    <X size={12} /> Clear Filter
+                                    <RefreshCw size={16} className="mr-2" /> Reset
                                 </button>
-                            )}
-                            <button
-                                onClick={() => setPendingFilters(INITIAL_FILTERS)}
-                                className="flex items-center text-sm text-slate-400 hover:text-white transition-colors"
-                            >
-                                <RefreshCw size={16} className="mr-2" /> Reset
-                            </button>
-                            <button
-                                onClick={handleApplyFilters}
-                                className="
+                                <button
+                                    onClick={handleApplyFilters}
+                                    className="
                                     bg-brand-blue-light text-brand-black px-6 py-2 rounded-full font-bold text-xs uppercase tracking-wide
                                     hover:bg-brand-orange hover:text-white transition-colors shadow-[0_0_20px_rgba(120,192,240,0.4)]
                                 "
-                            >
-                                Show {applyFilters(pendingFilters, courses).length} Results
-                            </button>
-                        </div>
+                                >
+                                    Show {applyFilters(pendingFilters, courses).length} Results
+                                </button>
+                            </div>
+                        ) : null
                     }
                 >
-                    {/* Search Input */}
-                    <div className="relative mb-8 group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
-                        <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
-                            <Search size={20} className="text-slate-500 mr-4" />
-                            <input
-                                type="text"
-                                value={pendingFilters.searchQuery}
-                                onChange={(e) => setPendingFilters({ ...pendingFilters, searchQuery: e.target.value })}
-                                placeholder="Search for courses, authors, or topics..."
-                                className="bg-transparent border-none outline-none text-lg text-white placeholder-slate-600 w-full"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Filter Grid */}
-                    <div className="grid grid-cols-5 gap-8 mb-8">
-
-                        {/* Col 1: Credits & Designations */}
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Credits</h3>
-                                <div className="space-y-2">
-                                    {['SHRM', 'HRCI'].map(credit => (
-                                        <label key={credit} className="flex items-center space-x-3 cursor-pointer group">
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.credits.includes(credit) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                {pendingFilters.credits.includes(credit) && <Check size={12} className="text-black" />}
-                                            </div>
-                                            <span className={`text-sm transition-colors ${pendingFilters.credits.includes(credit) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{credit}</span>
-                                            <input type="checkbox" className="hidden" checked={pendingFilters.credits.includes(credit)} onChange={() => toggleArrayFilter('credits', credit)} />
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Designation</h3>
-                                <div className="space-y-2">
-                                    {['REQUIRED', 'RECOMMENDED'].map(item => (
-                                        <label key={item} className="flex items-center space-x-3 cursor-pointer group">
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.designations.includes(item) ? 'bg-brand-orange border-brand-orange' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                                {pendingFilters.designations.includes(item) && <Check size={12} className="text-white" />}
-                                            </div>
-                                            <span className={`text-sm transition-colors ${pendingFilters.designations.includes(item) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>
-                                                {item.charAt(0) + item.slice(1).toLowerCase()}
-                                            </span>
-                                            <input type="checkbox" className="hidden" checked={pendingFilters.designations.includes(item)} onChange={() => toggleArrayFilter('designations', item)} />
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Col 2: Categories */}
-                        <div className="col-span-1">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categories</h3>
-                            <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
-                                {COURSE_CATEGORIES.map(cat => (
-                                    <label key={cat} className="flex items-center gap-3 cursor-pointer group">
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.category === cat ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                            {pendingFilters.category === cat && <Check size={12} className="text-black" />}
-                                        </div>
-                                        <span className={`text-sm truncate transition-colors ${pendingFilters.category === cat ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{cat}</span>
-                                        <input
-                                            type="checkbox"
-                                            className="hidden"
-                                            checked={pendingFilters.category === cat}
-                                            onChange={() => {
-                                                setPendingFilters(prev => ({
-                                                    ...prev,
-                                                    category: prev.category === cat ? 'All' : cat
-                                                }));
-                                            }}
-                                        />
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Col 3: Status */}
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status</h3>
-                            <div className="space-y-2">
-                                {[
-                                    { id: 'NOT_STARTED', label: 'Not Started' },
-                                    { id: 'IN_PROGRESS', label: 'In Progress' },
-                                    { id: 'COMPLETED', label: 'Completed' }
-                                ].map(stat => (
-                                    <label key={stat.id} className="flex items-center space-x-3 cursor-pointer group">
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.status.includes(stat.id) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
-                                            {pendingFilters.status.includes(stat.id) && <Check size={12} className="text-black" />}
-                                        </div>
-                                        <span className={`text-sm transition-colors ${pendingFilters.status.includes(stat.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{stat.label}</span>
-                                        <input type="checkbox" className="hidden" checked={pendingFilters.status.includes(stat.id)} onChange={() => toggleArrayFilter('status', stat.id)} />
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Col 4: Ratings */}
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Minimum Rating</h3>
-                            <div className="space-y-2">
-                                {/* Any Rating */}
+                    {drawerMode === 'help' ? (
+                        <PrometheusHelpContent />
+                    ) : drawerMode === 'prompts' ? (
+                        <div className="max-w-6xl mx-auto px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {panelPrompts.map(p => (
                                 <button
-                                    onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'ALL' }))}
-                                    className={`
+                                    key={p.id}
+                                    onClick={() => {
+                                        handlePrometheusPagePrompt(p.prompt);
+                                        setIsDrawerOpen(false);
+                                    }}
+                                    className="text-left p-4 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.03] hover:border-white/[0.08] transition-all group"
+                                >
+                                    <div className="flex items-center gap-2 text-slate-600 group-hover:text-brand-blue-light mb-2 transition-colors">
+                                        <MessageSquare size={12} />
+                                        <span className="text-[10px] uppercase tracking-wider">{p.category}</span>
+                                    </div>
+                                    <div className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors line-clamp-2">
+                                        {p.label}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Search Input */}
+                            <div className="relative mb-8 group">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
+                                <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
+                                    <Search size={20} className="text-slate-500 mr-4" />
+                                    <input
+                                        type="text"
+                                        value={pendingFilters.searchQuery}
+                                        onChange={(e) => setPendingFilters({ ...pendingFilters, searchQuery: e.target.value })}
+                                        placeholder="Search for courses, authors, or topics..."
+                                        className="bg-transparent border-none outline-none text-lg text-white placeholder-slate-600 w-full"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Filter Grid */}
+                            <div className="grid grid-cols-5 gap-8 mb-8">
+
+                                {/* Col 1: Credits & Designations */}
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Credits</h3>
+                                        <div className="space-y-2">
+                                            {['SHRM', 'HRCI'].map(credit => (
+                                                <label key={credit} className="flex items-center space-x-3 cursor-pointer group">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.credits.includes(credit) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                        {pendingFilters.credits.includes(credit) && <Check size={12} className="text-black" />}
+                                                    </div>
+                                                    <span className={`text-sm transition-colors ${pendingFilters.credits.includes(credit) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{credit}</span>
+                                                    <input type="checkbox" className="hidden" checked={pendingFilters.credits.includes(credit)} onChange={() => toggleArrayFilter('credits', credit)} />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Designation</h3>
+                                        <div className="space-y-2">
+                                            {['REQUIRED', 'RECOMMENDED'].map(item => (
+                                                <label key={item} className="flex items-center space-x-3 cursor-pointer group">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.designations.includes(item) ? 'bg-brand-orange border-brand-orange' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                        {pendingFilters.designations.includes(item) && <Check size={12} className="text-white" />}
+                                                    </div>
+                                                    <span className={`text-sm transition-colors ${pendingFilters.designations.includes(item) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>
+                                                        {item.charAt(0) + item.slice(1).toLowerCase()}
+                                                    </span>
+                                                    <input type="checkbox" className="hidden" checked={pendingFilters.designations.includes(item)} onChange={() => toggleArrayFilter('designations', item)} />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Col 2: Categories */}
+                                <div className="col-span-1">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categories</h3>
+                                    <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
+                                        {COURSE_CATEGORIES.map(cat => (
+                                            <label key={cat} className="flex items-center gap-3 cursor-pointer group">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.category === cat ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                    {pendingFilters.category === cat && <Check size={12} className="text-black" />}
+                                                </div>
+                                                <span className={`text-sm truncate transition-colors ${pendingFilters.category === cat ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{cat}</span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={pendingFilters.category === cat}
+                                                    onChange={() => {
+                                                        setPendingFilters(prev => ({
+                                                            ...prev,
+                                                            category: prev.category === cat ? 'All' : cat
+                                                        }));
+                                                    }}
+                                                />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Col 3: Status */}
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status</h3>
+                                    <div className="space-y-2">
+                                        {[
+                                            { id: 'NOT_STARTED', label: 'Not Started' },
+                                            { id: 'IN_PROGRESS', label: 'In Progress' },
+                                            { id: 'COMPLETED', label: 'Completed' }
+                                        ].map(stat => (
+                                            <label key={stat.id} className="flex items-center space-x-3 cursor-pointer group">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${pendingFilters.status.includes(stat.id) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                    {pendingFilters.status.includes(stat.id) && <Check size={12} className="text-black" />}
+                                                </div>
+                                                <span className={`text-sm transition-colors ${pendingFilters.status.includes(stat.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{stat.label}</span>
+                                                <input type="checkbox" className="hidden" checked={pendingFilters.status.includes(stat.id)} onChange={() => toggleArrayFilter('status', stat.id)} />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Col 4: Ratings */}
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Minimum Rating</h3>
+                                    <div className="space-y-2">
+                                        {/* Any Rating */}
+                                        <button
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'ALL' }))}
+                                            className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'ALL'
-                                            ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                            : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                        }
+                                                    ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                                    : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                                }
                 `}
-                                >
-                                    <span>Any Rating</span>
-                                    {pendingFilters.ratingFilter === 'ALL' && <Check size={14} className="text-brand-orange" />}
-                                </button>
+                                        >
+                                            <span>Any Rating</span>
+                                            {pendingFilters.ratingFilter === 'ALL' && <Check size={14} className="text-brand-orange" />}
+                                        </button>
 
-                                {/* Rated Options */}
-                                {[
-                                    { val: '4_PLUS', label: '4+ Stars' },
-                                    { val: '3_PLUS', label: '3+ Stars' },
-                                    { val: '2_PLUS', label: '2+ Stars' },
-                                    { val: '1_PLUS', label: '1+ Stars' },
-                                ].map(opt => (
-                                    <button
-                                        key={opt.val}
-                                        onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: opt.val as RatingFilterType }))}
-                                        className={`
+                                        {/* Rated Options */}
+                                        {[
+                                            { val: '4_PLUS', label: '4+ Stars' },
+                                            { val: '3_PLUS', label: '3+ Stars' },
+                                            { val: '2_PLUS', label: '2+ Stars' },
+                                            { val: '1_PLUS', label: '1+ Stars' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.val}
+                                                onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: opt.val as RatingFilterType }))}
+                                                className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === opt.val
-                                                ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                                : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                            }
+                                                        ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                                        : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                                    }
                 `}
-                                    >
-                                        <span>{opt.label}</span>
-                                        {pendingFilters.ratingFilter === opt.val && <Check size={14} className="text-brand-orange" />}
-                                    </button>
-                                ))}
+                                            >
+                                                <span>{opt.label}</span>
+                                                {pendingFilters.ratingFilter === opt.val && <Check size={14} className="text-brand-orange" />}
+                                            </button>
+                                        ))}
 
-                                {/* Not Yet Rated */}
-                                <button
-                                    onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'NOT_RATED' }))}
-                                    className={`
+                                        {/* Not Yet Rated */}
+                                        <button
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'NOT_RATED' }))}
+                                            className={`
                 w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'NOT_RATED'
-                                            ? 'bg-brand-orange/20 border-brand-orange text-white'
-                                            : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
-                                        }
+                                                    ? 'bg-brand-orange/20 border-brand-orange text-white'
+                                                    : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                                                }
                 `}
-                                >
-                                    <span>Not Yet Rated</span>
-                                    {pendingFilters.ratingFilter === 'NOT_RATED' && <Check size={14} className="text-brand-orange" />}
-                                </button>
-                            </div>
-                        </div>
+                                        >
+                                            <span>Not Yet Rated</span>
+                                            {pendingFilters.ratingFilter === 'NOT_RATED' && <Check size={14} className="text-brand-orange" />}
+                                        </button>
+                                    </div>
+                                </div>
 
-                        {/* Col 5: Date Added */}
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Date Added</h3>
-                            <div className="space-y-2">
-                                {/* All Time */}
-                                <button
-                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'ALL' }))}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'ALL' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                >
-                                    <span>All Time</span>
-                                    {pendingFilters.dateFilterType === 'ALL' && <Check size={14} className="text-brand-orange" />}
-                                </button>
+                                {/* Col 5: Date Added */}
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Date Added</h3>
+                                    <div className="space-y-2">
+                                        {/* All Time */}
+                                        <button
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'ALL' }))}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'ALL' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                        >
+                                            <span>All Time</span>
+                                            {pendingFilters.dateFilterType === 'ALL' && <Check size={14} className="text-brand-orange" />}
+                                        </button>
 
-                                {/* Since Last Login */}
-                                <button
-                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'SINCE_LOGIN' }))}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'SINCE_LOGIN' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                >
-                                    <span>Since Last Login</span>
-                                    {pendingFilters.dateFilterType === 'SINCE_LOGIN' && <Check size={14} className="text-brand-orange" />}
-                                </button>
+                                        {/* Since Last Login */}
+                                        <button
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'SINCE_LOGIN' }))}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'SINCE_LOGIN' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                        >
+                                            <span>Since Last Login</span>
+                                            {pendingFilters.dateFilterType === 'SINCE_LOGIN' && <Check size={14} className="text-brand-orange" />}
+                                        </button>
 
-                                {/* This Month */}
-                                <button
-                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'THIS_MONTH' }))}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'THIS_MONTH' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
-                                >
-                                    <span>This Month</span>
-                                    {pendingFilters.dateFilterType === 'THIS_MONTH' && <Check size={14} className="text-brand-orange" />}
-                                </button>
+                                        {/* This Month */}
+                                        <button
+                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'THIS_MONTH' }))}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all ${pendingFilters.dateFilterType === 'THIS_MONTH' ? 'bg-brand-orange/20 border-brand-orange text-white' : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'} `}
+                                        >
+                                            <span>This Month</span>
+                                            {pendingFilters.dateFilterType === 'THIS_MONTH' && <Check size={14} className="text-brand-orange" />}
+                                        </button>
 
-                                {/* Last X Days */}
-                                <div className={`p-2 rounded border transition-all ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'bg-brand-orange/10 border-brand-orange' : 'border-slate-700'} `}>
-                                    <button
-                                        onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
-                                        className="w-full flex items-center justify-between mb-2"
-                                    >
-                                        <span className={`text-sm ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'text-white' : 'text-slate-400'} `}>Last ___ Days</span>
-                                        {pendingFilters.dateFilterType === 'LAST_X_DAYS' && <Check size={14} className="text-brand-orange" />}
-                                    </button>
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            type="number"
-                                            value={pendingFilters.customDays}
-                                            onChange={(e) => setPendingFilters(prev => ({ ...prev, customDays: e.target.value, dateFilterType: 'LAST_X_DAYS' }))}
-                                            onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
-                                            className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-sm text-white focus:border-brand-orange outline-none"
-                                        />
-                                        <span className="text-xs text-slate-500">Days</span>
+                                        {/* Last X Days */}
+                                        <div className={`p-2 rounded border transition-all ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'bg-brand-orange/10 border-brand-orange' : 'border-slate-700'} `}>
+                                            <button
+                                                onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
+                                                className="w-full flex items-center justify-between mb-2"
+                                            >
+                                                <span className={`text-sm ${pendingFilters.dateFilterType === 'LAST_X_DAYS' ? 'text-white' : 'text-slate-400'} `}>Last ___ Days</span>
+                                                {pendingFilters.dateFilterType === 'LAST_X_DAYS' && <Check size={14} className="text-brand-orange" />}
+                                            </button>
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="number"
+                                                    value={pendingFilters.customDays}
+                                                    onChange={(e) => setPendingFilters(prev => ({ ...prev, customDays: e.target.value, dateFilterType: 'LAST_X_DAYS' }))}
+                                                    onClick={() => setPendingFilters(prev => ({ ...prev, dateFilterType: 'LAST_X_DAYS' }))}
+                                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-sm text-white focus:border-brand-orange outline-none"
+                                                />
+                                                <span className="text-xs text-slate-500">Days</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
+                        </>
+                    )}
                 </GlobalTopPanel>
 
                 {/* --- Header --- */}
@@ -1884,6 +2082,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         {activeCollectionId === 'prometheus' ? (
                             /* Prometheus Actions */
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleNewConversation}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                >
+                                    <MessageSquare size={14} /> New Conversation
+                                </button>
+
                                 {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
                                     <button
                                         onClick={handleSaveConversation}
@@ -2010,6 +2215,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onSaveConversation={handleSaveConversation}
                                 isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
                                 initialPrompt={prometheusPagePrompt}
+                                onPromptConsumed={handlePrometheusPromptConsumed}
                             />
                         </div>
                     ) : activeCollectionId === 'dashboard' ? (
@@ -2220,14 +2426,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                     </div>
                                                 ) : (
                                                     // --- EMPTY COLLECTION STATES ---
-                                                    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
-                                                        {/* Visual Graphic at Top */}
-                                                        <div className="mb-12 animate-float">
-                                                            {renderCollectionVisual()}
-                                                        </div>
+                                                    <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                        {/* Visual Graphic at Top - Hide for Conversations */}
+                                                        {activeCollectionId !== 'conversations' && (
+                                                            <div className="mb-12 animate-float">
+                                                                {renderCollectionVisual()}
+                                                            </div>
+                                                        )}
 
                                                         {/* Text Content */}
-                                                        <CollectionInfo type={activeCollectionId} isEmptyState={true} />
+                                                        <CollectionInfo
+                                                            type={activeCollectionId}
+                                                            isEmptyState={true}
+                                                            onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                            onOpenDrawer={() => toggleDrawer('prompts')}
+                                                            onOpenHelp={() => toggleDrawer('help')}
+                                                        />
                                                     </div>
                                                 )) : (
                                                 // --- NO RESULTS (Filter Context) ---

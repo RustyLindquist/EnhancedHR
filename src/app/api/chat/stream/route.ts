@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
         const encoder = new TextEncoder();
         let fullResponse = '';
 
-        // Log helper
+        // Log helper & Insight Extraction
         const logInteraction = async () => {
             try {
+                // 1. Log Interaction
                 await supabase.from('ai_logs').insert({
                     user_id: user.id,
                     conversation_id: conversationId || null,
@@ -71,8 +72,48 @@ export async function POST(req: NextRequest) {
                         sources: contextItems.map(c => ({ type: c.type, id: c.id }))
                     }
                 });
+
+                // 2. Extract & Save Insights
+                // Format 1: [[INSIGHT: type|content]]
+                const bracketRegex = /\[\[INSIGHT:\s*(.*?)\|(.*?)\]\]/g;
+                // Format 2: <INSIGHT>content</INSIGHT>
+                const tagRegex = /<INSIGHT>([\s\S]*?)<\/INSIGHT>/g;
+
+                const insights = [];
+                let match;
+
+                // Process Bracket Format
+                while ((match = bracketRegex.exec(fullResponse)) !== null) {
+                    insights.push({
+                        user_id: user.id,
+                        collection_id: null, // Global context by default for Tutor
+                        type: 'insight', 
+                        title: `Insight: ${match[1].trim()}`,
+                        content: match[2].trim(),
+                        created_at: new Date().toISOString()
+                    });
+                }
+
+                // Process Tag Format
+                while ((match = tagRegex.exec(fullResponse)) !== null) {
+                    insights.push({
+                        user_id: user.id,
+                        collection_id: null,
+                        type: 'insight',
+                        title: 'New Insight',
+                        content: match[1].trim(),
+                        created_at: new Date().toISOString()
+                    });
+                }
+
+                if (insights.length > 0) {
+                    console.log(`[Stream API] Saving ${insights.length} extracted insights.`);
+                    const { error } = await supabase.from('user_context_items').insert(insights);
+                    if (error) console.error('Failed to save insights:', error);
+                }
+
             } catch (logErr) {
-                console.error('Failed to log AI interaction:', logErr);
+                console.error('Failed to log AI interaction or save insights:', logErr);
             }
         };
 

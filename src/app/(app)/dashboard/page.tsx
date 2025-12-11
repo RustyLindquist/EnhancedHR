@@ -31,7 +31,6 @@ function HomeContent() {
   }, []);
 
   // Navigation & Collection State
-  const [activeCollectionId, setActiveCollectionId] = useState<string>('dashboard');
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
 
   // Global Modal State
@@ -197,13 +196,23 @@ function HomeContent() {
 
   const searchParams = useSearchParams();
   const courseIdParam = searchParams.get('courseId');
+  const collectionParam = searchParams.get('collection');
   const initialCourseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
+
+  // Navigation & Collection State
+  const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
 
   useEffect(() => {
     if (courseIdParam) {
       setActiveCourseId(courseIdParam);
     }
   }, [courseIdParam]);
+
+  useEffect(() => {
+    if (collectionParam) {
+      setActiveCollectionId(collectionParam);
+    }
+  }, [collectionParam]);
 
   const contextScope = useMemo<ContextScope>(() =>
     activeCourseId

@@ -35,6 +35,7 @@ interface NavigationPanelProps {
   activeCollectionId: string;
   onSelectCollection: (id: string) => void;
   customNavItems?: NavItemConfig[];
+  className?: string;
 }
 
 const NavItem: React.FC<{
@@ -106,7 +107,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   courses,
   activeCollectionId,
   onSelectCollection,
-  customNavItems
+  customNavItems,
+  className
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -302,8 +304,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     <div className={`
       ${isOpen ? 'w-72' : 'w-20'} 
       flex-shrink-0 
-      bg-white/[0.02] backdrop-blur-xl 
-      border-r border-white/10 flex flex-col 
+      ${className || 'bg-white/[0.02] backdrop-blur-xl border-r border-white/10'}
+      flex flex-col 
       transition-all duration-300 ease-in-out z-[100] h-full
       shadow-[5px_0_30px_0_rgba(0,0,0,0.3)]
       relative

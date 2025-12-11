@@ -703,9 +703,9 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin/courses', label: 'Courses', icon: BookOpen },
-    { id: 'admin/authors', label: 'Authors', icon: GraduationCap },
+    { id: 'admin/authors', label: 'Experts', icon: GraduationCap },
     { id: 'admin/prompts', label: 'AI Agents', icon: MessageSquare },
-    { id: 'admin/prompt-suggestions', label: 'Chat Suggestions', icon: MessageSquare },
+    { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
     { id: 'admin/system', label: 'System Tools', icon: Layers },

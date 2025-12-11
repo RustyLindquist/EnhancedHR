@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import { BACKGROUND_THEMES, ADMIN_NAV_ITEMS } from '@/constants';
@@ -13,6 +14,7 @@ interface AdminPageLayoutProps {
 }
 
 export default function AdminPageLayout({ children }: AdminPageLayoutProps) {
+    const router = useRouter();
     const [leftOpen, setLeftOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -31,12 +33,8 @@ export default function AdminPageLayout({ children }: AdminPageLayoutProps) {
         if (id.startsWith('admin/')) {
             // NavigationPanel handles router.push for these
         } else {
-            // For standard collections, we might want to redirect to main app or handle differently
-            // For now, let's just set active to show selection state
-            setActiveCollectionId(id);
-            if (id === 'dashboard' || id === 'academy') {
-                window.location.href = '/';
-            }
+            // For standard collections, redirect to main app
+            router.push(`/dashboard?collection=${id}`);
         }
     };
 
@@ -58,6 +56,7 @@ export default function AdminPageLayout({ children }: AdminPageLayoutProps) {
                     activeCollectionId={activeCollectionId}
                     onSelectCollection={handleSelectCollection}
                     customNavItems={ADMIN_NAV_ITEMS}
+                    className="bg-gradient-to-b from-[#054C74] to-[#022031] backdrop-blur-xl border-r border-white/10"
                 />
 
                 {/* Center Content (The Canvas) */}

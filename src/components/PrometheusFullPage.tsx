@@ -17,6 +17,7 @@ interface PrometheusFullPageProps {
     initialTitle?: string;
     onSaveConversation?: () => void;
     isSaved?: boolean;
+    onPromptConsumed?: () => void;
 }
 
 // Enhanced Capability Card Data
@@ -64,6 +65,14 @@ const CAPABILITY_CARDS: CapabilityCardData[] = [
     }
 ];
 
+// Helper to clean AI response for display
+const cleanMessageContent = (content: string): string => {
+    return content
+        .replace(/\[\[INSIGHT:.*?\]\]/g, '') // Remove bracket style
+        .replace(/<INSIGHT>[\s\S]*?<\/INSIGHT>/g, '') // Remove tag style
+        .trim();
+};
+
 const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     initialPrompt,
     onSetAIPrompt,
@@ -73,7 +82,8 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     conversationId,
     initialTitle,
     onSaveConversation,
-    isSaved
+    isSaved,
+    onPromptConsumed
 }) => {
     const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
@@ -94,8 +104,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         if (initialPrompt && initialPrompt !== lastProcessedPromptRef.current) {
             lastProcessedPromptRef.current = initialPrompt;
             handleSendMessage(initialPrompt);
+            if (onPromptConsumed) onPromptConsumed();
         }
-    }, [initialPrompt]);
+    }, [initialPrompt, onPromptConsumed]);
 
     // Sync state with props when they change (e.g. switching conversations)
     useEffect(() => {
@@ -379,7 +390,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                                 {msg.role === 'user' ? (
                                     <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
                                 ) : (
-                                    <MarkdownRenderer content={msg.content} className="text-base leading-relaxed" />
+                                    <MarkdownRenderer content={cleanMessageContent(msg.content)} className="text-base leading-relaxed" />
                                 )}
                             </div>
                         </div>

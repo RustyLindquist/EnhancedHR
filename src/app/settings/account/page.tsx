@@ -1,7 +1,7 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
-import { CheckCircle, Shield, Clock, User, CreditCard, Building2, Key, Mail } from 'lucide-react';
+import { Shield, Clock, User, CreditCard, Key, Mail, Building2 } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
 
@@ -13,14 +13,11 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, trial_minutes_used, billing_period_end, full_name, org_id, organizations(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, org_id, organizations(name)')
         .eq('id', user.id)
         .single();
 
-    const isPro = profile?.membership_status === 'active' || profile?.membership_status === 'org_admin' || profile?.membership_status === 'employee';
-    const isTrial = profile?.membership_status === 'trial';
-    const isOrgMember = profile?.membership_status === 'employee' || profile?.membership_status === 'org_admin';
-    const orgName = (profile?.organizations as any)?.name;
+
 
     return (
         <StandardPageLayout activeNavId="settings">
@@ -70,100 +67,136 @@ export default async function AccountPage() {
                         </div>
                     </section>
 
-                    {/* 2. Membership Information */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                                <Shield size={24} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-white">Membership Information</h2>
-                        </div>
+                    {/* Membership Logic Calculation */}
+                    {(() => {
+                        const role = profile?.role;
+                        const mStatus = profile?.membership_status;
+                        const aStatus = profile?.author_status;
+                        const orgName = (profile?.organizations as any)?.name || 'Organization';
 
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-                            <div className="flex items-start justify-between">
+                        let membershipTitle = 'Free Trial';
+                        let BillingComponent = null;
+
+                        // Hierarchy of Roles
+                        if (role === 'admin') {
+                            membershipTitle = 'Platform Administrator';
+                            BillingComponent = (
                                 <div>
-                                    <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
-                                    <h3 className="text-3xl font-bold text-white mb-2">
-                                        {isOrgMember ? `${orgName} Membership` : isPro ? 'Pro Membership' : 'Free Trial'}
-                                    </h3>
-
-                                    {isOrgMember && (
-                                        <p className="text-slate-400 flex items-center gap-2">
-                                            <Building2 size={16} className="text-purple-400" />
-                                            Provided by your organization
-                                        </p>
-                                    )}
-
-                                    {isTrial && (
-                                        <p className="text-slate-400 flex items-center gap-2">
-                                            <Clock size={16} className="text-brand-orange" />
-                                            {60 - (profile?.trial_minutes_used || 0)} minutes remaining
-                                        </p>
-                                    )}
-
-                                    {isPro && !isOrgMember && profile?.billing_period_end && (
-                                        <p className="text-slate-400">
-                                            Renews on {new Date(profile.billing_period_end).toLocaleDateString()}
-                                        </p>
-                                    )}
+                                    <p className="text-slate-300">Your membership is free as a Platform Administrator.</p>
                                 </div>
-                                <div className={`p-3 rounded-xl ${isPro ? 'bg-green-500/20 text-green-400' : 'bg-brand-orange/20 text-brand-orange'}`}>
-                                    <Shield size={32} />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* 3. Billing Information */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-green-500/10 text-green-400">
-                                <CreditCard size={24} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-white">Billing Information</h2>
-                        </div>
-
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-                            {isOrgMember ? (
+                            );
+                        } else if (role === 'org_owner') {
+                            membershipTitle = 'Organizational Account Owner & Administrator';
+                            BillingComponent = (
                                 <div>
-                                    <p className="text-slate-300 mb-4">
-                                        Your billing is managed by <b>{orgName}</b>. You do not need to add a payment method.
-                                    </p>
-                                    <p className="text-sm text-slate-500">
-                                        If you leave this organization, you will need to set up your own billing to maintain access.
-                                    </p>
+                                    <p className="text-slate-300 mb-4">You have access to manage the billing for <b>{orgName}</b>.</p>
+                                    <ManageSubscriptionButton />
                                 </div>
-                            ) : (
+                            );
+                        } else if (mStatus === 'org_admin') {
+                            membershipTitle = 'Organizational Administrator';
+                            BillingComponent = (
                                 <div>
-                                    <p className="text-slate-300 mb-6">
-                                        {isPro
-                                            ? "Manage your subscription, payment methods, and billing history securely via Stripe."
-                                            : "Upgrade to a Pro Membership to unlock unlimited access, certificates, and AI tutoring."}
-                                    </p>
-
+                                    <p className="text-slate-300 mb-4">Your membership is provided by your organization (<b>{orgName}</b>).</p>
+                                </div>
+                            );
+                        } else if (mStatus === 'employee') {
+                            membershipTitle = 'Employee Membership';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300 mb-4">Your membership is provided by your organization (<b>{orgName}</b>).</p>
+                                </div>
+                            );
+                        } else if (aStatus === 'approved') {
+                            membershipTitle = 'Expert Membership';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300">As an approved platform expert, your membership is provided free of charge.</p>
+                                </div>
+                            );
+                        } else if (aStatus === 'pending') {
+                            membershipTitle = 'Expert Membership (Pending)';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300">Your application to be an expert on the platform is still pending. Once approved, you will be given a free membership as an approved expert.</p>
+                                </div>
+                            );
+                        } else if (mStatus === 'active') {
+                            membershipTitle = 'Personal Membership';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300 mb-6">Manage your subscription, payment methods, and billing history securely via Stripe.</p>
                                     <div className="flex gap-4">
-                                        {isPro ? <ManageSubscriptionButton /> : <UpgradeButton />}
+                                        <ManageSubscriptionButton />
+                                    </div>
+                                </div>
+                            );
+                        } else {
+                            // Default / Trial
+                            membershipTitle = 'Free Trial';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300 mb-6">Upgrade to a Pro Membership to unlock unlimited access, certificates, and AI tutoring.</p>
+                                    <div className="flex gap-4">
+                                        <UpgradeButton />
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <>
+                                {/* 2. Membership Information */}
+                                <section>
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                                            <Shield size={24} />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white">Membership Information</h2>
                                     </div>
 
-                                    {!isPro && (
-                                        <div className="mt-8 pt-8 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {[
-                                                'Unlimited Course Access',
-                                                'SHRM & HRCI Credits',
-                                                'AI Course Tutor',
-                                                'Completion Certificates'
-                                            ].map((feature, i) => (
-                                                <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
-                                                    <CheckCircle size={16} className="text-brand-blue-light" />
-                                                    {feature}
-                                                </div>
-                                            ))}
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
+                                                <h3 className="text-3xl font-bold text-white mb-2">{membershipTitle}</h3>
+
+                                                {mStatus === 'trial' && (
+                                                    <p className="text-slate-400 flex items-center gap-2">
+                                                        <Clock size={16} className="text-brand-orange" />
+                                                        {60 - (profile?.trial_minutes_used || 0)} minutes remaining
+                                                    </p>
+                                                )}
+
+                                                {mStatus === 'active' && profile?.billing_period_end && (
+                                                    <p className="text-slate-400">
+                                                        Renews on {new Date(profile.billing_period_end).toLocaleDateString()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className={`p-3 rounded-xl ${mStatus === 'active' || role === 'admin' || aStatus === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-brand-orange/20 text-brand-orange'}`}>
+                                                <Shield size={32} />
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </section>
+                                    </div>
+                                </section>
+
+                                {/* 3. Billing Information */}
+                                <section>
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2 rounded-lg bg-green-500/10 text-green-400">
+                                            <CreditCard size={24} />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white">Billing Information</h2>
+                                    </div>
+
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                                        {BillingComponent}
+                                    </div>
+                                </section>
+                            </>
+                        );
+                    })()}
 
                 </div>
 

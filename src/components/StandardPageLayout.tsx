@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
@@ -14,6 +15,7 @@ interface StandardPageLayoutProps {
 }
 
 export default function StandardPageLayout({ children, activeNavId = 'dashboard' }: StandardPageLayoutProps) {
+    const router = useRouter();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
@@ -28,19 +30,8 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
     }, []);
 
     const handleSelectCollection = (id: string) => {
-        // For now, standard pages might not handle collection switching like the home page.
-        // If clicking a nav item, we might want to navigate.
-        // But for this layout, we assume it's used for specific pages (like Billing).
-        // Navigation logic should be handled by the NavigationPanel's router.push if it's a link,
-        // or we might need to inject a handler.
-        // The current NavigationPanel calls onSelectCollection.
-
-        if (id === 'academy') {
-            window.location.href = '/'; // Simple redirect for now
-        } else if (id === 'dashboard') {
-            window.location.href = '/';
-        }
-        // Add more navigation logic as needed
+        // Redirect to dashboard with collection param
+        router.push(`/dashboard?collection=${id}`);
     };
 
     return (
