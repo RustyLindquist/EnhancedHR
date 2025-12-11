@@ -224,9 +224,9 @@ export function useCollections(initialCourses: Course[]) {
                  console.error('[useCollections] Resolved Personal Context ID:', colData.id, 'for User:', user.id);
                  contextItemsQuery = contextItemsQuery.eq('collection_id', colData.id);
              } else {
-                 console.error('[useCollections] Personal Context collection NOT FOUND for user:', user.id);
-                 // Fallback or empty if not found (though migration should have fixed it)
-                 contextItemsQuery = contextItemsQuery.eq('collection_id', '00000000-0000-0000-0000-000000000000'); // Force empty
+                 console.warn('[useCollections] Personal Context collection NOT FOUND for user. Falling back to global/null context.', user.id);
+                 // Fallback: Fetch items with NULL collection_id (how they are saved if collection row is missing)
+                 contextItemsQuery = contextItemsQuery.is('collection_id', null);
              }
         } else {
              contextItemsQuery = contextItemsQuery.eq('collection_id', collectionId);
