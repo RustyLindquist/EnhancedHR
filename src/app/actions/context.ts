@@ -16,7 +16,7 @@ export async function createContextItem(data: CreateContextItemDTO) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error('Unauthorized');
+        return { success: false, error: 'Unauthorized: No user found' };
     }
 
     const { error } = await supabase
@@ -31,8 +31,7 @@ export async function createContextItem(data: CreateContextItemDTO) {
 
     if (error) {
         console.error('Error creating context item:', error);
-        console.error('Error creating context item:', error);
-        throw new Error(`Failed to create: ${error.message} (${error.code})`);
+        return { success: false, error: `Failed to create: ${error.message} (${error.code})` };
     }
 
     revalidatePath('/dashboard');
@@ -45,7 +44,7 @@ export async function updateContextItem(id: string, updates: { title?: string; c
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error('Unauthorized');
+        return { success: false, error: 'Unauthorized' };
     }
 
     const { error } = await supabase
@@ -56,8 +55,7 @@ export async function updateContextItem(id: string, updates: { title?: string; c
 
     if (error) {
         console.error('Error updating context item:', error);
-        console.error('Error updating context item:', error);
-        throw new Error(`Failed to update: ${error.message}`);
+        return { success: false, error: `Failed to update: ${error.message}` };
     }
 
     revalidatePath('/dashboard');
@@ -69,7 +67,7 @@ export async function deleteContextItem(id: string) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error('Unauthorized');
+        return { success: false, error: 'Unauthorized' };
     }
 
     const { error } = await supabase
@@ -80,7 +78,7 @@ export async function deleteContextItem(id: string) {
 
     if (error) {
         console.error('Error deleting context item:', error);
-        throw new Error('Failed to delete context item');
+        return { success: false, error: 'Failed to delete context item' };
     }
 
     revalidatePath('/dashboard');

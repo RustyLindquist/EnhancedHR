@@ -80,19 +80,24 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
             // If activeCollectionId is 'personal-context', passing it directly to server action to resolve
             const targetCollectionId = activeCollectionId;
 
+            let result;
             if (itemToEdit && itemToEdit.id !== 'virtual-profile-placeholder') {
-                await updateContextItem(itemToEdit.id, {
+                result = await updateContextItem(itemToEdit.id, {
                     title: title || 'Untitled',
                     content: contentToSave
                 });
             } else {
                 // Create new (or handle virtual profile becoming real)
-                await createContextItem({
+                result = await createContextItem({
                     collection_id: targetCollectionId,
                     type: itemType,
                     title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
                     content: contentToSave
                 });
+            }
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to save item');
             }
             if (onSaveSuccess) onSaveSuccess();
             onClose();
