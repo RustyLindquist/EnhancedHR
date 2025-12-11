@@ -31,7 +31,8 @@ export async function createContextItem(data: CreateContextItemDTO) {
 
     if (error) {
         console.error('Error creating context item:', error);
-        throw new Error('Failed to create context item');
+        console.error('Error creating context item:', error);
+        throw new Error(`Failed to create: ${error.message} (${error.code})`);
     }
 
     revalidatePath('/dashboard');
@@ -55,7 +56,8 @@ export async function updateContextItem(id: string, updates: { title?: string; c
 
     if (error) {
         console.error('Error updating context item:', error);
-        throw new Error('Failed to update context item');
+        console.error('Error updating context item:', error);
+        throw new Error(`Failed to update: ${error.message}`);
     }
 
     revalidatePath('/dashboard');
@@ -138,7 +140,8 @@ async function resolveCollectionId(supabase: any, collectionId: string | undefin
     const targetLabel = labelMap[collectionId];
 
     if (targetLabel) {
-        const { data } = await supabase
+        console.log(`Resolving collection ${collectionId} for user ${userId} -> ${targetLabel}`);
+        const { data, error } = await supabase
             .from('user_collections')
             .select('id')
             .eq('user_id', userId)
