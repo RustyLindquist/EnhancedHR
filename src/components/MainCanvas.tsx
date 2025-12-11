@@ -2249,217 +2249,218 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             )}
                         </div>
                     ) : (
-                        <div className={`flex-1 w-[calc(100%-4rem)] max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
-                            <div className="w-full" key={renderKey}>
+                        <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
+                            <div className="max-w-7xl mx-auto w-full px-10 pt-[50px] pb-48">
+                                <div className="w-full" key={renderKey}>
 
 
-                                {/* Alert Box - Only show in Academy View */}
-                                {isAcademyView && isAlertVisible && (
-                                    <AlertBox
-                                        title="AI-Enhanced Learning"
-                                        description="Make sure to try out the Prometheus AI Tutor in any course, for an AI-Enhanced, fully-personalized learning experience!"
-                                        onDismiss={() => setIsAlertVisible(false)}
-                                        className={`mb-[30px] ${transitionState === 'exiting' ? 'opacity-0 -translate-y-5 blur-md' : 'opacity-100 translate-y-0 blur-0'} `}
-                                    />
-                                )}
+                                    {/* Alert Box - Only show in Academy View */}
+                                    {isAcademyView && isAlertVisible && (
+                                        <AlertBox
+                                            title="AI-Enhanced Learning"
+                                            description="Make sure to try out the Prometheus AI Tutor in any course, for an AI-Enhanced, fully-personalized learning experience!"
+                                            onDismiss={() => setIsAlertVisible(false)}
+                                            className={`mb-[30px] ${transitionState === 'exiting' ? 'opacity-0 -translate-y-5 blur-md' : 'opacity-100 translate-y-0 blur-0'} `}
+                                        />
+                                    )}
 
-                                {isAcademyView ? (
-                                    // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
-                                    <div className="space-y-12 pb-20">
+                                    {isAcademyView ? (
+                                        // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
+                                        <div className="space-y-12 pb-20">
 
-                                        {/* Category Quick Nav */}
-                                        <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
-                                            <button
-                                                onClick={() => {
-                                                    setPendingFilters(INITIAL_FILTERS);
-                                                    setActiveFilters(INITIAL_FILTERS);
-                                                }}
-                                                className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
-                                                    ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
-                                                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
-                                                    } `}
-                                            >
-                                                All
-                                            </button>
-                                            {COURSE_CATEGORIES.map((category) => (
+                                            {/* Category Quick Nav */}
+                                            <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
                                                 <button
-                                                    key={category}
                                                     onClick={() => {
-                                                        const newFilters = { ...INITIAL_FILTERS, category };
-                                                        setPendingFilters(newFilters);
-                                                        setActiveFilters(newFilters);
+                                                        setPendingFilters(INITIAL_FILTERS);
+                                                        setActiveFilters(INITIAL_FILTERS);
                                                     }}
-                                                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
                                                         ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
                                                         : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
                                                         } `}
                                                 >
-                                                    {category}
+                                                    All
                                                 </button>
-                                            ))}
-                                        </div>
+                                                {COURSE_CATEGORIES.map((category) => (
+                                                    <button
+                                                        key={category}
+                                                        onClick={() => {
+                                                            const newFilters = { ...INITIAL_FILTERS, category };
+                                                            setPendingFilters(newFilters);
+                                                            setActiveFilters(newFilters);
+                                                        }}
+                                                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                            ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
+                                                            : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                                                            } `}
+                                                    >
+                                                        {category}
+                                                    </button>
+                                                ))}
+                                            </div>
 
-                                        {COURSE_CATEGORIES.map((category, catIndex) => {
-                                            const categoryCourses = visibleCourses.filter(c => c.category === category);
-                                            if (categoryCourses.length === 0) return null;
+                                            {COURSE_CATEGORIES.map((category, catIndex) => {
+                                                const categoryCourses = visibleCourses.filter(c => c.category === category);
+                                                if (categoryCourses.length === 0) return null;
 
-                                            const isCollapsed = collapsedCategories.includes(category);
+                                                const isCollapsed = collapsedCategories.includes(category);
 
-                                            return (
-                                                <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
-                                                    {/* Category Header */}
-                                                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
-                                                        <div
-                                                            className="flex items-center gap-3 cursor-pointer group/title select-none"
-                                                            onClick={() => toggleCategory(category)}
-                                                        >
-                                                            <div className={`
+                                                return (
+                                                    <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
+                                                        {/* Category Header */}
+                                                        <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
+                                                            <div
+                                                                className="flex items-center gap-3 cursor-pointer group/title select-none"
+                                                                onClick={() => toggleCategory(category)}
+                                                            >
+                                                                <div className={`
                 p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
                 group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     `}>
-                                                                {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                                </div>
+
+                                                                <div className="flex items-baseline gap-3">
+                                                                    <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
+                                                                    <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
+                                                                </div>
                                                             </div>
 
-                                                            <div className="flex items-baseline gap-3">
-                                                                <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
-                                                                <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
-                                                            </div>
+                                                            {!isCollapsed && (
+                                                                <button
+                                                                    onClick={() => handleCategorySelect(category)}
+                                                                    className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
+                                                                >
+                                                                    View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                                                                </button>
+                                                            )}
                                                         </div>
 
+                                                        {/* Horizontal Scroll Row */}
                                                         {!isCollapsed && (
-                                                            <button
-                                                                onClick={() => handleCategorySelect(category)}
-                                                                className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
-                                                            >
-                                                                View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                                                            </button>
+                                                            <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
+                                                                {categoryCourses.map((course, index) => {
+                                                                    const delay = Math.min(index, 10) * 50;
+                                                                    return (
+                                                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
+                                                                            <LazyCourseCard>
+                                                                                <div
+                                                                                    style={{ transitionDelay: `${delay} ms` }}
+                                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
+                                                                                >
+                                                                                    <CardStack
+                                                                                        {...course}
+                                                                                        onAddClick={handleAddButtonClick}
+                                                                                        onDragStart={handleCourseDragStart}
+                                                                                        onClick={handleCourseClick}
+                                                                                    />
+                                                                                </div>
+                                                                            </LazyCourseCard>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         )}
                                                     </div>
-
-                                                    {/* Horizontal Scroll Row */}
-                                                    {!isCollapsed && (
-                                                        <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
-                                                            {categoryCourses.map((course, index) => {
-                                                                const delay = Math.min(index, 10) * 50;
-                                                                return (
-                                                                    <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
-                                                                        <LazyCourseCard>
-                                                                            <div
-                                                                                style={{ transitionDelay: `${delay} ms` }}
-                                                                                className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
-                                                                            >
-                                                                                <CardStack
-                                                                                    {...course}
-                                                                                    onAddClick={handleAddButtonClick}
-                                                                                    onDragStart={handleCourseDragStart}
-                                                                                    onClick={handleCourseClick}
-                                                                                />
-                                                                            </div>
-                                                                        </LazyCourseCard>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    // --- FLAT GRID VIEW (Collections / Filters) ---
-                                    <div className="pb-20">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
-                                            {/* Render Courses */}
-                                            {visibleCourses.map((course, index) => {
-                                                const delay = Math.min(index, 15) * 50;
-                                                return (
-                                                    <LazyCourseCard key={course.id}>
-                                                        <div
-                                                            style={{ transitionDelay: `${delay}ms` }}
-                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                        >
-                                                            <CardStack
-                                                                {...course}
-                                                                onAddClick={handleAddButtonClick}
-                                                                onDragStart={handleCourseDragStart}
-                                                                onClick={handleCourseClick}
-                                                            />
-                                                        </div>
-                                                    </LazyCourseCard>
                                                 );
                                             })}
-
-                                            {/* Render Conversations */}
-                                            {visibleConversations.map((conversation, index) => (
-                                                <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                    <ConversationCard
-                                                        {...conversation}
-                                                        onClick={handleOpenConversation}
-                                                        onDelete={handleDeleteConversation}
-                                                    />
-                                                </div>
-                                            ))}
-
-                                            {/* Render Instructors */}
-                                            {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                    <InstructorCard
-                                                        instructor={instructor}
-                                                        onClick={setSelectedInstructorId}
-                                                    />
-                                                </div>
-                                            ))}
-
-                                            {/* DEBUG INFO */}
-                                            <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
-                                                Items: {collectionItems.length} |
-                                                Types: {collectionItems.map(i => i.itemType).join(',')} |
-                                                Active: {activeCollectionId} |
-                                                User: {user?.id}
-                                            </div>
-
-                                            {/* Empty State */}
-                                            {isCollectionEmpty ? (
-                                                activeCollectionId === 'personal-context' ? (
-                                                    <div className="col-span-full">
-                                                        {renderCollectionContent()}
-                                                    </div>
-                                                ) : (
-                                                    // --- EMPTY COLLECTION STATES ---
-                                                    <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
-                                                        {/* Visual Graphic at Top - Hide for Conversations */}
-                                                        {activeCollectionId !== 'conversations' && (
-                                                            <div className="mb-12 animate-float">
-                                                                {renderCollectionVisual()}
+                                        </div>
+                                    ) : (
+                                        // --- FLAT GRID VIEW (Collections / Filters) ---
+                                        <div className="pb-20">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
+                                                {/* Render Courses */}
+                                                {visibleCourses.map((course, index) => {
+                                                    const delay = Math.min(index, 15) * 50;
+                                                    return (
+                                                        <LazyCourseCard key={course.id}>
+                                                            <div
+                                                                style={{ transitionDelay: `${delay}ms` }}
+                                                                className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                            >
+                                                                <CardStack
+                                                                    {...course}
+                                                                    onAddClick={handleAddButtonClick}
+                                                                    onDragStart={handleCourseDragStart}
+                                                                    onClick={handleCourseClick}
+                                                                />
                                                             </div>
-                                                        )}
+                                                        </LazyCourseCard>
+                                                    );
+                                                })}
 
-                                                        {/* Text Content */}
-                                                        <CollectionInfo
-                                                            type={activeCollectionId}
-                                                            isEmptyState={true}
-                                                            onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                                            onOpenDrawer={() => toggleDrawer('prompts')}
-                                                            onOpenHelp={() => toggleDrawer('help')}
+                                                {/* Render Conversations */}
+                                                {visibleConversations.map((conversation, index) => (
+                                                    <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                                        <ConversationCard
+                                                            {...conversation}
+                                                            onClick={handleOpenConversation}
+                                                            onDelete={handleDeleteConversation}
                                                         />
                                                     </div>
-                                                )) : (
-                                                // --- NO RESULTS (Filter Context) ---
-                                                visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                    <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                        <Search size={48} className="text-slate-600 mb-4" />
-                                                        <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                        <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                ))}
+
+                                                {/* Render Instructors */}
+                                                {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                                    <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                        <InstructorCard
+                                                            instructor={instructor}
+                                                            onClick={setSelectedInstructorId}
+                                                        />
                                                     </div>
-                                                )
-                                            )}
+                                                ))}
+
+                                                {/* DEBUG INFO */}
+                                                <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                    Items: {collectionItems.length} |
+                                                    Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                    Active: {activeCollectionId} |
+                                                    User: {user?.id}
+                                                </div>
+
+                                                {/* Empty State */}
+                                                {isCollectionEmpty ? (
+                                                    activeCollectionId === 'personal-context' ? (
+                                                        <div className="col-span-full">
+                                                            {renderCollectionContent()}
+                                                        </div>
+                                                    ) : (
+                                                        // --- EMPTY COLLECTION STATES ---
+                                                        <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                            {/* Visual Graphic at Top - Hide for Conversations */}
+                                                            {activeCollectionId !== 'conversations' && (
+                                                                <div className="mb-12 animate-float">
+                                                                    {renderCollectionVisual()}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Text Content */}
+                                                            <CollectionInfo
+                                                                type={activeCollectionId}
+                                                                isEmptyState={true}
+                                                                onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                                onOpenDrawer={() => toggleDrawer('prompts')}
+                                                                onOpenHelp={() => toggleDrawer('help')}
+                                                            />
+                                                        </div>
+                                                    )) : (
+                                                    // --- NO RESULTS (Filter Context) ---
+                                                    visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
+                                                        <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                            <Search size={48} className="text-slate-600 mb-4" />
+                                                            <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                            <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+
+                                            {/* Populated Footer (Collection Info) */}
+                                            {visibleCourses.length > 0 && renderCollectionFooter()}
                                         </div>
-
-                                        {/* Populated Footer (Collection Info) */}
-                                        {visibleCourses.length > 0 && renderCollectionFooter()}
-                                    </div>
-                                )}
-
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )
@@ -2516,7 +2517,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     activeCollectionId={activeCollectionId}
                     itemToEdit={editingContextItem}
                     initialType={contextTypeToAdd}
-                    userId={useCollections(courses).savedItemIds ? 'current-user-implied-by-server-action' : ''}
+                    userId={savedItemIds ? 'current-user-implied-by-server-action' : ''}
                     onSaveSuccess={() => setRefreshTrigger(prev => prev + 1)}
                 />
             </div >

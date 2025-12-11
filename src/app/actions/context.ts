@@ -143,7 +143,7 @@ async function resolveCollectionId(supabase: any, collectionId: string | undefin
             .select('id')
             .eq('user_id', userId)
             .eq('label', targetLabel)
-            .single();
+            .maybeSingle();
         return data?.id || null;
     }
 
