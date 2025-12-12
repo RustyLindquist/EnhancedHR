@@ -37,7 +37,7 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                     className="absolute top-8 left-8 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all backdrop-blur-md group"
                 >
                     <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium">Back to Instructors</span>
+                    <span className="text-sm font-medium">Back to Experts</span>
                 </button>
 
                 {/* Hero Content */}
@@ -55,7 +55,7 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                                 </span>
                                 {instructor.featured && (
                                     <span className="px-3 py-1 rounded-full bg-brand-orange/10 text-brand-orange border border-brand-orange/20 text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <Star size={10} fill="currentColor" /> Featured Instructor
+                                        <Star size={10} fill="currentColor" /> Featured Expert
                                     </span>
                                 )}
                             </div>
@@ -75,7 +75,7 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Star size={18} className="text-brand-orange" fill="currentColor" />
-                                    <span className="font-medium">{instructor.stats.rating} Instructor Rating</span>
+                                    <span className="font-medium">{instructor.stats.rating} Expert Rating</span>
                                 </div>
                             </div>
                         </div>

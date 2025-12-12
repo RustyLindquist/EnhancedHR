@@ -16,14 +16,14 @@ interface SmartTranscriptProps {
 }
 
 const MOCK_TRANSCRIPT: TranscriptSegment[] = [
-    { id: '1', startTime: 0, endTime: 5, text: "Welcome to this lesson on Strategic HR Management.", speaker: "Instructor" },
-    { id: '2', startTime: 5, endTime: 12, text: "Today we're going to talk about how to align your HR strategy with the overall business goals of your organization.", speaker: "Instructor" },
-    { id: '3', startTime: 12, endTime: 20, text: "Many HR professionals struggle with this because they get bogged down in the day-to-day administrative tasks.", speaker: "Instructor" },
-    { id: '4', startTime: 20, endTime: 28, text: "But if you want to be a true strategic partner, you need to lift your head up and look at the big picture.", speaker: "Instructor" },
-    { id: '5', startTime: 28, endTime: 35, text: "We'll cover three key frameworks that will help you do exactly that.", speaker: "Instructor" },
-    { id: '6', startTime: 35, endTime: 45, text: "First, we'll look at the SWOT analysis. Then we'll dive into the Balanced Scorecard.", speaker: "Instructor" },
-    { id: '7', startTime: 45, endTime: 55, text: "And finally, we'll discuss the concept of Human Capital Readiness.", speaker: "Instructor" },
-    { id: '8', startTime: 55, endTime: 65, text: "So let's get started.", speaker: "Instructor" },
+    { id: '1', startTime: 0, endTime: 5, text: "Welcome to this lesson on Strategic HR Management.", speaker: "Expert" },
+    { id: '2', startTime: 5, endTime: 12, text: "Today we're going to talk about how to align your HR strategy with the overall business goals of your organization.", speaker: "Expert" },
+    { id: '3', startTime: 12, endTime: 20, text: "Many HR professionals struggle with this because they get bogged down in the day-to-day administrative tasks.", speaker: "Expert" },
+    { id: '4', startTime: 20, endTime: 28, text: "But if you want to be a true strategic partner, you need to lift your head up and look at the big picture.", speaker: "Expert" },
+    { id: '5', startTime: 28, endTime: 35, text: "We'll cover three key frameworks that will help you do exactly that.", speaker: "Expert" },
+    { id: '6', startTime: 35, endTime: 45, text: "First, we'll look at the SWOT analysis. Then we'll dive into the Balanced Scorecard.", speaker: "Expert" },
+    { id: '7', startTime: 45, endTime: 55, text: "And finally, we'll discuss the concept of Human Capital Readiness.", speaker: "Expert" },
+    { id: '8', startTime: 55, endTime: 65, text: "So let's get started.", speaker: "Expert" },
 ];
 
 const SmartTranscript: React.FC<SmartTranscriptProps> = ({ currentTime, onSeek, segments = MOCK_TRANSCRIPT }) => {

@@ -36,3 +36,18 @@ export async function getMuxAssetId(uploadId: string) {
         return null;
     }
 }
+
+export async function createMuxAssetFromUrl(url: string, passthrough?: string) {
+    try {
+        const asset = await mux.video.assets.create({
+            input: [{ url }],
+            playback_policy: ['public'],
+            encoding_tier: 'smart',
+            passthrough, // We can store our internal ID here
+        } as any);
+        return asset;
+    } catch (error) {
+        console.error("Mux Creation Error:", error);
+        throw error;
+    }
+}

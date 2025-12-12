@@ -124,8 +124,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   // Demo Accounts Configuration
   const DEMO_ACCOUNTS = [
     { id: 'org_admin', label: 'Org Admin', email: 'demo.admin@enhancedhr.ai', icon: Briefcase, color: 'text-purple-400' },
-    { id: 'author', label: 'Instructor', email: 'demo.instructor@enhancedhr.ai', icon: PenTool, color: 'text-brand-orange' },
-    { id: 'pending_author', label: 'Pending Instructor', email: 'demo.applicant@enhancedhr.ai', icon: Clock, color: 'text-yellow-400' },
+    { id: 'author', label: 'Expert', email: 'demo.instructor@enhancedhr.ai', icon: PenTool, color: 'text-brand-orange' },
+    { id: 'pending_author', label: 'Pending Expert', email: 'demo.applicant@enhancedhr.ai', icon: Clock, color: 'text-yellow-400' },
     { id: 'employee', label: 'Employee', email: 'demo.employee@enhancedhr.ai', icon: Users, color: 'text-brand-blue-light' },
     { id: 'user', label: 'Individual User', email: 'demo.user@enhancedhr.ai', icon: User, color: 'text-slate-400' },
   ];

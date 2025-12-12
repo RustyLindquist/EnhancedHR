@@ -28,13 +28,13 @@ export async function POST(request: Request) {
       { 
         email: 'demo.instructor@enhancedhr.ai', 
         password: 'password123', 
-        data: { full_name: 'Demo Instructor', role: 'author' },
+        data: { full_name: 'Demo Expert', role: 'author' },
         profile: { role: 'user', author_status: 'approved' }
       },
       { 
         email: 'demo.applicant@enhancedhr.ai', 
         password: 'password123', 
-        data: { full_name: 'Pending Instructor', role: 'pending_author' },
+        data: { full_name: 'Pending Expert', role: 'pending_author' },
         profile: { role: 'user', author_status: 'pending' }
       },
       { 

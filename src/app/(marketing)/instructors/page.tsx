@@ -34,7 +34,7 @@ export default function InstructorsMarketingPage() {
                             href="/join/instructor"
                             className="px-8 py-4 rounded-full bg-brand-orange text-white font-bold text-lg hover:bg-white hover:text-brand-black transition-all shadow-[0_0_30px_rgba(255,147,0,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] hover:-translate-y-1 flex items-center gap-2"
                         >
-                            Become an Instructor <ArrowRight size={20} />
+                            Become an Expert <ArrowRight size={20} />
                         </Link>
                     </div>
                 </div>
@@ -130,7 +130,7 @@ export default function InstructorsMarketingPage() {
                             <div className="absolute inset-0 bg-gradient-to-br from-brand-orange/20 to-brand-red/20 blur-3xl -z-10"></div>
                             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-8 transform rotate-3 hover:rotate-0 transition-all duration-500 shadow-2xl">
                                 <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-white font-bold">Instructor Dashboard</h3>
+                                    <h3 className="text-white font-bold">Expert Dashboard</h3>
                                     <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">Live</div>
                                 </div>
 

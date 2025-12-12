@@ -66,7 +66,7 @@ export default function InstructorSignupPage() {
                         {/* Card Header */}
                         <div className="mb-8 text-center">
                             <h2 className="text-xl font-bold text-white mb-2">
-                                Become an Instructor
+                                Become an Expert
                             </h2>
                             <p className="text-slate-400 text-sm">
                                 Create your free instructor account to submit a course proposal.
@@ -131,9 +131,9 @@ export default function InstructorSignupPage() {
                                         <GraduationCap size={14} />
                                     </div>
                                     <div>
-                                        <h4 className="text-brand-blue-light text-xs font-bold uppercase tracking-wider mb-1">Instructor Account</h4>
+                                        <h4 className="text-brand-blue-light text-xs font-bold uppercase tracking-wider mb-1">Expert Account</h4>
                                         <p className="text-slate-400 text-xs leading-relaxed">
-                                            This is a free account that gives you access to the Instructor Dashboard where you can submit course proposals and manage your content.
+                                            This is a free account that gives you access to the Expert Dashboard where you can submit course proposals and manage your content.
                                         </p>
                                     </div>
                                 </div>
@@ -160,7 +160,7 @@ export default function InstructorSignupPage() {
                                     <Loader2 size={20} className="animate-spin" />
                                 ) : (
                                     <>
-                                        Create Instructor Account <ArrowRight size={18} />
+                                        Create Expert Account <ArrowRight size={18} />
                                     </>
                                 )}
                             </button>

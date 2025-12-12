@@ -436,8 +436,8 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
     if (type === 'instructors') {
         return (
             <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Instructors</h2>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Instructors</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Experts</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Experts</h2>
 
                 <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
@@ -734,6 +734,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
+
+    // Sync selectedCourseId with parent (for AI Panel Context)
+    useEffect(() => {
+        if (onCourseSelect) {
+            onCourseSelect(selectedCourseId ? String(selectedCourseId) : null);
+        }
+    }, [selectedCourseId, onCourseSelect]);
 
     // Prometheus Page Prompt State
     const [prometheusPagePrompt, setPrometheusPagePrompt] = useState<string | undefined>(undefined);
@@ -1410,7 +1417,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
             return `Welcome ${firstName}`;
         }
-        if (activeCollectionId === 'instructors') return 'Course Instructors';
+        if (activeCollectionId === 'instructors') return 'Course Experts';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);

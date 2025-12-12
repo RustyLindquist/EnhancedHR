@@ -94,13 +94,21 @@ export async function POST(req: NextRequest) {
         const embeddingResult = await embeddingModel.embedContent(message);
         const embedding = embeddingResult.embedding.values;
 
-        // 3a. Retrieve Context (RAG)
-        const { data: contextItems, error: matchError } = await supabase.rpc('match_course_embeddings', {
+        // [NEW] Resolve Context Scope
+        const { ContextResolver } = await import('@/lib/ai/context-resolver');
+        const ragScope = await ContextResolver.resolve(user.id, pageContext || { type: 'PAGE', id: 'dashboard' });
+
+        // 3a. Retrieve Context (Unified Scoped RAG)
+        const { data: contextItems, error: matchError } = await supabase.rpc('match_unified_embeddings', {
             query_embedding: embedding,
             match_threshold: 0.5,
             match_count: 5,
-            filter_course_id: courseId || null
+            filter_scope: ragScope
         });
+
+        if (matchError) {
+            console.error('RAG Error:', matchError);
+        }
 
         const contextText = contextItems?.map((item: any) => item.content).join('\n\n') || '';
 
@@ -167,8 +175,15 @@ export async function POST(req: NextRequest) {
         }
 
         // Citations Logic (Keep as is)
+        // Citations Logic
         if (contextItems && contextItems.length > 0) {
-             const uniqueCourses = Array.from(new Set(contextItems.map((item: any) => item.course_id))).filter(id => id);
+             // Extract Course IDs from content that is linked to a course
+             const uniqueCourses = Array.from(new Set(
+                 contextItems
+                    .filter((item: any) => item.course_id || (item.metadata && item.metadata.courseId))
+                    .map((item: any) => item.course_id || item.metadata.courseId)
+             )).filter(id => id);
+
              if (uniqueCourses.length > 0) {
                 const { data: courses } = await supabase.from('courses').select('id, author_id').in('id', uniqueCourses);
                 if (courses) {

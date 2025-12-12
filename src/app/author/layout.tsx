@@ -77,7 +77,7 @@ export default async function AuthorLayout({
                     <div className="flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-sm font-bold text-white">{profile?.full_name || user.email}</p>
-                            <p className="text-xs text-slate-500 capitalize">Instructor</p>
+                            <p className="text-xs text-slate-500 capitalize">Expert</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-bold text-slate-400">
                             {(profile?.full_name || user.email || 'U').substring(0, 2).toUpperCase()}

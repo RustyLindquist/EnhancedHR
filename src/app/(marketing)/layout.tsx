@@ -31,7 +31,7 @@ export default async function MarketingLayout({
                     {/* Desktop Links */}
                     <div className="hidden md:flex items-center gap-8">
                         <Link href="/instructors" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
-                            Instructors
+                            Experts
                         </Link>
                         <Link href="/#pricing" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
                             Pricing
@@ -102,7 +102,7 @@ export default async function MarketingLayout({
                         <div className="md:col-span-3">
                             <h4 className="text-white font-bold mb-6 tracking-wide">Platform</h4>
                             <ul className="space-y-4 text-slate-400">
-                                <li><Link href="/instructors" className="hover:text-brand-blue-light transition-colors flex items-center gap-2"><ArrowRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 transition-all" /> Instructors</Link></li>
+                                <li><Link href="/instructors" className="hover:text-brand-blue-light transition-colors flex items-center gap-2"><ArrowRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 transition-all" /> Experts</Link></li>
                                 <li><Link href="/login" className="hover:text-brand-blue-light transition-colors">Login</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-brand-blue-light transition-colors">Pricing</Link></li>
                                 <li><Link href="/join" className="hover:text-brand-blue-light transition-colors">Get Started</Link></li>

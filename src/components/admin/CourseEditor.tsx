@@ -192,7 +192,7 @@ export default function CourseEditor({ courseId, initialData }: CourseEditorProp
                                         value={course.author}
                                         onChange={e => setCourse({ ...course, author: e.target.value })}
                                         className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-blue-light/50 transition-colors"
-                                        placeholder="Instructor Name"
+                                        placeholder="Expert Name"
                                     />
                                 </div>
 

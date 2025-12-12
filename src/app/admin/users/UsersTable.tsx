@@ -232,7 +232,7 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void, onSucces
                             <option value="user">User</option>
                             <option value="admin">Platform Admin</option>
                             <option value="org_admin">Org Admin</option>
-                            <option value="instructor">Instructor</option>
+                            <option value="instructor">Expert</option>
                         </select>
                     </div>
 

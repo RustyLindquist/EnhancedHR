@@ -136,7 +136,7 @@ const CertificatePDF: React.FC<CertificateProps> = ({
                     </View>
                     <View style={styles.signatureBlock}>
                         <Text style={{ fontFamily: 'Helvetica-Oblique', fontSize: 14, marginBottom: 5 }}>EnhancedHR Team</Text>
-                        <Text style={styles.signatureText}>Course Instructor</Text>
+                        <Text style={styles.signatureText}>Course Expert</Text>
                     </View>
                 </View>
 

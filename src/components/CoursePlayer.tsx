@@ -220,7 +220,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold text-white">{course.author}</p>
-                                    <p className="text-xs text-slate-400">Instructor</p>
+                                    <p className="text-xs text-slate-400">Expert</p>
                                 </div>
                             </div>
                             <div className="h-8 w-px bg-white/10 mx-2"></div>
