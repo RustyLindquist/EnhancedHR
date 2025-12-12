@@ -48,6 +48,36 @@ function HomeContent() {
   const [modalItem, setModalItem] = useState<ContextCard | null>(null);
 
   // Load User and Collections
+  // Function to refresh counts (passed to children)
+  const refreshCollectionCounts = async () => {
+    if (!user) return;
+
+    // Dynamically import to ensure client-side execution context is respected
+    // (Though could be top-level, this matches existing pattern)
+    const { fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+
+    const rawCounts = await fetchCollectionCounts(user.id);
+    const systemMap = await ensureSystemCollections(user.id);
+
+    const uuidToSystemMap: Record<string, string> = {};
+    Object.entries(systemMap).forEach(([key, uuid]) => {
+      uuidToSystemMap[uuid] = key;
+    });
+
+    const mappedCounts: Record<string, number> = {};
+
+    Object.entries(rawCounts).forEach(([uuid, count]) => {
+      const systemKey = uuidToSystemMap[uuid];
+      if (systemKey) {
+        mappedCounts[systemKey] = count;
+      } else {
+        mappedCounts[uuid] = count;
+      }
+    });
+
+    setCollectionCounts(mappedCounts);
+  };
+
   useEffect(() => {
     async function initUserAndCollections() {
       const { createClient } = await import('@/lib/supabase/client');
@@ -56,10 +86,9 @@ function HomeContent() {
 
       if (user) {
         setUser(user);
-        const { fetchUserCollections, fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+        const { fetchUserCollections, ensureSystemCollections } = await import('@/lib/collections');
 
         // 0. Ensure System Collections exist (Sync)
-        // This ensures the DB has 'favorites', 'research', 'to_learn'
         await ensureSystemCollections(user.id);
 
         // 1. Fetch ALL Collections (System + Custom)
@@ -68,30 +97,54 @@ function HomeContent() {
         // Merge logic: DB is source of truth now.
         setCustomCollections(dbCollections);
 
-        // 2. Fetch & Map Counts
-        const rawCounts = await fetchCollectionCounts(user.id);
-        const systemMap = await ensureSystemCollections(user.id); // Redundant but fast/cached likely or cheap select
-        const uuidToSystemMap: Record<string, string> = {};
-        Object.entries(systemMap).forEach(([key, uuid]) => {
-          uuidToSystemMap[uuid] = key;
-        });
+        // 2. Initial Count Fetch
+        // We can call the new function here, but need to be careful with closure/dependency interaction
+        // Since refreshCollectionCounts depends on 'user' state which might not be set in closure yet if we just set it.
+        // Actually, we define refreshCollectionCounts to use 'user' state, but inside this useEffect 'user' variable is local.
+        // So let's duplicate the logic slightly or pass user to the function? 
+        // Better: pass user ID to function to avoid state dependency issues.
 
-        const mappedCounts: Record<string, number> = {};
-
-        Object.entries(rawCounts).forEach(([uuid, count]) => {
-          const systemKey = uuidToSystemMap[uuid];
-          if (systemKey) {
-            mappedCounts[systemKey] = count;
-          } else {
-            mappedCounts[uuid] = count;
-          }
-        });
-
-        setCollectionCounts(mappedCounts);
+        await refreshCountsForUser(user.id);
       }
     }
     initUserAndCollections();
   }, []);
+
+  const refreshCountsForUser = async (userId: string) => {
+    const { fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+
+    const rawCounts = await fetchCollectionCounts(userId);
+    const systemMap = await ensureSystemCollections(userId);
+
+    const uuidToSystemMap: Record<string, string> = {};
+    Object.entries(systemMap).forEach(([key, uuid]) => {
+      uuidToSystemMap[uuid] = key;
+    });
+
+    const mappedCounts: Record<string, number> = {};
+
+    Object.entries(rawCounts).forEach(([uuid, count]) => {
+      const systemKey = uuidToSystemMap[uuid];
+      if (systemKey) {
+        mappedCounts[systemKey] = count;
+      } else {
+        mappedCounts[uuid] = count;
+      }
+    });
+
+    setCollectionCounts(mappedCounts);
+  };
+
+  const refreshCollectionsAndCounts = async (userId: string) => {
+    // Refresh Collections List
+    const { fetchUserCollections } = await import('@/lib/collections');
+    const dbCollections = await fetchUserCollections(userId);
+    setCustomCollections(dbCollections);
+
+    // Refresh Counts
+    await refreshCountsForUser(userId);
+  };
+
 
 
 
@@ -330,6 +383,7 @@ function HomeContent() {
           activeCollectionId={activeCollectionId}
           onSelectCollection={handleSelectCollection}
           collectionCounts={collectionCounts}
+          customCollections={customCollections}
         />
 
         {/* Center Content - Using Dashboard V3 */}
@@ -347,6 +401,9 @@ function HomeContent() {
           onResumeConversation={handleResumeConversation}
           activeConversationId={activeConversationId}
           useDashboardV3={true}
+          onCollectionUpdate={() => {
+            if (user) refreshCollectionsAndCounts(user.id);
+          }}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}

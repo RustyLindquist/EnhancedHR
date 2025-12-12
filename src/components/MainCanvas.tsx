@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings } from 'lucide-react';
 import CardStack from './CardStack';
 import CollectionSurface from './CollectionSurface';
 import AlertBox from './AlertBox';
@@ -14,9 +14,11 @@ import { createClient } from '@/lib/supabase/client';
 import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
+import { deleteContextItem } from '@/app/actions/context';
+import { deleteCollection, renameCollection } from '@/app/actions/collections';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
-import DeleteConversationModal from './DeleteConversationModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal'; // Updated import
 import InstructorCard from './InstructorCard';
 import InstructorPage from './InstructorPage';
 import { MOCK_INSTRUCTORS } from '../constants';
@@ -41,6 +43,7 @@ interface MainCanvasProps {
     onResumeConversation?: (conversation: Conversation) => void;
     activeConversationId?: string | null;
     useDashboardV3?: boolean;
+    onCollectionUpdate?: () => void;
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -595,7 +598,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     initialCourseId,
     onResumeConversation,
     activeConversationId,
-    useDashboardV3
+    useDashboardV3,
+    onCollectionUpdate
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -744,6 +748,53 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Prometheus Page Prompt State
     const [prometheusPagePrompt, setPrometheusPagePrompt] = useState<string | undefined>(undefined);
+
+    // --- COLLECTION MANAGEMENT STATE ---
+    const [isRenamingCollection, setIsRenamingCollection] = useState(false);
+    const [renameValue, setRenameValue] = useState('');
+    const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
+
+    // Reset manage state when changing collections
+    useEffect(() => {
+        setIsRenamingCollection(false);
+        setIsManageMenuOpen(false);
+    }, [activeCollectionId]);
+
+    const handleRenameCollectionSpy = async () => {
+        // Find current collection name to init
+        const current = customCollections.find(c => c.id === activeCollectionId);
+        if (current) {
+            setRenameValue(current.label);
+            setIsRenamingCollection(true);
+            setIsManageMenuOpen(false); // Close menu
+        }
+    };
+
+    const submitRename = async () => {
+        if (!renameValue.trim()) return;
+
+        try {
+            const res = await renameCollection(activeCollectionId, renameValue);
+            if (res.success) {
+                // Success - Notify parent to refresh list
+                if (onCollectionUpdate) onCollectionUpdate();
+                setIsRenamingCollection(false);
+            } else {
+                alert("Failed to rename collection");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error renaming collection");
+        }
+    };
+
+    const handleDeleteCollectionSpy = () => {
+        const custom = customCollections.find(c => c.id === activeCollectionId);
+        if (custom) {
+            setCollectionToDelete({ id: custom.id, label: custom.label });
+            setDeleteCollectionModalOpen(true);
+        }
+    };
 
     // Dashboard Stats for V3 Header
     const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -1219,10 +1270,102 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, [user]);
 
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+    const [deleteConversationModalOpen, setDeleteConversationModalOpen] = useState(false);
+    const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
 
-    // Removed localStorage effect
+    // New Delete States
+    const [deleteCollectionModalOpen, setDeleteCollectionModalOpen] = useState(false);
+    const [collectionToDelete, setCollectionToDelete] = useState<{ id: string; label: string } | null>(null);
+
+    const [deleteContextModalOpen, setDeleteContextModalOpen] = useState(false);
+    const [contextItemToDelete, setContextItemToDelete] = useState<{ id: string; type: ContextItemType; title: string } | null>(null);
+
+    // --- Actions ---
+
+    const handleDeleteConversationInitiate = (conv: any) => {
+        setConversationToDelete(conv);
+        setDeleteConversationModalOpen(true);
+    };
+
+    const confirmDeleteConversation = async () => {
+        if (!conversationToDelete) return;
+        setDeleteConversationModalOpen(false);
+        try {
+            await fetch(`/api/conversations/${conversationToDelete.id}`, {
+                method: 'DELETE'
+            });
+            setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
+            setConversationToDelete(null);
+        } catch (error) {
+            console.error("Failed to delete conversation", error);
+            alert("Failed to delete conversation.");
+        }
+    };
+
+    const cancelDeleteConversation = () => {
+        setDeleteConversationModalOpen(false);
+        setConversationToDelete(null);
+    };
+
+    // Collection Delete Handlers
+    const confirmDeleteCollection = async () => {
+        if (!collectionToDelete) return;
+        setDeleteCollectionModalOpen(false);
+
+        const result = await deleteCollection(collectionToDelete.id);
+        if (result.success) {
+            if (activeCollectionId === collectionToDelete.id) {
+                onSelectCollection('academy');
+            }
+            if (onCollectionUpdate) onCollectionUpdate();
+        } else {
+            alert('Failed to delete collection: ' + result.error);
+        }
+        setCollectionToDelete(null);
+    };
+
+    // Context Delete Handlers
+    const initiateDeleteContextItem = (id: string, type: ContextItemType, title: string) => {
+        setContextItemToDelete({ id, type, title });
+        setDeleteContextModalOpen(true);
+    };
+
+    const confirmDeleteContextItem = async () => {
+        if (!contextItemToDelete) return;
+        setDeleteContextModalOpen(false);
+
+        const result = await deleteContextItem(contextItemToDelete.id);
+        if (result.success) {
+            // Update local state to remove item immediately
+            setCollectionItems(prev => prev.filter(item => item.id !== contextItemToDelete.id));
+            if (onCollectionUpdate) onCollectionUpdate();
+        } else {
+            alert('Failed to delete context item: ' + result.error);
+        }
+        setContextItemToDelete(null);
+    };
+
+    // Updated Handler for UniversalCollectionCard
+    const handleRemoveItem = async (itemId: string, itemType: string) => {
+        if (itemType === 'COURSE') {
+            removeFromCollection(itemId, activeCollectionId);
+            if (onCollectionUpdate) onCollectionUpdate();
+        } else if (itemType === 'CONVERSATION') {
+            const conv = conversations.find(c => c.id === itemId);
+            if (conv) {
+                handleDeleteConversationInitiate(conv);
+            }
+        } else {
+            // Context Items (Custom, File, Profile, Insight)
+            // Cast strictly if needed check
+            const type = itemType as ContextItemType;
+            if (type === 'AI_INSIGHT' || type === 'CUSTOM_CONTEXT' || type === 'FILE' || type === 'PROFILE') {
+                const item = collectionItems.find(i => i.id === itemId);
+                const title = item?.title || 'Context Item';
+                initiateDeleteContextItem(itemId, type, title);
+            }
+        }
+    };
 
     // Listen for conversation collection updates from the modal
     useEffect(() => {
@@ -1290,88 +1433,28 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     };
 
-    const handleDeleteConversation = (id: string) => {
-        const conv = conversations.find(c => c.id === id);
-        if (conv) {
-            setConversationToDelete(conv);
-            setDeleteModalOpen(true);
-        }
-    };
-
-    const confirmDeleteConversation = async () => {
-        if (conversationToDelete) {
-            try {
-                await fetch(`/api/conversations/${conversationToDelete.id}`, {
-                    method: 'DELETE'
-                });
-                setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
-                setDeleteModalOpen(false);
-                setConversationToDelete(null);
-            } catch (error) {
-                console.error("Failed to delete conversation", error);
-            }
-        }
-    };
-
-    const cancelDeleteConversation = () => {
-        setDeleteModalOpen(false);
-        setConversationToDelete(null);
-    };
-
     const handleOpenConversation = (id: string) => {
         const conversation = conversations.find(c => c.id === id);
         if (conversation) {
-            if (onResumeConversation) {
-                onResumeConversation(conversation);
+            onResumeConversation && onResumeConversation(conversation);
+            if (activeCollectionId === 'conversations') {
+                // If on conversations page, maybe navigate? For now just resume.
             } else {
-                // Fallback to old behavior if prop not provided
-                setActiveConversation(conversation);
-                setPrometheusConversationTitle(conversation.title);
-                setPrometheusPagePrompt(undefined); // Clear any pending prompt to prevent double submission
-                onSelectCollection('prometheus');
+                // Open drawer or AI panel?
+                onOpenAIPanel();
             }
         }
+    };
+
+    // Restored handler for conversation dashboard (not modal, legacy call usage check)
+    const handleDeleteConversation = (id: string) => {
+        const conv = conversations.find(c => c.id === id);
+        if (conv) handleDeleteConversationInitiate(conv);
     };
 
     // Reset active conversation when leaving Prometheus (with 5-minute persistence)
     const [lastPrometheusExitTime, setLastPrometheusExitTime] = useState<number | null>(null);
 
-    useEffect(() => {
-        if (activeCollectionId !== 'prometheus') {
-            if (activeCollectionId && activeCollectionId !== 'dashboard') { // Don't track if just loading? No, track exit.
-                setLastPrometheusExitTime(Date.now());
-            }
-            // Logic moved to entry (below), but we need to possibly clear if timeout
-            // We clear it on entry if needed.
-        } else {
-            // Entering Prometheus
-            const now = Date.now();
-            const persistenceDuration = 5 * 60 * 1000; // 5 minutes
-
-            if (lastPrometheusExitTime && (now - lastPrometheusExitTime < persistenceDuration)) {
-                // Restore logic happens automatically if state wasn't cleared.
-                // But we were clearing it.
-            } else {
-                // If persistent time exceeded (or first load and no previous active), clear it.
-                // BUT, if user clicked a specific conversation (from nav), onSelectCollection set activeConversation.
-                // We shouldn't overwrite that.
-                // We only clear if activeConversation was set from a previous session and we want to reset.
-                // However, onSelectCollection typically resets activeConversation unless handleOpenConversation set it.
-
-                // If I am navigating via manual click on "Prometheus" nav item:
-                // onSelectCollection('prometheus') -> activeConversation might remain if we don't clear it.
-                // My previous effect cleared it on *leaving* (line 1313).
-                // I need to REMOVE that clear-on-leave and replace with this logic.
-            }
-        }
-    }, [activeCollectionId]);
-
-    // Better Re-entry Logic:
-    // We retain state in activeConversation.
-    // We only clear it if we leave and stay away > 5 mins.
-    // OR we clear it on re-entry if > 5 mins active.
-
-    // Let's modify the previous useEffect completely.
     useEffect(() => {
         if (activeCollectionId === 'prometheus') {
             const now = Date.now();
@@ -1667,11 +1750,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             style={{ animationDelay: `${index * 50}ms` }}>
                             <UniversalCollectionCard
                                 item={item}
-                                onRemove={(id, type) => removeFromCollection(id, activeCollectionId)}
+                                onRemove={(id, type) => handleRemoveItem(id, type)}
                                 onClick={(item) => {
                                     if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
                                     else if (item.itemType === 'CONVERSATION') {
-                                        // Handle conversation open
+                                        handleOpenConversation(item.id);
                                     }
                                     else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
                                         handleOpenContextEditor(item.itemType, item as any);
@@ -2070,8 +2153,32 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 Personal <span className="font-bold text-white">Context</span>
                             </h1>
                         ) : (
-                            <h1 className="text-3xl font-light text-white tracking-tight">
-                                {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
+                            <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-3">
+                                {isRenamingCollection ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={renameValue}
+                                            onChange={(e) => setRenameValue(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') submitRename();
+                                                if (e.key === 'Escape') setIsRenamingCollection(false);
+                                            }}
+                                            className="bg-black/50 border border-brand-blue-light/50 rounded px-2 py-1 text-white font-bold outline-none min-w-[300px]"
+                                        />
+                                        <button onClick={submitRename} className="p-1 hover:bg-white/10 rounded-full text-brand-green">
+                                            <Check size={20} />
+                                        </button>
+                                        <button onClick={() => setIsRenamingCollection(false)} className="p-1 hover:bg-white/10 rounded-full text-red-400">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
+                                    </>
+                                )}
                             </h1>
                         )}
                     </div>
@@ -2198,6 +2305,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     </button>
                                 )}
 
+                            </>
+                        )}
+
+                        {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
+                        {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
+                        {!(activeCollectionId === 'favorites' ||
+                            activeCollectionId === 'research' ||
+                            activeCollectionId === 'to_learn' ||
+                            activeCollectionId === 'personal-context' ||
+                            activeCollectionId === 'company' ||
+                            activeCollectionId === 'instructors' ||
+                            activeCollectionId === 'dashboard' ||
+                            activeCollectionId === 'prometheus' ||
+                            activeCollectionId === 'certifications' ||
+                            customCollections.some(c => c.id === activeCollectionId)
+                        ) && (
                                 <button
                                     onClick={handleOpenDrawer}
                                     className={`
@@ -2216,9 +2339,36 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     )}
                                     {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
                                 </button>
-                            </>
-                        )}
+                            )}
 
+                        {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
+                        {customCollections.some(c => c.id === activeCollectionId) && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
+                                    className="flex items-center gap-2 px-4 py-3 bg-black/40 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                >
+                                    <Settings size={14} /> Manage
+                                </button>
+
+                                {isManageMenuOpen && (
+                                    <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fade-in-up">
+                                        <button
+                                            onClick={handleRenameCollectionSpy}
+                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+                                        >
+                                            <Edit size={14} /> Rename
+                                        </button>
+                                        <button
+                                            onClick={handleDeleteCollectionSpy}
+                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
+                                        >
+                                            <Trash size={14} /> Delete
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div >
 
@@ -2533,11 +2683,37 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 }
 
                 {/* Delete Confirmation Modal */}
-                <DeleteConversationModal
-                    isOpen={deleteModalOpen}
+                {/* Delete Conversation Confirmation */}
+                <DeleteConfirmationModal
+                    isOpen={deleteConversationModalOpen}
                     onCancel={cancelDeleteConversation}
                     onConfirm={confirmDeleteConversation}
-                    conversationTitle={conversationToDelete?.title || 'Conversation'}
+                    title="Delete Conversation?"
+                    itemTitle={conversationToDelete?.title || 'Conversation'}
+                    confirmText="Delete Conversation"
+                    description="This conversation will be removed from your history and any collections it has been saved to. This action cannot be undone."
+                />
+
+                {/* Delete Collection Confirmation */}
+                <DeleteConfirmationModal
+                    isOpen={deleteCollectionModalOpen}
+                    onCancel={() => setDeleteCollectionModalOpen(false)}
+                    onConfirm={confirmDeleteCollection}
+                    title="Delete Collection?"
+                    itemTitle={collectionToDelete?.label || 'Collection'}
+                    confirmText="Delete Collection"
+                    description="This collection and all its contents will be permanently deleted. This action cannot be undone."
+                />
+
+                {/* Delete Context Item Confirmation */}
+                <DeleteConfirmationModal
+                    isOpen={deleteContextModalOpen}
+                    onCancel={() => setDeleteContextModalOpen(false)}
+                    onConfirm={confirmDeleteContextItem}
+                    title="Delete Context Item?"
+                    itemTitle={contextItemToDelete?.title || 'Item'}
+                    confirmText="Delete Item"
+                    description="This item will be permanently removed from this collection. This action cannot be undone."
                 />
 
                 {/* --- Top Context Panel --- */}
@@ -2548,7 +2724,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     itemToEdit={editingContextItem}
                     initialType={contextTypeToAdd}
                     userId={savedItemIds ? 'current-user-implied-by-server-action' : ''}
-                    onSaveSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                    onSaveSuccess={() => {
+                        setRefreshTrigger(prev => prev + 1);
+                        if (onCollectionUpdate) onCollectionUpdate();
+                    }}
                 />
             </div >
         </div >

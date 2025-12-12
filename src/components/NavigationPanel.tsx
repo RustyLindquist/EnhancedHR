@@ -14,17 +14,17 @@ import {
   User,
   ImageIcon,
   Flame,
-  Bot,
   Briefcase,
   PenTool,
   Clock,
   ArrowLeft,
   Check,
   Upload,
-  Brain
+  Brain,
+  Layers // Added Layers icon for custom collections
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
-import { NavItemConfig, BackgroundTheme, Course } from '../types';
+import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 
 interface NavigationPanelProps {
   isOpen: boolean;
@@ -37,6 +37,7 @@ interface NavigationPanelProps {
   customNavItems?: NavItemConfig[];
   className?: string;
   collectionCounts?: Record<string, number>; // New prop for total counts
+  customCollections?: Collection[]; // Added custom collections prop
 }
 
 const NavItem: React.FC<{
@@ -110,7 +111,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   onSelectCollection,
   customNavItems,
   className,
-  collectionCounts
+  collectionCounts,
+  customCollections = [] // Default to empty array
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -382,7 +384,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 <NavItem
                   item={item}
                   isOpen={isOpen}
-                  count={item.id === 'prompts' ? undefined : undefined} // Logic for specific counters if needed
+                  count={item.id === 'personal-context' ? getCollectionCount(item.id) : undefined} // Logic for specific counters if needed
                   isActive={activeCollectionId === item.id || (pathname?.includes(item.id) && item.id !== 'dashboard')}
                   onClick={() => {
                     if (item.id.startsWith('admin/') || item.id === 'admin') {
@@ -406,28 +408,60 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               </h4>
             )}
             <div className="space-y-1">
-              {COLLECTION_NAV_ITEMS.map(item => (
-                <div
-                  key={item.id}
-                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={item}
-                    isOpen={isOpen}
-                    count={item.id !== 'new' && item.id !== 'company' ? getCollectionCount(item.id) : undefined}
-                    isActive={activeCollectionId === item.id}
-                    onClick={() => onSelectCollection(item.id)}
-                  />
-                </div>
-              ))}
+              <div className="space-y-1">
+                {(() => {
+                  // Split collections for correct ordering: Default (minus Company/New) -> Company -> Custom -> New
+                  const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new' && i.id !== 'company');
+                  const companyCollection = COLLECTION_NAV_ITEMS.find(i => i.id === 'company');
+                  const newCollectionAction = COLLECTION_NAV_ITEMS.find(i => i.id === 'new');
+
+                  // Sort custom collections alphabetically
+                  const sortedCustom = [...(customCollections || [])]
+                    .filter(c => c.isCustom) // Ensure only custom ones
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map(c => ({
+                      id: c.id,
+                      label: c.label,
+                      icon: Layers, // Default icon for custom
+                      color: c.color ? `text-[${c.color}]` : 'text-slate-400' // Dynamic color class - tricky with Tailwind JIT if not safe-listed, but let's try inline style in NavItem if needed. NavItem uses className.
+                      // Actually NavItem uses `item.color` as a class string. `text-[hex]` might work if configured or we can rely on style prop if we modify NavItem. 
+                      // For now let's reuse a standard color or rely on the prop passing through.
+                      // Actually, NavItem implementation:
+                      // ${isActive ? '...' : (item.color || 'text-slate-400')}
+                      // If we pass a hex color like '#ABC', `text-[#ABC]` is valid Tailwind arbitrary value.
+                    } as NavItemConfig));
+
+                  const finalItems = [
+                    ...staticCollections,
+                    ...(companyCollection ? [companyCollection] : []),
+                    ...sortedCustom,
+                    ...(newCollectionAction ? [newCollectionAction] : [])
+                  ];
+
+                  return finalItems.map(item => (
+                    <div
+                      key={item.id}
+                      onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                      onMouseLeave={handleItemLeave}
+                    >
+                      <NavItem
+                        item={item}
+                        isOpen={isOpen}
+                        count={item.id !== 'new' && item.id !== 'company' && !item.id.startsWith('custom-') ? getCollectionCount(item.id) : (item.id.startsWith('custom-') ? getCollectionCount(item.id) : undefined)}
+                        isActive={activeCollectionId === item.id}
+                        onClick={() => onSelectCollection(item.id)}
+                      />
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Bottom Branding (Flame + Tagline) */}
-      <div className={`group flex flex-col items-center justify-center pb-6 transition-opacity duration-500 cursor-default ${isOpen ? 'opacity-100' : 'opacity-0 hidden'} z-0`}>
+      <div className={`absolute bottom-28 w-full flex flex-col items-center justify-center pb-6 transition-opacity duration-500 pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0 hidden'} z-0`}>
         <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
           {/* Glow Effect */}
           <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 opacity-0 group-hover:opacity-20"></div>

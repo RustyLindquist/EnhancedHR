@@ -1,18 +1,25 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
-interface DeleteConversationModalProps {
+interface DeleteConfirmationModalProps {
     isOpen: boolean;
-    conversationTitle: string;
+    title: string;
     onConfirm: () => void;
     onCancel: () => void;
+    // content props
+    itemTitle: string;
+    description: ReactNode;
+    confirmText?: string;
 }
 
-const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
     isOpen,
-    conversationTitle,
+    title,
     onConfirm,
-    onCancel
+    onCancel,
+    itemTitle,
+    description,
+    confirmText = "Delete"
 }) => {
     if (!isOpen) return null;
 
@@ -25,7 +32,7 @@ const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
                         <div className="p-2 bg-red-500/10 rounded-lg">
                             <AlertTriangle size={24} className="text-red-500" />
                         </div>
-                        <h2 className="text-xl font-bold text-white">Delete Conversation?</h2>
+                        <h2 className="text-xl font-bold text-white">{title}</h2>
                     </div>
                     <button
                         onClick={onCancel}
@@ -38,12 +45,12 @@ const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
                 {/* Content */}
                 <div className="p-6 space-y-4">
                     <p className="text-slate-300 leading-relaxed">
-                        Are you sure you want to permanently delete <span className="font-semibold text-white">"{conversationTitle}"</span>?
+                        Are you sure you want to permanently delete <span className="font-semibold text-white">"{itemTitle}"</span>?
                     </p>
                     <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                        <p className="text-sm text-red-300">
-                            This conversation will be removed from your history and any collections it has been saved to. This action cannot be undone.
-                        </p>
+                        <div className="text-sm text-red-300">
+                            {description}
+                        </div>
                     </div>
                 </div>
 
@@ -59,7 +66,7 @@ const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
                         onClick={onConfirm}
                         className="px-6 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-200 font-medium shadow-lg shadow-red-500/20"
                     >
-                        Delete Conversation
+                        {confirmText}
                     </button>
                 </div>
             </div>
@@ -67,4 +74,4 @@ const DeleteConversationModal: React.FC<DeleteConversationModalProps> = ({
     );
 };
 
-export default DeleteConversationModal;
+export default DeleteConfirmationModal;

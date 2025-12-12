@@ -189,7 +189,8 @@ export async function syncCourseCollections(userId: string, courseId: number, ta
 export const SYSTEM_COLLECTION_IDS = {
     favorites: 'Favorites',
     research: 'Workspace', 
-    to_learn: 'Watchlist'
+    to_learn: 'Watchlist',
+    'personal-context': 'Personal Context'
 };
 
 export async function ensureSystemCollections(userId: string): Promise<Record<string, string>> {
@@ -203,7 +204,8 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         .in('label', [
             SYSTEM_COLLECTION_IDS.favorites, 
             SYSTEM_COLLECTION_IDS.research,
-            SYSTEM_COLLECTION_IDS.to_learn
+            SYSTEM_COLLECTION_IDS.to_learn,
+            SYSTEM_COLLECTION_IDS['personal-context']
         ]);
         
     const map: Record<string, string> = {}; // { research: uuid, ... }
@@ -214,6 +216,7 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         if (c.label === SYSTEM_COLLECTION_IDS.favorites) map['favorites'] = c.id;
         if (c.label === SYSTEM_COLLECTION_IDS.research) map['research'] = c.id;
         if (c.label === SYSTEM_COLLECTION_IDS.to_learn) map['to_learn'] = c.id;
+        if (c.label === SYSTEM_COLLECTION_IDS['personal-context']) map['personal-context'] = c.id;
     });
     
     // 2. Create missing ones
@@ -225,6 +228,7 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         if (key === 'favorites') color = '#FF2600';
         if (key === 'research') color = '#FF9300';
         if (key === 'to_learn') color = '#78C0F0';
+        if (key === 'personal-context') color = '#64748B';
         
         const { data, error } = await supabase
             .from('user_collections')
@@ -271,17 +275,60 @@ export async function fetchCollectionCounts(userId: string): Promise<Record<stri
     // Table: user_context_items(id, collection_id, user_id, ...)
     const { data: contextItems, error: contextError } = await supabase
         .from('user_context_items')
-        .select('collection_id')
+        .select('collection_id, type')
         .eq('user_id', userId)
         .not('collection_id', 'is', null);
+
+    const { data: pcCollection } = await supabase
+        .from('user_collections')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('label', SYSTEM_COLLECTION_IDS['personal-context'])
+        .maybeSingle();
+
+    const personalContextId = pcCollection?.id;
+    let hasProfile = false;
 
     if (!contextError && contextItems) {
         contextItems.forEach((item: any) => {
             const id = item.collection_id;
             if (id) {
                 counts[id] = (counts[id] || 0) + 1;
+                if (id === personalContextId && item.type === 'PROFILE') {
+                    hasProfile = true;
+                }
             }
         });
+    }
+
+    // Virtual Profile Logic: If Personal Context exists but has no PROFILE item, add 1 for virtual card
+    if (personalContextId && !hasProfile) {
+        counts[personalContextId] = (counts[personalContextId] || 0) + 1;
+    }
+
+    // 3. Count Conversations (from conversations table)
+    const { count: conversationCount, error: conversationError } = await supabase
+        .from('conversations')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+    if (!conversationError && conversationCount !== null) {
+        counts['conversations'] = conversationCount;
+        counts['prometheus'] = conversationCount; // Map provided for Prometheus view too
+    }
+
+    // 4. Count Certifications (Courses with badges)
+    // We assume 'Certifications' collection shows all courses that have at least one badge (SHRM/HRCI)
+    // badges is a text[] or jsonb column. If text[], checks likely need overlapping.
+    // If we assume any badge counts:
+    const { count: certificationCount, error: certError } = await supabase
+        .from('courses')
+        .select('*', { count: 'exact', head: true })
+        .not('badges', 'is', null) 
+        .neq('badges', '{}'); // Assuming it's an array and empty means no badges
+
+    if (!certError && certificationCount !== null) {
+        counts['certifications'] = certificationCount;
     }
 
     return counts;
