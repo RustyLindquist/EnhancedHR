@@ -12,10 +12,18 @@ import { fetchCourses } from '@/lib/courses';
 import { useSearchParams } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 
+import {
+  LayoutDashboard, Users, BookOpen, Settings, LogOut, ChevronLeft, ChevronRight, Menu, X, User,
+  ImageIcon, Flame, Award, Building, MessageSquare, PenTool, Clock, ArrowLeft, Check, Upload, Brain,
+  Star, Search, Plus, Folder
+} from 'lucide-react';
+
 function HomeContent() {
   const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true); // Restore default open
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
+  // ...
+
 
   // Lifted State: Courses source of truth
   const [courses, setCourses] = useState<Course[]>([]);
@@ -32,10 +40,61 @@ function HomeContent() {
 
   // Navigation & Collection State
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
+  const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
+  const [user, setUser] = useState<any>(null); // Track user for DB ops
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalItem, setModalItem] = useState<ContextCard | null>(null);
+
+  // Load User and Collections
+  useEffect(() => {
+    async function initUserAndCollections() {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        setUser(user);
+        const { fetchUserCollections, fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+
+        // 0. Ensure System Collections exist (Sync)
+        // This ensures the DB has 'favorites', 'research', 'to_learn'
+        await ensureSystemCollections(user.id);
+
+        // 1. Fetch ALL Collections (System + Custom)
+        const dbCollections = await fetchUserCollections(user.id);
+
+        // Merge logic: DB is source of truth now.
+        setCustomCollections(dbCollections);
+
+        // 2. Fetch & Map Counts
+        const rawCounts = await fetchCollectionCounts(user.id);
+        const systemMap = await ensureSystemCollections(user.id); // Redundant but fast/cached likely or cheap select
+        const uuidToSystemMap: Record<string, string> = {};
+        Object.entries(systemMap).forEach(([key, uuid]) => {
+          uuidToSystemMap[uuid] = key;
+        });
+
+        const mappedCounts: Record<string, number> = {};
+
+        Object.entries(rawCounts).forEach(([uuid, count]) => {
+          const systemKey = uuidToSystemMap[uuid];
+          if (systemKey) {
+            mappedCounts[systemKey] = count;
+          } else {
+            mappedCounts[uuid] = count;
+          }
+        });
+
+        setCollectionCounts(mappedCounts);
+      }
+    }
+    initUserAndCollections();
+  }, []);
+
+
+
 
   const handleUpdateCourse = (updatedCourses: Course[]) => {
     setCourses(updatedCourses);
@@ -46,41 +105,82 @@ function HomeContent() {
   };
 
   // Logic to handle saving (triggered from Modal)
-  const handleSaveToCollection = (selectedCollectionIds: string[], newCollection?: { label: string; color: string }) => {
+  const handleSaveToCollection = async (selectedCollectionIds: string[], newCollection?: { label: string; color: string }) => {
+    let finalSelectionIds = [...selectedCollectionIds];
+
     // 1. Handle New Collection Creation
-    if (newCollection) {
+    if (newCollection && user) {
+      const { createCollection } = await import('@/lib/collections');
+      const created = await createCollection(user.id, newCollection.label, newCollection.color);
+
+      if (created) {
+        handleCreateCollection(created);
+        // Add new ID to selection
+        if (!finalSelectionIds.includes(created.id)) {
+          finalSelectionIds.push(created.id);
+        }
+      }
+    } else if (newCollection && !user) {
+      // Fallback for demo/offline logic? (Shouldn't happen given auth requirements)
       const newId = `custom-${Date.now()}`;
       const created = { id: newId, label: newCollection.label, color: newCollection.color, isCustom: true };
       handleCreateCollection(created);
-      // Add new ID to selection
-      if (!selectedCollectionIds.includes(newId)) {
-        selectedCollectionIds.push(newId);
-      }
+      finalSelectionIds.push(newId);
     }
 
     // 2. Update Item Logic
     if (modalItem) {
       if (modalItem.type === 'COURSE') {
+        const courseId = modalItem.id;
+
+        // Optimistic Update
         const updatedCourses = courses.map(c => {
-          if (c.id === modalItem.id) {
+          if (c.id === courseId) {
             return {
               ...c,
-              collections: selectedCollectionIds,
-              isSaved: selectedCollectionIds.length > 0
+              collections: finalSelectionIds,
+              isSaved: true // Keep true if saved
             };
           }
           return c;
         });
         handleUpdateCourse(updatedCourses);
+
+        // DB Sync
+        if (user) {
+          const { syncCourseCollections, ensureSystemCollections, fetchCollectionCounts } = await import('@/lib/collections');
+
+          // MAP System IDs ('favorites', 'workspace') to UUIDs
+          const systemMap = await ensureSystemCollections(user.id);
+
+          const dbCollectionIds = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(id => {
+              // if id match a key in systemMap, return uuid
+              if (systemMap[id]) return systemMap[id];
+              return id;
+            });
+
+          await syncCourseCollections(user.id, courseId, dbCollectionIds);
+
+          // Refresh counts
+          const rawCounts = await fetchCollectionCounts(user.id);
+          const uuidToSystemMap: Record<string, string> = {};
+          Object.entries(systemMap).forEach(([key, uuid]) => uuidToSystemMap[uuid] = key);
+
+          const mappedCounts: Record<string, number> = {};
+          Object.entries(rawCounts).forEach(([uuid, count]) => {
+            const systemKey = uuidToSystemMap[uuid];
+            if (systemKey) mappedCounts[systemKey] = count;
+            else mappedCounts[uuid] = count;
+          });
+          setCollectionCounts(mappedCounts);
+        }
+
       } else if (modalItem.type === 'CONVERSATION') {
-        // Dispatch event for MainCanvas to handle conversation updates
         if (typeof window !== 'undefined') {
-          // We need to send ALL selected collections, not just one
-          // But our event listener expects { conversationId, collectionId }
-          // We should update the listener or send multiple events
-          // For now, let's send a new event type 'updateConversationCollections'
           window.dispatchEvent(new CustomEvent('updateConversationCollections', {
-            detail: { conversationId: modalItem.id, collectionIds: selectedCollectionIds }
+            detail: { conversationId: modalItem.id, collectionIds: finalSelectionIds }
           }));
         }
       }
@@ -97,13 +197,9 @@ function HomeContent() {
 
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
-      // Instead of navigating, open the "Create Collection" modal
       handleOpenModal(undefined);
     } else {
       setActiveCollectionId(id);
-      // We no longer force close the panel here. 
-      // The render logic handles hiding it for Prometheus, 
-      // so when we leave Prometheus, it will be in its previous state.
     }
   };
 
@@ -129,8 +225,6 @@ function HomeContent() {
       }
     }
 
-    // Also trigger conversation collection update if this is a conversation
-    // The MainCanvas will handle this through its own state
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('addConversationToCollection', {
         detail: { conversationId: courseId.toString(), collectionId }
@@ -145,7 +239,6 @@ function HomeContent() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const handleOpenAIPanel = () => {
-    // Don't open side panel if we are in full screen mode
     if (activeCollectionId !== 'prometheus') {
       setRightOpen(true);
     }
@@ -163,21 +256,7 @@ function HomeContent() {
     if (scope) {
       if (scope.type === 'COURSE') {
         setActiveCourseId(scope.id);
-        setActiveCollectionId('academy'); // Or wherever the course is accessible, usually academy or a collection
-        // We might need to ensure the course page opens. MainCanvas watches activeCourseId?
-        // MainCanvas doesn't watch activeCourseId for navigation, it watches selectedCourseId internal state.
-        // We need to trigger MainCanvas to open the course.
-        // But MainCanvas props don't have a direct "open course" control other than initialCourseId which is only for mount.
-        // Wait, MainCanvas has `onCourseSelect` prop but that's a callback FROM MainCanvas.
-        // We might need to pass `activeCourseId` DOWN to MainCanvas to trigger effect?
-        // Let's look at MainCanvas again. It has `initialCourseId`.
-        // We might need to key MainCanvas to force re-mount or add a prop to force navigation.
-        // Actually, `MainCanvas` has `onCourseSelect` which is a callback.
-        // Let's pass `activeCourseId` as a prop to MainCanvas and have it react?
-        // MainCanvas currently takes `initialCourseId`.
-        // Let's try setting `activeCollectionId` to 'academy' and hope the user navigates? No that's bad.
-        // We need to tell MainCanvas to open a specific course.
-        // Let's add `activeCourseId` prop to MainCanvas.
+        setActiveCollectionId('academy');
       } else if (scope.type === 'COLLECTION') {
         setActiveCollectionId(scope.id);
         setActiveCourseId(null);
@@ -186,7 +265,6 @@ function HomeContent() {
         setActiveCourseId(null);
       }
     } else {
-      // Default to platform if no scope
       setActiveCollectionId('prometheus');
     }
 
@@ -197,7 +275,6 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const courseIdParam = searchParams.get('courseId');
   const collectionParam = searchParams.get('collection');
-  const initialCourseId = courseIdParam ? parseInt(courseIdParam, 10) : undefined;
 
   // Navigation & Collection State
   const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
@@ -252,6 +329,7 @@ function HomeContent() {
           courses={courses}
           activeCollectionId={activeCollectionId}
           onSelectCollection={handleSelectCollection}
+          collectionCounts={collectionCounts}
         />
 
         {/* Center Content - Using Dashboard V3 */}

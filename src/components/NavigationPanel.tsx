@@ -36,6 +36,7 @@ interface NavigationPanelProps {
   onSelectCollection: (id: string) => void;
   customNavItems?: NavItemConfig[];
   className?: string;
+  collectionCounts?: Record<string, number>; // New prop for total counts
 }
 
 const NavItem: React.FC<{
@@ -108,7 +109,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   activeCollectionId,
   onSelectCollection,
   customNavItems,
-  className
+  className,
+  collectionCounts
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -267,6 +269,9 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
   // Helper to count items in collections
   const getCollectionCount = (collectionId: string) => {
+    if (collectionCounts && collectionCounts[collectionId] !== undefined) {
+      return collectionCounts[collectionId];
+    }
     return courses.filter(c => c.collections.includes(collectionId)).length;
   };
 
@@ -361,27 +366,24 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       </div>
 
       {/* Nav Items */}
-      <div className="flex-1 overflow-y-auto py-8 no-scrollbar">
+      <div className="flex-1 overflow-y-auto py-8 no-scrollbar relative z-10">
 
         {/* Main Navigation (Top) */}
         <div className="px-4 mb-8">
           <div className="space-y-1">
-            {filteredNavItems.map(item => (
-              <div
-                key={item.id}
-                onMouseEnter={(e) => handleItemHover(item, e, () => {
-                  if (item.id.startsWith('admin/') || item.id === 'admin') {
-                    router.push(`/${item.id}`);
-                  } else {
-                    onSelectCollection(item.id);
-                  }
-                })}
-                onMouseLeave={handleItemLeave}
-              >
+            {(customNavItems || MAIN_NAV_ITEMS).map(item => (
+              <div key={item.id} onMouseEnter={(e) => handleItemHover(item, e, () => {
+                if (item.id.startsWith('admin/') || item.id === 'admin') {
+                  router.push(`/${item.id}`);
+                } else {
+                  onSelectCollection(item.id);
+                }
+              })} onMouseLeave={handleItemLeave}>
                 <NavItem
                   item={item}
                   isOpen={isOpen}
-                  isActive={activeCollectionId === item.id || (item.id === 'academy' && activeCollectionId === 'academy')}
+                  count={item.id === 'prompts' ? undefined : undefined} // Logic for specific counters if needed
+                  isActive={activeCollectionId === item.id || (pathname?.includes(item.id) && item.id !== 'dashboard')}
                   onClick={() => {
                     if (item.id.startsWith('admin/') || item.id === 'admin') {
                       router.push(`/${item.id}`);
@@ -425,7 +427,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       </div>
 
       {/* Bottom Branding (Flame + Tagline) */}
-      <div className={`group flex flex-col items-center justify-center pb-6 transition-opacity duration-500 cursor-default ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
+      <div className={`group flex flex-col items-center justify-center pb-6 transition-opacity duration-500 cursor-default ${isOpen ? 'opacity-100' : 'opacity-0 hidden'} z-0`}>
         <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
           {/* Glow Effect */}
           <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 opacity-0 group-hover:opacity-20"></div>
@@ -447,7 +449,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       {/* User Profile Summary (Bottom) */}
       <div
         ref={profileRef}
-        className="h-28 flex-shrink-0 p-4 border-t border-white/5 bg-gradient-to-t from-white/5 to-transparent backdrop-blur-sm flex items-center justify-center relative"
+        className="h-28 flex-shrink-0 p-4 border-t border-white/5 bg-gradient-to-t from-white/5 to-transparent backdrop-blur-sm flex items-center justify-center relative z-20"
       >
 
         {/* --- Popup Menu --- */}

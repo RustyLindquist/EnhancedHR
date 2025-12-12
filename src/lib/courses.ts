@@ -4,7 +4,8 @@ import { Course, Module } from '@/types';
 export async function fetchCourses(): Promise<Course[]> {
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    // 1. Fetch raw courses
+    const { data: coursesData, error } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false });
@@ -14,22 +15,66 @@ export async function fetchCourses(): Promise<Course[]> {
         return [];
     }
 
-    return data.map((course: any) => ({
-        type: 'COURSE',
-        id: course.id,
-        title: course.title,
-        author: course.author,
-        progress: 0, // Default for now, will integrate user_progress later
-        category: course.category,
-        image: course.image_url,
-        description: course.description,
-        duration: course.duration,
-        rating: Number(course.rating),
-        badges: course.badges || [],
-        isSaved: false, // Default, will integrate user_collections later
-        collections: [],
-        dateAdded: course.created_at
-    }));
+    // 2. Fetch User and their Collections/Items
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    let collectionMap: Record<string, string[]> = {};
+    let systemCollectionMap: Record<string, string> = {}; // key (favorites) -> uuid
+    let uuidToSystemMap: Record<string, string> = {}; // uuid -> key (favorites)
+    
+    if (user) {
+        const { fetchCollectionItems, ensureSystemCollections } = await import('@/lib/collections');
+        
+        // Parallel fetch for perf? ensureSystem might write, so safer to await?
+        // ensureSystemCollections is fast (read mostly).
+        systemCollectionMap = await ensureSystemCollections(user.id);
+        
+        // invert map for easy lookup
+        Object.entries(systemCollectionMap).forEach(([key, uuid]) => {
+            uuidToSystemMap[uuid] = key;
+        });
+        
+        collectionMap = await fetchCollectionItems(user.id);
+    }
+    
+    // Helper to find which collections a course belongs to
+    const getCollectionsForCourse = (courseId: number): string[] => {
+        const result: string[] = [];
+        for (const [colId, courseIds] of Object.entries(collectionMap)) {
+            if (courseIds.includes(courseId.toString())) {
+                // If this colId is one of our system collections, use the system key (e.g. 'favorites')
+                // Otherwise use the colId (uuid)
+                const systemKey = uuidToSystemMap[colId];
+                if (systemKey) {
+                    result.push(systemKey);
+                } else {
+                    result.push(colId);
+                }
+            }
+        }
+        return result;
+    };
+
+    return coursesData.map((course: any) => {
+        const userCollections = getCollectionsForCourse(course.id);
+        
+        return {
+            type: 'COURSE',
+            id: course.id,
+            title: course.title,
+            author: course.author,
+            progress: 0, // Default for now, will integrate user_progress later
+            category: course.category,
+            image: course.image_url,
+            description: course.description,
+            duration: course.duration,
+            rating: Number(course.rating),
+            badges: course.badges || [],
+            isSaved: userCollections.length > 0,
+            collections: userCollections,
+            dateAdded: course.created_at
+        };
+    });
 }
 
 export async function fetchCourseModules(courseId: number): Promise<Module[]> {
