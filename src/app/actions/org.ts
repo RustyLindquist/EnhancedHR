@@ -125,7 +125,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     
     if (org && org.slug && org.invite_hash) {
         inviteInfo = {
-            inviteUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/join/${org.slug}/${org.invite_hash}`,
+            inviteUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${org.slug}/${org.invite_hash}`,
             orgSlug: org.slug
         };
     }
@@ -204,6 +204,46 @@ export async function toggleOrgMemberStatus(userId: string, currentStatus: strin
 
   } catch (error: any) {
     console.error('toggleOrgMemberStatus error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateOrgInviteHash(newHash: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    
+    // 1. Auth & Admin Check
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { data: requesterProfile } = await supabase
+      .from('profiles')
+      .select('org_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (requesterProfile?.role !== 'org_admin' || !requesterProfile?.org_id) {
+      return { success: false, error: 'Only admins can manage invite settings' };
+    }
+
+    // 2. Validate Hash (Basic alphanumeric check)
+    if (!/^[a-zA-Z0-9-_]+$/.test(newHash)) {
+        return { success: false, error: 'Invalid link code. Use letters, numbers, hyphens, or underscores.' };
+    }
+
+    // 3. Update Organization
+    const { error } = await supabase
+      .from('organizations')
+      .update({ invite_hash: newHash })
+      .eq('id', requesterProfile.org_id);
+
+    if (error) throw error;
+
+    revalidatePath('/org/team');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('updateOrgInviteHash error:', error);
     return { success: false, error: error.message };
   }
 }

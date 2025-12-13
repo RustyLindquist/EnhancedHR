@@ -1,7 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
-import { UserPlus, MoreHorizontal, Mail, Shield, Trash2, Copy, Check } from 'lucide-react';
-import InviteLinkButton from '@/components/org/InviteLinkButton'; // We'll create this client component
+import { Shield } from 'lucide-react';
 import RemoveUserButton from '@/components/org/RemoveUserButton';
 
 export default async function OrgTeamPage() {
@@ -18,6 +17,9 @@ export default async function OrgTeamPage() {
     if (!profile?.org_id) return <div>Access Denied</div>;
 
     const org = profile.organizations as any;
+    // URL format: /[slug]/[hash]
+    // We need to make sure we have the hash. In a real app, we might regenerate this.
+    const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${org.slug}/${org.invite_hash}`;
 
     // Fetch Members
     const { data: members } = await supabase
@@ -25,11 +27,6 @@ export default async function OrgTeamPage() {
         .select('*')
         .eq('org_id', profile.org_id)
         .order('created_at', { ascending: false });
-
-    // Generate Invite Link (Client side component needed for interactivity, but we can prep the URL)
-    // URL format: /join/[slug]/[hash]
-    // We need to make sure we have the hash. In a real app, we might regenerate this.
-    const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/join/${org.slug}/${org.invite_hash}`;
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -39,7 +36,6 @@ export default async function OrgTeamPage() {
                     <h1 className="text-3xl font-bold text-white mb-2">Team Members</h1>
                     <p className="text-slate-400">Manage your team and their access.</p>
                 </div>
-                <InviteLinkButton inviteUrl={inviteUrl} />
             </div>
 
             {/* Members List */}

@@ -96,6 +96,34 @@ export async function POST(req: Request) {
             return new NextResponse('Failed to join organization', { status: 500 })
         }
 
+        // 4. Create "My Profile" Context Card (User Card)
+        // This ensures the user has a designated place to store their personal context
+        // which the AI Tutor uses to personalize the experience.
+        try {
+            const { createContextItem } = await import('@/app/actions/context');
+            await createContextItem({
+                collection_id: 'personal-context',
+                type: 'PROFILE',
+                title: 'My Profile',
+                content: {
+                    role: user.user_metadata?.role || 'Member',
+                    // Initialize other fields as empty strings to encourage filling them out
+                    yearsInRole: '',
+                    yearsInCompany: '',
+                    yearsInHR: '',
+                    linkedInUrl: '',
+                    objectives: '',
+                    measuresOfSuccess: '',
+                    areasOfConcern: '',
+                    areasOfInterest: ''
+                }
+            });
+            console.log(`[JoinOrg] Created User Card for ${user.id}`);
+        } catch (cardError) {
+            // Non-blocking error, log and continue
+            console.error('[JoinOrg] Failed to create User Card:', cardError);
+        }
+
         return NextResponse.redirect(new URL('/dashboard', req.url))
 
     } catch (error) {

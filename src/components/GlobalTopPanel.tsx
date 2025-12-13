@@ -36,26 +36,27 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                ${isOpen ? 'translate-y-0' : '-translate-y-full'}
             `}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between px-10 py-6 border-b border-white/10 flex-shrink-0">
-                    <div className="flex items-center gap-3">
+                {/* Header - Padding increased to clear sidebars (Nav: 288px, AI: ~400px) */}
+                <div className="h-24 flex items-center justify-between px-10 md:pl-[300px] md:pr-[400px] border-b border-white/10 flex-shrink-0">
+                    <div className="flex items-center gap-3 pl-[50px]">
                         {title}
                     </div>
-                    <div className="flex items-center gap-4">
-                        {headerActions && (
-                            <div className="flex items-center gap-2">
-                                {headerActions}
-                            </div>
-                        )}
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors">
+
+                    <div className="flex items-center gap-[50px]">
+                        {headerActions}
+
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                        >
                             <X size={24} />
                         </button>
                     </div>
                 </div>
 
-                {/* Body - Scrollable */}
-                <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
-                    <div className="max-w-7xl mx-auto w-full pb-[50px]"> {/* Expanded width for consistency */}
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <div className="w-full h-full px-10 md:pl-[300px] md:pr-[400px] pb-[50px]">
                         {children}
                     </div>
                 </div>
