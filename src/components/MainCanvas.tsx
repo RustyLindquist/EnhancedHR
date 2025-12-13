@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp } from 'lucide-react';
 import CardStack from './CardStack';
 import CollectionSurface from './CollectionSurface';
+import TeamManagement from '@/components/org/TeamManagement';
 import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page
 import CoursePlayer from './CoursePlayer';
@@ -432,7 +433,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                 <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
                     Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
                 </p>
-            </div>
+            </div >
         );
     }
 
@@ -1422,6 +1423,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 // But PrometheusFullPage should have created it via API.
                 // Let's trigger a fetch
                 fetchConversations();
+                // Refresh global counts since we added a new conversation
+                if (onCollectionUpdate) onCollectionUpdate();
                 return prev;
             }
         });
@@ -2136,241 +2139,243 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 </GlobalTopPanel>
 
                 {/* --- Header --- */}
-                <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
-                    <div>
-                        <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">
-                                {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
-                            </span>
+                {activeCollectionId !== 'org-team' && (
+                    <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
+                        <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">
+                                    {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
+                                </span>
+                            </div>
+                            {activeFilterCount > 0 ? (
+                                <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
+                                    Filtered <span className="font-bold text-white">Results</span>
+                                    <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
+                                </h1>
+                            ) : activeCollectionId === 'personal-context' ? (
+                                <h1 className="text-3xl font-light text-white tracking-tight">
+                                    Personal <span className="font-bold text-white">Context</span>
+                                </h1>
+                            ) : (
+                                <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-3">
+                                    {isRenamingCollection ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={renameValue}
+                                                onChange={(e) => setRenameValue(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') submitRename();
+                                                    if (e.key === 'Escape') setIsRenamingCollection(false);
+                                                }}
+                                                className="bg-black/50 border border-brand-blue-light/50 rounded px-2 py-1 text-white font-bold outline-none min-w-[300px]"
+                                            />
+                                            <button onClick={submitRename} className="p-1 hover:bg-white/10 rounded-full text-brand-green">
+                                                <Check size={20} />
+                                            </button>
+                                            <button onClick={() => setIsRenamingCollection(false)} className="p-1 hover:bg-white/10 rounded-full text-red-400">
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
+                                        </>
+                                    )}
+                                </h1>
+                            )}
                         </div>
-                        {activeFilterCount > 0 ? (
-                            <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
-                                Filtered <span className="font-bold text-white">Results</span>
-                                <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
-                            </h1>
-                        ) : activeCollectionId === 'personal-context' ? (
-                            <h1 className="text-3xl font-light text-white tracking-tight">
-                                Personal <span className="font-bold text-white">Context</span>
-                            </h1>
-                        ) : (
-                            <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-3">
-                                {isRenamingCollection ? (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            value={renameValue}
-                                            onChange={(e) => setRenameValue(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') submitRename();
-                                                if (e.key === 'Escape') setIsRenamingCollection(false);
-                                            }}
-                                            className="bg-black/50 border border-brand-blue-light/50 rounded px-2 py-1 text-white font-bold outline-none min-w-[300px]"
-                                        />
-                                        <button onClick={submitRename} className="p-1 hover:bg-white/10 rounded-full text-brand-green">
-                                            <Check size={20} />
+
+                        <div className="flex space-x-4 items-center">
+                            {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                            {(activeCollectionId === 'personal-context' ||
+                                activeCollectionId === 'favorites' ||
+                                activeCollectionId === 'research' ||
+                                activeCollectionId === 'to_learn' ||
+                                customCollections.some(c => c.id === activeCollectionId)) && (
+                                    <div className="flex items-center gap-2 mr-4">
+                                        <button
+                                            onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
+                                            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                        >
+                                            <Plus size={14} /> Add Context
                                         </button>
-                                        <button onClick={() => setIsRenamingCollection(false)} className="p-1 hover:bg-white/10 rounded-full text-red-400">
-                                            <X size={20} />
+                                        <button
+                                            onClick={() => handleOpenContextEditor('FILE')}
+                                            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                        >
+                                            <Plus size={14} /> Add File
                                         </button>
                                     </div>
-                                ) : (
-                                    <>
-                                        {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
-                                    </>
                                 )}
-                            </h1>
-                        )}
-                    </div>
 
-                    <div className="flex space-x-4 items-center">
-                        {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
-                        {(activeCollectionId === 'personal-context' ||
-                            activeCollectionId === 'favorites' ||
-                            activeCollectionId === 'research' ||
-                            activeCollectionId === 'to_learn' ||
-                            customCollections.some(c => c.id === activeCollectionId)) && (
-                                <div className="flex items-center gap-2 mr-4">
+                            {activeCollectionId === 'prometheus' ? (
+                                /* Prometheus Actions */
+                                <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
+                                        onClick={handleNewConversation}
                                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                     >
-                                        <Plus size={14} /> Add Context
+                                        <MessageSquare size={14} /> New Conversation
                                     </button>
-                                    <button
-                                        onClick={() => handleOpenContextEditor('FILE')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                    >
-                                        <Plus size={14} /> Add File
-                                    </button>
-                                </div>
-                            )}
 
-                        {activeCollectionId === 'prometheus' ? (
-                            /* Prometheus Actions */
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={handleNewConversation}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                >
-                                    <MessageSquare size={14} /> New Conversation
-                                </button>
-
-                                {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
-                                    <button
-                                        onClick={handleSaveConversation}
-                                        disabled={!!activeConversation?.isSaved}
-                                        className={`
+                                    {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
+                                        <button
+                                            onClick={handleSaveConversation}
+                                            disabled={!!activeConversation?.isSaved}
+                                            className={`
                                         flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
                                         ${activeConversation?.isSaved
-                                                ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
-                                                : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
-                                            }
+                                                    ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
+                                                    : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
+                                                }
                                     `}
-                                    >
-                                        {activeConversation?.isSaved ? (
-                                            <>
-                                                <Check size={14} /> Saved to Collection
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Plus size={14} /> Add to Collection
-                                            </>
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                        ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
-                            /* Dashboard V3 Stats in Header - Smaller with warm glow */
-                            <div className="flex items-center gap-4">
-                                <div className="group relative flex items-center gap-1.5 cursor-default">
-                                    <div className="p-1.5 rounded-md text-brand-blue-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(120,192,240,0.6)]">
-                                        <Clock size={14} />
+                                        >
+                                            {activeConversation?.isSaved ? (
+                                                <>
+                                                    <Check size={14} /> Saved to Collection
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus size={14} /> Add to Collection
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
+                                /* Dashboard V3 Stats in Header - Smaller with warm glow */
+                                <div className="flex items-center gap-4">
+                                    <div className="group relative flex items-center gap-1.5 cursor-default">
+                                        <div className="p-1.5 rounded-md text-brand-blue-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(120,192,240,0.6)]">
+                                            <Clock size={14} />
+                                        </div>
+                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.totalTime}</span>
+                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                            Total Learning Time
+                                        </div>
                                     </div>
-                                    <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.totalTime}</span>
-                                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Total Learning Time
+
+                                    <div className="w-px h-4 bg-white/10" />
+
+                                    <div className="group relative flex items-center gap-1.5 cursor-default">
+                                        <div className="p-1.5 rounded-md text-purple-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
+                                            <BookOpen size={14} />
+                                        </div>
+                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
+                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                            Courses Completed
+                                        </div>
+                                    </div>
+
+                                    <div className="w-px h-4 bg-white/10" />
+
+                                    <div className="group relative flex items-center gap-1.5 cursor-default">
+                                        <div className="p-1.5 rounded-md text-brand-orange transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,147,0,0.6)]">
+                                            <Award size={14} />
+                                        </div>
+                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
+                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                            Credits Earned
+                                        </div>
+                                    </div>
+
+                                    <div className="w-px h-4 bg-white/10" />
+
+                                    <div className="group relative flex items-center gap-1.5 cursor-default">
+                                        <div className="p-1.5 rounded-md text-emerald-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">
+                                            <Zap size={14} />
+                                        </div>
+                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.streak}</span>
+                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                            Day Streak
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="w-px h-4 bg-white/10" />
-
-                                <div className="group relative flex items-center gap-1.5 cursor-default">
-                                    <div className="p-1.5 rounded-md text-purple-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
-                                        <BookOpen size={14} />
-                                    </div>
-                                    <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
-                                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Courses Completed
-                                    </div>
-                                </div>
-
-                                <div className="w-px h-4 bg-white/10" />
-
-                                <div className="group relative flex items-center gap-1.5 cursor-default">
-                                    <div className="p-1.5 rounded-md text-brand-orange transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,147,0,0.6)]">
-                                        <Award size={14} />
-                                    </div>
-                                    <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
-                                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Credits Earned
-                                    </div>
-                                </div>
-
-                                <div className="w-px h-4 bg-white/10" />
-
-                                <div className="group relative flex items-center gap-1.5 cursor-default">
-                                    <div className="p-1.5 rounded-md text-emerald-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">
-                                        <Zap size={14} />
-                                    </div>
-                                    <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.streak}</span>
-                                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Day Streak
-                                    </div>
-                                </div>
-                            </div>
-
-                        ) : (
-                            /* Standard Actions */
-                            <>
-                                {activeCollectionId === 'academy' && activeFilterCount > 0 && (
-                                    <button
-                                        onClick={handleResetFilters}
-                                        className="
+                            ) : (
+                                /* Standard Actions */
+                                <>
+                                    {activeCollectionId === 'academy' && activeFilterCount > 0 && (
+                                        <button
+                                            onClick={handleResetFilters}
+                                            className="
                                      px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
                                      bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white
                                  "
-                                    >
-                                        Clear Filters
-                                    </button>
-                                )}
+                                        >
+                                            Clear Filters
+                                        </button>
+                                    )}
 
-                            </>
-                        )}
+                                </>
+                            )}
 
-                        {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                        {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
-                        {!(activeCollectionId === 'favorites' ||
-                            activeCollectionId === 'research' ||
-                            activeCollectionId === 'to_learn' ||
-                            activeCollectionId === 'personal-context' ||
-                            activeCollectionId === 'company' ||
-                            activeCollectionId === 'instructors' ||
-                            activeCollectionId === 'dashboard' ||
-                            activeCollectionId === 'prometheus' ||
-                            activeCollectionId === 'certifications' ||
-                            customCollections.some(c => c.id === activeCollectionId)
-                        ) && (
-                                <button
-                                    onClick={handleOpenDrawer}
-                                    className={`
+                            {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
+                            {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
+                            {!(activeCollectionId === 'favorites' ||
+                                activeCollectionId === 'research' ||
+                                activeCollectionId === 'to_learn' ||
+                                activeCollectionId === 'personal-context' ||
+                                activeCollectionId === 'company' ||
+                                activeCollectionId === 'instructors' ||
+                                activeCollectionId === 'dashboard' ||
+                                activeCollectionId === 'prometheus' ||
+                                activeCollectionId === 'certifications' ||
+                                customCollections.some(c => c.id === activeCollectionId)
+                            ) && (
+                                    <button
+                                        onClick={handleOpenDrawer}
+                                        className={`
                                 group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
                                 ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
                         `}
-                                >
-                                    {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
+                                    >
+                                        {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
 
-                                    <SlidersHorizontal size={14} className="mr-3" />
-                                    <span>Search & Filter</span>
-                                    {activeFilterCount > 0 && !isDrawerOpen && (
-                                        <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                                            {activeFilterCount}
+                                        <SlidersHorizontal size={14} className="mr-3" />
+                                        <span>Search & Filter</span>
+                                        {activeFilterCount > 0 && !isDrawerOpen && (
+                                            <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                                                {activeFilterCount}
+                                            </div>
+                                        )}
+                                        {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
+                                    </button>
+                                )}
+
+                            {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
+                            {customCollections.some(c => c.id === activeCollectionId) && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
+                                        className="flex items-center gap-2 px-4 py-3 bg-black/40 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                    >
+                                        <Settings size={14} /> Manage
+                                    </button>
+
+                                    {isManageMenuOpen && (
+                                        <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fade-in-up">
+                                            <button
+                                                onClick={handleRenameCollectionSpy}
+                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+                                            >
+                                                <Edit size={14} /> Rename
+                                            </button>
+                                            <button
+                                                onClick={handleDeleteCollectionSpy}
+                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
+                                            >
+                                                <Trash size={14} /> Delete
+                                            </button>
                                         </div>
                                     )}
-                                    {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
-                                </button>
+                                </div>
                             )}
-
-                        {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
-                        {customCollections.some(c => c.id === activeCollectionId) && (
-                            <div className="relative">
-                                <button
-                                    onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
-                                    className="flex items-center gap-2 px-4 py-3 bg-black/40 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                >
-                                    <Settings size={14} /> Manage
-                                </button>
-
-                                {isManageMenuOpen && (
-                                    <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fade-in-up">
-                                        <button
-                                            onClick={handleRenameCollectionSpy}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
-                                        >
-                                            <Edit size={14} /> Rename
-                                        </button>
-                                        <button
-                                            onClick={handleDeleteCollectionSpy}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
-                                        >
-                                            <Trash size={14} /> Delete
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        </div>
                     </div>
-                </div >
+                )}
 
                 {/* --- Canvas Content Grid --- */}
                 {
@@ -2537,119 +2542,141 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                             })}
                                         </div>
                                     ) : (
-                                        // --- FLAT GRID VIEW (Collections / Filters) ---
-                                        // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
-                                        (activeCollectionId === 'favorites' ||
-                                            activeCollectionId === 'research' ||
-                                            activeCollectionId === 'to_learn' ||
-                                            activeCollectionId === 'personal-context' ||
-                                            customCollections.some(c => c.id === activeCollectionId)) ? (
-                                            <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
-                                                {renderCollectionContent()}
-                                            </div>
+                                        activeCollectionId === 'org-team' ? (
+                                            <TeamManagement />
                                         ) : (
-                                            <div className="pb-20">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20">
-                                                    {/* Render Courses */}
-                                                    {visibleCourses.map((course, index) => {
-                                                        const delay = Math.min(index, 15) * 50;
-                                                        return (
-                                                            <LazyCourseCard key={course.id}>
-                                                                <div
-                                                                    style={{ transitionDelay: `${delay}ms` }}
-                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                                >
-                                                                    <CardStack
-                                                                        {...course}
-                                                                        onAddClick={handleAddButtonClick}
-                                                                        onDragStart={handleCourseDragStart}
-                                                                        onClick={handleCourseClick}
-                                                                    />
-                                                                </div>
-                                                            </LazyCourseCard>
-                                                        );
-                                                    })}
-
-                                                    {/* Render Conversations */}
-                                                    {visibleConversations.map((conversation, index) => (
-                                                        <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                            <ConversationCard
-                                                                {...conversation}
-                                                                onClick={handleOpenConversation}
-                                                                onDelete={handleDeleteConversation}
-                                                            />
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
+                                            (activeCollectionId === 'favorites' ||
+                                                activeCollectionId === 'research' ||
+                                                activeCollectionId === 'to_learn' ||
+                                                activeCollectionId === 'personal-context' ||
+                                                activeCollectionId === 'org-collections' ||
+                                                activeCollectionId === 'org-analytics' ||
+                                                customCollections.some(c => c.id === activeCollectionId)) ? (
+                                                <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
+                                                    {activeCollectionId === 'org-collections' ? (
+                                                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
+                                                            <Layers size={48} className="mb-4 opacity-20" />
+                                                            <h2 className="text-xl font-bold text-white mb-2">Learning Collections</h2>
+                                                            <p>Feature coming soon. Curate learning paths for your team.</p>
                                                         </div>
-                                                    ))}
-
-                                                    {/* Render Instructors */}
-                                                    {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                        <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                            <InstructorCard
-                                                                instructor={instructor}
-                                                                onClick={setSelectedInstructorId}
-                                                            />
+                                                    ) : activeCollectionId === 'org-analytics' ? (
+                                                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
+                                                            <TrendingUp size={48} className="mb-4 opacity-20" />
+                                                            <h2 className="text-xl font-bold text-white mb-2">Organization Analytics</h2>
+                                                            <p>Feature coming soon. Track your team's progress and ROI.</p>
                                                         </div>
-                                                    ))}
-
-                                                    {/* DEBUG INFO */}
-                                                    <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
-                                                        Items: {collectionItems.length} |
-                                                        Types: {collectionItems.map(i => i.itemType).join(',')} |
-                                                        Active: {activeCollectionId} |
-                                                        User: {user?.id}
-                                                    </div>
-
-                                                    {/* Empty State */}
-                                                    {isCollectionEmpty ? (
-                                                        activeCollectionId === 'personal-context' ? (
-                                                            <div className="col-span-full">
-                                                                {renderCollectionContent()}
-                                                            </div>
-                                                        ) : (
-                                                            // --- EMPTY COLLECTION STATES ---
-                                                            <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
-                                                                {/* Visual Graphic at Top - Hide for Conversations */}
-                                                                {activeCollectionId !== 'conversations' && (
-                                                                    <div className="mb-12 animate-float">
-                                                                        {renderCollectionVisual()}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Text Content */}
-                                                                <CollectionInfo
-                                                                    type={activeCollectionId}
-                                                                    isEmptyState={true}
-                                                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                                                    onOpenDrawer={() => toggleDrawer('prompts')}
-                                                                    onOpenHelp={() => toggleDrawer('help')}
-                                                                />
-                                                            </div>
-                                                        )) : (
-                                                        // --- NO RESULTS (Filter Context) ---
-                                                        visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                            <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                                <Search size={48} className="text-slate-600 mb-4" />
-                                                                <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                                <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                                            </div>
-                                                        )
+                                                    ) : (
+                                                        renderCollectionContent()
                                                     )}
                                                 </div>
+                                            ) : (
+                                                <div className="pb-20">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20 px-8">
+                                                        {/* Render Courses */}
+                                                        {visibleCourses.map((course, index) => {
+                                                            const delay = Math.min(index, 15) * 50;
+                                                            return (
+                                                                <LazyCourseCard key={course.id}>
+                                                                    <div
+                                                                        style={{ transitionDelay: `${delay}ms` }}
+                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                    >
+                                                                        <CardStack
+                                                                            {...course}
+                                                                            onAddClick={handleAddButtonClick}
+                                                                            onDragStart={handleCourseDragStart}
+                                                                            onClick={handleCourseClick}
+                                                                        />
+                                                                    </div>
+                                                                </LazyCourseCard>
+                                                            );
+                                                        })}
 
-                                                {/* Populated Footer (Collection Info) */}
-                                                {visibleCourses.length > 0 && renderCollectionFooter()}
-                                            </div>
-                                        ))}
+                                                        {/* Render Conversations */}
+                                                        {visibleConversations.map((conversation, index) => (
+                                                            <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                                                <ConversationCard
+                                                                    {...conversation}
+                                                                    onClick={handleOpenConversation}
+                                                                    onDelete={handleDeleteConversation}
+                                                                />
+                                                            </div>
+                                                        ))}
+
+                                                        {/* Render Instructors */}
+                                                        {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                                <InstructorCard
+                                                                    instructor={instructor}
+                                                                    onClick={setSelectedInstructorId}
+                                                                />
+                                                            </div>
+                                                        ))}
+
+                                                        {/* DEBUG INFO */}
+                                                        <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                            Items: {collectionItems.length} |
+                                                            Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                            Active: {activeCollectionId} |
+                                                            User: {user?.id}
+                                                        </div>
+
+                                                        {/* Empty State */}
+                                                        {isCollectionEmpty ? (
+                                                            activeCollectionId === 'personal-context' ? (
+                                                                <div className="col-span-full">
+                                                                    {renderCollectionContent()}
+                                                                </div>
+                                                            ) : (
+                                                                // --- EMPTY COLLECTION STATES ---
+                                                                <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                                    {/* Visual Graphic at Top - Hide for Conversations */}
+                                                                    {activeCollectionId !== 'conversations' && (
+                                                                        <div className="mb-12 animate-float">
+                                                                            {renderCollectionVisual()}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Text Content */}
+                                                                    <CollectionInfo
+                                                                        type={activeCollectionId}
+                                                                        isEmptyState={true}
+                                                                        onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                                        onOpenDrawer={() => toggleDrawer('prompts')}
+                                                                        onOpenHelp={() => toggleDrawer('help')}
+                                                                    />
+                                                                </div>
+                                                            )) : (
+                                                            // --- NO RESULTS (Filter Context) ---
+                                                            visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
+                                                                <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                                    <Search size={48} className="text-slate-600 mb-4" />
+                                                                    <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                                    <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                    {/* Populated Footer (Collection Info) */}
+                                                    {visibleCourses.length > 0 && renderCollectionFooter()}
+                                                </div>
+
+                                            )
+                                        )
+                                    )
+                                    }
                                 </div>
                             </div>
                         </div>
                     )
                 }
 
-                {/* --- Collection Surface (Footer) - Hidden for Dashboard V3 and Prometheus --- */}
+                {/* --- Collection Surface (Footer) --- */}
                 {
-                    !(useDashboardV3 && activeCollectionId === 'dashboard') && activeCollectionId !== 'prometheus' && (
-                        <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                    activeCollectionId !== 'prometheus' && (
+                        <div className="absolute bottom-0 left-0 w-full z-[100] pointer-events-none">
                             <CollectionSurface
                                 isDragging={isDragging}
                                 activeFlareId={flaringPortalId}
@@ -2730,7 +2757,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     }}
                 />
             </div >
-        </div >
+        </div>
+
+
+
+
+
+
     );
 };
 

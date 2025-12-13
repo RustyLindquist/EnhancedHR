@@ -15,7 +15,8 @@ import {
   Settings,
   Users,
   Bot,
-  Brain
+  Brain,
+  TrendingUp
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -710,6 +711,12 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin/users', label: 'Users', icon: Users },
     { id: 'admin/system', label: 'System Tools', icon: Layers },
     { id: 'admin/settings', label: 'Settings', icon: Settings },
+];
+
+export const ORG_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'org-team', label: 'Manage Users', icon: Users, color: 'text-brand-blue-light' },
+    { id: 'org-collections', label: 'Learning Collections', icon: Layers, color: 'text-brand-orange' },
+    { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [

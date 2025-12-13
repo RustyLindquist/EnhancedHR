@@ -23,7 +23,7 @@ import {
   Brain,
   Layers // Added Layers icon for custom collections
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 
 interface NavigationPanelProps {
@@ -117,7 +117,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -141,19 +141,23 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, role, membership_status')
           .eq('id', user.id)
           .single();
 
         const fullName = profile?.full_name || user.user_metadata?.full_name || 'User';
         const initials = fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
-        const role = user.user_metadata?.role || user.app_metadata?.role;
+
+        // Prioritize profile role, fallback to metadata
+        const role = profile?.role || user.user_metadata?.role || user.app_metadata?.role;
+        const membershipStatus = profile?.membership_status;
 
         setUserProfile({
           fullName,
           email: user.email || '',
           initials,
-          role
+          role,
+          membershipStatus
         });
 
         // Check for impersonation
@@ -165,6 +169,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     };
     fetchUser();
   }, []);
+
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -455,6 +461,60 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   ));
                 })()}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* My Organization (Only for Org Admins) */}
+        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin') && (
+          <div className="px-4 mb-8">
+            {isOpen && (
+              <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
+                My Organization
+              </h4>
+            )}
+            <div className="space-y-1">
+              {ORG_NAV_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* My Organization (Only for Org Admins) */}
+        {!customNavItems && userProfile?.role === 'org_admin' && (
+          <div className="px-4 mb-8">
+            {isOpen && (
+              <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
+                My Organization
+              </h4>
+            )}
+            <div className="space-y-1">
+              {ORG_NAV_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -53,8 +53,26 @@ export async function POST(request: Request) {
 
     const results = [];
 
+    // 1. Ensure Demo Organization Exists
+    const { data: orgData, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .upsert({
+            name: 'Demo Corp',
+            slug: 'demo-corp',
+            invite_hash: 'demo-hash-123'
+        }, { onConflict: 'slug' })
+        .select('id')
+        .single();
+
+    if (orgError) {
+        console.error('Error creating demo org:', orgError);
+        return NextResponse.json({ error: `Failed to create demo org: ${orgError.message}` }, { status: 500 });
+    }
+
+    const demoOrgId = orgData.id;
+
     for (const account of DEMO_ACCOUNTS) {
-      // 1. Check if user exists
+      // 2. Check if user exists
       const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
       const existingUser = users?.find(u => u.email === account.email);
 
@@ -85,13 +103,21 @@ export async function POST(request: Request) {
         results.push({ email: account.email, status: 'created', id: data.user.id });
       }
 
-      // 2. Update Profile (Public Table)
+      // 3. Update Profile (Public Table)
       if (userId) {
+        // Determine if user should be in the demo org
+        // Org Admin and Employee should be in the org
+        let orgIdToSet = null;
+        if (account.profile.membership_status === 'org_admin' || account.profile.membership_status === 'employee') {
+            orgIdToSet = demoOrgId;
+        }
+
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .upsert({
             id: userId,
             full_name: account.data.full_name,
+            org_id: orgIdToSet,
             ...account.profile
           });
         
