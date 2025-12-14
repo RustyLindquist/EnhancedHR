@@ -2433,22 +2433,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 <div className="w-full" key={renderKey}>
 
 
-                                    {/* Alert Box - Only show in Academy View */}
-                                    {isAcademyView && isAlertVisible && (
-                                        <AlertBox
-                                            title="AI-Enhanced Learning"
-                                            description="Make sure to try out the Prometheus AI Tutor in any course, for an AI-Enhanced, fully-personalized learning experience!"
-                                            onDismiss={() => setIsAlertVisible(false)}
-                                            className={`mb-[30px] ${transitionState === 'exiting' ? 'opacity-0 -translate-y-5 blur-md' : 'opacity-100 translate-y-0 blur-0'} `}
-                                        />
-                                    )}
-
                                     {isAcademyView ? (
                                         // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
                                         <div className="space-y-12 pb-20">
 
                                             {/* Category Quick Nav */}
-                                            <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                                            <div className="flex flex-wrap items-center gap-2 pb-4">
                                                 <button
                                                     onClick={() => {
                                                         setPendingFilters(INITIAL_FILTERS);

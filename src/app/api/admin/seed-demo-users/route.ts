@@ -128,6 +128,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // 3. Update Org Owner if we have the admin user
+    const adminUser = results.find(r => r.email === 'demo.admin@enhancedhr.ai');
+    if (adminUser) {
+        const { error: updateOrgError } = await supabaseAdmin
+            .from('organizations')
+            .update({ owner_id: adminUser.id })
+            .eq('id', demoOrgId);
+
+        if (updateOrgError) {
+             console.error('Error updating org owner:', updateOrgError);
+        } else {
+            console.log('Updated Demo Corp owner to:', adminUser.id);
+        }
+    }
+
     return NextResponse.json({ success: true, results });
 
   } catch (error) {

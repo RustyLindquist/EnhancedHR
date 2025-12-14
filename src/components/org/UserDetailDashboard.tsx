@@ -1,7 +1,7 @@
 
 import React, { useTransition } from 'react';
-import { OrgMember, toggleOrgMemberStatus } from '@/app/actions/org';
-import { User, Clock, Award, MessageSquare, ArrowLeft, Trash2, Ban } from 'lucide-react';
+import { OrgMember, toggleOrgMemberStatus, updateUserRole } from '@/app/actions/org';
+import { User, Clock, Award, MessageSquare, ArrowLeft, Trash2, Ban, Shield, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import RemoveUserButton from './RemoveUserButton';
 import CanvasHeader from '../CanvasHeader';
 
@@ -21,8 +21,57 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
                 <CanvasHeader
                     context="User Account"
                     title={member.full_name}
+                    onBack={onBack}
+                    backLabel="Back to Users"
                 >
                     <div className="flex items-center space-x-3">
+                        {/* Role Management */}
+                        {member.membership_status !== 'inactive' && (
+                            member.is_owner ? (
+                                <div className="flex items-center space-x-2 px-4 py-2 bg-brand-orange/10 border border-brand-orange/20 rounded-full">
+                                    <Shield size={14} className="text-brand-orange" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-brand-orange">Primary Account Holder</span>
+                                </div>
+                            ) : (
+                                member.role === 'org_admin' ? (
+                                    <button
+                                        onClick={async () => {
+                                            if (isPending || !confirm('Are you sure you want to demote this Admin to a regular Member?')) return;
+                                            startTransition(async () => {
+                                                const res = await updateUserRole(member.id, 'user');
+                                                if (res.success) window.location.reload();
+                                                else alert(res.error);
+                                            });
+                                        }}
+                                        disabled={isPending}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+                                    >
+                                        <ArrowDownCircle size={14} />
+                                        <span>Demote to Member</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={async () => {
+                                            if (isPending || !confirm('Are you sure you want to promote this user to Organization Admin?')) return;
+                                            startTransition(async () => {
+                                                const res = await updateUserRole(member.id, 'org_admin');
+                                                if (res.success) window.location.reload();
+                                                else alert(res.error);
+                                            });
+                                        }}
+                                        disabled={isPending}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-brand-blue-light/10 border border-brand-blue-light/20 rounded-full text-xs font-bold uppercase tracking-wider text-brand-blue-light hover:bg-brand-blue-light hover:text-brand-black transition-all"
+                                    >
+                                        <ArrowUpCircle size={14} />
+                                        <span>Promote to Admin</span>
+                                    </button>
+                                )
+                            )
+                        )}
+
+                        <div className="w-px h-6 bg-white/10 mx-2"></div>
+
+                        {/* Status Management */}
                         <button
                             onClick={async () => {
                                 if (isPending) return;
@@ -50,13 +99,6 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
             <div className="w-full max-w-7xl mx-auto pb-32 pt-8 px-8 animate-fade-in">
                 {/* Navigation / Header */}
                 <div className="flex items-center justify-between mb-8">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center space-x-2 text-slate-400 hover:text-white transition-colors group"
-                    >
-                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        <span>Back to Users</span>
-                    </button>
                 </div>
 
                 {/* Main Dashboard Grid */}

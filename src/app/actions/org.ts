@@ -12,6 +12,7 @@ export interface OrgMember {
   role_title: string;
   membership_status: string;
   created_at: string;
+  is_owner: boolean;
   // Metrics
   courses_completed: number;
   total_time_spent_minutes: number;
@@ -34,7 +35,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
         return { members: [], inviteInfo: null, error: 'Unauthorized' };
     }
 
-    // 1. Get User's Org ID
+    // 1. Get User's Org ID and Organization Details (to find owner)
     const { data: profile } = await supabase
         .from('profiles')
         .select('org_id, role, organizations(*)')
@@ -44,6 +45,15 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     if (!profile?.org_id) {
         return { members: [], inviteInfo: null, error: 'No Organization Found' };
     }
+
+    // Safely access owner_id from the joined organization data
+    // The type returned by 'organizations(*)' might be an array or object depending on generated types, 
+    // but typically explicit join via 'org_id' is 1:1. Supabase JS returns single object if relationship is 1:1, else array.
+    // We treat it safely.
+    // @ts-ignore - Supabase type inference can be tricky with complex joins without strict schema generation
+    const orgData = Array.isArray(profile.organizations) ? profile.organizations[0] : profile.organizations;
+    const ownerId = orgData?.owner_id;
+
 
     // 2. Fetch Members
     const { data: members, error: membersError } = await supabase
@@ -101,7 +111,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
         if (m) {
             m.timeSeconds += (p.view_time_seconds || 0);
             if (p.is_completed) m.completed += 1;
-            // Track latest access
+            // Update last access if newer
             if (p.last_accessed && (!m.lastAccess || new Date(p.last_accessed) > new Date(m.lastAccess))) {
                 m.lastAccess = p.last_accessed;
             }
@@ -115,7 +125,8 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
     creditsData?.forEach(c => {
         const m = metricsMap.get(c.user_id);
-        if (m) m.credits += (Number(c.amount) || 0);
+        if (m) m.credits += (c.amount || 0); // Assuming amount is always positive for earned? Or need to sum net?
+        // Usually credits earned is sum of positive entries.
     });
 
 
@@ -132,14 +143,14 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
     // 6. Map to clean interface
     const mappedMembers: OrgMember[] = members.map(m => {
-        const metrics = metricsMap.get(m.id);
+        const metrics = metricsMap.get(m.id)!;
         // Fallback for last login if not in progress (e.g. from auth/profile if available, but for now use created_at or null)
         // Ideally we fetch last_sign_in_at from auth.users but we can't easily join that here without admin.
         // We'll use the latest progress access as a proxy for "Learning Activity".
 
         return {
             id: m.id,
-            email: m.email || '',
+            email: m.email || '', // Ensure this column is selected in step 2 (select *)
             full_name: m.full_name || 'Unknown',
             avatar_url: m.avatar_url || '',
             role: m.role || 'user',
@@ -150,7 +161,8 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
             total_time_spent_minutes: Math.round((metrics?.timeSeconds || 0) / 60),
             credits_earned: metrics?.credits || 0,
             conversations_count: metrics?.conversations || 0,
-            last_login: metrics?.lastAccess || m.created_at // Proxy
+            last_login: metrics?.lastAccess || m.created_at, // Proxy
+            is_owner: m.id === ownerId
         };
     });
 
@@ -243,7 +255,52 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
     return { success: true };
 
   } catch (error: any) {
-    console.error('updateOrgInviteHash error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateUserRole(userId: string, newRole: 'org_admin' | 'user'): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    
+    // 1. Auth & Admin Check
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const { data: requesterProfile } = await supabase
+      .from('profiles')
+      .select('org_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (requesterProfile?.role !== 'org_admin') {
+      return { success: false, error: 'Only admins can manage user roles' };
+    }
+
+    // 2. Verify target user is in same org
+    const { data: targetProfile } = await supabase
+      .from('profiles')
+      .select('org_id')
+      .eq('id', userId)
+      .single();
+
+    if (targetProfile?.org_id !== requesterProfile.org_id) {
+        return { success: false, error: 'User not in your organization' };
+    }
+
+    // 3. Update Role
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId);
+
+    if (error) throw error;
+
+    revalidatePath('/org/team');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('updateUserRole error:', error);
     return { success: false, error: error.message };
   }
 }

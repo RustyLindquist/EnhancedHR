@@ -141,7 +141,6 @@ const CollectionSurface: React.FC<CollectionSurfaceProps> = ({
       <div className="absolute inset-0 border-t border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.2)] z-10"></div>
 
       {/* Visual Gradients to blend surface with canvas */}
-      <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-[#0A0D12]/90 via-[#0A0D12]/40 to-transparent pointer-events-none z-0"></div>
 
       {/* Content Container - Fits exactly within parent h-28 */}
       <div className="absolute inset-0 w-full h-full flex justify-between items-center px-12 pointer-events-none z-20">
