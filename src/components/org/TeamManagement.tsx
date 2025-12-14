@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getOrgMembers, OrgMember, InviteInfo } from '@/app/actions/org';
 import InviteMemberPanel from './InviteMemberPanel';
+import GroupManagement from './GroupManagement';
 import UserCard from './UserCard';
 import UserDetailDashboard from './UserDetailDashboard';
-import { Layers, UserPlus } from 'lucide-react';
+import { Layers, UserPlus, Users } from 'lucide-react';
 import CanvasHeader from '../CanvasHeader';
 
 export default function TeamManagement() {
@@ -13,6 +15,7 @@ export default function TeamManagement() {
     const [error, setError] = useState<string | null>(null);
     const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
     const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
+    const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
 
     const fetchMembers = async () => {
         // Don't set loading true on refresh to avoid flash, or handle gracefully
@@ -68,12 +71,6 @@ export default function TeamManagement() {
     return (
         <div className="flex flex-col w-full relative">
             {/* Sticky Header */}
-            {/* Added pl-10 to account for Navigation Panel overlap if it's fixed, 
-                but based on user request "move it over", it likely means the CanvasHeader content 
-                needs to be shifted directly or the container needs padding. 
-                CanvasHeader typically handles its own layout, but here it's in a sticky div. 
-                If the Nav Panel is overlaying, we need to shift this. 
-                Assuming Nav is ~60px-80px. Adding pl-20 for safety. */}
             <div className="sticky top-0 z-50">
                 <CanvasHeader
                     context="My Organization"
@@ -95,11 +92,22 @@ export default function TeamManagement() {
                             <UserPlus size={16} />
                             Invite Members
                         </button>
+
+                        <button
+                            onClick={() => setIsGroupPanelOpen(true)}
+                            className="
+                                flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
+                            "
+                        >
+                            <Users size={16} />
+                            Create Group
+                        </button>
                     </div>
                 </CanvasHeader>
             </div>
 
-            {/* Scrollable Content Container - Match 'personal-context' padding (max-w-[1600px] px-8 pb-32) */}
+            {/* Scrollable Content Container */}
             <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pt-8 pl-20">
                 {/* Empty State */}
                 {members.length === 0 ? (
@@ -128,6 +136,16 @@ export default function TeamManagement() {
                 onClose={() => setIsInvitePanelOpen(false)}
                 inviteInfo={inviteInfo}
                 onUpdate={fetchMembers}
+            />
+
+            {/* Create Group Panel */}
+            <GroupManagement
+                isOpen={isGroupPanelOpen}
+                onClose={() => setIsGroupPanelOpen(false)}
+                onSuccess={() => { // Group created, maybe refresh active groups in nav?
+                    // For now just close. In future, global context or event can refresh Nav.
+                    window.location.reload(); // Hard refresh to update nav for now
+                }}
             />
         </div>
     );

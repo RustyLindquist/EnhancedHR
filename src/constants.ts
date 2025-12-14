@@ -715,7 +715,6 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
 
 export const ORG_NAV_ITEMS: NavItemConfig[] = [
     { id: 'org-team', label: 'Manage Users', icon: Users, color: 'text-brand-blue-light' },
-    { id: 'org-collections', label: 'Learning Collections', icon: Layers, color: 'text-brand-orange' },
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
 ];
 

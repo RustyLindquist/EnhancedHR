@@ -582,6 +582,15 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
     );
 };
 
+const GroupDetailCanvasWrapper = ({ group, manageTrigger }: { group: any, manageTrigger: number }) => {
+    const [Component, setComponent] = useState<any>(null);
+    useEffect(() => {
+        import('@/components/org/GroupDetailCanvas').then(mod => setComponent(() => mod.default));
+    }, []);
+    if (!Component) return <div className="p-10 text-center">Loading Group...</div>;
+    return <Component group={group} manageTrigger={manageTrigger} onBack={() => { }} />;
+};
+
 // --- MAIN CANVAS COMPONENT ---
 
 import { useCollections } from '../hooks/useCollections';
@@ -607,6 +616,24 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
     const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
     const [isLoadingCollection, setIsLoadingCollection] = useState(false);
+
+    // Group View State
+    const [viewingGroup, setViewingGroup] = useState<any | null>(null);
+
+    // Effect to load group details when activeCollectionId changes to group-*
+    useEffect(() => {
+        if (activeCollectionId.startsWith('group-')) {
+            const groupId = activeCollectionId.replace('group-', '');
+            // Fetch group details
+            import('@/app/actions/groups').then(async (mod) => {
+                const details = await mod.getGroupDetails(groupId);
+                setViewingGroup(details);
+            });
+        } else {
+            setViewingGroup(null);
+        }
+    }, [activeCollectionId]);
+
 
     // Sync courses with saved state
     // Sync courses with prop changes and saved state
@@ -1034,7 +1061,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, [activeFilters, activeCollectionId, courses]); // Added activeCollectionId dependency
 
 
-    // --- Handlers ---
+    // State for Group Management Trigger (Lifted Up)
+    const [groupManageTrigger, setGroupManageTrigger] = useState(0);
+
+    // --- EFFECT: Handle Keyboard Shortcuts ---
 
     const toggleDrawer = (mode: 'filters' | 'prompts' | 'help' = 'filters') => {
         if (mode === 'filters') setPendingFilters(activeFilters);
@@ -2142,236 +2172,263 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 {activeCollectionId !== 'org-team' && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div>
-                            <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">
-                                    {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
-                                </span>
-                            </div>
-                            {activeFilterCount > 0 ? (
-                                <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
-                                    Filtered <span className="font-bold text-white">Results</span>
-                                    <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
-                                </h1>
-                            ) : activeCollectionId === 'personal-context' ? (
-                                <h1 className="text-3xl font-light text-white tracking-tight">
-                                    Personal <span className="font-bold text-white">Context</span>
-                                </h1>
+                            {viewingGroup ? (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Users size={14} className="text-brand-blue-light" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">Employee Group</span>
+                                    </div>
+                                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                                        {viewingGroup.name}
+                                    </h1>
+                                </div>
                             ) : (
-                                <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-3">
-                                    {isRenamingCollection ? (
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                autoFocus
-                                                type="text"
-                                                value={renameValue}
-                                                onChange={(e) => setRenameValue(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') submitRename();
-                                                    if (e.key === 'Escape') setIsRenamingCollection(false);
-                                                }}
-                                                className="bg-black/50 border border-brand-blue-light/50 rounded px-2 py-1 text-white font-bold outline-none min-w-[300px]"
-                                            />
-                                            <button onClick={submitRename} className="p-1 hover:bg-white/10 rounded-full text-brand-green">
-                                                <Check size={20} />
-                                            </button>
-                                            <button onClick={() => setIsRenamingCollection(false)} className="p-1 hover:bg-white/10 rounded-full text-red-400">
-                                                <X size={20} />
-                                            </button>
-                                        </div>
+                                <>
+                                    <div className="flex items-center space-x-2 mb-1">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">
+                                            {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
+                                        </span>
+                                    </div>
+                                    {activeFilterCount > 0 ? (
+                                        <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
+                                            Filtered <span className="font-bold text-white">Results</span>
+                                            <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
+                                        </h1>
+                                    ) : activeCollectionId === 'personal-context' ? (
+                                        <h1 className="text-3xl font-light text-white tracking-tight">
+                                            Personal <span className="font-bold text-white">Context</span>
+                                        </h1>
                                     ) : (
-                                        <>
-                                            {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
-                                        </>
+                                        <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-3">
+                                            {isRenamingCollection ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        autoFocus
+                                                        type="text"
+                                                        value={renameValue}
+                                                        onChange={(e) => setRenameValue(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') submitRename();
+                                                            if (e.key === 'Escape') setIsRenamingCollection(false);
+                                                        }}
+                                                        className="bg-black/50 border border-brand-blue-light/50 rounded px-2 py-1 text-white font-bold outline-none min-w-[300px]"
+                                                    />
+                                                    <button onClick={submitRename} className="p-1 hover:bg-white/10 rounded-full text-brand-green">
+                                                        <Check size={20} />
+                                                    </button>
+                                                    <button onClick={() => setIsRenamingCollection(false)} className="p-1 hover:bg-white/10 rounded-full text-red-400">
+                                                        <X size={20} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {getPageTitle().split(' ')[0]} <span className="font-bold text-white">{getPageTitle().split(' ').slice(1).join(' ')}</span>
+                                                </>
+                                            )}
+                                        </h1>
                                     )}
-                                </h1>
+                                </>
                             )}
                         </div>
 
                         <div className="flex space-x-4 items-center">
-                            {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
-                            {(activeCollectionId === 'personal-context' ||
-                                activeCollectionId === 'favorites' ||
-                                activeCollectionId === 'research' ||
-                                activeCollectionId === 'to_learn' ||
-                                customCollections.some(c => c.id === activeCollectionId)) && (
-                                    <div className="flex items-center gap-2 mr-4">
-                                        <button
-                                            onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
-                                            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                        >
-                                            <Plus size={14} /> Add Context
-                                        </button>
-                                        <button
-                                            onClick={() => handleOpenContextEditor('FILE')}
-                                            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                        >
-                                            <Plus size={14} /> Add File
-                                        </button>
-                                    </div>
-                                )}
+                            {viewingGroup ? (
+                                <button
+                                    onClick={() => setGroupManageTrigger(prev => prev + 1)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                >
+                                    <Settings size={14} /> Manage Group
+                                </button>
+                            ) : (
+                                <>
+                                    {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                                    {(activeCollectionId === 'personal-context' ||
+                                        activeCollectionId === 'favorites' ||
+                                        activeCollectionId === 'research' ||
+                                        activeCollectionId === 'to_learn' ||
+                                        customCollections.some(c => c.id === activeCollectionId)) && (
+                                            <div className="flex items-center gap-2 mr-4">
+                                                <button
+                                                    onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                >
+                                                    <Plus size={14} /> Add Context
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenContextEditor('FILE')}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                >
+                                                    <Plus size={14} /> Add File
+                                                </button>
+                                            </div>
+                                        )}
 
-                            {activeCollectionId === 'prometheus' ? (
-                                /* Prometheus Actions */
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={handleNewConversation}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                    >
-                                        <MessageSquare size={14} /> New Conversation
-                                    </button>
+                                    {activeCollectionId === 'prometheus' ? (
+                                        /* Prometheus Actions */
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={handleNewConversation}
+                                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                            >
+                                                <MessageSquare size={14} /> New Conversation
+                                            </button>
 
-                                    {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
-                                        <button
-                                            onClick={handleSaveConversation}
-                                            disabled={!!activeConversation?.isSaved}
-                                            className={`
+                                            {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
+                                                <button
+                                                    onClick={handleSaveConversation}
+                                                    disabled={!!activeConversation?.isSaved}
+                                                    className={`
                                         flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
                                         ${activeConversation?.isSaved
-                                                    ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
-                                                    : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
-                                                }
+                                                            ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
+                                                            : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
+                                                        }
                                     `}
-                                        >
-                                            {activeConversation?.isSaved ? (
-                                                <>
-                                                    <Check size={14} /> Saved to Collection
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Plus size={14} /> Add to Collection
-                                                </>
+                                                >
+                                                    {activeConversation?.isSaved ? (
+                                                        <>
+                                                            <Check size={14} /> Saved to Collection
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Plus size={14} /> Add to Collection
+                                                        </>
+                                                    )}
+                                                </button>
                                             )}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
-                                /* Dashboard V3 Stats in Header - Smaller with warm glow */
-                                <div className="flex items-center gap-4">
-                                    <div className="group relative flex items-center gap-1.5 cursor-default">
-                                        <div className="p-1.5 rounded-md text-brand-blue-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(120,192,240,0.6)]">
-                                            <Clock size={14} />
                                         </div>
-                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.totalTime}</span>
-                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                            Total Learning Time
-                                        </div>
-                                    </div>
+                                    ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
+                                        /* Dashboard V3 Stats in Header - Smaller with warm glow */
+                                        <div className="flex items-center gap-4">
+                                            <div className="group relative flex items-center gap-1.5 cursor-default">
+                                                <div className="p-1.5 rounded-md text-brand-blue-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(120,192,240,0.6)]">
+                                                    <Clock size={14} />
+                                                </div>
+                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.totalTime}</span>
+                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                                    Total Learning Time
+                                                </div>
+                                            </div>
 
-                                    <div className="w-px h-4 bg-white/10" />
+                                            <div className="w-px h-4 bg-white/10" />
 
-                                    <div className="group relative flex items-center gap-1.5 cursor-default">
-                                        <div className="p-1.5 rounded-md text-purple-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
-                                            <BookOpen size={14} />
-                                        </div>
-                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
-                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                            Courses Completed
-                                        </div>
-                                    </div>
+                                            <div className="group relative flex items-center gap-1.5 cursor-default">
+                                                <div className="p-1.5 rounded-md text-purple-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
+                                                    <BookOpen size={14} />
+                                                </div>
+                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
+                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                                    Courses Completed
+                                                </div>
+                                            </div>
 
-                                    <div className="w-px h-4 bg-white/10" />
+                                            <div className="w-px h-4 bg-white/10" />
 
-                                    <div className="group relative flex items-center gap-1.5 cursor-default">
-                                        <div className="p-1.5 rounded-md text-brand-orange transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,147,0,0.6)]">
-                                            <Award size={14} />
-                                        </div>
-                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
-                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                            Credits Earned
-                                        </div>
-                                    </div>
+                                            <div className="group relative flex items-center gap-1.5 cursor-default">
+                                                <div className="p-1.5 rounded-md text-brand-orange transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,147,0,0.6)]">
+                                                    <Award size={14} />
+                                                </div>
+                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
+                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                                    Credits Earned
+                                                </div>
+                                            </div>
 
-                                    <div className="w-px h-4 bg-white/10" />
+                                            <div className="w-px h-4 bg-white/10" />
 
-                                    <div className="group relative flex items-center gap-1.5 cursor-default">
-                                        <div className="p-1.5 rounded-md text-emerald-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">
-                                            <Zap size={14} />
+                                            <div className="group relative flex items-center gap-1.5 cursor-default">
+                                                <div className="p-1.5 rounded-md text-emerald-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">
+                                                    <Zap size={14} />
+                                                </div>
+                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.streak}</span>
+                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                                    Day Streak
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.streak}</span>
-                                        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                            Day Streak
-                                        </div>
-                                    </div>
-                                </div>
 
-                            ) : (
-                                /* Standard Actions */
-                                <>
-                                    {activeCollectionId === 'academy' && activeFilterCount > 0 && (
-                                        <button
-                                            onClick={handleResetFilters}
-                                            className="
+                                    ) : (
+                                        /* Standard Actions */
+                                        <>
+                                            {activeCollectionId === 'academy' && activeFilterCount > 0 && (
+                                                <button
+                                                    onClick={handleResetFilters}
+                                                    className="
                                      px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
                                      bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white
                                  "
-                                        >
-                                            Clear Filters
-                                        </button>
+                                                >
+                                                    Clear Filters
+                                                </button>
+                                            )}
+
+                                        </>
                                     )}
 
-                                </>
-                            )}
-
-                            {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                            {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
-                            {!(activeCollectionId === 'favorites' ||
-                                activeCollectionId === 'research' ||
-                                activeCollectionId === 'to_learn' ||
-                                activeCollectionId === 'personal-context' ||
-                                activeCollectionId === 'company' ||
-                                activeCollectionId === 'instructors' ||
-                                activeCollectionId === 'dashboard' ||
-                                activeCollectionId === 'prometheus' ||
-                                activeCollectionId === 'certifications' ||
-                                customCollections.some(c => c.id === activeCollectionId)
-                            ) && (
-                                    <button
-                                        onClick={handleOpenDrawer}
-                                        className={`
+                                    {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
+                                    {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
+                                    {!(activeCollectionId === 'favorites' ||
+                                        activeCollectionId === 'research' ||
+                                        activeCollectionId === 'to_learn' ||
+                                        activeCollectionId === 'personal-context' ||
+                                        activeCollectionId === 'company' ||
+                                        activeCollectionId === 'instructors' ||
+                                        activeCollectionId === 'dashboard' ||
+                                        activeCollectionId === 'prometheus' ||
+                                        activeCollectionId === 'certifications' ||
+                                        activeCollectionId === 'certifications' ||
+                                        viewingGroup ||
+                                        customCollections.some(c => c.id === activeCollectionId)
+                                    ) && (
+                                            <button
+                                                onClick={handleOpenDrawer}
+                                                className={`
                                 group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
                                 ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
                         `}
-                                    >
-                                        {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
+                                            >
+                                                {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
 
-                                        <SlidersHorizontal size={14} className="mr-3" />
-                                        <span>Search & Filter</span>
-                                        {activeFilterCount > 0 && !isDrawerOpen && (
-                                            <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                                                {activeFilterCount}
-                                            </div>
+                                                <SlidersHorizontal size={14} className="mr-3" />
+                                                <span>Search & Filter</span>
+                                                {activeFilterCount > 0 && !isDrawerOpen && (
+                                                    <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                                                        {activeFilterCount}
+                                                    </div>
+                                                )}
+                                                {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
+                                            </button>
                                         )}
-                                        {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
-                                    </button>
-                                )}
 
-                            {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
-                            {customCollections.some(c => c.id === activeCollectionId) && (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
-                                        className="flex items-center gap-2 px-4 py-3 bg-black/40 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                    >
-                                        <Settings size={14} /> Manage
-                                    </button>
+                                    {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
+                                    {customCollections.some(c => c.id === activeCollectionId) && (
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
+                                                className="flex items-center gap-2 px-4 py-3 bg-black/40 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                            >
+                                                <Settings size={14} /> Manage
+                                            </button>
 
-                                    {isManageMenuOpen && (
-                                        <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fade-in-up">
-                                            <button
-                                                onClick={handleRenameCollectionSpy}
-                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
-                                            >
-                                                <Edit size={14} /> Rename
-                                            </button>
-                                            <button
-                                                onClick={handleDeleteCollectionSpy}
-                                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
-                                            >
-                                                <Trash size={14} /> Delete
-                                            </button>
+                                            {isManageMenuOpen && (
+                                                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fade-in-up">
+                                                    <button
+                                                        onClick={handleRenameCollectionSpy}
+                                                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+                                                    >
+                                                        <Edit size={14} /> Rename
+                                                    </button>
+                                                    <button
+                                                        onClick={handleDeleteCollectionSpy}
+                                                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
+                                                    >
+                                                        <Trash size={14} /> Delete
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>
@@ -2379,288 +2436,298 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
                 {/* --- Canvas Content Grid --- */}
                 {
-                    activeCollectionId === 'prometheus' ? (
-                        <div className="flex-1 w-full h-full overflow-hidden relative z-65">
-                            <PrometheusFullPage
-                                onTitleChange={setPrometheusConversationTitle}
-                                onConversationStart={handleConversationStart}
-                                initialTitle={activeConversation?.title || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.title : undefined)}
-                                initialMessages={activeConversation?.messages || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.messages : undefined)}
-                                conversationId={activeConversation?.id || activeConversationId || undefined}
-                                onSaveConversation={handleSaveConversation}
-                                isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
-                                initialPrompt={prometheusPagePrompt}
-                                onPromptConsumed={handlePrometheusPromptConsumed}
-                            />
+                    viewingGroup ? (
+                        <div className="flex-1 w-full h-full bg-transparent overflow-y-auto relative z-10">
+                            {/* Using dynamic import for GroupDetailCanvas inside render if needed, or better, import at top */}
+                            {/* Since we can't easily add top-level imports now without viewing file start, let's use a lazy loaded component or assume we add it later. 
+                                  For now, I'll use a dynamic require logic wrapper in separate component or just trust I can add the import. 
+                                  Actually, let's just use the component. I'll add the import in a separate step if needed.
+                              */}
+                            <GroupDetailCanvasWrapper group={viewingGroup} manageTrigger={groupManageTrigger} />
                         </div>
-                    ) : activeCollectionId === 'dashboard' ? (
-                        <div className={`flex-1 w-full h-full overflow-hidden relative z-10 ${useDashboardV3 ? '' : 'mt-[60px]'}`}>
-                            {user?.role === 'org_admin' ? (
-                                <OrgAdminDashboard
-                                    user={user}
-                                    orgId={user.org_id || 'demo-org'}
-                                    onOpenAIPanel={onOpenAIPanel}
-                                    onSetAIPrompt={onSetAIPrompt}
+                    ) :
+                        activeCollectionId === 'prometheus' ? (
+                            <div className="flex-1 w-full h-full overflow-hidden relative z-65">
+                                <PrometheusFullPage
+                                    onTitleChange={setPrometheusConversationTitle}
+                                    onConversationStart={handleConversationStart}
+                                    initialTitle={activeConversation?.title || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.title : undefined)}
+                                    initialMessages={activeConversation?.messages || (activeConversationId ? conversations.find(c => c.id === activeConversationId)?.messages : undefined)}
+                                    conversationId={activeConversation?.id || activeConversationId || undefined}
+                                    onSaveConversation={handleSaveConversation}
+                                    isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
+                                    initialPrompt={prometheusPagePrompt}
+                                    onPromptConsumed={handlePrometheusPromptConsumed}
                                 />
-                            ) : user?.role === 'employee' ? (
-                                <EmployeeDashboard
-                                    user={user}
-                                    courses={courses}
-                                    onNavigate={onSelectCollection}
-                                    onStartCourse={handleStartCourse}
-                                    onOpenAIPanel={onOpenAIPanel}
-                                    onSetAIPrompt={onSetAIPrompt}
-                                />
-                            ) : (
-                                <UserDashboardV3
-                                    user={user}
-                                    courses={courses}
-                                    onNavigate={onSelectCollection}
-                                    onStartCourse={handleCourseClick}
-                                    onOpenAIPanel={onOpenAIPanel}
-                                    onSetAIPrompt={onSetAIPrompt}
-                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                />
-                            )}
-                        </div>
-                    ) : activeCollectionId === 'org-team' ? (
-                        <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
-                            <TeamManagement />
-                        </div>
-                    ) : (
-                        <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
-                            <div className="max-w-7xl mx-auto w-full px-10 pt-[50px] pb-48">
-                                <div className="w-full" key={renderKey}>
+                            </div>
+                        ) : activeCollectionId === 'dashboard' ? (
+                            <div className={`flex-1 w-full h-full overflow-hidden relative z-10 ${useDashboardV3 ? '' : 'mt-[60px]'}`}>
+                                {user?.role === 'org_admin' ? (
+                                    <OrgAdminDashboard
+                                        user={user}
+                                        orgId={user.org_id || 'demo-org'}
+                                        onOpenAIPanel={onOpenAIPanel}
+                                        onSetAIPrompt={onSetAIPrompt}
+                                    />
+                                ) : user?.role === 'employee' ? (
+                                    <EmployeeDashboard
+                                        user={user}
+                                        courses={courses}
+                                        onNavigate={onSelectCollection}
+                                        onStartCourse={handleStartCourse}
+                                        onOpenAIPanel={onOpenAIPanel}
+                                        onSetAIPrompt={onSetAIPrompt}
+                                    />
+                                ) : (
+                                    <UserDashboardV3
+                                        user={user}
+                                        courses={courses}
+                                        onNavigate={onSelectCollection}
+                                        onStartCourse={handleCourseClick}
+                                        onOpenAIPanel={onOpenAIPanel}
+                                        onSetAIPrompt={onSetAIPrompt}
+                                        onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                    />
+                                )}
+                            </div>
+                        ) : activeCollectionId === 'org-team' ? (
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <TeamManagement />
+                            </div>
+                        ) : (
+                            <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
+                                <div className="max-w-7xl mx-auto w-full px-10 pt-[50px] pb-48">
+                                    <div className="w-full" key={renderKey}>
 
 
-                                    {isAcademyView ? (
-                                        // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
-                                        <div className="space-y-12 pb-20">
+                                        {isAcademyView ? (
+                                            // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
+                                            <div className="space-y-12 pb-20">
 
-                                            {/* Category Quick Nav */}
-                                            <div className="flex flex-wrap items-center gap-2 pb-4">
-                                                <button
-                                                    onClick={() => {
-                                                        setPendingFilters(INITIAL_FILTERS);
-                                                        setActiveFilters(INITIAL_FILTERS);
-                                                    }}
-                                                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
-                                                        ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
-                                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
-                                                        } `}
-                                                >
-                                                    All
-                                                </button>
-                                                {COURSE_CATEGORIES.map((category) => (
+                                                {/* Category Quick Nav */}
+                                                <div className="flex flex-wrap items-center gap-2 pb-4">
                                                     <button
-                                                        key={category}
                                                         onClick={() => {
-                                                            const newFilters = { ...INITIAL_FILTERS, category };
-                                                            setPendingFilters(newFilters);
-                                                            setActiveFilters(newFilters);
+                                                            setPendingFilters(INITIAL_FILTERS);
+                                                            setActiveFilters(INITIAL_FILTERS);
                                                         }}
-                                                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
                                                             ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
                                                             : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
                                                             } `}
                                                     >
-                                                        {category}
+                                                        All
                                                     </button>
-                                                ))}
-                                            </div>
+                                                    {COURSE_CATEGORIES.map((category) => (
+                                                        <button
+                                                            key={category}
+                                                            onClick={() => {
+                                                                const newFilters = { ...INITIAL_FILTERS, category };
+                                                                setPendingFilters(newFilters);
+                                                                setActiveFilters(newFilters);
+                                                            }}
+                                                            className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                                ? 'bg-brand-blue text-brand-black shadow-[0_0_15px_rgba(120,192,240,0.3)]'
+                                                                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                                                                } `}
+                                                        >
+                                                            {category}
+                                                        </button>
+                                                    ))}
+                                                </div>
 
-                                            {COURSE_CATEGORIES.map((category, catIndex) => {
-                                                const categoryCourses = visibleCourses.filter(c => c.category === category);
-                                                if (categoryCourses.length === 0) return null;
+                                                {COURSE_CATEGORIES.map((category, catIndex) => {
+                                                    const categoryCourses = visibleCourses.filter(c => c.category === category);
+                                                    if (categoryCourses.length === 0) return null;
 
-                                                const isCollapsed = collapsedCategories.includes(category);
+                                                    const isCollapsed = collapsedCategories.includes(category);
 
-                                                return (
-                                                    <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
-                                                        {/* Category Header */}
-                                                        <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
-                                                            <div
-                                                                className="flex items-center gap-3 cursor-pointer group/title select-none"
-                                                                onClick={() => toggleCategory(category)}
-                                                            >
-                                                                <div className={`
+                                                    return (
+                                                        <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
+                                                            {/* Category Header */}
+                                                            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
+                                                                <div
+                                                                    className="flex items-center gap-3 cursor-pointer group/title select-none"
+                                                                    onClick={() => toggleCategory(category)}
+                                                                >
+                                                                    <div className={`
                 p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
                 group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     `}>
-                                                                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                                        {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                                                    </div>
+
+                                                                    <div className="flex items-baseline gap-3">
+                                                                        <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
+                                                                        <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
+                                                                    </div>
                                                                 </div>
 
-                                                                <div className="flex items-baseline gap-3">
-                                                                    <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
-                                                                    <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
-                                                                </div>
+                                                                {!isCollapsed && (
+                                                                    <button
+                                                                        onClick={() => handleCategorySelect(category)}
+                                                                        className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
+                                                                    >
+                                                                        View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                                                                    </button>
+                                                                )}
                                                             </div>
 
+                                                            {/* Horizontal Scroll Row */}
                                                             {!isCollapsed && (
-                                                                <button
-                                                                    onClick={() => handleCategorySelect(category)}
-                                                                    className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
-                                                                >
-                                                                    View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                                                                </button>
+                                                                <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
+                                                                    {categoryCourses.map((course, index) => {
+                                                                        const delay = Math.min(index, 10) * 50;
+                                                                        return (
+                                                                            <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
+                                                                                <LazyCourseCard>
+                                                                                    <div
+                                                                                        style={{ transitionDelay: `${delay} ms` }}
+                                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
+                                                                                    >
+                                                                                        <CardStack
+                                                                                            {...course}
+                                                                                            onAddClick={handleAddButtonClick}
+                                                                                            onDragStart={handleCourseDragStart}
+                                                                                            onClick={handleCourseClick}
+                                                                                        />
+                                                                                    </div>
+                                                                                </LazyCourseCard>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
                                                             )}
                                                         </div>
-
-                                                        {/* Horizontal Scroll Row */}
-                                                        {!isCollapsed && (
-                                                            <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
-                                                                {categoryCourses.map((course, index) => {
-                                                                    const delay = Math.min(index, 10) * 50;
-                                                                    return (
-                                                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
-                                                                            <LazyCourseCard>
-                                                                                <div
-                                                                                    style={{ transitionDelay: `${delay} ms` }}
-                                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
-                                                                                >
-                                                                                    <CardStack
-                                                                                        {...course}
-                                                                                        onAddClick={handleAddButtonClick}
-                                                                                        onDragStart={handleCourseDragStart}
-                                                                                        onClick={handleCourseClick}
-                                                                                    />
-                                                                                </div>
-                                                                            </LazyCourseCard>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
-                                        (activeCollectionId === 'favorites' ||
-                                            activeCollectionId === 'research' ||
-                                            activeCollectionId === 'to_learn' ||
-                                            activeCollectionId === 'personal-context' ||
-                                            activeCollectionId === 'org-collections' ||
-                                            activeCollectionId === 'org-analytics' ||
-                                            customCollections.some(c => c.id === activeCollectionId)) ? (
-                                            <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
-                                                {activeCollectionId === 'org-collections' ? (
-                                                    <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
-                                                        <Layers size={48} className="mb-4 opacity-20" />
-                                                        <h2 className="text-xl font-bold text-white mb-2">Learning Collections</h2>
-                                                        <p>Feature coming soon. Curate learning paths for your team.</p>
-                                                    </div>
-                                                ) : activeCollectionId === 'org-analytics' ? (
-                                                    <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
-                                                        <TrendingUp size={48} className="mb-4 opacity-20" />
-                                                        <h2 className="text-xl font-bold text-white mb-2">Organization Analytics</h2>
-                                                        <p>Feature coming soon. Track your team's progress and ROI.</p>
-                                                    </div>
-                                                ) : (
-                                                    renderCollectionContent()
-                                                )}
+                                                    );
+                                                })}
                                             </div>
                                         ) : (
-                                            <div className="pb-20">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20 px-8">
-                                                    {/* Render Courses */}
-                                                    {visibleCourses.map((course, index) => {
-                                                        const delay = Math.min(index, 15) * 50;
-                                                        return (
-                                                            <LazyCourseCard key={course.id}>
-                                                                <div
-                                                                    style={{ transitionDelay: `${delay}ms` }}
-                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                                >
-                                                                    <CardStack
-                                                                        {...course}
-                                                                        onAddClick={handleAddButtonClick}
-                                                                        onDragStart={handleCourseDragStart}
-                                                                        onClick={handleCourseClick}
-                                                                    />
-                                                                </div>
-                                                            </LazyCourseCard>
-                                                        );
-                                                    })}
-
-                                                    {/* Render Conversations */}
-                                                    {visibleConversations.map((conversation, index) => (
-                                                        <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                            <ConversationCard
-                                                                {...conversation}
-                                                                onClick={handleOpenConversation}
-                                                                onDelete={handleDeleteConversation}
-                                                            />
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
+                                            (activeCollectionId === 'favorites' ||
+                                                activeCollectionId === 'research' ||
+                                                activeCollectionId === 'to_learn' ||
+                                                activeCollectionId === 'personal-context' ||
+                                                activeCollectionId === 'org-collections' ||
+                                                activeCollectionId === 'org-analytics' ||
+                                                customCollections.some(c => c.id === activeCollectionId)) ? (
+                                                <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
+                                                    {activeCollectionId === 'org-collections' ? (
+                                                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
+                                                            <Layers size={48} className="mb-4 opacity-20" />
+                                                            <h2 className="text-xl font-bold text-white mb-2">Learning Collections</h2>
+                                                            <p>Feature coming soon. Curate learning paths for your team.</p>
                                                         </div>
-                                                    ))}
-
-                                                    {/* Render Instructors */}
-                                                    {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                        <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                                            <InstructorCard
-                                                                instructor={instructor}
-                                                                onClick={setSelectedInstructorId}
-                                                            />
+                                                    ) : activeCollectionId === 'org-analytics' ? (
+                                                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
+                                                            <TrendingUp size={48} className="mb-4 opacity-20" />
+                                                            <h2 className="text-xl font-bold text-white mb-2">Organization Analytics</h2>
+                                                            <p>Feature coming soon. Track your team's progress and ROI.</p>
                                                         </div>
-                                                    ))}
-
-                                                    {/* DEBUG INFO */}
-                                                    <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
-                                                        Items: {collectionItems.length} |
-                                                        Types: {collectionItems.map(i => i.itemType).join(',')} |
-                                                        Active: {activeCollectionId} |
-                                                        User: {user?.id}
-                                                    </div>
-
-                                                    {/* Empty State */}
-                                                    {isCollectionEmpty ? (
-                                                        activeCollectionId === 'personal-context' ? (
-                                                            <div className="col-span-full">
-                                                                {renderCollectionContent()}
-                                                            </div>
-                                                        ) : (
-                                                            // --- EMPTY COLLECTION STATES ---
-                                                            <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
-                                                                {/* Visual Graphic at Top - Hide for Conversations */}
-                                                                {activeCollectionId !== 'conversations' && (
-                                                                    <div className="mb-12 animate-float">
-                                                                        {renderCollectionVisual()}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Text Content */}
-                                                                <CollectionInfo
-                                                                    type={activeCollectionId}
-                                                                    isEmptyState={true}
-                                                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                                                    onOpenDrawer={() => toggleDrawer('prompts')}
-                                                                    onOpenHelp={() => toggleDrawer('help')}
-                                                                />
-                                                            </div>
-                                                        )) : (
-                                                        // --- NO RESULTS (Filter Context) ---
-                                                        visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                            <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                                <Search size={48} className="text-slate-600 mb-4" />
-                                                                <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                                <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                                            </div>
-                                                        )
+                                                    ) : (
+                                                        renderCollectionContent()
                                                     )}
                                                 </div>
+                                            ) : (
+                                                <div className="pb-20">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20 px-8">
+                                                        {/* Render Courses */}
+                                                        {visibleCourses.map((course, index) => {
+                                                            const delay = Math.min(index, 15) * 50;
+                                                            return (
+                                                                <LazyCourseCard key={course.id}>
+                                                                    <div
+                                                                        style={{ transitionDelay: `${delay}ms` }}
+                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                    >
+                                                                        <CardStack
+                                                                            {...course}
+                                                                            onAddClick={handleAddButtonClick}
+                                                                            onDragStart={handleCourseDragStart}
+                                                                            onClick={handleCourseClick}
+                                                                        />
+                                                                    </div>
+                                                                </LazyCourseCard>
+                                                            );
+                                                        })}
 
-                                                {/* Populated Footer (Collection Info) */}
-                                                {visibleCourses.length > 0 && renderCollectionFooter()}
-                                            </div>
+                                                        {/* Render Conversations */}
+                                                        {visibleConversations.map((conversation, index) => (
+                                                            <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
+                                                                <ConversationCard
+                                                                    {...conversation}
+                                                                    onClick={handleOpenConversation}
+                                                                    onDelete={handleDeleteConversation}
+                                                                />
+                                                            </div>
+                                                        ))}
 
+                                                        {/* Render Instructors */}
+                                                        {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
+                                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                                <InstructorCard
+                                                                    instructor={instructor}
+                                                                    onClick={setSelectedInstructorId}
+                                                                />
+                                                            </div>
+                                                        ))}
+
+                                                        {/* DEBUG INFO */}
+                                                        <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                            Items: {collectionItems.length} |
+                                                            Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                            Active: {activeCollectionId} |
+                                                            User: {user?.id}
+                                                        </div>
+
+                                                        {/* Empty State */}
+                                                        {isCollectionEmpty ? (
+                                                            activeCollectionId === 'personal-context' ? (
+                                                                <div className="col-span-full">
+                                                                    {renderCollectionContent()}
+                                                                </div>
+                                                            ) : (
+                                                                // --- EMPTY COLLECTION STATES ---
+                                                                <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                                    {/* Visual Graphic at Top - Hide for Conversations */}
+                                                                    {activeCollectionId !== 'conversations' && (
+                                                                        <div className="mb-12 animate-float">
+                                                                            {renderCollectionVisual()}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Text Content */}
+                                                                    <CollectionInfo
+                                                                        type={activeCollectionId}
+                                                                        isEmptyState={true}
+                                                                        onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                                        onOpenDrawer={() => toggleDrawer('prompts')}
+                                                                        onOpenHelp={() => toggleDrawer('help')}
+                                                                    />
+                                                                </div>
+                                                            )) : (
+                                                            // --- NO RESULTS (Filter Context) ---
+                                                            visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
+                                                                <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
+                                                                    <Search size={48} className="text-slate-600 mb-4" />
+                                                                    <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
+                                                                    <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                    {/* Populated Footer (Collection Info) */}
+                                                    {visibleCourses.length > 0 && renderCollectionFooter()}
+                                                </div>
+
+                                            )
                                         )
-                                    )
-                                    }
+                                        }
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )
+                        )
                 }
 
                 {/* --- Collection Surface (Footer) --- */}
