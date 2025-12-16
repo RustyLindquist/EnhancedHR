@@ -7,7 +7,7 @@ import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import { BACKGROUND_THEMES } from '@/constants';
 import { BackgroundTheme, Course } from '@/types';
-import { fetchCourses } from '@/lib/courses';
+import { fetchCoursesAction } from '@/app/actions/courses';
 
 interface StandardPageLayoutProps {
     children: React.ReactNode;
@@ -23,8 +23,8 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
 
     useEffect(() => {
         async function loadCourses() {
-            const data = await fetchCourses();
-            setCourses(data);
+            const { courses } = await fetchCoursesAction();
+            setCourses(courses);
         }
         loadCourses();
     }, []);

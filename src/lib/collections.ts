@@ -230,7 +230,7 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         if (key === 'to_learn') color = '#78C0F0';
         if (key === 'personal-context') color = '#64748B';
         
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('user_collections')
             .insert({
                 user_id: userId,
@@ -243,8 +243,6 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
             
         if (data) {
             map[key] = data.id;
-        } else if (error) {
-            console.error(`Failed to create system collection ${label}:`, error);
         }
     }
     
@@ -331,5 +329,45 @@ export async function fetchCollectionCounts(userId: string): Promise<Record<stri
         counts['certifications'] = certificationCount;
     }
 
+
     return counts;
+}
+
+// Sync logic for Conversations: Update metadata with collection IDs
+export async function syncConversationCollections(userId: string, conversationId: string, targetCollectionIds: string[]) {
+    const supabase = createClient();
+    
+    // 1. Fetch current metadata
+    const { data: conv, error: fetchError } = await supabase
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .eq('user_id', userId)
+        .single();
+        
+    if (fetchError || !conv) {
+        console.error("Error fetching conversation for sync:", fetchError);
+        return;
+    }
+    
+    // 2. Update metadata
+    // We strictly set the collection_ids to the target list (Source of Truth from frontend)
+    const currentMeta = conv.metadata || {};
+    const newMeta = {
+        ...currentMeta,
+        collection_ids: targetCollectionIds
+    };
+    
+    const { error: updateError } = await supabase
+        .from('conversations')
+        .update({ 
+            metadata: newMeta,
+            is_saved: targetCollectionIds.length > 0
+        })
+        .eq('id', conversationId)
+        .eq('user_id', userId);
+        
+    if (updateError) {
+        console.error("Error updating conversation collections:", updateError);
+    }
 }

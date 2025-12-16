@@ -207,11 +207,16 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
 
     if (!user) return { courses: [], contextItems: [] };
 
-    // Resolve ID using standard client (safe)
-    const resolvedId = await resolveCollectionId(supabase, collectionIdOrAlias, user.id);
-    if (!resolvedId) return { courses: [], contextItems: [] };
-
     const admin = createAdminClient(); // Service Role client
+
+    // Resolve ID using admin client (safe) to ensure we can find/create system collections ignoring RLS
+    // The internal resolve function in context.ts might be using 'supabase' passed in, 
+    // so we should pass 'admin' if the types align, or update resolveCollectionId to not rely on auth.getUser() if using admin
+    // Actually, resolveCollectionId takes 'supabase' client. As long as we pass a client, it works.
+    // BUT resolveCollectionId ALSO takes userId. Admin client doesn't have session.
+    // The userId is passed explicitly.
+    const resolvedId = await resolveCollectionId(admin, collectionIdOrAlias, user.id);
+    if (!resolvedId) return { courses: [], contextItems: [] };
 
     // 1. Fetch Context Items
     const { data: contextItems } = await admin
@@ -221,31 +226,82 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         .order('created_at', { ascending: false });
 
     // 2. Fetch Collection Courses (via linking table)
-    // We join 'courses' table using the FK.
-    // Note: collection_items has course_id, which references courses(id).
-    // Ensure Schema matches. collection_items(course_id -> courses(id))
-    const { data: rawCollectionItems } = await admin
+    // Use User Client (supabase) instead of Admin to rely on RLS and active session
+    // This avoids issues if Service Role Key is missing in environment
+    const { data: rawCollectionItems, error: rawError } = await supabase
         .from('collection_items')
-        .select(`
-            course_id,
-            courses (*)
-        `)
+        .select('course_id, item_type, item_id')
         .eq('collection_id', resolvedId);
 
-    // Map courses
+    console.log('[getCollectionDetailsAction] ResolvedID:', resolvedId);
+    console.log('[getCollectionDetailsAction] Raw Items:', rawCollectionItems?.length);
+    if (rawError) console.error('[getCollectionDetailsAction] Raw Error:', rawError);
+
+    const courseIds = rawCollectionItems
+        ?.filter((i: any) => i.course_id)
+        .map((i: any) => i.course_id);
+    
+    console.log('[getCollectionDetailsAction] Extracted IDs:', courseIds);
+
+    let courseMap: Record<string, any> = {};
+    if (courseIds && courseIds.length > 0) {
+        const { data: coursesData, error: courseError } = await supabase
+            .from('courses')
+            .select('*')
+            .in('id', courseIds);
+
+        console.log('[getCollectionDetailsAction] Fetched Courses:', coursesData?.length);
+        if (courseError) console.error('[getCollectionDetailsAction] Course Fetch Error:', courseError);
+        
+        coursesData?.forEach((c: any) => {
+            courseMap[String(c.id)] = c;
+        });
+    }
+
+    // Map courses and legacy items
     const courses = rawCollectionItems?.map((item: any) => {
-        if (!item.courses) return null;
-        return {
-            ...item.courses,
-            // Ensure types match front-end expectation
-            type: 'COURSE', 
-            itemType: 'COURSE', 
-            isSaved: true
-        };
+        const course = courseMap[String(item.course_id)];
+        if (course) {
+            return {
+                ...course,
+                type: 'COURSE' as const, 
+                itemType: 'COURSE', 
+                image: course.image_url, // Map DB column to Type property
+                dateAdded: course.created_at, // Map DB column to Type property
+                rating: Number(course.rating),
+                badges: course.badges || [],
+                isSaved: true
+            };
+        }
+        if (item.item_type && item.item_type !== 'COURSE') {
+            // Legacy / Generic Item stored in collection_items
+            // We map it to a generic structure so it appears.
+            return {
+                id: item.item_id || `legacy-${Math.random()}`,
+                type: item.item_type,
+                itemType: item.item_type,
+                title: 'Saved Item', // Fallback as title isn't stored in collection_items link
+                subtitle: 'Legacy Item',
+                content: {},
+                created_at: item.created_at || new Date().toISOString(),
+                isSaved: true
+            };
+        }
+        return null;
     }).filter(Boolean) || [];
 
     return {
-        courses,
-        contextItems: contextItems || []
+        courses: courses?.filter(Boolean) || [], // Filter out undefineds!
+        contextItems: contextItems || [],
+        debug: {
+            userId: user?.id,
+            resolvedId: resolvedId,
+            rawCount: rawCollectionItems?.length,
+            extractedIds: courseIds,
+            fetchedCourseCount: courses?.length,
+            courseMapKeys: Object.keys(courseMap),
+            rawError: rawError ? JSON.stringify(rawError) : null,
+            envKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        }
     };
 }

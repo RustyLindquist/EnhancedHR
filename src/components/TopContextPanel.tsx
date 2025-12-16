@@ -153,7 +153,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
         >
 
 
-            <div className="max-w-4xl mx-auto space-y-8 pb-32">
+            <div className="max-w-4xl mx-auto space-y-8 pb-32 pt-[30px]">
 
                 {/* Title Input */}
                 {itemType !== 'PROFILE' && (

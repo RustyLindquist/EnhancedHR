@@ -18,6 +18,7 @@ interface PrometheusFullPageProps {
     onSaveConversation?: () => void;
     isSaved?: boolean;
     onPromptConsumed?: () => void;
+    onOpenDrawer?: () => void;
 }
 
 // Enhanced Capability Card Data
@@ -82,8 +83,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     conversationId,
     initialTitle,
     onSaveConversation,
-    isSaved,
-    onPromptConsumed
+    isSaved = false,
+    onPromptConsumed,
+    onOpenDrawer
 }) => {
     const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
@@ -99,6 +101,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     const agentType: AgentType = 'platform_assistant';
     const contextScope: ContextScope = { type: 'PLATFORM' };
 
+    // Ref to track if we just created the conversation to avoid race condition/overwriting state
+    const justCreatedRef = useRef(false);
+
     // Handle Initial Prompt
     useEffect(() => {
         if (initialPrompt && initialPrompt !== lastProcessedPromptRef.current) {
@@ -110,21 +115,43 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     // Sync state with props when they change (e.g. switching conversations)
     useEffect(() => {
+        // ROBUST FIX: If we are already in this conversation and have local messages,
+        // we likely have 'fresher' state (e.g. streaming content) than the props being passed down.
+        // We should ONLY sync from props if we are switching to a DIFFERENT conversation,
+        // or if our local state is empty.
+        if (conversationId === currentConversationId && messages.length > 0) {
+            return;
+        }
+
         if (initialMessages) {
             setMessages(initialMessages);
+        } else if (conversationId !== currentConversationId) {
+            // If we switched conversations (or started a new one where ID is undefined)
+            // and we have no initial messages, we MUST clear the state.
+            setMessages([]);
         }
-    }, [initialMessages]);
+    }, [initialMessages, conversationId, currentConversationId, messages.length]);
 
     useEffect(() => {
         setCurrentConversationId(conversationId);
     }, [conversationId]);
 
-    // Fetch messages if not provided
+    // Fetch messages always if we have a conversation ID (ensure freshness / persistence fix)
     useEffect(() => {
         const fetchMessages = async () => {
-            if (conversationId && (!initialMessages || initialMessages.length === 0)) {
+            // If we just created the conversation locally, we have the latest state in memory.
+            // Fetching from DB now might return empty/incomplete data due to async writing.
+            // So we skip the fetch once.
+            if (justCreatedRef.current) {
+                justCreatedRef.current = false;
+                return;
+            }
+
+            if (conversationId) {
                 try {
-                    setIsLoading(true);
+                    // Only show loader if we don't have messages yet
+                    if (messages.length === 0) setIsLoading(true);
+
                     const { data, error } = await supabase
                         .from('conversation_messages')
                         .select('*')
@@ -133,7 +160,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
                     if (error) throw error;
 
-                    if (data) {
+                    if (data && data.length > 0) {
                         const loadedMessages: Message[] = data.map((msg: any) => ({
                             role: msg.role,
                             content: msg.content
@@ -151,7 +178,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         if (conversationId) {
             fetchMessages();
         }
-    }, [conversationId, initialMessages]);
+    }, [conversationId]); // Removed initialMessages dependency to rely on DB fetch for established convos
 
     // Scroll to bottom
     useEffect(() => {
@@ -201,7 +228,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                 .insert({
                     user_id: user.id,
                     title,
-                    is_saved: true // Default to true so it shows up
+                    is_saved: false // Default to false so it doesn't show as 'Saved to Collection' immediately
                 })
                 .select()
                 .single();
@@ -235,6 +262,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     const newConv = await createConversation('New Conversation');
                     if (newConv) {
                         activeConvId = newConv.id;
+                        justCreatedRef.current = true; // Mark as just created to skip next fetch
                         setCurrentConversationId(activeConvId);
                         if (onConversationStart && activeConvId) {
                             onConversationStart(activeConvId, 'New Conversation', [userMsg]);
@@ -447,6 +475,18 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                                 </div>
                             </button>
                         ))}
+                    </div>
+
+                    {/* View More Prompts Button */}
+                    <div className="flex justify-center w-full mt-6">
+                        <button
+                            onClick={() => onOpenDrawer && onOpenDrawer()}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-slate-400 hover:text-brand-blue-light hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-300 group"
+                        >
+                            <Sparkles size={14} className="group-hover:text-brand-orange transition-colors" />
+                            <span>More Prompts</span>
+                            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        </button>
                     </div>
                 </div>
             </div>

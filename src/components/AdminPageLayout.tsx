@@ -6,24 +6,27 @@ import NavigationPanel from '@/components/NavigationPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import { BACKGROUND_THEMES, ADMIN_NAV_ITEMS } from '@/constants';
 import { BackgroundTheme, Course } from '@/types';
-import { fetchCourses } from '@/lib/courses';
+import { fetchCoursesAction } from '@/app/actions/courses';
 import CanvasHeader from '@/components/CanvasHeader';
 
 interface AdminPageLayoutProps {
     children: React.ReactNode;
+    activeNavId?: string;
+    onThemeChange?: (theme: BackgroundTheme) => void;
 }
 
-export default function AdminPageLayout({ children }: AdminPageLayoutProps) {
+export default function AdminPageLayout({ children, activeNavId = 'dashboard', onThemeChange }: AdminPageLayoutProps) {
     const router = useRouter();
     const [leftOpen, setLeftOpen] = useState(true);
+    const [rightOpen, setRightOpen] = useState(false); // Default closed for admin
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [activeCollectionId, setActiveCollectionId] = useState<string>('dashboard');
 
     useEffect(() => {
         async function loadCourses() {
-            const data = await fetchCourses();
-            setCourses(data);
+            const { courses } = await fetchCoursesAction();
+            setCourses(courses);
         }
         loadCourses();
     }, []);

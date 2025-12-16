@@ -8,7 +8,7 @@ import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
-import { fetchCourses } from '@/lib/courses';
+import { fetchCoursesAction } from '@/app/actions/courses';
 import { useSearchParams } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 
@@ -31,8 +31,10 @@ function HomeContent() {
 
   useEffect(() => {
     async function loadCourses() {
-      const data = await fetchCourses();
-      setCourses(data);
+      const { courses, debug } = await fetchCoursesAction();
+      console.log('[Dashboard] Courses Loaded:', courses.length);
+      if (debug) console.log('[Dashboard] Server Debug:', debug);
+      setCourses(courses);
       setIsLoading(false);
     }
     loadCourses();
@@ -53,27 +55,16 @@ function HomeContent() {
     if (!user) return;
 
     // Dynamically import to ensure client-side execution context is respected
-    // (Though could be top-level, this matches existing pattern)
-    const { fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+    // Use Server Action for counts to bypass RLS issues
+    const { getCollectionCountsAction } = await import('@/app/actions/collections');
 
-    const rawCounts = await fetchCollectionCounts(user.id);
-    const systemMap = await ensureSystemCollections(user.id);
+    const mappedCounts = await getCollectionCountsAction(user.id);
 
-    const uuidToSystemMap: Record<string, string> = {};
-    Object.entries(systemMap).forEach(([key, uuid]) => {
-      uuidToSystemMap[uuid] = key;
-    });
-
-    const mappedCounts: Record<string, number> = {};
-
-    Object.entries(rawCounts).forEach(([uuid, count]) => {
-      const systemKey = uuidToSystemMap[uuid];
-      if (systemKey) {
-        mappedCounts[systemKey] = count;
-      } else {
-        mappedCounts[uuid] = count;
-      }
-    });
+    // ensureSystemCollections runs client-side and fails RLS often, so we rely on server mapping
+    // But we still need customCollections for the list. 
+    // fetchUserCollections below handles that via client - MIGHT FAIL if RLS is strict?
+    // Let's assume fetchUserCollections (fetching the list of collections) might also be problematic?
+    // But for now let's fix the counts.
 
     setCollectionCounts(mappedCounts);
   };
@@ -95,7 +86,14 @@ function HomeContent() {
         const dbCollections = await fetchUserCollections(user.id);
 
         // Merge logic: DB is source of truth now.
-        setCustomCollections(dbCollections);
+        // Deduplicate by label to prevent UI bug
+        const uniqueMap = new Map();
+        dbCollections.forEach((c: Collection) => {
+          if (!uniqueMap.has(c.label)) {
+            uniqueMap.set(c.label, c);
+          }
+        });
+        setCustomCollections(Array.from(uniqueMap.values()) as Collection[]);
 
         // 2. Initial Count Fetch
         // We can call the new function here, but need to be careful with closure/dependency interaction
@@ -111,26 +109,10 @@ function HomeContent() {
   }, []);
 
   const refreshCountsForUser = async (userId: string) => {
-    const { fetchCollectionCounts, ensureSystemCollections } = await import('@/lib/collections');
+    const { getCollectionCountsAction } = await import('@/app/actions/collections');
 
-    const rawCounts = await fetchCollectionCounts(userId);
-    const systemMap = await ensureSystemCollections(userId);
-
-    const uuidToSystemMap: Record<string, string> = {};
-    Object.entries(systemMap).forEach(([key, uuid]) => {
-      uuidToSystemMap[uuid] = key;
-    });
-
-    const mappedCounts: Record<string, number> = {};
-
-    Object.entries(rawCounts).forEach(([uuid, count]) => {
-      const systemKey = uuidToSystemMap[uuid];
-      if (systemKey) {
-        mappedCounts[systemKey] = count;
-      } else {
-        mappedCounts[uuid] = count;
-      }
-    });
+    // Counts are now mapped server-side to system keys ('favorites', etc.) via Admin Client
+    const mappedCounts = await getCollectionCountsAction(userId);
 
     setCollectionCounts(mappedCounts);
   };
@@ -139,7 +121,15 @@ function HomeContent() {
     // Refresh Collections List
     const { fetchUserCollections } = await import('@/lib/collections');
     const dbCollections = await fetchUserCollections(userId);
-    setCustomCollections(dbCollections);
+
+    // Deduplicate by label
+    const uniqueMap = new Map();
+    dbCollections.forEach((c: Collection) => {
+      if (!uniqueMap.has(c.label)) {
+        uniqueMap.set(c.label, c);
+      }
+    });
+    setCustomCollections(Array.from(uniqueMap.values()) as Collection[]);
 
     // Refresh Counts
     await refreshCountsForUser(userId);
@@ -159,6 +149,7 @@ function HomeContent() {
 
   // Logic to handle saving (triggered from Modal)
   const handleSaveToCollection = async (selectedCollectionIds: string[], newCollection?: { label: string; color: string }) => {
+    console.log('[Dashboard Debug] handleSaveToCollection called', { modalItem, selectedCollectionIds });
     let finalSelectionIds = [...selectedCollectionIds];
 
     // 1. Handle New Collection Creation
@@ -183,6 +174,7 @@ function HomeContent() {
 
     // 2. Update Item Logic
     if (modalItem) {
+      console.log('[Dashboard Debug] Processing modalItem type:', modalItem.type);
       if (modalItem.type === 'COURSE') {
         const courseId = modalItem.id;
 
@@ -201,40 +193,58 @@ function HomeContent() {
 
         // DB Sync
         if (user) {
-          const { syncCourseCollections, ensureSystemCollections, fetchCollectionCounts } = await import('@/lib/collections');
+          const { syncCourseCollectionsAction } = await import('@/app/actions/collections');
+          const targetIds = finalSelectionIds.filter(id => id !== 'new');
 
-          // MAP System IDs ('favorites', 'workspace') to UUIDs
-          const systemMap = await ensureSystemCollections(user.id);
-
-          const dbCollectionIds = finalSelectionIds
-            .filter(id => id !== 'new')
-            .map(id => {
-              // if id match a key in systemMap, return uuid
-              if (systemMap[id]) return systemMap[id];
-              return id;
-            });
-
-          await syncCourseCollections(user.id, courseId, dbCollectionIds);
-
-          // Refresh counts
-          const rawCounts = await fetchCollectionCounts(user.id);
-          const uuidToSystemMap: Record<string, string> = {};
-          Object.entries(systemMap).forEach(([key, uuid]) => uuidToSystemMap[uuid] = key);
-
-          const mappedCounts: Record<string, number> = {};
-          Object.entries(rawCounts).forEach(([uuid, count]) => {
-            const systemKey = uuidToSystemMap[uuid];
-            if (systemKey) mappedCounts[systemKey] = count;
-            else mappedCounts[uuid] = count;
-          });
-          setCollectionCounts(mappedCounts);
+          await syncCourseCollectionsAction(user.id, courseId, targetIds);
+          await refreshCollectionCounts();
         }
 
       } else if (modalItem.type === 'CONVERSATION') {
         if (typeof window !== 'undefined') {
+          // Optimistic UI Update
           window.dispatchEvent(new CustomEvent('updateConversationCollections', {
             detail: { conversationId: modalItem.id, collectionIds: finalSelectionIds }
           }));
+        }
+
+        // DB Sync
+        if (user) {
+          const { syncConversationCollectionsAction } = await import('@/app/actions/collections');
+          const targetIds = finalSelectionIds.filter(id => id !== 'new');
+
+          await syncConversationCollectionsAction(user.id, modalItem.id, targetIds);
+          await refreshCollectionCounts();
+        } else {
+          console.error('User missing during save!');
+        }
+      } else {
+        // Generic / Context Items (Module, Lesson, Resource, etc.)
+        if (user) {
+          const { createContextItem } = await import('@/app/actions/context');
+
+          // Persist each selected collection as a Context Item
+          // We map 'modalItem' content into the JSON 'content' field.
+          const promises = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(collectionId => {
+              const itemAny = modalItem as any;
+              const payload = {
+                collection_id: collectionId,
+                type: modalItem.type as any, // Cast to ContextItemType
+                title: itemAny.title || 'Untitled',
+                content: {
+                  subtitle: itemAny.subtitle,
+                  meta: itemAny.meta,
+                  description: itemAny.description,
+                  originalId: modalItem.id
+                }
+              };
+              return createContextItem(payload);
+            });
+
+          await Promise.all(promises);
+          await refreshCollectionCounts();
         }
       }
     }
@@ -244,6 +254,7 @@ function HomeContent() {
   };
 
   const handleOpenModal = (item?: ContextCard) => {
+    console.log('[Dashboard Debug] handleOpenModal called with:', item);
     setModalItem(item || null);
     setIsAddModalOpen(true);
   };

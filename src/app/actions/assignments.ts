@@ -111,16 +111,20 @@ export async function getDirectAssignments(assigneeType: 'user' | 'group', assig
     // we might need to fetch content details separately or rely on client to fetch.
     // For MVP, let's try to fetch course titles if content_type is course.
     
-    // Optimization: Polyfill titles.
     const enriched = await Promise.all(assignments.map(async (a) => {
         let title = 'Unknown Content';
+        let thumbnail_url: string | undefined;
         if (a.content_type === 'course') {
-            const { data: course } = await client.from('courses').select('title').eq('id', a.content_id).single();
-            if (course) title = course.title;
+            const { data: course } = await client.from('courses').select('title, image').eq('id', a.content_id).single();
+            if (course) {
+                title = course.title;
+                // @ts-ignore
+                if (course.image) thumbnail_url = course.image;
+            }
         }
         return {
             ...a,
-            content_details: { title }
+            content_details: { title, thumbnail_url }
         };
     }));
 
@@ -179,13 +183,18 @@ export async function getUserAggregateAssignments(userId: string) {
     // Enrich (similar to above)
      const enriched = await Promise.all(all.map(async (a) => {
         let title = 'Unknown Content';
+        let thumbnail_url: string | undefined;
         if (a.content_type === 'course') {
-            const { data: course } = await supabase.from('courses').select('title').eq('id', a.content_id).single();
-            if (course) title = course.title;
+            const { data: course } = await supabase.from('courses').select('title, image').eq('id', a.content_id).single();
+            if (course) {
+                title = course.title;
+                // @ts-ignore
+                if (course.image) thumbnail_url = course.image;
+            }
         }
         return {
             ...a,
-            content_details: { title }
+            content_details: { title, thumbnail_url }
         };
     }));
 

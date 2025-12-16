@@ -17,7 +17,7 @@ import {
     MessageSquare
 } from 'lucide-react';
 import { Course } from '@/types';
-import CardStack from '../CardStack';
+import UniversalCard from '../cards/UniversalCard';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { fetchPromptSuggestions } from '@/lib/prompts';
 
@@ -28,9 +28,10 @@ interface EmployeeDashboardProps {
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
+    onAddCourse: (course: Course) => void;
 }
 
-const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, onNavigate, onStartCourse, onOpenAIPanel, onSetAIPrompt }) => {
+const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, onNavigate, onStartCourse, onOpenAIPanel, onSetAIPrompt, onAddCourse }) => {
     const [aiPrompt, setAiPrompt] = useState('');
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
@@ -253,31 +254,21 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                     </div>
 
                     {assignedCourses.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
                             {assignedCourses.map(course => (
-                                <div key={course.id} className="relative group cursor-pointer" onClick={() => onStartCourse(course.id)}>
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-red to-brand-orange opacity-20 group-hover:opacity-100 blur transition duration-500 rounded-2xl"></div>
-                                    <div className="relative h-full bg-[#0A0D12] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
-                                        <div className="h-40 relative">
-                                            <img src={course.image} alt={course.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                            <div className="absolute top-3 right-3 bg-brand-red text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
-                                                REQUIRED
-                                            </div>
-                                        </div>
-                                        <div className="p-5 flex-1 flex flex-col">
-                                            <h3 className="text-lg font-medium text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">{course.title}</h3>
-                                            <p className="text-sm text-slate-400 mb-4 line-clamp-2 flex-1">{course.description}</p>
-                                            <div className="flex items-center justify-between mt-auto">
-                                                <div className="flex items-center text-xs text-slate-500">
-                                                    <Clock size={12} className="mr-1" /> {course.duration}
-                                                </div>
-                                                <div className="flex items-center text-xs text-brand-red font-bold">
-                                                    Due in 5 days
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <UniversalCard
+                                    key={course.id}
+                                    type="COURSE"
+                                    title={course.title}
+                                    description={course.description}
+                                    imageUrl={course.image}
+                                    meta={`Due in 5 days`} // Mock due date from existing code
+                                    categories={["REQUIRED"]}
+                                    actionLabel="START"
+                                    rating={course.rating}
+                                    onAction={() => onStartCourse(course.id)}
+                                    onAdd={() => onAddCourse(course)}
+                                />
                             ))}
                         </div>
                     ) : (
@@ -299,36 +290,25 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
                             {inProgressCourses.map(course => (
-                                <div key={course.id} className="group relative" onClick={() => onStartCourse(course.id)}>
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue-light to-brand-purple opacity-0 group-hover:opacity-50 blur transition duration-500 rounded-2xl"></div>
-                                    <div className="relative bg-[#0A0D12] border border-white/10 rounded-2xl p-4 flex gap-4 cursor-pointer hover:bg-white/5 transition-colors">
-                                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 relative">
-                                            <img src={course.image} alt={course.title} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Play size={24} className="text-white fill-white" />
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 flex flex-col justify-center">
-                                            <h3 className="text-sm font-bold text-white mb-1 line-clamp-1 group-hover:text-brand-blue-light transition-colors">{course.title}</h3>
-                                            <p className="text-xs text-slate-400 mb-3 line-clamp-1">{course.author}</p>
-
-                                            {/* Progress Bar */}
-                                            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mb-1">
-                                                <div className="bg-brand-blue-light h-full rounded-full" style={{ width: `${course.progress}%` }}></div>
-                                            </div>
-                                            <div className="flex justify-between text-[10px] text-slate-500">
-                                                <span>{course.progress}% Complete</span>
-                                                <span>{course.duration} left</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <UniversalCard
+                                    key={course.id}
+                                    type="COURSE"
+                                    title={course.title}
+                                    subtitle={course.author}
+                                    imageUrl={course.image}
+                                    meta={`${course.progress}% Complete`}
+                                    categories={["IN PROGRESS"]}
+                                    actionLabel="RESUME"
+                                    rating={course.rating}
+                                    onAction={() => onStartCourse(course.id)}
+                                    onAdd={() => onAddCourse(course)}
+                                />
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+                        <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-10 flex flex-col items-center text-center">
                             <p className="text-slate-400">You haven't started any courses yet. Visit the Academy to begin!</p>
                             <button onClick={() => onNavigate('academy')} className="mt-4 px-6 py-2 bg-brand-blue-light text-brand-black rounded-lg font-bold hover:bg-white transition-colors">
                                 Browse Courses

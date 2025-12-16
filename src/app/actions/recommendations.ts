@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { generateOpenRouterResponse } from '@/app/actions/ai';
 import { Course } from '@/types';
-import { fetchCourses } from '@/lib/courses';
+import { fetchCoursesAction } from '@/app/actions/courses';
 
 export async function getRecommendedCourses(userId: string): Promise<Course[]> {
     const supabase = await createClient();
@@ -20,8 +20,8 @@ export async function getRecommendedCourses(userId: string): Promise<Course[]> {
         return [];
     }
 
-    // 2. Fetch All Courses
-    const allCourses = await fetchCourses();
+    // 2. Fetch All Courses (Securely)
+    const { courses: allCourses } = await fetchCoursesAction();
 
     // 3. Construct Prompt (Using Backend AI Library)
     const courseList = allCourses.map(c => `- ID: ${c.id}, Title: "${c.title}", Category: ${c.category}, Description: "${c.description}"`).join('\n');

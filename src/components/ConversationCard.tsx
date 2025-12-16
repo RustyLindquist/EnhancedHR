@@ -33,7 +33,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
 
     return (
         <div
-            className="relative group cursor-pointer w-full h-64 perspective-1000"
+            className="relative group cursor-pointer w-full h-72 perspective-1000"
             onClick={() => onClick && onClick(id)}
         >
             {/* --- Main Card (Glass) --- */}
@@ -68,7 +68,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
                             <MessageSquare size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-white leading-tight group-hover:text-brand-blue-light transition-colors line-clamp-1">
+                            <h3 className="text-lg font-bold text-white leading-tight group-hover:text-brand-blue-light transition-colors line-clamp-2">
                                 {title}
                             </h3>
                             <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">

@@ -20,6 +20,7 @@ import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
+import UniversalCard from '../cards/UniversalCard';
 
 interface UserDashboardV3Props {
     user: any;
@@ -29,6 +30,7 @@ interface UserDashboardV3Props {
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
     onSetPrometheusPagePrompt: (prompt: string) => void;
+    onAddCourse: (course: Course) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
@@ -38,8 +40,10 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     onStartCourse,
     onOpenAIPanel,
     onSetAIPrompt,
-    onSetPrometheusPagePrompt
+    onSetPrometheusPagePrompt,
+    onAddCourse
 }) => {
+    // ... existing state ...
     const [aiPrompt, setAiPrompt] = useState('');
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
@@ -290,43 +294,57 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     {/* Course Cards Grid */}
                     <div className="min-h-[220px]">
                         {activeTab === 'trending' ? (
-                            <div className="grid grid-cols-4 gap-4 animate-fade-in">
+                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
                                 {trendingCourses.length > 0 ? trendingCourses.slice(0, 4).map((course, idx) => (
-                                    <div key={course.id} className="group cursor-pointer" onClick={() => onStartCourse(course.id)}>
-                                        <div className="relative aspect-video rounded-lg overflow-hidden mb-2 border border-white/5 group-hover:border-white/20 transition-colors">
-                                            <img src={course.image} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                            <div className="absolute top-2 left-2 bg-black/70 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-white flex items-center gap-1">
-                                                <TrendingUp size={10} className="text-rose-400" /> #{idx + 1}
-                                            </div>
-                                        </div>
-                                        <h3 className="text-sm font-medium text-slate-200 group-hover:text-white line-clamp-1 transition-colors">{course.title}</h3>
-                                        <p className="text-xs text-slate-600">{course.author}</p>
-                                    </div>
+                                    <UniversalCard
+                                        key={course.id}
+                                        type="COURSE"
+                                        title={course.title}
+                                        subtitle={course.author}
+                                        imageUrl={course.image}
+                                        meta={course.duration}
+                                        categories={[`#${idx + 1} TRENDING`]}
+                                        credits={{
+                                            shrm: course.badges?.includes('SHRM'),
+                                            hrci: course.badges?.includes('HRCI')
+                                        }}
+                                        actionLabel="VIEW"
+                                        rating={course.rating}
+                                        onAction={() => onStartCourse(course.id)}
+                                        onAdd={() => onAddCourse(course)}
+                                    />
                                 )) : (
-                                    <div className="col-span-4 text-center text-slate-600 py-12">No trending courses available</div>
+                                    <div className="col-span-full text-center text-slate-600 py-12">No trending courses available</div>
                                 )}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-4 gap-4 animate-fade-in">
+                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
                                 {loadingRecommendations ? (
-                                    <div className="col-span-4 flex justify-center py-16">
+                                    <div className="col-span-full flex justify-center py-16">
                                         <Loader2 size={24} className="animate-spin text-brand-blue-light" />
                                     </div>
                                 ) : recommendedCourses.length > 0 ? (
                                     recommendedCourses.slice(0, 4).map((course) => (
-                                        <div key={course.id} className="group cursor-pointer" onClick={() => onStartCourse(course.id)}>
-                                            <div className="relative aspect-video rounded-lg overflow-hidden mb-2 border border-white/5 group-hover:border-brand-blue-light/30 transition-colors">
-                                                <img src={course.image} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                                <div className="absolute top-2 left-2 bg-black/70 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-white flex items-center gap-1">
-                                                    <Sparkles size={10} className="text-brand-blue-light" /> For You
-                                                </div>
-                                            </div>
-                                            <h3 className="text-sm font-medium text-slate-200 group-hover:text-white line-clamp-1 transition-colors">{course.title}</h3>
-                                            <p className="text-xs text-slate-600">{course.author}</p>
-                                        </div>
+                                        <UniversalCard
+                                            key={course.id}
+                                            type="COURSE"
+                                            title={course.title}
+                                            subtitle={course.author}
+                                            imageUrl={course.image}
+                                            meta={course.duration}
+                                            categories={["FOR YOU"]}
+                                            credits={{
+                                                shrm: course.badges?.includes('SHRM'),
+                                                hrci: course.badges?.includes('HRCI')
+                                            }}
+                                            actionLabel="VIEW"
+                                            rating={course.rating}
+                                            onAction={() => onStartCourse(course.id)}
+                                            onAdd={() => onAddCourse(course)}
+                                        />
                                     ))
                                 ) : (
-                                    <div className="col-span-4 text-center text-slate-600 py-12">
+                                    <div className="col-span-full text-center text-slate-600 py-12">
                                         Unable to generate recommendations
                                     </div>
                                 )}
@@ -345,28 +363,25 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
                             {inProgressCourses.map(course => (
-                                <div
+                                <UniversalCard
                                     key={course.id}
-                                    onClick={() => onStartCourse(course.id)}
-                                    className="group bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.1] rounded-xl p-4 flex gap-4 cursor-pointer transition-all"
-                                >
-                                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 relative">
-                                        <img src={course.image} alt={course.title} className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Play size={20} className="text-white fill-white" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 flex flex-col justify-center min-w-0">
-                                        <h3 className="text-sm font-medium text-slate-200 group-hover:text-white mb-1 truncate transition-colors">{course.title}</h3>
-                                        <p className="text-xs text-slate-600 mb-2 truncate">{course.author}</p>
-                                        <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                                            <div className="bg-brand-blue-light h-full rounded-full transition-all" style={{ width: `${course.progress}%` }} />
-                                        </div>
-                                        <div className="text-[10px] text-slate-600 mt-1">{course.progress}% complete</div>
-                                    </div>
-                                </div>
+                                    type="COURSE"
+                                    title={course.title}
+                                    subtitle={course.author}
+                                    imageUrl={course.image}
+                                    meta={`${course.progress}% Complete`}
+                                    categories={["IN PROGRESS"]}
+                                    actionLabel="RESUME"
+                                    rating={course.rating}
+                                    onAction={() => onStartCourse(course.id)}
+                                    // onAdd={() => onAddCourse(course)} 
+                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress? 
+                                    // But user said "on Dashboard, there should only be the 'add' icon".
+                                    // Let's ensure consistency.
+                                    onAdd={() => onAddCourse(course)}
+                                />
                             ))}
                         </div>
                     ) : (

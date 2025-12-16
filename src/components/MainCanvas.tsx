@@ -1,6 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp } from 'lucide-react';
 import CardStack from './CardStack';
+import UniversalCard from './cards/UniversalCard';
 import CollectionSurface from './CollectionSurface';
 import TeamManagement from '@/components/org/TeamManagement';
 import AlertBox from './AlertBox';
@@ -260,10 +261,10 @@ const GenericVisual = () => (
     <div className="flex justify-center gap-6 opacity-40 select-none pointer-events-none">
         {[1, 2, 3].map((i) => (
             <div key={i} className={`
-              w-48 h-64 rounded-xl border-2 border-dashed border-slate-500/50 bg-white/5 
-              flex flex-col p-4 gap-3 transform
+w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 bg - white / 5 
+              flex flex - col p - 4 gap - 3 transform
               ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
-          `}>
+`}>
                 <div className="w-full h-24 bg-slate-500/20 rounded-lg"></div>
                 <div className="w-3/4 h-2 bg-slate-500/20 rounded"></div>
                 <div className="w-1/2 h-2 bg-slate-500/20 rounded"></div>
@@ -295,7 +296,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
         const platformCardTitleClass = "text-red-500"; // Red title as requested
 
         return (
-            <div className={`max-w-4xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+            <div className={`w-full max-w-6xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
 
                 {/* EMPTY STATE */}
                 {isEmptyState && (
@@ -315,11 +316,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                         <div className="pt-[100px]"></div>
 
                         <div className="max-w-2xl mx-auto space-y-4">
-                            <p className={`text-slate-300 text-base font-light leading-relaxed ${alignmentClass}`}>
+                            <p className={`text - slate - 300 text - base font - light leading - relaxed ${alignmentClass} `}>
                                 This is where you'll find your conversation history with Prometheus, your AI assistant for deeply personalized learning. Start your first conversation now!
                             </p>
 
-                            <p className={`text-slate-500 text-sm ${alignmentClass} pb-[50px]`}>
+                            <p className={`text - slate - 500 text - sm ${alignmentClass} pb - [50px]`}>
                                 Note: You can access Prometheus from several places.
                             </p>
                         </div>
@@ -354,7 +355,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
                 {isEmptyState && (
                     <>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
                             <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
                                 <h3 className="text-brand-blue-light font-bold mb-3 flex items-center gap-2">
                                     <GraduationCap size={18} /> Within a Course
@@ -374,7 +375,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                             </div>
 
                             <div className="bg-white/5 border border-white/10 p-6 rounded-xl backdrop-blur-sm hover:bg-white/10 transition-colors">
-                                <h3 className={`${platformCardTitleClass} font-bold mb-3 flex items-center gap-2`}>
+                                <h3 className={`${platformCardTitleClass} font - bold mb - 3 flex items - center gap - 2`}>
                                     <Flame size={18} /> Platform Assistant
                                 </h3>
                                 <p className="text-xs text-slate-400 leading-relaxed">
@@ -398,11 +399,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     if (type === 'company') {
         return (
-            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>There are no Company Collections Yet</h2>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Company Collections</h2>
+            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
+                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>There are no Company Collections Yet</h2>
+                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Company Collections</h2>
 
-                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
+                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
                     <p>
                         This is where your organization can create custom collections. They can add courses and content to a collection, assign employees to that collection, and even designate content within that collection as required learning.
                     </p>
@@ -430,7 +431,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                     </div>
                 </div>
 
-                <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
+                <p className={`text - slate - 400 text - lg italic border - t border - brand - blue - light / 10 pt - 6 mt - 6 ${alignmentClass} `}>
                     Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
                 </p>
             </div >
@@ -439,11 +440,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     if (type === 'instructors') {
         return (
-            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Experts</h2>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Experts</h2>
+            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
+                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>Meet Our World-Class Experts</h2>
+                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Our Experts</h2>
 
-                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
+                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
                     <p>
                         Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
                     </p>
@@ -476,10 +477,10 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     // Generic
     return (
-        <div className={`max-w-2xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>No content has been saved to this collection.</h2>
-            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Collections</h2>
-            <div className={`text-slate-400 space-y-4 leading-relaxed font-light ${alignmentClass}`}>
+        <div className={`max - w - 2xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
+            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>No content has been saved to this collection.</h2>
+            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Collections</h2>
+            <div className={`text - slate - 400 space - y - 4 leading - relaxed font - light ${alignmentClass} `}>
                 <p>Use collections to organize content from across the platform into dedicated workspaces. They can include Courses, Modules, Lessons, Activities, Files, and even AI Conversations.</p>
                 <p>On the right-side of your Collection, you'll notice the ability to ask questions from our helpful Prometheus AI assistant. Prometheus uses whatever is in your collection as context.</p>
                 <p>To add content to a collection, simply click the little <span className="inline-flex items-center justify-center w-5 h-5 bg-brand-orange rounded-full mx-1 align-middle"><Plus size={10} className="text-white" /></span> icon on any card, or drag it to the Collection Surface at the bottom of your screen.</p>
@@ -515,7 +516,7 @@ const LazyCourseCard: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }, []);
 
     return (
-        <div ref={containerRef} className="h-[28rem] w-full relative">
+        <div ref={containerRef} className="min-h-[310px] w-full relative">
             {isVisible ? children : null}
         </div>
     );
@@ -646,29 +647,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    // Fetch collection items when active collection changes (if it's a "saved" collection type)
-    useEffect(() => {
-        const isStandardNav = COLLECTION_NAV_ITEMS.some(i => i.id === activeCollectionId && i.id !== 'favorites'); // 'favorites' is a saved collection
-        const isCustom = customCollections.some(c => c.id === activeCollectionId);
 
-        // If it's favorites, default collections, or a custom collection, fetch items
-        if (activeCollectionId === 'favorites' ||
-            activeCollectionId === 'research' ||
-            activeCollectionId === 'to_learn' ||
-            isCustom ||
-            activeCollectionId === 'personal-context') {
-            setIsLoadingCollection(true);
-            fetchCollectionItems(activeCollectionId)
-                .then(items => {
-                    setCollectionItems(items);
-                    setIsLoadingCollection(false);
-                })
-                .catch(err => {
-                    console.error("Failed to load collection items", err);
-                    setIsLoadingCollection(false);
-                });
-        }
-    }, [activeCollectionId, savedItemIds, customCollections, fetchCollectionItems, refreshTrigger]); // Reload if saved items change (e.g. removed from another view)
 
 
 
@@ -743,7 +722,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setEditingContextItem(null);
         // Refresh items after close (in case of save)
         if (activeCollectionId === 'personal-context' || customCollections.some(c => c.id === activeCollectionId)) {
-            fetchCollectionItems(activeCollectionId).then(setCollectionItems);
+            fetchCollectionItems(activeCollectionId).then(res => setCollectionItems(res.items));
         }
     };
     const [flaringPortalId, setFlaringPortalId] = useState<string | null>(null);
@@ -1254,51 +1233,19 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const fetchConversations = async () => {
         try {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (user) {
-                const { data, error } = await supabase
-                    .from('conversations')
-                    .select('*, messages:conversation_messages(content, created_at)')
-                    .eq('user_id', user.id)
-                    .order('updated_at', { ascending: false });
-
-                if (error) {
-                    console.error("Failed to fetch conversations from DB", error);
-                } else {
-                    // Map DB records to UI Conversation type
-                    const mappedConversations = (data || []).map((c: any) => {
-                        // Extract last message from the joined messages array
-                        // The default order of joined array might not be guaranteed, so we sort just in case
-                        const sortedMessages = (c.messages || []).sort((a: any, b: any) =>
-                            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                        );
-
-                        const lastMsgContent = sortedMessages.length > 0
-                            ? sortedMessages[sortedMessages.length - 1].content
-                            : '';
-
-                        return {
-                            ...c,
-                            lastMessage: lastMsgContent,
-                            messages: sortedMessages, // Also store for full hydration if needed
-                            collections: ['conversations']
-                        };
-                    });
-                    setConversations(mappedConversations);
-                }
-            }
+            const { fetchConversationsAction } = await import('@/app/actions/conversations');
+            const data = await fetchConversationsAction();
+            console.log('[MainCanvas] fetchConversationsAction returned:', data?.length, 'items');
+            setConversations(data);
         } catch (error: any) {
             console.error("Failed to fetch conversations", error);
         }
     };
 
     useEffect(() => {
-        if (user) {
-            fetchConversations();
-        }
-    }, [user]);
+        // Load on mount
+        fetchConversations();
+    }, []);
 
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
     const [deleteConversationModalOpen, setDeleteConversationModalOpen] = useState(false);
@@ -1311,6 +1258,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [deleteContextModalOpen, setDeleteContextModalOpen] = useState(false);
     const [contextItemToDelete, setContextItemToDelete] = useState<{ id: string; type: ContextItemType; title: string } | null>(null);
 
+
+
     // --- Actions ---
 
     const handleDeleteConversationInitiate = (conv: any) => {
@@ -1322,7 +1271,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (!conversationToDelete) return;
         setDeleteConversationModalOpen(false);
         try {
-            await fetch(`/api/conversations/${conversationToDelete.id}`, {
+            await fetch(`/ api / conversations / ${conversationToDelete.id} `, {
                 method: 'DELETE'
             });
             setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
@@ -1447,15 +1396,36 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     updated_at: now,
                     // We don't necessarily need to store all messages in the list view state, but we can
                 };
+
+                // CRITICAL FIX: Ensure activeConversation is synced so UI updates (like Add to Collection button)
+                if (activeConversation?.id === id || !activeConversation) {
+                    setActiveConversation(updated[existingIndex]);
+                }
+
                 return updated;
             } else {
+                // New Conversation Logic
+                const newConv: Conversation = {
+                    id: id,
+                    title: title,
+                    created_at: now,
+                    updated_at: now,
+                    messages: updatedMessages || [],
+                    lastMessage: updatedMessages && updatedMessages.length > 0 ? updatedMessages[updatedMessages.length - 1].content : '',
+                    type: 'CONVERSATION',
+                    collections: ['conversations'],
+                    isSaved: false // New conversations aren't saved to a collection yet
+                };
+
+                setActiveConversation(newConv);
+
                 // If it's a new conversation that we just started, we might need to fetch it or create a placeholder
                 // But PrometheusFullPage should have created it via API.
                 // Let's trigger a fetch
                 fetchConversations();
                 // Refresh global counts since we added a new conversation
                 if (onCollectionUpdate) onCollectionUpdate();
-                return prev;
+                return [...prev, newConv]; // Optimistically add to list
             }
         });
     };
@@ -1491,7 +1461,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     useEffect(() => {
         if (activeCollectionId === 'prometheus') {
             const now = Date.now();
-            const persistenceDuration = 5 * 60 * 1000; // 5 mins
+            const persistenceDuration = 10 * 60 * 1000; // 10 mins
 
             if (lastPrometheusExitTime && (now - lastPrometheusExitTime > persistenceDuration)) {
                 // Expired
@@ -1531,7 +1501,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'academy') return 'All Courses';
         if (activeCollectionId === 'dashboard') {
             const firstName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
-            return `Welcome ${firstName}`;
+            return `Welcome ${firstName} `;
         }
         if (activeCollectionId === 'instructors') return 'Course Experts';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
@@ -1556,12 +1526,119 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Helper to determine if a specific collection is effectively empty (contains no courses)
     // This is different from "No Results" due to filtering.
-    const visibleConversations = conversations.filter(c => c.collections?.includes(activeCollectionId));
+
+    // RESOLVE ALIAS TO UUID for Filtering
+    const resolvedCollectionId = useMemo(() => {
+        const SYSTEM_MAP: Record<string, string> = {
+            'favorites': 'Favorites',
+            'research': 'Workspace',
+            'to_learn': 'Watchlist',
+            'personal-context': 'Personal Context'
+        };
+
+        const label = SYSTEM_MAP[activeCollectionId];
+        if (label) {
+            const found = customCollections.find(c => c.label === label);
+            return found ? found.id : activeCollectionId;
+        }
+        return activeCollectionId;
+    }, [activeCollectionId, customCollections]);
+
+    // --- CONTEXT ITEMS FETCHING EFFECT ---
+    // --- CONTEXT ITEMS & COLLECTION COURSES FETCHING EFFECT ---
+    useEffect(() => {
+        const loadMixedItems = async () => {
+            // Guard: Don't fetch for system pages that aren't collections
+            if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy') {
+                setCollectionItems([]);
+                return;
+            }
+
+            // Determine if we should fetch Standard Items (Courses) via hook
+            const isStandardNav = COLLECTION_NAV_ITEMS.some(i => i.id === activeCollectionId && i.id !== 'favorites');
+            const isCustom = customCollections.some(c => c.id === activeCollectionId);
+            const shouldFetchStandard = activeCollectionId === 'favorites' ||
+                activeCollectionId === 'research' ||
+                activeCollectionId === 'to_learn' ||
+                activeCollectionId === 'personal-context' ||
+                isCustom;
+
+            setIsLoadingCollection(true);
+
+            try {
+                // Parallel Fetch
+                const standardPromise = shouldFetchStandard
+                    ? fetchCollectionItems(resolvedCollectionId || activeCollectionId)
+                        .then(res => res.items)
+                        .catch(err => {
+                            console.error("Failed to load standard collection items", err);
+                            return [];
+                        })
+                    : Promise.resolve([]);
+
+                const contextPromise = resolvedCollectionId
+                    ? import('@/app/actions/context').then(mod => mod.getContextItems(resolvedCollectionId)).catch(err => {
+                        console.error('[MainCanvas] Error fetching context items:', err);
+                        return [];
+                    })
+                    : Promise.resolve([]);
+
+                const [standardItems, contextItems] = await Promise.all([standardPromise, contextPromise]);
+
+                console.log('[MainCanvas] Fetched Items:', { standard: standardItems.length, context: contextItems.length });
+
+                // Map Context Items
+                const contextMapped: CollectionItemDetail[] = (contextItems as any[]).map(i => ({
+                    id: i.id,
+                    user_id: i.user_id,
+                    collection_id: i.collection_id || '',
+                    type: i.type,
+                    title: i.title,
+                    content: i.content,
+                    created_at: i.created_at,
+                    itemType: i.type as ContextItemType
+                }));
+
+                // Merge: Standard Items (Courses) + Context Items (Modules/Lessons)
+                // Filter out potential duplicates if needed? (Usually types differ)
+                setCollectionItems([...(standardItems as CollectionItemDetail[]), ...contextMapped]);
+
+            } catch (err) {
+                console.error("Error loading mixed collection items", err);
+                setCollectionItems([]);
+            } finally {
+                setIsLoadingCollection(false);
+            }
+        };
+
+        loadMixedItems();
+    }, [resolvedCollectionId, activeCollectionId, onCollectionUpdate, savedItemIds, customCollections, fetchCollectionItems, refreshTrigger]);
+
+    // --- Critical State Sync ---
+    // Ensure visibleCourses is populated when we have courses (fixes empty Academy view regression)
+    useEffect(() => {
+        if (courses.length > 0 && activeCollectionId === 'academy' && activeFilterCount === 0) {
+            setVisibleCourses(courses);
+        }
+    }, [courses, activeCollectionId, activeFilterCount]);
+
+    // Cleanup: Removed Debug Logging
+
+    const visibleConversations = conversations.filter(c => {
+        // Filter by the RESOLVED ID (UUID), not the alias
+        return c.collections?.includes(resolvedCollectionId);
+    });
 
     const isCollectionEmpty =
         activeCollectionId !== 'academy' &&
         activeCollectionId !== 'dashboard' &&
-        courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 &&
+        courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 && // Courses might still use string alias if not updated? ACTUALLY Courses use 'isSaved' mainly or IDs.. check standard behavior.
+        // Wait, standard courses use 'isSaved' boolean for Favorites usually? 
+        // Or do they use collections array? 
+        // In 'courses' definition: collections: string[]? 
+        // Let's check MainCanvas:955: if (!course.collections.includes(activeCollectionId)) return false;
+        // If courses ALSO use UUIDs now, we need to fix course filtering too!
+        // But for now, user issue is CONVERSATIONS.
         visibleConversations.length === 0;
 
     const isAcademyView = activeCollectionId === 'academy' && activeFilterCount === 0;
@@ -1587,10 +1664,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 </div>
 
                 {/* Toggle Button */}
+                {/* Toggle Button */}
                 <button
                     onClick={() => setExpandedFooter(!expandedFooter)}
                     className={`
-
                       flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all duration-300
                 ${expandedFooter
                             ? 'bg-brand-blue-light text-brand-black border-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.4)]'
@@ -1639,11 +1716,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
 
-
-    // --- DASHBOARD VIEW MOVED TO MAIN RENDER ---
-    // The dashboard is now rendered inside the main layout to preserve the header.
-
-
     if (selectedCourse) {
         if (isPlayerActive) {
             return (
@@ -1686,10 +1758,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     onStartCourse={handleStartCourse}
                     onDragStart={handleDragStart}
                     onAddToCollection={(item) => {
-                        // Mock add logic - in real app would open modal or toast
-                        console.log("Adding item to collection:", item);
-                        setFlaringPortalId('favorites'); // Simulating a drop effect
-                        setTimeout(() => setFlaringPortalId(null), 800);
+                        onOpenModal(item as any);
                     }}
                 />
 
@@ -1725,19 +1794,29 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     const renderCollectionContent = () => {
-        // Expanded to include 'research' (Workspace) and 'to_learn' (Watchlist)
+        // Expanded to include 'research' (Workspace) and 'to_learn' (Watchlist) and 'conversations'
         const isUniversalCollection = activeCollectionId === 'favorites' ||
             activeCollectionId === 'research' ||
             activeCollectionId === 'to_learn' ||
+            activeCollectionId === 'conversations' || // Added conversations
             activeCollectionId === 'personal-context' ||
             customCollections.some(c => c.id === activeCollectionId);
 
         if (isUniversalCollection) {
-            if (isLoadingCollection && activeCollectionId !== 'personal-context') {
+            if (isLoadingCollection && activeCollectionId !== 'personal-context' && activeCollectionId !== 'conversations') {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
             }
 
-            let displayItems = [...collectionItems];
+            // Determine items source
+            let sourceItems = collectionItems;
+            if (activeCollectionId === 'conversations') {
+                sourceItems = conversations.map(c => ({
+                    ...c,
+                    itemType: 'CONVERSATION' // Map type to itemType for UniversalCollectionCard
+                })) as any[];
+            }
+
+            let displayItems = sourceItems;
 
             // VIRTUAL PROFILE CARD LOGIC (Robust)
             // VIRTUAL PROFILE CARD LOGIC (Robust)
@@ -1761,6 +1840,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     // Even if only 1 profile, ensure it is FIRST in the list
                     displayItems = [profiles[0], ...others];
                 }
+            } else {
+                // For standard collections (Favorites, Custom), merge in relevant conversations
+                const conversationItems = visibleConversations.map(c => ({
+                    ...c,
+                    itemType: 'CONVERSATION',
+                    // Ensure title/subtitle maps correctly if needed by UniversalCollectionCard
+                    // Conversation has 'title', UniversalCollectionCard expects 'title'
+                })) as any[];
+                displayItems = [...sourceItems, ...conversationItems];
             }
 
             if (displayItems.length === 0) {
@@ -1777,7 +1865,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                     {displayItems.map((item, index) => (
                         <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}>
@@ -1829,7 +1917,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
         // Default Grid (All Courses / Filtered)
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 pb-20">
                 {visibleCourses.map((course, index) => (
                     <div
                         key={course.id}
@@ -1837,14 +1925,27 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         style={{
                             opacity: isDrawerOpen ? 0 : 1,
                             transform: isDrawerOpen ? 'translateY(20px) scale(0.95)' : 'translateY(0) scale(1)',
-                            transitionDelay: `${index * 50}ms`
+                            transitionDelay: `${index * 50} ms`
                         }}
                     >
-                        <CardStack
-                            {...course}
-                            onAddClick={() => onOpenModal(course)}
+                        <UniversalCard
+                            type="COURSE"
+                            title={course.title}
+                            subtitle={course.author}
+                            description={course.description}
+                            imageUrl={course.image}
+                            meta={course.duration}
+                            categories={[course.category]}
+                            rating={course.rating}
+                            credits={{
+                                shrm: course.badges?.includes('SHRM'),
+                                hrci: course.badges?.includes('HRCI')
+                            }}
+                            actionLabel="VIEW"
+                            onAction={() => handleCourseClick(course.id)}
+                            onAdd={() => onOpenModal(course)}
+                            draggable={true}
                             onDragStart={() => handleCourseDragStart(course.id)}
-                            onClick={() => handleCourseClick(course.id)}
                         />
                     </div>
                 ))}
@@ -1953,7 +2054,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     ) : (
                         <>
                             {/* Search Input */}
-                            <div className="relative mb-8 group">
+                            <div className="relative mb-8 mt-10 group">
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
                                 <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
                                     <Search size={20} className="text-slate-500 mr-4" />
@@ -2058,12 +2159,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         <button
                                             onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'ALL' }))}
                                             className={`
-                w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
+w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'ALL'
                                                     ? 'bg-brand-orange/20 border-brand-orange text-white'
                                                     : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                                 }
-                `}
+`}
                                         >
                                             <span>Any Rating</span>
                                             {pendingFilters.ratingFilter === 'ALL' && <Check size={14} className="text-brand-orange" />}
@@ -2080,12 +2181,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                 key={opt.val}
                                                 onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: opt.val as RatingFilterType }))}
                                                 className={`
-                w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
+w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === opt.val
                                                         ? 'bg-brand-orange/20 border-brand-orange text-white'
                                                         : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                                     }
-                `}
+`}
                                             >
                                                 <span>{opt.label}</span>
                                                 {pendingFilters.ratingFilter === opt.val && <Check size={14} className="text-brand-orange" />}
@@ -2096,12 +2197,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         <button
                                             onClick={() => setPendingFilters(prev => ({ ...prev, ratingFilter: 'NOT_RATED' }))}
                                             className={`
-                w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
+w-full flex items-center justify-between px-3 py-2 rounded border text-sm transition-all
                                     ${pendingFilters.ratingFilter === 'NOT_RATED'
                                                     ? 'bg-brand-orange/20 border-brand-orange text-white'
                                                     : 'bg-transparent border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                                 }
-                `}
+`}
                                         >
                                             <span>Not Yet Rated</span>
                                             {pendingFilters.ratingFilter === 'NOT_RATED' && <Check size={14} className="text-brand-orange" />}
@@ -2169,6 +2270,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 </GlobalTopPanel>
 
                 {/* --- Header --- */}
+                {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
                 {activeCollectionId !== 'org-team' && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div>
@@ -2263,8 +2365,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                             </div>
                                         )}
 
-                                    {activeCollectionId === 'prometheus' ? (
-                                        /* Prometheus Actions */
+                                    {activeCollectionId === 'conversations' ? (
                                         <div className="flex items-center gap-3">
                                             <button
                                                 onClick={handleNewConversation}
@@ -2272,8 +2373,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                             >
                                                 <MessageSquare size={14} /> New Conversation
                                             </button>
+                                        </div>
+                                    ) : activeCollectionId === 'prometheus' ? (
+                                        /* Prometheus Actions */
+                                        <div className="flex items-center gap-3">
+                                            {activeConversation && (
+                                                <button
+                                                    onClick={handleNewConversation}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                >
+                                                    <MessageSquare size={14} /> New Conversation
+                                                </button>
+                                            )}
 
-                                            {prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
+
+
+                                            {activeConversation && prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
                                                 <button
                                                     onClick={handleSaveConversation}
                                                     disabled={!!activeConversation?.isSaved}
@@ -2283,7 +2398,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                             ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
                                                             : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
                                                         }
-                                    `}
+`}
                                                 >
                                                     {activeConversation?.isSaved ? (
                                                         <>
@@ -2366,8 +2481,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Workspace (research), Watchlist (to_learn), Personal Context, Company, Custom Collections, Experts, Dashboard, Prometheus, Certifications */}
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus */}
                                     {!(activeCollectionId === 'favorites' ||
+                                        activeCollectionId === 'conversations' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
@@ -2376,16 +2492,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         activeCollectionId === 'dashboard' ||
                                         activeCollectionId === 'prometheus' ||
                                         activeCollectionId === 'certifications' ||
-                                        activeCollectionId === 'certifications' ||
                                         viewingGroup ||
-                                        customCollections.some(c => c.id === activeCollectionId)
+                                        (customCollections && customCollections.some(c => c.id === activeCollectionId))
                                     ) && (
                                             <button
                                                 onClick={handleOpenDrawer}
                                                 className={`
                                 group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
                                 ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
-                        `}
+`}
                                             >
                                                 {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
 
@@ -2458,18 +2573,19 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     isSaved={!!activeConversation?.isSaved || (activeConversationId ? !!conversations.find(c => c.id === activeConversationId)?.isSaved : false)}
                                     initialPrompt={prometheusPagePrompt}
                                     onPromptConsumed={handlePrometheusPromptConsumed}
+                                    onOpenDrawer={() => toggleDrawer('prompts')}
                                 />
                             </div>
-                        ) : activeCollectionId === 'dashboard' ? (
+                        ) : (activeCollectionId === 'dashboard' || activeCollectionId === 'employee-dashboard' || activeCollectionId === 'org-admin-dashboard') ? (
                             <div className={`flex-1 w-full h-full overflow-hidden relative z-10 ${useDashboardV3 ? '' : 'mt-[60px]'}`}>
-                                {user?.role === 'org_admin' ? (
+                                {activeCollectionId === 'org-admin-dashboard' || user?.role === 'org_admin' ? (
                                     <OrgAdminDashboard
                                         user={user}
                                         orgId={user.org_id || 'demo-org'}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
                                     />
-                                ) : user?.role === 'employee' ? (
+                                ) : activeCollectionId === 'employee-dashboard' || user?.role === 'employee' ? (
                                     <EmployeeDashboard
                                         user={user}
                                         courses={courses}
@@ -2477,6 +2593,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         onStartCourse={handleStartCourse}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
+                                        onAddCourse={(course) => onOpenModal(course)}
                                     />
                                 ) : (
                                     <UserDashboardV3
@@ -2487,6 +2604,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
                                         onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                        onAddCourse={(course) => onOpenModal(course)}
                                     />
                                 )}
                             </div>
@@ -2496,7 +2614,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             </div>
                         ) : (
                             <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
-                                <div className="max-w-7xl mx-auto w-full px-10 pt-[50px] pb-48">
+                                <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
                                     <div className="w-full" key={renderKey}>
 
 
@@ -2551,9 +2669,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                                     onClick={() => toggleCategory(category)}
                                                                 >
                                                                     <div className={`
-                p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
-                group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
-                    `}>
+p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
+group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
+    `}>
                                                                         {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                                                     </div>
 
@@ -2575,21 +2693,32 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
                                                             {/* Horizontal Scroll Row */}
                                                             {!isCollapsed && (
-                                                                <div className="flex overflow-x-auto pb-12 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
+                                                                <div className="flex overflow-x-auto pb-4 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
                                                                     {categoryCourses.map((course, index) => {
                                                                         const delay = Math.min(index, 10) * 50;
                                                                         return (
                                                                             <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
                                                                                 <LazyCourseCard>
                                                                                     <div
-                                                                                        style={{ transitionDelay: `${delay} ms` }}
-                                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()} `}
+                                                                                        style={{ transitionDelay: `${delay}ms` }}
+                                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
                                                                                     >
-                                                                                        <CardStack
-                                                                                            {...course}
-                                                                                            onAddClick={handleAddButtonClick}
-                                                                                            onDragStart={handleCourseDragStart}
-                                                                                            onClick={handleCourseClick}
+                                                                                        <UniversalCard
+                                                                                            type="COURSE"
+                                                                                            title={course.title}
+                                                                                            subtitle={course.author}
+                                                                                            imageUrl={course.image}
+                                                                                            meta={course.duration}
+                                                                                            description={course.description}
+                                                                                            rating={course.rating}
+                                                                                            categories={[course.category]}
+                                                                                            credits={{
+                                                                                                shrm: course.badges?.includes('SHRM'),
+                                                                                                hrci: course.badges?.includes('HRCI')
+                                                                                            }}
+                                                                                            actionLabel="VIEW"
+                                                                                            onAction={() => handleCourseClick(course.id)}
+                                                                                            onAdd={() => handleAddButtonClick(course.id)}
                                                                                         />
                                                                                     </div>
                                                                                 </LazyCourseCard>
@@ -2611,7 +2740,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                 activeCollectionId === 'org-collections' ||
                                                 activeCollectionId === 'org-analytics' ||
                                                 customCollections.some(c => c.id === activeCollectionId)) ? (
-                                                <div className="relative z-10 w-full max-w-[1600px] mx-auto px-8 pb-32">
+                                                <div className="relative z-10 w-full mx-auto px-4 pb-32">
                                                     {activeCollectionId === 'org-collections' ? (
                                                         <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
                                                             <Layers size={48} className="mb-4 opacity-20" />
@@ -2630,7 +2759,24 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                 </div>
                                             ) : (
                                                 <div className="pb-20">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12 mb-20 px-8">
+                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                                                        {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
+                                                        {collectionItems.map((item) => (
+                                                            <div key={item.id} className="animate-fade-in">
+                                                                <UniversalCollectionCard
+                                                                    item={item as any} // Dynamic mapping handles types
+                                                                    onRemove={(id, type) => initiateDeleteContextItem(id, type as ContextItemType, item.title)}
+                                                                    onClick={(i) => {
+                                                                        if (i.itemType === 'MODULE' || i.itemType === 'LESSON') {
+                                                                            // Ideally navigate to course? For now just open modal or log
+                                                                            console.log('Open item:', i);
+                                                                            // We could construct a course link if we had courseId, but simplistic start:
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ))}
+
                                                         {/* Render Courses */}
                                                         {visibleCourses.map((course, index) => {
                                                             const delay = Math.min(index, 15) * 50;
@@ -2640,11 +2786,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                                         style={{ transitionDelay: `${delay}ms` }}
                                                                         className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
                                                                     >
-                                                                        <CardStack
-                                                                            {...course}
-                                                                            onAddClick={handleAddButtonClick}
-                                                                            onDragStart={handleCourseDragStart}
-                                                                            onClick={handleCourseClick}
+                                                                        <UniversalCard
+                                                                            type="COURSE"
+                                                                            title={course.title}
+                                                                            subtitle={course.author}
+                                                                            imageUrl={course.image}
+                                                                            meta={course.duration}
+                                                                            description={course.description}
+                                                                            rating={course.rating}
+                                                                            categories={[course.category]}
+                                                                            credits={{
+                                                                                shrm: course.badges?.includes('SHRM'),
+                                                                                hrci: course.badges?.includes('HRCI')
+                                                                            }}
+                                                                            actionLabel="VIEW"
+                                                                            onAction={() => handleCourseClick(course.id)}
+                                                                            onAdd={() => handleAddButtonClick(course.id)}
                                                                         />
                                                                     </div>
                                                                 </LazyCourseCard>
@@ -2654,17 +2811,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                         {/* Render Conversations */}
                                                         {visibleConversations.map((conversation, index) => (
                                                             <div key={conversation.id} className="animate-fade-in" style={{ animationDelay: `${(visibleCourses.length + index) * 50}ms` }}>
-                                                                <ConversationCard
-                                                                    {...conversation}
-                                                                    onClick={handleOpenConversation}
-                                                                    onDelete={handleDeleteConversation}
+                                                                <UniversalCard
+                                                                    type="CONVERSATION"
+                                                                    title={conversation.title}
+                                                                    description={conversation.lastMessage}
+                                                                    meta={new Date(conversation.updated_at || new Date().toISOString()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                    actionLabel="RESUME"
+                                                                    onAction={() => handleOpenConversation(conversation.id)}
+                                                                    onRemove={() => handleDeleteConversation(conversation.id)}
+                                                                    onAdd={() => onOpenModal(conversation)}
                                                                 />
                                                             </div>
                                                         ))}
 
                                                         {/* Render Instructors */}
                                                         {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50} ms` }}>
                                                                 <InstructorCard
                                                                     instructor={instructor}
                                                                     onClick={setSelectedInstructorId}
@@ -2673,49 +2835,42 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                                         ))}
 
                                                         {/* DEBUG INFO */}
-                                                        <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                        {/* <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
                                                             Items: {collectionItems.length} |
                                                             Types: {collectionItems.map(i => i.itemType).join(',')} |
                                                             Active: {activeCollectionId} |
                                                             User: {user?.id}
-                                                        </div>
+                                                        </div> */}
 
-                                                        {/* Empty State */}
-                                                        {isCollectionEmpty ? (
-                                                            activeCollectionId === 'personal-context' ? (
-                                                                <div className="col-span-full">
-                                                                    {renderCollectionContent()}
-                                                                </div>
-                                                            ) : (
-                                                                // --- EMPTY COLLECTION STATES ---
-                                                                <div className={`col-span-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
-                                                                    {/* Visual Graphic at Top - Hide for Conversations */}
-                                                                    {activeCollectionId !== 'conversations' && (
-                                                                        <div className="mb-12 animate-float">
-                                                                            {renderCollectionVisual()}
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* Text Content */}
-                                                                    <CollectionInfo
-                                                                        type={activeCollectionId}
-                                                                        isEmptyState={true}
-                                                                        onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
-                                                                        onOpenDrawer={() => toggleDrawer('prompts')}
-                                                                        onOpenHelp={() => toggleDrawer('help')}
-                                                                    />
-                                                                </div>
-                                                            )) : (
-                                                            // --- NO RESULTS (Filter Context) ---
-                                                            visibleCourses.length === 0 && visibleConversations.length === 0 && activeCollectionId !== 'instructors' && (
-                                                                <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                                                                    <Search size={48} className="text-slate-600 mb-4" />
-                                                                    <p className="text-slate-400 text-lg">No courses found matching your filters.</p>
-                                                                    <button onClick={handleResetFilters} className="mt-4 text-brand-blue-light hover:underline">Clear Filters</button>
-                                                                </div>
-                                                            )
-                                                        )}
                                                     </div>
+
+                                                    {/* Empty State - MOVED OUTSIDE GRID */}
+                                                    {isCollectionEmpty && (
+                                                        activeCollectionId === 'personal-context' ? (
+                                                            <div className="w-full">
+                                                                {renderCollectionContent()}
+                                                            </div>
+                                                        ) : (
+                                                            // --- EMPTY COLLECTION STATES ---
+                                                            <div className={`w-full flex flex-col items-center justify-center ${activeCollectionId === 'conversations' ? 'pt-[65px] px-4' : 'py-16 px-4'}`}>
+                                                                {/* Visual Graphic at Top - Hide for Conversations */}
+                                                                {activeCollectionId !== 'conversations' && (
+                                                                    <div className="mb-12 animate-float">
+                                                                        {renderCollectionVisual()}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Text Content */}
+                                                                <CollectionInfo
+                                                                    type={activeCollectionId}
+                                                                    isEmptyState={true}
+                                                                    onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
+                                                                    onOpenDrawer={() => toggleDrawer('prompts')}
+                                                                    onOpenHelp={() => toggleDrawer('help')}
+                                                                />
+                                                            </div>
+                                                        )
+                                                    )}
 
                                                     {/* Populated Footer (Collection Info) */}
                                                     {visibleCourses.length > 0 && renderCollectionFooter()}
@@ -2814,7 +2969,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     }}
                 />
             </div >
-        </div>
+        </div >
 
 
 

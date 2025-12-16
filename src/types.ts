@@ -284,4 +284,5 @@ export interface DragItem {
   title?: string;
   subtitle?: string;
   image?: string; // For preview
+  meta?: string;
 }

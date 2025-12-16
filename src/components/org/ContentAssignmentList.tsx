@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Trash2, BookOpen, ExternalLink } from 'lucide-react';
 import { ContentAssignment } from '@/app/actions/assignments';
 import Link from 'next/link';
 import { removeAssignment } from '@/app/actions/assignments';
+import UniversalCard, { CardType } from '../cards/UniversalCard';
 
 interface ContentAssignmentListProps {
     assignments: ContentAssignment[];
@@ -34,43 +34,39 @@ const ContentAssignmentList: React.FC<ContentAssignmentListProps> = ({ assignmen
     }
 
     return (
-        <div className="space-y-2">
-            {assignments.map((assignment) => (
-                <div
-                    key={assignment.id}
-                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-brand-blue-light/30 transition-colors group"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-md ${assignment.content_type === 'course' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700/50 text-slate-400'}`}>
-                            <BookOpen size={16} />
-                        </div>
-                        <div>
-                            <Link href={`/${assignment.content_type === 'course' ? 'admin/courses/' + assignment.content_id : '#'}`} className="text-sm font-semibold text-white hover:text-brand-blue-light flex items-center gap-1 transition-colors">
-                                {assignment.content_details?.title || 'Untitled Content'}
-                            </Link>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${assignment.assignment_type === 'required'
-                                    ? 'bg-red-500/20 text-red-400 border border-red-500/20'
-                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                    }`}>
-                                    {assignment.assignment_type}
-                                </span>
-                                <span className="text-xs text-slate-400 capitalize">{assignment.content_type}</span>
-                            </div>
-                        </div>
-                    </div>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
+            {assignments.map((assignment) => {
+                // Map Type
+                let cardType: CardType = 'RESOURCE';
+                const typeUpper = assignment.content_type.toUpperCase();
+                if (['COURSE', 'MODULE', 'LESSON'].includes(typeUpper)) {
+                    cardType = typeUpper as CardType;
+                }
 
-                    {canManage && (
-                        <button
-                            onClick={() => handleRemove(assignment.id)}
-                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove Assignment"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
-            ))}
+                // Map Attributes
+                const title = assignment.content_details?.title || 'Untitled Content';
+                const imageUrl = assignment.content_details?.thumbnail_url;
+                const badges = [assignment.assignment_type.toUpperCase()];
+
+                const href = `/${assignment.content_type === 'course' ? 'admin/courses/' + assignment.content_id : '#'}`;
+
+                return (
+                    <div key={assignment.id} className="relative">
+                        <Link href={href} className="block h-full">
+                            <UniversalCard
+                                type={cardType}
+                                title={title}
+                                description={`Assigned as ${assignment.assignment_type}`}
+                                imageUrl={imageUrl}
+                                categories={badges}
+                                actionLabel="OPEN"
+                                onRemove={canManage ? () => handleRemove(assignment.id) : undefined}
+                                onAction={() => { }} // Let Link handle click, but button exists visually
+                            />
+                        </Link>
+                    </div>
+                );
+            })}
         </div>
     );
 };

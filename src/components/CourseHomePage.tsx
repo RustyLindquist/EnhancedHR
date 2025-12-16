@@ -411,7 +411,12 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onAddToCollection({ type: 'RESOURCE', id: resource.id, title: resource.title });
+                                                onAddToCollection({
+                                                    type: 'RESOURCE',
+                                                    id: resource.id,
+                                                    title: resource.title,
+                                                    subtitle: course.title
+                                                });
                                             }}
                                             className="absolute top-3 right-8 w-6 h-6 rounded-full bg-white/10 hover:bg-brand-orange text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                                         >
@@ -455,9 +460,14 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Save Module Action */}
                                     <button
-                                        onClick={() => onAddToCollection({ type: 'MODULE', id: mod.id, title: mod.title })}
+                                        onClick={() => onAddToCollection({
+                                            type: 'MODULE',
+                                            id: mod.id,
+                                            title: mod.title,
+                                            subtitle: course.title,
+                                            meta: `${mod.lessons.length} Items`
+                                        })}
                                         className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-brand-orange hover:border-brand-orange text-slate-300 hover:text-white transition-all text-xs font-bold uppercase tracking-wider group"
                                     >
                                         <Plus size={14} className="group-hover:rotate-90 transition-transform" /> Save Module
@@ -533,7 +543,13 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                onAddToCollection({ type: 'LESSON', id: lesson.id, title: lesson.title });
+                                                                onAddToCollection({
+                                                                    type: 'LESSON',
+                                                                    id: lesson.id,
+                                                                    title: lesson.title,
+                                                                    subtitle: mod.title,
+                                                                    meta: lesson.duration
+                                                                });
                                                             }}
                                                             className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/10 hover:bg-brand-orange text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100"
                                                         >
