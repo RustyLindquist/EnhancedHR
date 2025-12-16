@@ -58,7 +58,7 @@ function HomeContent() {
     // Use Server Action for counts to bypass RLS issues
     const { getCollectionCountsAction } = await import('@/app/actions/collections');
 
-    const mappedCounts = await getCollectionCountsAction(user.id);
+    const mappedCounts = await getCollectionCountsAction();
 
     // ensureSystemCollections runs client-side and fails RLS often, so we rely on server mapping
     // But we still need customCollections for the list. 
@@ -112,7 +112,7 @@ function HomeContent() {
     const { getCollectionCountsAction } = await import('@/app/actions/collections');
 
     // Counts are now mapped server-side to system keys ('favorites', etc.) via Admin Client
-    const mappedCounts = await getCollectionCountsAction(userId);
+    const mappedCounts = await getCollectionCountsAction();
 
     setCollectionCounts(mappedCounts);
   };

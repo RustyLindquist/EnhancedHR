@@ -618,7 +618,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
     const [isLoadingCollection, setIsLoadingCollection] = useState(false);
 
-    // Group View State
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
 
     // Effect to load group details when activeCollectionId changes to group-*
@@ -645,7 +644,19 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         })));
     }, [initialCourses, savedItemIds]);
 
+
+
+    // Force re-fetch helper
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // Collection Counts Logic
+    const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+        import('@/app/actions/collections').then(mod => {
+            mod.getCollectionCountsAction().then(setCollectionCounts);
+        });
+    }, [savedItemIds, onCollectionUpdate, refreshTrigger]);
 
 
 
@@ -663,7 +674,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, [initialCourseId]);
 
     // Internal handler for adding to collection (persisting)
-    const onImmediateAddToCollection = async (itemId: number | string, collectionId: string) => {
+    const onImmediateAddToCollection = async (itemId: number | string, collectionId: string, itemType: string = 'COURSE') => {
         // Determine type based on ID format or context (passed in args for future)
         // For now, MainCanvas primarily handles Courses via drag, but CollectionSurface passes type?
         // We need to update CollectionSurface onDrop to pass type, or assume COURSE if number
@@ -672,7 +683,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         // Fallback logic if type isn't passed (we updated onImmediateAddToCollection signature in prop but here we need to match)
         // Actually, let's update call sites or default to COURSE for now as drag payload usually has type
 
-        await addToCollection(idStr, 'COURSE', collectionId);
+        await addToCollection(idStr, itemType, collectionId);
 
         // Force refresh of collection items so it appears immediately
         setRefreshTrigger(prev => prev + 1);
@@ -1625,8 +1636,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Cleanup: Removed Debug Logging
 
     const visibleConversations = conversations.filter(c => {
-        // Filter by the RESOLVED ID (UUID), not the alias
-        return c.collections?.includes(resolvedCollectionId);
+        // Filter by the RESOLVED ID (UUID) OR the System Alias (e.g. 'favorites')
+        return c.collections?.includes(resolvedCollectionId) || c.collections?.includes(activeCollectionId);
     });
 
     const isCollectionEmpty =
@@ -1774,7 +1785,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     if (portalId === 'new') {
                                         onOpenModal(courses.find(c => c.id === draggedItem.id));
                                     } else {
-                                        onImmediateAddToCollection(Number(draggedItem.id), portalId);
+                                        onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
                                         setFlaringPortalId(portalId);
                                         setTimeout(() => setFlaringPortalId(null), 500);
                                     }
@@ -1881,6 +1892,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         handleOpenContextEditor(item.itemType, item as any);
                                     }
                                 }}
+                                onAdd={(item) => onOpenModal(item as any)}
                             />
                         </div>
                     ))}

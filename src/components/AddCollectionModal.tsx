@@ -51,7 +51,7 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose}></div>
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-float">
+      <div className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
 
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">

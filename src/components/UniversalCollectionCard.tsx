@@ -18,14 +18,16 @@ interface UniversalCollectionCardProps {
     item: CollectionItemDetail;
     onRemove: (id: string, type: string) => void;
     onClick: (item: CollectionItemDetail) => void;
+    onAdd?: (item: CollectionItemDetail) => void;
 }
 
-const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick }) => {
+const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick, onAdd }) => {
 
     let cardProps: any = {
         title: item.title || 'Untitled',
         onAction: () => onClick(item),
-        onRemove: () => onRemove(String(item.id), item.itemType)
+        onRemove: () => onRemove(String(item.id), item.itemType),
+        onAdd: onAdd ? () => onAdd(item) : undefined
     };
 
     // Mapping Logic
@@ -112,6 +114,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'MODULE',
                 subtitle: content.subtitle || 'Module',
                 meta: content.meta,
+                imageUrl: content.image, // Use enriched image
                 actionLabel: 'START'
             };
             break;

@@ -141,7 +141,7 @@ export async function getGlobalContextItems() {
     return getContextItems('personal-context');
 }
 // Helper to resolve "personal-context" and other default IDs to real DB ID
-async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
+export async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
     if (!collectionId) return null;
 
     const labelMap: Record<string, string> = {
@@ -237,18 +237,30 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
     console.log('[getCollectionDetailsAction] Raw Items:', rawCollectionItems?.length);
     if (rawError) console.error('[getCollectionDetailsAction] Raw Error:', rawError);
 
-    const courseIds = rawCollectionItems
-        ?.filter((i: any) => i.course_id)
-        .map((i: any) => i.course_id);
+    const courseIds = new Set(
+        rawCollectionItems
+            ?.filter((i: any) => i.course_id)
+            .map((i: any) => i.course_id) || []
+    );
+
+    // 2b. Extract Course IDs from Context Items (Modules/Lessons)
+    contextItems?.forEach((item: any) => {
+        // Only if we actually start supporting MODULE in context items
+        if ((item.type === 'MODULE' || item.type === 'LESSON') && item.content?.courseId) {
+            courseIds.add(item.content.courseId);
+        }
+    });
+
+    const uniqueCourseIds = Array.from(courseIds);
     
-    console.log('[getCollectionDetailsAction] Extracted IDs:', courseIds);
+    console.log('[getCollectionDetailsAction] Extracted IDs:', uniqueCourseIds);
 
     let courseMap: Record<string, any> = {};
-    if (courseIds && courseIds.length > 0) {
+    if (uniqueCourseIds.length > 0) {
         const { data: coursesData, error: courseError } = await supabase
             .from('courses')
             .select('*')
-            .in('id', courseIds);
+            .in('id', uniqueCourseIds);
 
         console.log('[getCollectionDetailsAction] Fetched Courses:', coursesData?.length);
         if (courseError) console.error('[getCollectionDetailsAction] Course Fetch Error:', courseError);
@@ -276,13 +288,18 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         if (item.item_type && item.item_type !== 'COURSE') {
             // Legacy / Generic Item stored in collection_items
             // We map it to a generic structure so it appears.
+            const parentCourse = courseMap[String(item.course_id)];
+            
             return {
                 id: item.item_id || `legacy-${Math.random()}`,
                 type: item.item_type,
                 itemType: item.item_type,
                 title: 'Saved Item', // Fallback as title isn't stored in collection_items link
                 subtitle: 'Legacy Item',
-                content: {},
+                content: {
+                    image: parentCourse?.image_url,
+                    courseTitle: parentCourse?.title,
+                },
                 created_at: item.created_at || new Date().toISOString(),
                 isSaved: true
             };
@@ -290,9 +307,27 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         return null;
     }).filter(Boolean) || [];
 
+    // Enrich Context Items with Course Images (Keep this for robustness if needed later)
+    const enrichedContextItems = contextItems?.map((item: any) => {
+        if ((item.type === 'MODULE' || item.type === 'LESSON') && item.content?.courseId) {
+            const course = courseMap[String(item.content.courseId)];
+            if (course) {
+                return {
+                    ...item,
+                    content: {
+                        ...item.content,
+                        image: course.image_url,
+                        courseTitle: course.title // Optional: could be useful
+                    }
+                };
+            }
+        }
+        return item;
+    });
+
     return {
         courses: courses?.filter(Boolean) || [], // Filter out undefineds!
-        contextItems: contextItems || [],
+        contextItems: enrichedContextItems || [],
         debug: {
             userId: user?.id,
             resolvedId: resolvedId,
