@@ -30,8 +30,10 @@ We have selected industry-standard platforms (Next.js, Vercel, Supabase) that ar
 
 **Estimated Monthly Cost:** **$0 - $45 / month**
 
-- **Vercel:** Free (Hobby Tier) during development.
-- **Supabase:** Free (Free Tier) for initial database setup.
+- **Video Streaming:** Mux (for precise watch-time tracking).
+- **Email:** Resend (Transactional emails).
+- **Payments:** Stripe (Per-seat billing).
+- **Data Access:** Next.js Server Actions + Supabase Admin Client (for bypassing complex RLS on joined data).
 - **Stripe:** Pay-as-you-go (no monthly fees).
 - **Cost Driver:** The only cost is if we choose to upgrade early for team collaboration features.
 

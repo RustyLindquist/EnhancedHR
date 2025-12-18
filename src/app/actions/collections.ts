@@ -1,148 +1,48 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { resolveCollectionId } from './context';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 
-export async function getCollectionCountsAction(): Promise<Record<string, number>> {
+export async function renameCollection(collectionId: string, newName: string) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return {};
-
-    // 1. Count items in collection_items (Courses & Legacy items)
-    // Group by collection_id
-    const { data: collectionItems, error: collectionError } = await supabase
-        .from('collection_items')
-        .select('collection_id')
-        .eq('user_id', user.id); // Assuming user_id exists on collection_items or we filter by collection ownership? 
-        // Wait, collection_items is a link table. It might not have user_id if shared? 
-        // But for "User Collections", we should join user_collections?
-        // Actually, checking schema_dump or previous queries, we usually query by collection_id.
-        // But we want ALL counts.
-        // Better: Fetch all user_collections, then count items? 
-        // OR: select collection_id, count(*) from collection_items where collection_id IN (user_collections)
-        
-    // Let's rely on RLS. If we select *, we get what we see.
-    // Ideally we'd use .rpc() for performance but let's do a raw select for now as simpler.
-    
-    // We need to know WHICH collections belong to the user first? 
-    // Actually, let's just count everything we can see in collection_items and user_context_items
-    
-    // Fetch user collections to map IDs to Labels if needed, but here we just need ID -> Count
-    
-    const { data: userCollections } = await supabase
-        .from('user_collections')
-        .select('id, label')
-        .eq('user_id', user.id);
-        
-    const collectionIds = userCollections?.map(c => c.id) || [];
-    
-    const counts: Record<string, number> = {};
-    
-    // Initialize with 0
-    collectionIds.forEach(id => counts[id] = 0);
-    
-    // Map system collection IDs
-    // We need to resolve 'favorites', 'watchlist', etc. to their UUIDs to aggregate?
-    // The previous logic in context.ts resolves 'favorites' -> specific UUID.
-    // So 'favorites' count needs to key off 'favorites' string OR the metrics need to be intelligent.
-    // For the UI, it expects keys like 'favorites', 'research' etc if that's what the nav ID is.
-    // OR the nav uses the UUID? NavigationPanel uses 'favorites' string ID.
-    
-    const systemMap: Record<string, string> = {};
-    userCollections?.forEach(c => {
-        if (c.label === 'Favorites') systemMap[c.id] = 'favorites';
-        if (c.label === 'Workspace') systemMap[c.id] = 'research';
-        if (c.label === 'Watchlist') systemMap[c.id] = 'to_learn';
-    });
-
-    // Initialize system keys
-    Object.values(systemMap).forEach(sysId => counts[sysId] = 0);
-
-    if (collectionIds.length > 0) {
-        // 1. Fetch Collection Items (Courses)
-        const { data: cItems } = await supabase
-            .from('collection_items')
-            .select('collection_id')
-            .in('collection_id', collectionIds);
-            
-        cItems?.forEach((item: any) => {
-            // Count for UUID
-            counts[item.collection_id] = (counts[item.collection_id] || 0) + 1;
-            
-            // Also count for System ID alias if exists
-            const systemId = systemMap[item.collection_id];
-            if (systemId) {
-                counts[systemId] = (counts[systemId] || 0) + 1;
-            }
-        });
-
-        // 2. Fetch User Context Items
-        const { data: uItems } = await supabase
-            .from('user_context_items')
-            .select('collection_id')
-            .in('collection_id', collectionIds);
-            
-        uItems?.forEach((item: any) => {
-             // Context items might have collection_id
-             if (item.collection_id) {
-                 counts[item.collection_id] = (counts[item.collection_id] || 0) + 1;
-                 
-                 const systemId = systemMap[item.collection_id];
-                 if (systemId) {
-                     counts[systemId] = (counts[systemId] || 0) + 1;
-                 }
-             }
-        });
-        // 3. Fetch Conversations
-        const { data: conversations } = await supabase
-            .from('conversations')
-            .select('metadata, is_saved')
-            .eq('user_id', user.id);
-
-        const favoritesId = systemMap['favorites'] || Object.keys(systemMap).find(key => systemMap[key] === 'favorites');
-        // Actually systemMap is ID -> "favorites". So find key where value is 'favorites'.
-        const favUUID = Object.keys(systemMap).find(key => systemMap[key] === 'favorites');
-
-        conversations?.forEach((conv: any) => {
-            // Check metadata.collection_ids
-            const collectionIds = conv.metadata?.collection_ids || [];
-            
-            if (Array.isArray(collectionIds)) {
-                // Deduplicate keys to increment for this specific item
-                const keysToIncrement = new Set<string>();
-                
-                collectionIds.forEach((colId: string) => {
-                    // Check direct ID (UUID or Alias)
-                    if (counts[colId] !== undefined) {
-                        keysToIncrement.add(colId);
-                    }
-                    
-                    // Check mapped System ID
-                    const systemId = systemMap[colId];
-                    if (systemId) {
-                        keysToIncrement.add(systemId);
-                    }
-                });
-
-                keysToIncrement.forEach(key => {
-                    counts[key] = (counts[key] || 0) + 1;
-                });
-            }
-        });
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
     }
 
-    return counts;
+    const { error } = await supabase
+        .from('user_collections')
+        .update({ label: newName }) // 'label' is the column name based on lib/collections.ts
+        .eq('id', collectionId)
+        .eq('user_id', user.id); // Security: ensure ownership
+
+    if (error) {
+        console.error('Error renaming collection:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true };
 }
 
 export async function deleteCollection(collectionId: string) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
+    }
 
-    // Delete the collection
+    // Deleting the collection row should cascade delete items if FK is set up correctly.
+    // If not, we might need manual cleanup, but usually FKs handle this in Supabase.
+    // Assuming 'collection_items' and 'user_context_items' have ON DELETE CASCADE.
+    
+    // Safety check: Don't delete system collections via this action if they are protected by ID logic, 
+    // but here we rely on the UI to only allow calling this for custom ones.
+    // We can double check 'is_custom' column if we want to be paranoid.
+
     const { error } = await supabase
         .from('user_collections')
         .delete()
@@ -153,221 +53,413 @@ export async function deleteCollection(collectionId: string) {
         console.error('Error deleting collection:', error);
         return { success: false, error: error.message };
     }
+    
+    console.log('Successfully deleted collection:', collectionId);
 
+    revalidatePath('/dashboard');
     return { success: true };
 }
 
-export async function renameCollection(collectionId: string, newLabel: string) {
+export async function getCollectionCountsAction(userId: string): Promise<Record<string, number>> {
+    const admin = createAdminClient();
+    const counts: Record<string, number> = {};
+
+    console.log('[getCollectionCountsAction] Starting count for user:', userId);
+
+    // Fetch User Collections for Alias Mapping
+    const { data: userCollections } = await admin
+        .from('user_collections')
+        .select('id, alias, label')
+        .eq('user_id', userId);
+
+    const collectionMap: Record<string, string> = {};
+    const labelToAlias: Record<string, string> = {
+        'Favorites': 'favorites',
+        'Workspace': 'research',
+        'Watchlist': 'to_learn',
+        'Personal Context': 'personal-context'
+    };
+
+    if (userCollections) {
+        userCollections.forEach((c: any) => {
+             if (c.alias) {
+                 collectionMap[c.id] = c.alias;
+             } else if (c.label && labelToAlias[c.label]) {
+                 collectionMap[c.id] = labelToAlias[c.label];
+             }
+        });
+    }
+
+    // 1. Count Courses (collection_items)
+    const { data: courseItems, error: courseError } = await admin
+        .from('collection_items')
+        .select('collection_id, user_collections!inner(user_id)')
+        .eq('user_collections.user_id', userId);
+
+    if (courseError) {
+        console.error('[getCollectionCountsAction] Error fetching collection items:', courseError);
+    }
+
+    if (!courseError && courseItems) {
+        // console.log('[getCollectionCountsAction] Found collection items:', courseItems.length);
+        courseItems.forEach((item: any) => {
+            const id = item.collection_id;
+            counts[id] = (counts[id] || 0) + 1;
+            // Map
+            const alias = collectionMap[id];
+            if (alias) counts[alias] = (counts[alias] || 0) + 1;
+        });
+    }
+
+    // 2. Count Context Items (user_context_items)
+    const { data: contextItems, error: contextError } = await admin
+        .from('user_context_items')
+        .select('collection_id, type')
+        .eq('user_id', userId)
+        .not('collection_id', 'is', null);
+
+    if (contextError) {
+        console.error('[getCollectionCountsAction] Error fetching context items:', contextError);
+    }
+
+    if (!contextError && contextItems) {
+        // console.log('[getCollectionCountsAction] Found context items:', contextItems.length);
+        contextItems.forEach((item: any) => {
+            const id = item.collection_id;
+            if (id) {
+                counts[id] = (counts[id] || 0) + 1;
+                // Map
+                const alias = collectionMap[id];
+                if (alias) counts[alias] = (counts[alias] || 0) + 1;
+            }
+        });
+        
+
+        // 4. Fetch Conversations for Legacy Metadata Counting (and Global Count)
+        const { data: conversations, error: conversationsError } = await admin
+            .from('conversations')
+            .select('id, metadata, user_id')
+            .eq('user_id', userId);
+
+        if (conversationsError) {
+             console.error('[getCollectionCountsAction] Error fetching conversations:', conversationsError);
+        }
+
+        // 4b. Fetch EXPLICITLY linked conversations to prevent double counting
+        const { data: linkedConversations } = await admin
+            .from('collection_items')
+            .select('collection_id, item_id')
+            .eq('user_id', userId)
+            .eq('item_type', 'CONVERSATION');
+
+        const linkedSet = new Set<string>();
+        if (linkedConversations) {
+            linkedConversations.forEach(link => {
+                linkedSet.add(`${link.collection_id}:${link.item_id}`);
+            });
+        }
+        
+
+
+        if (conversations) {
+
+            // Global count
+            counts['conversations'] = conversations.length;
+
+            // Per-collection count (Legacy Metadata)
+            conversations.forEach((conv: any) => {
+                const collections = conv.metadata?.collection_ids || conv.metadata?.collections;
+                if (Array.isArray(collections)) {
+                    collections.forEach((cId: string) => {
+                        // Check deduplication
+                        if (!linkedSet.has(`${cId}:${conv.id}`)) {
+                            // Increment count for UUID
+                            counts[cId] = (counts[cId] || 0) + 1;
+                            
+                            // Map to Alias if needed
+                            const alias = collectionMap[cId];
+                            if (alias) {
+                                counts[alias] = (counts[alias] || 0) + 1;
+                            }
+                            
+                            // Also: If the stored cId IS ITSELF an alias (e.g. 'favorites'), we count it directly.
+                            // But usually keys are UUIDs. If cId is 'favorites', counts['favorites']++ above (line 177).
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+
+    // 4. Count Certifications
+    const { count: certificationCount, error: certError } = await admin
+        .from('courses')
+        .select('*', { count: 'exact', head: true })
+        .not('badges', 'is', null)
+        .neq('badges', '{}');
+
+    if (!certError && certificationCount !== null) {
+        counts['certifications'] = certificationCount;
+    }
+
+    // 5. Map UUIDs to System Aliases & Personal Context Logic
+    // Fetch collections to get IDs and Labels
+    const { data: userCols, error: colError } = await admin
+        .from('user_collections')
+        .select('id, label')
+        .eq('user_id', userId);
+    
+    if (colError) console.error('[getCollectionCountsAction] Error fetching user cols:', colError);
+
+
+    const LABEL_TO_ALIAS: Record<string, string> = {
+        'favorites': 'favorites',
+        'workspace': 'research',
+        'watchlist': 'to_learn',
+        'personal context': 'personal-context'
+    };
+
+    let personalContextId: string | null = null;
+
+    userCols?.forEach((col: any) => {
+        const lowerLabel = col.label.toLowerCase().trim();
+        const alias = LABEL_TO_ALIAS[lowerLabel];
+        
+        if (lowerLabel === 'personal context') personalContextId = col.id;
+
+        if (alias && counts[col.id]) {
+            counts[alias] = counts[col.id];
+        }
+    });
+
+    // Virtual Profile Count Logic (moved here to allow using fetched ID)
+    if (personalContextId) {
+        const hasProfileItem = contextItems?.some((i: any) => i.collection_id === personalContextId && i.type === 'PROFILE');
+        if (!hasProfileItem) {
+             counts[personalContextId] = (counts[personalContextId] || 0) + 1;
+             // Update mapped alias too
+             counts['personal-context'] = counts[personalContextId];
+
+        }
+    }
+
+
+
+    return counts;
+}
+
+// Helper to resolve collection aliases (similar to context.ts but using Admin Client if needed, 
+// though here we pass supabase client to reuse connection if possible, or just use admin for everything to be safe)
+async function resolveCollectionId(supabase: any, collectionId: string, userId: string): Promise<string | null> {
+    const labelMap: Record<string, string> = {
+        'favorites': 'Favorites',
+        'research': 'Workspace',
+        'to_learn': 'Watchlist',
+        'personal-context': 'Personal Context'
+    };
+
+    const targetLabel = labelMap[collectionId];
+    if (!targetLabel) return collectionId; // Already a UUID
+
+    // Use Admin Client to ensure we can find/create system collections even if RLS blocks 'select'
+    // Actually, if we are inside a Server Action, we can use the passed 'supabase' if it's admin, or create one.
+    // To be safe and reuse code style, let's assume 'supabase' passed here is capable.
+    // BUT for system collections, we often need to CREATE them, which requires permissions.
+    // Let's use createAdminClient inside here if we suspect RLS issues. 
+    // However, the caller will likely use Admin Client.
+
+    const { data } = await supabase
+        .from('user_collections')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('label', targetLabel)
+        .maybeSingle();
+
+    if (data) return data.id;
+
+    // Auto-create
+    let defaultColor = '#64748B';
+    if (targetLabel === 'Favorites') defaultColor = '#EAB308';
+    if (targetLabel === 'Workspace') defaultColor = '#3B82F6';
+    if (targetLabel === 'Watchlist') defaultColor = '#A855F7';
+
+    const { data: newData, error } = await supabase
+        .from('user_collections')
+        .insert({ user_id: userId, label: targetLabel, color: defaultColor })
+        .select('id')
+        .single();
+    
+    if (error) {
+        console.error('Error auto-creating collection:', error);
+        return null;
+    }
+    return newData.id;
+}
+
+export async function addToCollectionAction(itemId: string, itemType: string, collectionIdOrAlias: string) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const { error } = await supabase
-        .from('user_collections')
-        .update({ label: newLabel })
-        .eq('id', collectionId)
-        .eq('user_id', user.id);
+    const admin = createAdminClient();
+    const resolvedId = await resolveCollectionId(admin, collectionIdOrAlias, user.id);
+
+    if (!resolvedId) return { success: false, error: 'Collection not found' };
+
+    const { error } = await admin
+        .from('collection_items')
+        .insert({
+            item_id: itemId,
+            item_type: itemType,
+            course_id: itemType === 'COURSE' ? parseInt(itemId, 10) : null,
+            collection_id: resolvedId
+        });
 
     if (error) {
-        console.error('Error renaming collection:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
-}
-
-
-export async function addToCollectionAction(itemId: string, itemType: string, collectionId: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    try {
-        const targetCollectionId = await resolveCollectionId(supabase, collectionId, user.id);
-
-        if (!targetCollectionId) {
-            return { success: false, error: 'Invalid Collection ID' };
-        }
-
-        // --- ENRICHMENT LOGIC ---
-        let courseId: number | null = null;
-        
-        if (itemType === 'COURSE') {
-            courseId = parseInt(itemId);
-        } else if (itemType === 'MODULE') {
-            // Fetch Course ID from Module
-            const { data: mod } = await supabase
-                .from('modules')
-                .select('course_id')
-                .eq('id', itemId)
-                .single();
-            if (mod) courseId = mod.course_id;
-        } else if (itemType === 'LESSON') {
-             // Fetch Course ID from Lesson -> Module
-             const { data: lesson } = await supabase
-                .from('lessons')
-                .select('module:modules(course_id)')
-                .eq('id', itemId)
-                .single();
-            
-            if (lesson && lesson.module) {
-                // Supabase joins return object or array depending on relation, usually object for single
-                courseId = (lesson.module as any).course_id;
-            }
-        }
-
-        const { error } = await supabase
-            .from('collection_items')
-            .upsert({
-                collection_id: targetCollectionId,
-                item_id: itemId,
-                item_type: itemType,
-                course_id: courseId, // CRITICAL: Store this for image lookup
-                added_at: new Date().toISOString()
-            }, { onConflict: 'collection_id, item_id, item_type' });
-
-        if (error) throw error;
-
-        revalidatePath('/dashboard');
-        revalidatePath('/academy'); 
-        
-        return { success: true };
-
-    } catch (error: any) {
+        if (error.code === '23505') return { success: true }; // Ignore duplicate
         console.error('Error adding to collection:', error);
         return { success: false, error: error.message };
-    }
-}
-
-export async function removeFromCollectionAction(itemId: string, collectionId: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return { success: false, error: 'Unauthorized' };
-
-    try {
-        const targetCollectionId = await resolveCollectionId(supabase, collectionId, user.id);
-
-        if (!targetCollectionId) return { success: false, error: 'Invalid Collection' };
-
-        const { error } = await supabase
-            .from('collection_items')
-            .delete()
-            .eq('collection_id', targetCollectionId)
-            .eq('item_id', itemId);
-
-        if (error) throw error;
-
-        revalidatePath('/dashboard');
-        return { success: true };
-
-    } catch (error: any) {
-        console.error('Error removing from collection:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-export async function syncCourseCollectionsAction(userId: string, courseId: string | number, collectionIds: string[]) {
-    const supabase = await createClient(); // Auth client
-    
-    // Resolve all target collection IDs first
-    const resolvedIds: string[] = [];
-    for (const id of collectionIds) {
-        const rid = await resolveCollectionId(supabase, id, userId);
-        if (rid) resolvedIds.push(rid);
-    }
-
-    // Get current associations
-    const { data: currentLinks } = await supabase
-        .from('collection_items')
-        .select('collection_id')
-        .eq('item_id', String(courseId))
-        .eq('item_type', 'COURSE');
-
-    const currentIds = currentLinks?.map(l => l.collection_id) || [];
-
-    // Determine Add/Remove
-    const toAdd = resolvedIds.filter(id => !currentIds.includes(id));
-    const toRemove = currentIds.filter(id => !resolvedIds.includes(id));
-
-    // Execute
-    if (toAdd.length > 0) {
-        const start = Date.now();
-        const records = toAdd.map(cid => ({
-            collection_id: cid,
-            item_id: String(courseId),
-            item_type: 'COURSE',
-            course_id: typeof courseId === 'string' ? parseInt(courseId) : courseId,
-            added_at: new Date().toISOString()
-        }));
-        await supabase.from('collection_items').upsert(records, { onConflict: 'collection_id, item_id, item_type' });
-    }
-
-    if (toRemove.length > 0) {
-        await supabase.from('collection_items')
-            .delete()
-            .eq('item_id', String(courseId))
-            .eq('item_type', 'COURSE')
-            .in('collection_id', toRemove);
     }
 
     revalidatePath('/dashboard');
     return { success: true };
 }
 
-export async function syncConversationCollectionsAction(userId: string, conversationId: string, collectionIds: string[]) {
+export async function removeFromCollectionAction(itemId: string, collectionIdOrAlias: string) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Update Metadata (Legacy/Compat)
-    const { data: conv } = await supabase.from('conversations').select('metadata').eq('id', conversationId).single();
-    const metadata = conv?.metadata || {};
-    metadata.collection_ids = collectionIds; // Store aliases or IDs? Storing whatever passed. 
-    // UserDashboard passes Aliases + UUIDs.
-    
-    await supabase.from('conversations').update({ metadata }).eq('id', conversationId);
+    if (!user) return { success: false, error: 'Unauthorized' };
 
+    const admin = createAdminClient();
+    const resolvedId = await resolveCollectionId(admin, collectionIdOrAlias, user.id);
 
-    // 2. Sync to collection_items (Unified View)
-    // Resolve IDs
-    const resolvedIds: string[] = [];
-    for (const id of collectionIds) {
-        const rid = await resolveCollectionId(supabase, id, userId);
-        if (rid) resolvedIds.push(rid);
+    if (!resolvedId) return { success: false, error: 'Collection not found' };
+
+    const { error } = await admin
+        .from('collection_items')
+        .delete()
+        .eq('collection_id', resolvedId)
+        .or(`course_id.eq.${parseInt(itemId, 10)},item_id.eq.${itemId}`);
+
+    if (error) {
+        console.error('Error removing from collection:', error);
+        return { success: false, error: error.message };
     }
 
-    // Get current associations
-    const { data: currentLinks } = await supabase
+    revalidatePath('/dashboard');
+    return { success: true };
+}
+
+export async function syncCourseCollectionsAction(userId: string, courseId: string | number, targetIds: string[]) {
+    const admin = createAdminClient();
+    
+    // 1. Resolve Targets
+    const resolvedTargetIds: string[] = [];
+    for (const id of targetIds) {
+        if (id === 'new') continue;
+        const resolved = await resolveCollectionId(admin, id, userId);
+        if (resolved) resolvedTargetIds.push(resolved);
+    }
+    
+    const cid = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
+    if (isNaN(cid)) return { success: false, error: 'Invalid course ID' };
+
+    // 2. Fetch Existing
+    const { data: existing } = await admin
+        .from('collection_items')
+        .select('collection_id')
+        .eq('course_id', cid)
+        .eq('item_type', 'COURSE'); 
+        
+    const existingSet = new Set(existing?.map((i:any) => i.collection_id) || []);
+    const targetSet = new Set(resolvedTargetIds);
+    
+    // 3. Diff
+    const toAdd = resolvedTargetIds.filter(id => !existingSet.has(id));
+    const toRemove = [...existingSet].filter(id => !targetSet.has(id as string));
+    
+    // 4. Execute
+    if (toAdd.length > 0) {
+        const rows = toAdd.map(rid => ({
+            collection_id: rid,
+            item_type: 'COURSE',
+            item_id: courseId,
+            course_id: cid
+        }));
+        await admin.from('collection_items').insert(rows);
+    }
+    
+    if (toRemove.length > 0) {
+         await admin
+            .from('collection_items')
+            .delete()
+            .eq('course_id', cid)
+            .eq('item_type', 'COURSE')
+            .in('collection_id', toRemove);
+    }
+    
+    revalidatePath('/dashboard');
+    return { success: true };
+}
+
+export async function syncConversationCollectionsAction(userId: string, conversationId: string, targetIds: string[]) {
+    const admin = createAdminClient();
+
+    // 1. Resolve Targets
+    const resolvedTargetIds: string[] = [];
+    for (const id of targetIds) {
+        if (id === 'new') continue;
+        const resolved = await resolveCollectionId(admin, id, userId);
+        if (resolved) resolvedTargetIds.push(resolved);
+    }
+    
+    // 2. Update Metadata (Legacy + Hybrid)
+    const { data: conv } = await admin.from('conversations').select('metadata').eq('id', conversationId).single();
+    const newMetadata = {
+        ...(conv?.metadata || {}),
+        collection_ids: resolvedTargetIds,
+        collections: resolvedTargetIds
+    };
+    
+    await admin.from('conversations').update({ 
+        metadata: newMetadata,
+        updated_at: new Date().toISOString() 
+    }).eq('id', conversationId);
+    
+    // 3. Update collection_items (Standard)
+    const { data: existing } = await admin
         .from('collection_items')
         .select('collection_id')
         .eq('item_id', conversationId)
         .eq('item_type', 'CONVERSATION');
 
-    const currentIds = currentLinks?.map(l => l.collection_id) || [];
-
-    const toAdd = resolvedIds.filter(id => !currentIds.includes(id));
-    const toRemove = currentIds.filter(id => !resolvedIds.includes(id));
-
-     if (toAdd.length > 0) {
-        const records = toAdd.map(cid => ({
-            collection_id: cid,
-            item_id: conversationId,
+    const existingSet = new Set(existing?.map((i:any) => i.collection_id) || []);
+    const targetSet = new Set(resolvedTargetIds);
+    
+    const toAdd = resolvedTargetIds.filter(id => !existingSet.has(id));
+    const toRemove = [...existingSet].filter(id => !targetSet.has(id as string));
+    
+    if (toAdd.length > 0) {
+        const rows = toAdd.map(rid => ({
+            collection_id: rid,
             item_type: 'CONVERSATION',
-            // No course_id for conversation
-            added_at: new Date().toISOString()
+            item_id: conversationId
         }));
-        await supabase.from('collection_items').upsert(records, { onConflict: 'collection_id, item_id, item_type' });
+        await admin.from('collection_items').insert(rows);
     }
-
+    
     if (toRemove.length > 0) {
-        await supabase.from('collection_items')
+         await admin
+            .from('collection_items')
             .delete()
             .eq('item_id', conversationId)
             .eq('item_type', 'CONVERSATION')
             .in('collection_id', toRemove);
     }
-
+    
     revalidatePath('/dashboard');
     return { success: true };
 }

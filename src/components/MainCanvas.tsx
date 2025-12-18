@@ -652,11 +652,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Collection Counts Logic
     const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
 
-    useEffect(() => {
-        import('@/app/actions/collections').then(mod => {
-            mod.getCollectionCountsAction().then(setCollectionCounts);
-        });
-    }, [savedItemIds, onCollectionUpdate, refreshTrigger]);
+
 
 
 
@@ -753,6 +749,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [transitionState, setTransitionState] = useState<TransitionState>('idle');
     const [renderKey, setRenderKey] = useState(0);
     const [user, setUser] = useState<any>(null);
+
+    // Collection Counts Logic (Dependent on User)
+    useEffect(() => {
+        if (user?.id) {
+            import('@/app/actions/collections').then(mod => {
+                mod.getCollectionCountsAction(user.id).then(setCollectionCounts);
+            });
+        }
+    }, [savedItemIds, onCollectionUpdate, refreshTrigger, user?.id]);
 
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
@@ -1577,42 +1582,18 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             setIsLoadingCollection(true);
 
             try {
-                // Parallel Fetch
-                const standardPromise = shouldFetchStandard
-                    ? fetchCollectionItems(resolvedCollectionId || activeCollectionId)
+                // Fetch Items (Main Hook handles merging courses + context items now)
+                const standardItems = shouldFetchStandard
+                    ? await fetchCollectionItems(resolvedCollectionId || activeCollectionId)
                         .then(res => res.items)
                         .catch(err => {
                             console.error("Failed to load standard collection items", err);
                             return [];
                         })
-                    : Promise.resolve([]);
+                    : [];
 
-                const contextPromise = resolvedCollectionId
-                    ? import('@/app/actions/context').then(mod => mod.getContextItems(resolvedCollectionId)).catch(err => {
-                        console.error('[MainCanvas] Error fetching context items:', err);
-                        return [];
-                    })
-                    : Promise.resolve([]);
-
-                const [standardItems, contextItems] = await Promise.all([standardPromise, contextPromise]);
-
-                console.log('[MainCanvas] Fetched Items:', { standard: standardItems.length, context: contextItems.length });
-
-                // Map Context Items
-                const contextMapped: CollectionItemDetail[] = (contextItems as any[]).map(i => ({
-                    id: i.id,
-                    user_id: i.user_id,
-                    collection_id: i.collection_id || '',
-                    type: i.type,
-                    title: i.title,
-                    content: i.content,
-                    created_at: i.created_at,
-                    itemType: i.type as ContextItemType
-                }));
-
-                // Merge: Standard Items (Courses) + Context Items (Modules/Lessons)
-                // Filter out potential duplicates if needed? (Usually types differ)
-                setCollectionItems([...(standardItems as CollectionItemDetail[]), ...contextMapped]);
+                console.log('[MainCanvas] Fetched Items:', { count: standardItems.length });
+                setCollectionItems(standardItems as CollectionItemDetail[]);
 
             } catch (err) {
                 console.error("Error loading mixed collection items", err);
@@ -1853,12 +1834,17 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 }
             } else {
                 // For standard collections (Favorites, Custom), merge in relevant conversations
-                const conversationItems = visibleConversations.map(c => ({
-                    ...c,
-                    itemType: 'CONVERSATION',
-                    // Ensure title/subtitle maps correctly if needed by UniversalCollectionCard
-                    // Conversation has 'title', UniversalCollectionCard expects 'title'
-                })) as any[];
+                // Filter out conversations that are ALREADY in sourceItems (DB-backed) to prevent double display
+                const existingIds = new Set(sourceItems.map(i => i.id || (i as any).item_id)); // Use item_id if available for references
+
+                const conversationItems = visibleConversations
+                    .filter(c => !existingIds.has(c.id)) // DE-DUPLICATION
+                    .map(c => ({
+                        ...c,
+                        itemType: 'CONVERSATION',
+                        // Ensure title/subtitle maps correctly if needed by UniversalCollectionCard
+                        // Conversation has 'title', UniversalCollectionCard expects 'title'
+                    })) as any[];
                 displayItems = [...sourceItems, ...conversationItems];
             }
 

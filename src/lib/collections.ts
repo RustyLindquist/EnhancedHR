@@ -305,14 +305,14 @@ export async function fetchCollectionCounts(userId: string): Promise<Record<stri
     }
 
     // 3. Count Conversations (from conversations table)
-    const { count: conversationCount, error: conversationError } = await supabase
+    const { data: conversations, error: conversationError } = await supabase
         .from('conversations')
-        .select('*', { count: 'exact', head: true })
+        .select('metadata')
         .eq('user_id', userId);
 
-    if (!conversationError && conversationCount !== null) {
-        counts['conversations'] = conversationCount;
-        counts['prometheus'] = conversationCount; // Map provided for Prometheus view too
+    if (!conversationError && conversations) {
+        counts['conversations'] = conversations.length;
+        counts['prometheus'] = conversations.length; // Map provided for Prometheus view too
     }
 
     // 4. Count Certifications (Courses with badges)
@@ -329,6 +329,26 @@ export async function fetchCollectionCounts(userId: string): Promise<Record<stri
         counts['certifications'] = certificationCount;
     }
 
+
+    // 5. Map UUIDs to System Aliases
+    const { data: userCols } = await supabase
+        .from('user_collections')
+        .select('id, label')
+        .eq('user_id', userId);
+
+    const LABEL_TO_ALIAS: Record<string, string> = {
+        'Favorites': 'favorites',
+        'Workspace': 'research',
+        'Watchlist': 'to_learn',
+        'Personal Context': 'personal-context'
+    };
+
+    userCols?.forEach((col: any) => {
+        const alias = LABEL_TO_ALIAS[col.label];
+        if (alias && counts[col.id]) {
+            counts[alias] = counts[col.id];
+        }
+    });
 
     return counts;
 }

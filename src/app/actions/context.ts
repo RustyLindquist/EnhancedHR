@@ -141,7 +141,7 @@ export async function getGlobalContextItems() {
     return getContextItems('personal-context');
 }
 // Helper to resolve "personal-context" and other default IDs to real DB ID
-export async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
+async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
     if (!collectionId) return null;
 
     const labelMap: Record<string, string> = {
@@ -207,136 +207,177 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
 
     if (!user) return { courses: [], contextItems: [] };
 
-    const admin = createAdminClient(); // Service Role client
-
-    // Resolve ID using admin client (safe) to ensure we can find/create system collections ignoring RLS
-    // The internal resolve function in context.ts might be using 'supabase' passed in, 
-    // so we should pass 'admin' if the types align, or update resolveCollectionId to not rely on auth.getUser() if using admin
-    // Actually, resolveCollectionId takes 'supabase' client. As long as we pass a client, it works.
-    // BUT resolveCollectionId ALSO takes userId. Admin client doesn't have session.
-    // The userId is passed explicitly.
-    const resolvedId = await resolveCollectionId(admin, collectionIdOrAlias, user.id);
+    // Resolve ID using standard client (safe)
+    const resolvedId = await resolveCollectionId(supabase, collectionIdOrAlias, user.id);
     if (!resolvedId) return { courses: [], contextItems: [] };
 
-    // 1. Fetch Context Items
+    const admin = createAdminClient(); // Service Role client
+
+    // Helper to separate IDs by type
+    interface GroupedIds {
+        courses: number[];
+        modules: string[];
+        lessons: string[];
+        conversations: string[];
+        itemsWithoutType: any[];
+    }
+
+    // 1. Fetch ALL collection items (references)
+    const { data: rawItems } = await admin
+        .from('collection_items')
+        .select('*')
+        .eq('collection_id', resolvedId);
+
+    const grouped: GroupedIds = {
+        courses: [],
+        modules: [],
+        lessons: [],
+        conversations: [],
+        itemsWithoutType: []
+    };
+
+    // Sort into buckets
+    rawItems?.forEach((item: any) => {
+        if (item.course_id) {
+            grouped.courses.push(item.course_id);
+        } else if (item.item_type === 'MODULE') {
+            grouped.modules.push(item.item_id);
+        } else if (item.item_type === 'LESSON') {
+            grouped.lessons.push(item.item_id);
+        } else if (item.item_type === 'CONVERSATION') {
+            grouped.conversations.push(item.item_id);
+        } else {
+            grouped.itemsWithoutType.push(item);
+        }
+    });
+
+    // 2. Parallel Fetch Details
+    const promises: any[] = [];
+
+    // A. Courses
+    if (grouped.courses.length > 0) {
+        promises.push(
+            admin.from('courses').select('*').in('id', grouped.courses)
+                .then(({ data }) => data?.map((c: any) => ({ 
+                    ...c, 
+                    itemType: 'COURSE', 
+                    isSaved: true,
+                    image: c.image_url // Map DB column to frontend prop
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // B. Modules (Join Course for Image/Authors)
+    if (grouped.modules.length > 0) {
+        promises.push(
+            admin.from('modules')
+                .select(`
+                    *,
+                    courses (
+                        title,
+                        image_url,
+                        author
+                    )
+                `)
+                .in('id', grouped.modules)
+                .then(({ data }) => data?.map((m: any) => ({
+                    ...m,
+                    itemType: 'MODULE',
+                    // Enrich with Course Data if missing on Module
+                    image: m.courses?.image_url,
+                    courseTitle: m.courses?.title,
+                    author: m.courses?.author
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // C. Lessons (Join Module -> Course)
+    if (grouped.lessons.length > 0) {
+        promises.push(
+            admin.from('lessons')
+                .select(`
+                    *,
+                    modules (
+                        title,
+                        courses (
+                            title,
+                            image_url,
+                            author
+                        )
+                    )
+                `)
+                .in('id', grouped.lessons)
+                .then(({ data }) => data?.map((l: any) => ({
+                    ...l,
+                    itemType: 'LESSON',
+                    moduleTitle: l.modules?.title,
+                    courseTitle: l.modules?.courses?.title,
+                    image: l.modules?.courses?.image_url, // Use Course Image
+                    author: l.modules?.courses?.author
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // D. Conversations
+    if (grouped.conversations.length > 0) {
+        promises.push(
+            admin.from('conversations')
+                .select('*')
+                .in('id', grouped.conversations)
+                .then(({ data }) => data?.map((cov: any) => ({
+                    ...cov,
+                    itemType: 'CONVERSATION',
+                    title: cov.title || 'Untitled Conversation',
+                    // Map last message or similar if needed for card
+                    lastMessage: cov.last_message || cov.preview || '' 
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // E. Context Items (Already fetched but logic should be here or separate? 
+    // The original code fetched them separately. We can keep that or merge.
+    // Let's keep fetching them separately as they are in a different table 'user_context_items'
+    // BUT we need to return them in the 'contextItems' prop or merge into 'courses' (which is actually 'items').
+    // The frontend hook `useCollections` merges them: `items: [...courses, ...mappedContext]`.
+    // So distinct is fine.
+    
+    // Execute fetches
+    const [courses, modules, lessons, conversations] = await Promise.all(promises);
+
+    // 3. Fetch Context Items (Same as before)
     const { data: contextItems } = await admin
         .from('user_context_items')
         .select('*')
         .eq('collection_id', resolvedId)
         .order('created_at', { ascending: false });
 
-    // 2. Fetch Collection Courses (via linking table)
-    // Use User Client (supabase) instead of Admin to rely on RLS and active session
-    // This avoids issues if Service Role Key is missing in environment
-    const { data: rawCollectionItems, error: rawError } = await supabase
-        .from('collection_items')
-        .select('course_id, item_type, item_id')
-        .eq('collection_id', resolvedId);
-
-    console.log('[getCollectionDetailsAction] ResolvedID:', resolvedId);
-    console.log('[getCollectionDetailsAction] Raw Items:', rawCollectionItems?.length);
-    if (rawError) console.error('[getCollectionDetailsAction] Raw Error:', rawError);
-
-    const courseIds = new Set(
-        rawCollectionItems
-            ?.filter((i: any) => i.course_id)
-            .map((i: any) => i.course_id) || []
-    );
-
-    // 2b. Extract Course IDs from Context Items (Modules/Lessons)
-    contextItems?.forEach((item: any) => {
-        // Only if we actually start supporting MODULE in context items
-        if ((item.type === 'MODULE' || item.type === 'LESSON') && item.content?.courseId) {
-            courseIds.add(item.content.courseId);
-        }
-    });
-
-    const uniqueCourseIds = Array.from(courseIds);
+    // Combine "Courses" (which is actually 'Standard Items') and strictly typed ContextItems
+    // The frontend expects 'courses' to be the array of standard items (Courses, Modules, Lessons, Convos)
+    // and 'contextItems' to be the user_context_items table rows.
     
-    console.log('[getCollectionDetailsAction] Extracted IDs:', uniqueCourseIds);
-
-    let courseMap: Record<string, any> = {};
-    if (uniqueCourseIds.length > 0) {
-        const { data: coursesData, error: courseError } = await supabase
-            .from('courses')
-            .select('*')
-            .in('id', uniqueCourseIds);
-
-        console.log('[getCollectionDetailsAction] Fetched Courses:', coursesData?.length);
-        if (courseError) console.error('[getCollectionDetailsAction] Course Fetch Error:', courseError);
-        
-        coursesData?.forEach((c: any) => {
-            courseMap[String(c.id)] = c;
-        });
-    }
-
-    // Map courses and legacy items
-    const courses = rawCollectionItems?.map((item: any) => {
-        const course = courseMap[String(item.course_id)];
-        if (course) {
-            return {
-                ...course,
-                type: 'COURSE' as const, 
-                itemType: 'COURSE', 
-                image: course.image_url, // Map DB column to Type property
-                dateAdded: course.created_at, // Map DB column to Type property
-                rating: Number(course.rating),
-                badges: course.badges || [],
-                isSaved: true
-            };
-        }
-        if (item.item_type && item.item_type !== 'COURSE') {
-            // Legacy / Generic Item stored in collection_items
-            // We map it to a generic structure so it appears.
-            const parentCourse = courseMap[String(item.course_id)];
-            
-            return {
-                id: item.item_id || `legacy-${Math.random()}`,
-                type: item.item_type,
-                itemType: item.item_type,
-                title: 'Saved Item', // Fallback as title isn't stored in collection_items link
-                subtitle: 'Legacy Item',
-                content: {
-                    image: parentCourse?.image_url,
-                    courseTitle: parentCourse?.title,
-                },
-                created_at: item.created_at || new Date().toISOString(),
-                isSaved: true
-            };
-        }
-        return null;
-    }).filter(Boolean) || [];
-
-    // Enrich Context Items with Course Images (Keep this for robustness if needed later)
-    const enrichedContextItems = contextItems?.map((item: any) => {
-        if ((item.type === 'MODULE' || item.type === 'LESSON') && item.content?.courseId) {
-            const course = courseMap[String(item.content.courseId)];
-            if (course) {
-                return {
-                    ...item,
-                    content: {
-                        ...item.content,
-                        image: course.image_url,
-                        courseTitle: course.title // Optional: could be useful
-                    }
-                };
-            }
-        }
-        return item;
-    });
+    const allStandardItems = [
+        ...courses,
+        ...modules,
+        ...lessons,
+        ...conversations
+    ];
 
     return {
-        courses: courses?.filter(Boolean) || [], // Filter out undefineds!
-        contextItems: enrichedContextItems || [],
-        debug: {
-            userId: user?.id,
-            resolvedId: resolvedId,
-            rawCount: rawCollectionItems?.length,
-            extractedIds: courseIds,
-            fetchedCourseCount: courses?.length,
-            courseMapKeys: Object.keys(courseMap),
-            rawError: rawError ? JSON.stringify(rawError) : null,
-            envKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-        }
+        courses: allStandardItems, // Naming legacy: 'courses' prop carries all DB-backed entity items
+        contextItems: contextItems || [],
+        debug: { resolvedId, groupedCounts: {
+            courses: grouped.courses.length,
+            modules: grouped.modules.length,
+            lessons: grouped.lessons.length,
+            conversations: grouped.conversations.length
+        }}
     };
 }

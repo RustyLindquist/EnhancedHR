@@ -107,26 +107,28 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             break;
         }
         case 'MODULE': {
-            const modContext = item as any; // Context Item from DB
-            const content = modContext.content || {};
+            const modItem = item as any;
+            const content = modItem.content || {}; // Legacy/Fallback
             cardProps = {
                 ...cardProps,
                 type: 'MODULE',
-                subtitle: content.subtitle || 'Module',
-                meta: content.meta,
-                imageUrl: content.image, // Use enriched image
+                subtitle: modItem.author || content.author || 'EnhancedHR Expert',
+                description: modItem.courseTitle || content.courseTitle || 'Module',
+                meta: modItem.duration || content.meta,
+                imageUrl: modItem.image || content.image,
                 actionLabel: 'START'
             };
             break;
         }
         case 'LESSON': {
-            const lessonContext = item as any; // Context Item
-            const content = lessonContext.content || {};
+            const lessonItem = item as any;
+            const content = lessonItem.content || {};
             cardProps = {
                 ...cardProps,
                 type: 'LESSON',
-                subtitle: content.subtitle || 'Lesson',
-                meta: content.meta,
+                subtitle: lessonItem.moduleTitle || content.subtitle || 'Lesson',
+                meta: lessonItem.duration || content.meta,
+                imageUrl: lessonItem.image || content.image,
                 actionLabel: 'START'
             };
             break;

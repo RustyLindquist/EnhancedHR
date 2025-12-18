@@ -399,7 +399,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 <NavItem
                   item={item}
                   isOpen={isOpen}
-                  count={item.id === 'personal-context' ? getCollectionCount(item.id) : undefined} // Logic for specific counters if needed
+                  count={['personal-context', 'conversations'].includes(item.id) ? getCollectionCount(item.id) : undefined}
                   isActive={activeCollectionId === item.id || (pathname?.includes(item.id) && item.id !== 'dashboard')}
                   onClick={() => {
                     if (item.id.startsWith('admin/') || item.id === 'admin') {
