@@ -5,8 +5,9 @@ import UniversalCard from './cards/UniversalCard';
 import CollectionSurface from './CollectionSurface';
 import TeamManagement from '@/components/org/TeamManagement';
 import AlertBox from './AlertBox';
-import CourseHomePage from './CourseHomePage'; // Import Course Page
-import CoursePlayer from './CoursePlayer';
+import CourseHomePage from './CourseHomePage'; // Import Course Page (legacy)
+import CoursePlayer from './CoursePlayer'; // (legacy)
+import { CoursePageV2 } from './course'; // New unified course page
 import UserDashboardV3 from './Dashboard/UserDashboardV3';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
 import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
@@ -1193,6 +1194,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setIsPlayerActive(false);
     };
 
+    // Handler for CoursePageV2 AI integration
+    const handleAskPrometheus = (prompt: string) => {
+        onSetAIPrompt(prompt);
+        onOpenAIPanel();
+    };
+
     // Navigate to a module within its course
     const handleModuleClick = async (moduleItem: any) => {
         const courseId = moduleItem.course_id;
@@ -1754,22 +1761,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
     if (selectedCourse) {
-        if (isPlayerActive) {
-            return (
-                <div className="flex-1 w-full h-full relative z-10">
-                    <CoursePlayer
-                        course={selectedCourse}
-                        syllabus={selectedCourseSyllabus}
-                        resources={selectedCourseResources}
-                        onBack={handleBackToCourseHome}
-                        initialLessonId={resumeLessonId}
-                        initialModuleId={resumeModuleId}
-                        userId={user?.id || ''}
-                    />
-                </div>
-            );
-        }
-
+        // Use the new unified CoursePageV2 which handles both description and player views internally
         return (
             <div
                 className="flex-1 w-full h-full relative z-10"
@@ -1777,7 +1769,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 onDragEnd={handleDragEnd}
                 onDrop={() => setIsDragging(false)}
             >
-                {/* Drag Layer still needs to be here for the course page dragging */}
+                {/* Drag Layer for course page dragging */}
                 {isDragging && draggedItem && (
                     <CustomDragLayer
                         item={draggedItem}
@@ -1786,17 +1778,20 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     />
                 )}
 
-                {/* Only render course page here, full screen essentially within canvas area */}
-                <CourseHomePage
+                {/* Unified Course Page with internal view mode switching */}
+                <CoursePageV2
                     course={selectedCourse}
                     syllabus={selectedCourseSyllabus}
                     resources={selectedCourseResources}
                     onBack={handleBackToCollection}
-                    onStartCourse={handleStartCourse}
                     onDragStart={handleDragStart}
                     onAddToCollection={(item) => {
                         onOpenModal(item as any);
                     }}
+                    onAskPrometheus={handleAskPrometheus}
+                    userId={user?.id || ''}
+                    initialLessonId={resumeLessonId}
+                    initialModuleId={resumeModuleId}
                 />
 
                 {/* Allow drag and drop to footer from Course Page */}

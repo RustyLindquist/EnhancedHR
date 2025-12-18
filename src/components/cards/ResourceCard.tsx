@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { Trash2, Plus, Clock, Download, Paperclip } from 'lucide-react';
+import InteractiveCardWrapper from './InteractiveCardWrapper';
 
 interface ResourceCardProps {
     title: string;
@@ -28,7 +31,21 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
     draggable,
     onDragStart
 }) => {
+    const [isDraggable, setIsDraggable] = React.useState(false);
+    const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
+
+    const handleDragIntentChange = React.useCallback((isDragging: boolean) => {
+        setIsDraggable(isDragging);
+        if (isDragging) {
+            setShouldPreventClick(true);
+        }
+    }, []);
+
     const handleDownload = () => {
+        if (shouldPreventClick) {
+            setShouldPreventClick(false);
+            return;
+        }
         if (onDownload) {
             onDownload();
         } else if (fileUrl) {
@@ -44,11 +61,26 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
     };
 
     return (
-        <div
-            draggable={draggable}
-            onDragStart={onDragStart}
-            className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-2xl transition-all hover:scale-[1.02] ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        <InteractiveCardWrapper
+            glowColor="rgba(239, 68, 68, 0.5)"
+            disabled={false}
+            onDragIntentChange={handleDragIntentChange}
         >
+            <div
+                draggable={draggable && isDraggable}
+                onDragStart={(e) => {
+                    if (isDraggable && onDragStart) {
+                        onDragStart(e);
+                    } else {
+                        e.preventDefault();
+                    }
+                }}
+                onDragEnd={() => {
+                    setIsDraggable(false);
+                    setTimeout(() => setShouldPreventClick(false), 100);
+                }}
+                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''}`}
+            >
             {/* --- Top Section (Header with title centered) --- */}
             <div className="relative h-[45%] w-full overflow-hidden bg-red-900/50 transition-all duration-300">
                 {/* Header Bar */}
@@ -132,7 +164,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                     </button>
                 </div>
             </div>
-        </div>
+            </div>
+        </InteractiveCardWrapper>
     );
 };
 

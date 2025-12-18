@@ -181,3 +181,142 @@ body {
   color: #e2e8f0;
   font-family: var(--font-sans);
 }
+
+/* =====================================================
+   Course Page View Transitions
+   ===================================================== */
+
+/* Fade in animation for general content */
+.animate-fade-in {
+  animation: fadeIn 400ms ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View transition animations for course page */
+.course-view-exit {
+  animation: slideOutUp 400ms ease-out forwards;
+}
+
+.course-view-enter {
+  animation: slideInUp 400ms ease-out forwards;
+}
+
+@keyframes slideOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Module expand/collapse animation */
+.module-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 300ms ease, opacity 300ms ease;
+}
+
+.module-content.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.module-content > div {
+  overflow: hidden;
+}
+
+/* Lesson card hover actions */
+.lesson-card-actions {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.lesson-card:hover .lesson-card-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* NOW PLAYING badge pulse animation */
+.now-playing-badge {
+  animation: nowPlayingPulse 2s ease-in-out infinite;
+}
+
+@keyframes nowPlayingPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+/* Video player glow effect */
+.video-container-glow {
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5),
+              0 0 30px rgba(120, 192, 240, 0.1);
+}
+
+/* Progress bar animation */
+.progress-bar-animated {
+  transition: width 500ms ease-out;
+}
+
+/* Button hover glow effects */
+.btn-glow-orange:hover {
+  box-shadow: 0 0 30px rgba(255, 147, 0, 0.3);
+}
+
+.btn-glow-blue:hover {
+  box-shadow: 0 0 20px rgba(120, 192, 240, 0.3);
+}
+
+.btn-glow-green:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Active lesson card glow */
+.lesson-card-active {
+  box-shadow: 0 0 20px rgba(120, 192, 240, 0.3);
+  border-color: rgba(120, 192, 240, 0.5);
+}
+
+/* Chevron rotation for module toggle */
+.chevron-rotate {
+  transition: transform 300ms ease;
+}
+
+.chevron-rotate.expanded {
+  transform: rotate(0deg);
+}
+
+.chevron-rotate.collapsed {
+  transform: rotate(-90deg);
+}

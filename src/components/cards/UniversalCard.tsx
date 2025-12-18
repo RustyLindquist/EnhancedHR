@@ -1,6 +1,9 @@
+'use client';
+
 import React from 'react';
 import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
+import InteractiveCardWrapper from './InteractiveCardWrapper';
 
 export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE';
 
@@ -58,7 +61,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-slate-400',
             barColor: 'hidden', // Uses image
             icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(120, 192, 240, 0.6)' // Brand blue light
         },
         MODULE: {
             headerColor: 'bg-[#0B1120]',
@@ -66,7 +70,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-slate-400',
             barColor: 'hidden',
             icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(120, 192, 240, 0.6)'
         },
         LESSON: {
             headerColor: 'bg-[#0B1120]',
@@ -74,7 +79,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-slate-400',
             barColor: 'hidden',
             icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(120, 192, 240, 0.6)'
         },
         RESOURCE: { // Red/Terra-cotta
             headerColor: 'bg-[#4A2020]',
@@ -82,7 +88,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-red-200',
             barColor: 'bg-red-900/50', // Solid header bg
             icon: Paperclip,
-            buttonStyle: 'text-slate-400 hover:text-white' // Icon only usually, or minimal
+            buttonStyle: 'text-slate-400 hover:text-white',
+            glowColor: 'rgba(239, 68, 68, 0.5)' // Red
         },
         CONVERSATION: { // Blue/Teal -> Dark Mode Theme
             headerColor: 'bg-[#054C74]', // Brand Medium Blue
@@ -90,7 +97,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-[#78C0F0]',
             barColor: 'bg-[#054C74]',
             icon: ConversationGraphic,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(120, 192, 240, 0.6)'
         },
         CONTEXT: { // Brand Orange
             headerColor: 'bg-[#7c2d12]', // Deep Orange/Amber base
@@ -98,7 +106,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-orange-200',
             barColor: 'bg-[#ea580c]/80', // Orange-600
             icon: FileText,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(234, 88, 12, 0.5)' // Orange
         },
         PROFILE: { // Brand Medium Blue
             headerColor: 'bg-[#054C74]',
@@ -106,7 +115,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             labelColor: 'text-cyan-200',
             barColor: 'bg-[#0284c7]/80', // Sky-600
             icon: User,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(34, 211, 238, 0.5)' // Cyan
         }
     }[type];
 
@@ -125,13 +135,50 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     // For Course, Module, Conversation, Context, and Profile cards, the entire card body is clickable
     const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'PROFILE';
 
+    const [isDraggable, setIsDraggable] = React.useState(false);
+    const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
+
+    const handleDragIntentChange = React.useCallback((isDragging: boolean) => {
+        setIsDraggable(isDragging);
+        if (isDragging) {
+            setShouldPreventClick(true);
+        }
+    }, []);
+
+    const handleClick = React.useCallback((e: React.MouseEvent) => {
+        if (shouldPreventClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShouldPreventClick(false);
+            return;
+        }
+        if (isClickableCard) {
+            handleCardBodyClick(e, onAction);
+        }
+    }, [shouldPreventClick, isClickableCard, onAction]);
+
     return (
-        <div
-            draggable={draggable}
-            onDragStart={onDragStart}
-            onClick={isClickableCard ? (e) => handleCardBodyClick(e, onAction) : undefined}
-            className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-white/10 bg-[#0B1120] shadow-2xl transition-all hover:scale-[1.02] ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+        <InteractiveCardWrapper
+            glowColor={config.glowColor}
+            disabled={false}
+            onDragIntentChange={handleDragIntentChange}
         >
+            <div
+                draggable={draggable && isDraggable}
+                onDragStart={(e) => {
+                    if (isDraggable && onDragStart) {
+                        onDragStart(e);
+                    } else {
+                        e.preventDefault();
+                    }
+                }}
+                onDragEnd={() => {
+                    setIsDraggable(false);
+                    setTimeout(() => setShouldPreventClick(false), 100);
+                }}
+                onClick={handleClick}
+                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-white/10 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+            >
 
             {/* --- Top Section --- */}
             <div className={`relative ${topHeight} w-full overflow-hidden ${isMediaCard ? 'bg-black' : config.barColor} transition-all duration-300`}>
@@ -314,7 +361,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             {/* Color Band for Non-Media Cards (Top Border or distinct style?) */}
             {/* The design seems to have a colored top section. I used config.barColor for that. */}
 
-        </div>
+            </div>
+        </InteractiveCardWrapper>
     );
 };
 
