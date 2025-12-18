@@ -301,6 +301,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                         type="COURSE"
                                         title={course.title}
                                         subtitle={course.author}
+                                        description={course.description}
                                         imageUrl={course.image}
                                         meta={course.duration}
                                         categories={[`#${idx + 1} TRENDING`]}
@@ -330,6 +331,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                             type="COURSE"
                                             title={course.title}
                                             subtitle={course.author}
+                                            description={course.description}
                                             imageUrl={course.image}
                                             meta={course.duration}
                                             categories={["FOR YOU"]}
@@ -370,14 +372,15 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                     type="COURSE"
                                     title={course.title}
                                     subtitle={course.author}
+                                    description={course.description}
                                     imageUrl={course.image}
                                     meta={`${course.progress}% Complete`}
                                     categories={["IN PROGRESS"]}
                                     actionLabel="RESUME"
                                     rating={course.rating}
                                     onAction={() => onStartCourse(course.id)}
-                                    // onAdd={() => onAddCourse(course)} 
-                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress? 
+                                    // onAdd={() => onAddCourse(course)}
+                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress?
                                     // But user said "on Dashboard, there should only be the 'add' icon".
                                     // Let's ensure consistency.
                                     onAdd={() => onAddCourse(course)}

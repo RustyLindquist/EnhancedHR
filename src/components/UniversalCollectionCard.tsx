@@ -69,6 +69,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'CONTEXT',
                 subtitle: 'AI Insight',
                 description: insight.content?.insight,
+                meta: insight.created_at ? new Date(insight.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'VIEW'
             };
             break;
@@ -79,6 +80,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 ...cardProps,
                 type: 'CONTEXT',
                 description: context.content?.text,
+                meta: context.created_at ? new Date(context.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT'
             };
             break;
@@ -90,6 +92,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'PROFILE',
                 title: 'My Profile Details',
                 description: profile.content?.objectives || profile.content?.measuresOfSuccess || 'No details added.',
+                meta: profile.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT',
                 onRemove: undefined
             };
@@ -102,6 +105,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'RESOURCE',
                 subtitle: 'Uploaded Document',
                 description: file.content?.fileType || 'File',
+                meta: file.created_at ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'PREVIEW'
             };
             break;

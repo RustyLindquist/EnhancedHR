@@ -297,6 +297,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                                     type="COURSE"
                                     title={course.title}
                                     subtitle={course.author}
+                                    description={course.description}
                                     imageUrl={course.image}
                                     meta={`${course.progress}% Complete`}
                                     categories={["IN PROGRESS"]}

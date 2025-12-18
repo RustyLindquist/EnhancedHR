@@ -200,8 +200,21 @@ export interface ProfileDetails {
     collections?: string[];
 }
 
+// Drag Item Types (used for drag/drop and modal operations)
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE';
+
+export interface DragItem {
+  type: DragItemType;
+  id: string | number;
+  title?: string;
+  subtitle?: string;
+  image?: string; // For preview
+  meta?: string;
+  collections?: string[]; // For modal compatibility
+}
+
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | DragItem;
 
 export interface BackgroundTheme {
   id: string;
@@ -276,13 +289,3 @@ export interface Resource {
   size?: string;
 }
 
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE';
-
-export interface DragItem {
-  type: DragItemType;
-  id: string | number;
-  title?: string;
-  subtitle?: string;
-  image?: string; // For preview
-  meta?: string;
-}

@@ -212,8 +212,22 @@ function HomeContent() {
         } else {
           console.error('User missing during save!');
         }
+      } else if (modalItem.type === 'MODULE' || modalItem.type === 'LESSON' || modalItem.type === 'RESOURCE') {
+        // Course content items (Module, Lesson, Resource) go to collection_items table
+        if (user) {
+          const { addToCollectionAction } = await import('@/app/actions/collections');
+
+          const promises = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(collectionId => {
+              return addToCollectionAction(String(modalItem.id), modalItem.type, collectionId);
+            });
+
+          await Promise.all(promises);
+          await refreshCollectionCounts();
+        }
       } else {
-        // Generic / Context Items (Module, Lesson, Resource, etc.)
+        // Other Context Items (AI_INSIGHT, CUSTOM_CONTEXT, FILE, etc.)
         if (user) {
           const { createContextItem } = await import('@/app/actions/context');
 

@@ -67,47 +67,53 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
     console.log('[getCollectionCountsAction] Starting count for user:', userId);
 
     // Fetch User Collections for Alias Mapping
-    const { data: userCollections } = await admin
+    const { data: userCollections, error: userCollError } = await admin
         .from('user_collections')
-        .select('id, alias, label')
+        .select('id, label, is_custom')
         .eq('user_id', userId);
 
-    const collectionMap: Record<string, string> = {};
+    if (userCollError) {
+        console.error('[getCollectionCountsAction] Error fetching user collections:', userCollError);
+    }
+
+    // Build UUID -> Alias map for system collections (based on label)
+    const uuidToAlias: Record<string, string> = {};
     const labelToAlias: Record<string, string> = {
-        'Favorites': 'favorites',
-        'Workspace': 'research',
-        'Watchlist': 'to_learn',
-        'Personal Context': 'personal-context'
+        'favorites': 'favorites',
+        'workspace': 'research',
+        'watchlist': 'to_learn',
+        'personal context': 'personal-context'
     };
+
+    let personalContextId: string | null = null;
 
     if (userCollections) {
         userCollections.forEach((c: any) => {
-             if (c.alias) {
-                 collectionMap[c.id] = c.alias;
-             } else if (c.label && labelToAlias[c.label]) {
-                 collectionMap[c.id] = labelToAlias[c.label];
-             }
+            const lowerLabel = c.label?.toLowerCase().trim();
+            if (lowerLabel === 'personal context') personalContextId = c.id;
+
+            // Map UUID to alias if it's a system collection (by label)
+            if (lowerLabel && labelToAlias[lowerLabel]) {
+                uuidToAlias[c.id] = labelToAlias[lowerLabel];
+            }
         });
     }
 
-    // 1. Count Courses (collection_items)
-    const { data: courseItems, error: courseError } = await admin
+    // 1. Count items from collection_items table (courses, modules, lessons, conversations)
+    const { data: collectionItems, error: itemsError } = await admin
         .from('collection_items')
-        .select('collection_id, user_collections!inner(user_id)')
-        .eq('user_collections.user_id', userId);
+        .select('collection_id, item_type, item_id')
+        .in('collection_id', userCollections?.map(c => c.id) || []);
 
-    if (courseError) {
-        console.error('[getCollectionCountsAction] Error fetching collection items:', courseError);
+    if (itemsError) {
+        console.error('[getCollectionCountsAction] Error fetching collection items:', itemsError);
     }
 
-    if (!courseError && courseItems) {
-        // console.log('[getCollectionCountsAction] Found collection items:', courseItems.length);
-        courseItems.forEach((item: any) => {
+    // Count items by collection UUID only
+    if (collectionItems) {
+        collectionItems.forEach((item: any) => {
             const id = item.collection_id;
             counts[id] = (counts[id] || 0) + 1;
-            // Map
-            const alias = collectionMap[id];
-            if (alias) counts[alias] = (counts[alias] || 0) + 1;
         });
     }
 
@@ -122,77 +128,54 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         console.error('[getCollectionCountsAction] Error fetching context items:', contextError);
     }
 
-    if (!contextError && contextItems) {
-        // console.log('[getCollectionCountsAction] Found context items:', contextItems.length);
+    if (contextItems) {
         contextItems.forEach((item: any) => {
             const id = item.collection_id;
             if (id) {
                 counts[id] = (counts[id] || 0) + 1;
-                // Map
-                const alias = collectionMap[id];
-                if (alias) counts[alias] = (counts[alias] || 0) + 1;
             }
         });
-        
-
-        // 4. Fetch Conversations for Legacy Metadata Counting (and Global Count)
-        const { data: conversations, error: conversationsError } = await admin
-            .from('conversations')
-            .select('id, metadata, user_id')
-            .eq('user_id', userId);
-
-        if (conversationsError) {
-             console.error('[getCollectionCountsAction] Error fetching conversations:', conversationsError);
-        }
-
-        // 4b. Fetch EXPLICITLY linked conversations to prevent double counting
-        const { data: linkedConversations } = await admin
-            .from('collection_items')
-            .select('collection_id, item_id')
-            .eq('user_id', userId)
-            .eq('item_type', 'CONVERSATION');
-
-        const linkedSet = new Set<string>();
-        if (linkedConversations) {
-            linkedConversations.forEach(link => {
-                linkedSet.add(`${link.collection_id}:${link.item_id}`);
-            });
-        }
-        
-
-
-        if (conversations) {
-
-            // Global count
-            counts['conversations'] = conversations.length;
-
-            // Per-collection count (Legacy Metadata)
-            conversations.forEach((conv: any) => {
-                const collections = conv.metadata?.collection_ids || conv.metadata?.collections;
-                if (Array.isArray(collections)) {
-                    collections.forEach((cId: string) => {
-                        // Check deduplication
-                        if (!linkedSet.has(`${cId}:${conv.id}`)) {
-                            // Increment count for UUID
-                            counts[cId] = (counts[cId] || 0) + 1;
-                            
-                            // Map to Alias if needed
-                            const alias = collectionMap[cId];
-                            if (alias) {
-                                counts[alias] = (counts[alias] || 0) + 1;
-                            }
-                            
-                            // Also: If the stored cId IS ITSELF an alias (e.g. 'favorites'), we count it directly.
-                            // But usually keys are UUIDs. If cId is 'favorites', counts['favorites']++ above (line 177).
-                        }
-                    });
-                }
-            });
-        }
     }
 
+    // 3. Fetch ALL conversations for global count
+    const { data: conversations, error: conversationsError } = await admin
+        .from('conversations')
+        .select('id, metadata')
+        .eq('user_id', userId);
 
-    // 4. Count Certifications
+    if (conversationsError) {
+        console.error('[getCollectionCountsAction] Error fetching conversations:', conversationsError);
+    }
+
+    // Global conversations count
+    if (conversations) {
+        counts['conversations'] = conversations.length;
+
+        // Build set of conversations already counted via collection_items
+        const linkedConversationIds = new Set<string>();
+        if (collectionItems) {
+            collectionItems
+                .filter((item: any) => item.item_type === 'CONVERSATION')
+                .forEach((item: any) => {
+                    linkedConversationIds.add(`${item.collection_id}:${item.item_id}`);
+                });
+        }
+
+        // Count conversations from metadata.collection_ids (legacy) - only if NOT already in collection_items
+        conversations.forEach((conv: any) => {
+            const metadataCollections = conv.metadata?.collection_ids || conv.metadata?.collections;
+            if (Array.isArray(metadataCollections)) {
+                metadataCollections.forEach((cId: string) => {
+                    // Only count if not already linked via collection_items
+                    if (!linkedConversationIds.has(`${cId}:${conv.id}`)) {
+                        counts[cId] = (counts[cId] || 0) + 1;
+                    }
+                });
+            }
+        });
+    }
+
+    // 4. Count Certifications (courses with badges)
     const { count: certificationCount, error: certError } = await admin
         .from('courses')
         .select('*', { count: 'exact', head: true })
@@ -203,48 +186,22 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         counts['certifications'] = certificationCount;
     }
 
-    // 5. Map UUIDs to System Aliases & Personal Context Logic
-    // Fetch collections to get IDs and Labels
-    const { data: userCols, error: colError } = await admin
-        .from('user_collections')
-        .select('id, label')
-        .eq('user_id', userId);
-    
-    if (colError) console.error('[getCollectionCountsAction] Error fetching user cols:', colError);
-
-
-    const LABEL_TO_ALIAS: Record<string, string> = {
-        'favorites': 'favorites',
-        'workspace': 'research',
-        'watchlist': 'to_learn',
-        'personal context': 'personal-context'
-    };
-
-    let personalContextId: string | null = null;
-
-    userCols?.forEach((col: any) => {
-        const lowerLabel = col.label.toLowerCase().trim();
-        const alias = LABEL_TO_ALIAS[lowerLabel];
-        
-        if (lowerLabel === 'personal context') personalContextId = col.id;
-
-        if (alias && counts[col.id]) {
-            counts[alias] = counts[col.id];
-        }
-    });
-
-    // Virtual Profile Count Logic (moved here to allow using fetched ID)
+    // 5. Virtual Profile Count Logic for Personal Context
     if (personalContextId) {
         const hasProfileItem = contextItems?.some((i: any) => i.collection_id === personalContextId && i.type === 'PROFILE');
         if (!hasProfileItem) {
-             counts[personalContextId] = (counts[personalContextId] || 0) + 1;
-             // Update mapped alias too
-             counts['personal-context'] = counts[personalContextId];
-
+            counts[personalContextId] = (counts[personalContextId] || 0) + 1;
         }
     }
 
-
+    // 6. Map UUID counts to system aliases AT THE END (not during iteration to avoid double counting)
+    // This creates alias keys that the UI expects (e.g., 'favorites', 'research', 'to_learn', 'personal-context')
+    userCollections?.forEach((col: any) => {
+        const alias = uuidToAlias[col.id];
+        if (alias && counts[col.id] !== undefined) {
+            counts[alias] = counts[col.id];
+        }
+    });
 
     return counts;
 }

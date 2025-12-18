@@ -1193,6 +1193,51 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setIsPlayerActive(false);
     };
 
+    // Navigate to a module within its course
+    const handleModuleClick = async (moduleItem: any) => {
+        const courseId = moduleItem.course_id;
+        const moduleId = moduleItem.id;
+
+        if (!courseId) {
+            console.error('Module is missing course_id:', moduleItem);
+            return;
+        }
+
+        // Load course data
+        setSelectedCourseId(courseId);
+
+        try {
+            const syllabus = await fetchCourseModules(courseId);
+
+            // Fetch progress if user is logged in
+            const supabase = createClient();
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+
+            if (authUser) {
+                const { completedLessonIds } = await fetchUserCourseProgress(authUser.id, courseId);
+                syllabus.forEach(m => {
+                    m.lessons.forEach(l => {
+                        if (completedLessonIds.includes(l.id)) {
+                            l.isCompleted = true;
+                        }
+                    });
+                });
+            }
+
+            setSelectedCourseSyllabus(syllabus);
+
+            const resources = generateMockResources(courseId);
+            setSelectedCourseResources(resources);
+
+            // Set the module to open and go directly to player
+            setResumeModuleId(moduleId);
+            setIsPlayerActive(true);
+
+        } catch (error) {
+            console.error("Failed to load course for module:", error);
+        }
+    };
+
     const handleDragStart = (item: DragItem) => {
         setIsDragging(true);
         setDraggedItem(item);
@@ -1871,6 +1916,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onRemove={(id, type) => handleRemoveItem(id, type)}
                                 onClick={(item) => {
                                     if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
+                                    else if (item.itemType === 'MODULE') {
+                                        handleModuleClick(item);
+                                    }
                                     else if (item.itemType === 'CONVERSATION') {
                                         handleOpenConversation(item.id);
                                     }
@@ -2765,10 +2813,11 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                     item={item as any} // Dynamic mapping handles types
                                                                     onRemove={(id, type) => initiateDeleteContextItem(id, type as ContextItemType, item.title)}
                                                                     onClick={(i) => {
-                                                                        if (i.itemType === 'MODULE' || i.itemType === 'LESSON') {
-                                                                            // Ideally navigate to course? For now just open modal or log
-                                                                            console.log('Open item:', i);
-                                                                            // We could construct a course link if we had courseId, but simplistic start:
+                                                                        if (i.itemType === 'MODULE') {
+                                                                            handleModuleClick(i);
+                                                                        } else if (i.itemType === 'LESSON') {
+                                                                            // TODO: Navigate to specific lesson
+                                                                            console.log('Open lesson:', i);
                                                                         }
                                                                     }}
                                                                 />
