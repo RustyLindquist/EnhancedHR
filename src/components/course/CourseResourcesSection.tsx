@@ -46,17 +46,17 @@ const CourseResourcesSection: React.FC<CourseResourcesSectionProps> = ({
     };
 
     return (
-        <div className="mt-10 animate-fade-in">
-            {/* Section Header */}
-            <div className="flex items-center gap-3 mb-5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-orange/10">
-                    <FileText size={16} className="text-brand-orange" />
+        <div className="mt-12 animate-fade-in">
+            {/* Section Header - Centered */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
+                <div className="flex items-center gap-2">
+                    <FileText size={14} className="text-brand-orange" />
+                    <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-slate-400">
+                        COURSE RESOURCES
+                    </h2>
                 </div>
-                <h2 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-orange">
-                    COURSE RESOURCES
-                </h2>
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-slate-500">{resources.length} files</span>
+                <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
             </div>
 
             {/* Resources Grid */}

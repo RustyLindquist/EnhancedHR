@@ -37,6 +37,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
     const [isPlaying, setIsPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
+    const [showPlayOverlay, setShowPlayOverlay] = useState(true);
     const playerRef = useRef<any>(null);
 
     // Trial tracking
@@ -50,6 +51,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
 
     const handleVideoEnded = useCallback(() => {
         setIsPlaying(false);
+        setShowPlayOverlay(true);
         onLessonComplete(lesson.id);
         // Auto-advance to next lesson after completion
         if (hasNext) {
@@ -58,6 +60,15 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
             }, 1500);
         }
     }, [lesson.id, onLessonComplete, hasNext, onNextLesson]);
+
+    const handlePlay = useCallback(() => {
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+    }, []);
+
+    const handlePause = useCallback(() => {
+        setIsPlaying(false);
+    }, []);
 
     const handleAsk = () => {
         const prompt = `Explain the main points of lesson "${lesson.title}" from ${course.title} in more detail. What are the key takeaways and concepts I should understand?`;
@@ -81,37 +92,45 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         }
     };
 
-    // Reset video error when lesson changes
+    // Reset video error and show overlay when lesson changes
     React.useEffect(() => {
         setVideoError(false);
+        setShowPlayOverlay(true);
     }, [lesson.id]);
+
+    // Mock instructor data
+    const instructor = {
+        name: course.author || 'Rusty Lindquist',
+        title: 'CEO | HR Engineering',
+        avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+    };
 
     return (
         <div className="relative animate-fade-in">
             {/* Video Player Container */}
             <div className="relative">
-                {/* Navigation Arrows */}
+                {/* Navigation Arrows - Positioned outside video */}
                 {hasPrevious && (
                     <button
                         onClick={onPreviousLesson}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 w-12 h-12 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-lg backdrop-blur-sm"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-30 w-10 h-10 rounded-full bg-brand-black/90 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-xl backdrop-blur-sm"
                         aria-label="Previous lesson"
                     >
-                        <ChevronLeft size={24} />
+                        <ChevronLeft size={20} />
                     </button>
                 )}
                 {hasNext && (
                     <button
                         onClick={onNextLesson}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 w-12 h-12 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-lg backdrop-blur-sm"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 w-10 h-10 rounded-full bg-brand-black/90 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-xl backdrop-blur-sm"
                         aria-label="Next lesson"
                     >
-                        <ChevronRight size={24} />
+                        <ChevronRight size={20} />
                     </button>
                 )}
 
                 {/* Video/Quiz Container */}
-                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_60px_rgba(0,0,0,0.5)] border border-white/10">
+                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5">
                     {isQuiz && lesson.quiz_data ? (
                         <QuizPlayer
                             lessonId={lesson.id}
@@ -119,56 +138,74 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                             onComplete={handleQuizComplete}
                         />
                     ) : lesson.video_url && !isLocked ? (
-                        videoError ? (
-                            // Error State
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-50">
-                                <div className="text-brand-red mb-4">
-                                    <Monitor size={48} />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-2">Video Playback Error</h3>
-                                <p className="text-slate-400 mb-6 text-center max-w-md">
-                                    We encountered an issue playing this video. Please check your connection or try again.
-                                </p>
-                                <button
+                        <>
+                            {/* Play button overlay */}
+                            {showPlayOverlay && !videoError && (
+                                <div
+                                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900/80 to-slate-800/80 z-20 cursor-pointer"
                                     onClick={() => {
-                                        setVideoError(false);
+                                        setShowPlayOverlay(false);
                                         if (playerRef.current) {
-                                            playerRef.current.load();
+                                            playerRef.current.play();
                                         }
                                     }}
-                                    className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-colors"
                                 >
-                                    Retry
-                                </button>
-                            </div>
-                        ) : (
-                            <MuxPlayer
-                                ref={playerRef}
-                                streamType="on-demand"
-                                playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
-                                src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
-                                metadata={{
-                                    video_id: lesson.id,
-                                    video_title: lesson.title,
-                                    viewer_user_id: userId,
-                                }}
-                                primaryColor="#78C0F0"
-                                secondaryColor="#000000"
-                                accentColor="#FF9300"
-                                className="w-full h-full"
-                                onTimeUpdate={handleTimeUpdate}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                                onEnded={handleVideoEnded}
-                                onError={(err) => {
-                                    console.error("MuxPlayer Error:", err);
-                                    setVideoError(true);
-                                }}
-                            />
-                        )
+                                    <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center hover:bg-white/20 hover:border-white/50 hover:scale-105 transition-all duration-300 shadow-2xl backdrop-blur-sm">
+                                        <Play size={32} className="text-white ml-1" fill="currentColor" />
+                                    </div>
+                                </div>
+                            )}
+                            {videoError ? (
+                                // Error State
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-50">
+                                    <div className="text-brand-red mb-4">
+                                        <Monitor size={48} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Video Playback Error</h3>
+                                    <p className="text-slate-400 mb-6 text-center max-w-md">
+                                        We encountered an issue playing this video. Please check your connection or try again.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setVideoError(false);
+                                            if (playerRef.current) {
+                                                playerRef.current.load();
+                                            }
+                                        }}
+                                        className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition-colors"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : (
+                                <MuxPlayer
+                                    ref={playerRef}
+                                    streamType="on-demand"
+                                    playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
+                                    src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
+                                    metadata={{
+                                        video_id: lesson.id,
+                                        video_title: lesson.title,
+                                        viewer_user_id: userId,
+                                    }}
+                                    primaryColor="#78C0F0"
+                                    secondaryColor="#000000"
+                                    accentColor="#FF9300"
+                                    className="w-full h-full"
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onPlay={handlePlay}
+                                    onPause={handlePause}
+                                    onEnded={handleVideoEnded}
+                                    onError={(err) => {
+                                        console.error("MuxPlayer Error:", err);
+                                        setVideoError(true);
+                                    }}
+                                />
+                            )}
+                        </>
                     ) : isLocked ? (
                         // Trial Locked State
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md z-50">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md z-50">
                             <Lock size={48} className="text-brand-red mb-4" />
                             <h2 className="text-2xl font-bold text-white mb-2">Trial Ended</h2>
                             <p className="text-slate-400 mb-6 max-w-md text-center">
@@ -179,71 +216,71 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                             </button>
                         </div>
                     ) : (
-                        // No Content State
+                        // No Content State - with play button
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-                            <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-4">
+                            <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center mb-4">
                                 <Play size={32} className="text-white/50 ml-1" />
                             </div>
-                            <p className="text-slate-400 mb-2">No video content available</p>
-                            <p className="text-xs text-slate-600">Lesson ID: {lesson.id}</p>
+                            <p className="text-slate-400 mb-2">Video content loading...</p>
+                            <p className="text-xs text-slate-600">Lesson: {lesson.title}</p>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Lesson Info Bar */}
-            <div className="mt-4 bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between backdrop-blur-sm">
+            <div className="mt-4 bg-white/[0.03] border border-white/10 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm">
                 {/* Left: Lesson Info */}
                 <div className="flex items-center gap-4 min-w-0">
                     <div className="min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
+                        <div className="flex items-center gap-3 mb-0.5">
                             <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
                                 LESSON {lessonNumber}
                             </span>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-[10px] text-slate-500">
                                 {lesson.duration}
                             </span>
                         </div>
-                        <h2 className="text-lg font-bold text-white truncate">
-                            {lesson.title}
+                        <h2 className="text-base font-bold text-white truncate">
+                            {lesson.title || 'Active Lesson Title Goes Here'}
                         </h2>
                     </div>
                 </div>
 
-                {/* Right: Actions */}
-                <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Author Avatar */}
-                    <div className="flex items-center gap-3 mr-2">
-                        <div className="w-10 h-10 rounded-full bg-slate-700 border border-white/10 overflow-hidden flex-shrink-0">
+                {/* Right: Instructor + Actions */}
+                <div className="flex items-center gap-4 flex-shrink-0">
+                    {/* Author Avatar & Name */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-700 border border-white/10 overflow-hidden flex-shrink-0">
                             <img
-                                src="https://randomuser.me/api/portraits/men/32.jpg"
-                                alt={course.author || 'Instructor'}
+                                src={instructor.avatar}
+                                alt={instructor.name}
                                 className="w-full h-full object-cover"
                             />
                         </div>
                         <div className="hidden sm:block">
-                            <p className="text-sm font-semibold text-white">{course.author || 'Instructor'}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Expert</p>
+                            <p className="text-sm font-semibold text-white">{instructor.name}</p>
+                            <p className="text-[9px] text-slate-500 uppercase tracking-wider">{instructor.title}</p>
                         </div>
                     </div>
 
-                    <div className="h-8 w-px bg-white/10" />
+                    <div className="h-6 w-px bg-white/10" />
 
                     {/* Ask Button */}
                     <button
                         onClick={handleAsk}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_15px_rgba(120,192,240,0.2)]"
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
                     >
-                        <Sparkles size={14} />
+                        <Sparkles size={12} />
                         ASK
                     </button>
 
                     {/* Save Button */}
                     <button
                         onClick={handleSave}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 text-xs font-bold uppercase tracking-wider transition-all"
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
                     >
-                        <Bookmark size={14} />
+                        <Bookmark size={12} />
                         SAVE
                     </button>
                 </div>

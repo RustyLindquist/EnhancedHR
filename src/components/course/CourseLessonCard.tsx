@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Monitor, FileText, Sparkles, Plus, CheckCircle } from 'lucide-react';
+import { Sparkles, Plus, CheckCircle } from 'lucide-react';
 import { Lesson, DragItem } from '../../types';
 
 interface CourseLessonCardProps {
@@ -33,16 +33,17 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
 
     // Format duration
     const formatDuration = (duration: string) => {
+        if (!duration) return '5 Min';
         // Already formatted like "7 Min" or "10 Min"
         if (duration.toLowerCase().includes('min')) {
-            return duration.toUpperCase();
+            return duration;
         }
-        // If just a number, add MIN
+        // If just a number, add Min
         const num = parseInt(duration);
         if (!isNaN(num)) {
-            return `${num} MIN`;
+            return `${num} Min`;
         }
-        return duration.toUpperCase();
+        return duration;
     };
 
     const handleAsk = (e: React.MouseEvent) => {
@@ -75,13 +76,16 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
         onDragStart(dragItem);
     };
 
+    // Description placeholder text
+    const descriptionText = 'Lesson title goes here, and will wrap as necessary';
+
     return (
         <div
             className={`
-                group relative rounded-xl cursor-pointer transition-all duration-300
+                group relative rounded-xl cursor-pointer transition-all duration-300 overflow-visible
                 ${isActive
-                    ? 'bg-white/10 border-2 border-brand-blue-light shadow-[0_0_20px_rgba(120,192,240,0.3)]'
-                    : 'bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/20'
+                    ? 'bg-white/10 border-2 border-brand-blue-light shadow-[0_0_25px_rgba(120,192,240,0.25)]'
+                    : 'bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-white/20'
                 }
             `}
             onClick={onClick}
@@ -90,34 +94,25 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
         >
             {/* NOW PLAYING Badge */}
             {isActive && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-brand-blue-light text-brand-black text-[9px] font-bold uppercase tracking-wider rounded-full animate-pulse z-10">
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-brand-blue-light text-brand-black text-[8px] font-bold uppercase tracking-wider rounded-full shadow-lg z-20 whitespace-nowrap">
                     NOW PLAYING
-                </div>
-            )}
-
-            {/* Completed Checkmark */}
-            {isCompleted && !isActive && (
-                <div className="absolute top-2 right-2 z-10">
-                    <CheckCircle size={16} className="text-emerald-400" fill="rgba(16, 185, 129, 0.2)" />
                 </div>
             )}
 
             {/* Card Content */}
             <div className="p-4">
-                {/* Top Row: Lesson Number + Duration */}
+                {/* Top Row: Lesson Number/Quiz Badge + Duration */}
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        {/* Type Icon */}
                         {isQuiz ? (
-                            <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[10px] font-bold uppercase rounded">
+                            <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[9px] font-bold uppercase rounded border border-brand-orange/30">
                                 QUIZ
                             </span>
                         ) : (
-                            <Monitor size={14} className="text-brand-blue-light" />
+                            <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
+                                LESSON {lessonNumber}
+                            </span>
                         )}
-                        <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                            LESSON {lessonNumber}
-                        </span>
                     </div>
                     <span className="text-[10px] font-medium text-slate-500">
                         {formatDuration(lesson.duration)}
@@ -126,30 +121,42 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
 
                 {/* Lesson Title */}
                 <h4 className={`
-                    text-sm font-semibold line-clamp-2 leading-tight
+                    text-sm font-semibold leading-tight mb-2
                     ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}
                     transition-colors
                 `}>
-                    {lesson.title}
+                    {lesson.title || 'Lesson Title Goes Here'}
                 </h4>
+
+                {/* Description Text */}
+                <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                    {descriptionText}
+                </p>
+
+                {/* Completed Checkmark - positioned in bottom right */}
+                {isCompleted && !isActive && (
+                    <div className="absolute bottom-3 right-3">
+                        <CheckCircle size={16} className="text-emerald-400" fill="rgba(16, 185, 129, 0.2)" />
+                    </div>
+                )}
             </div>
 
-            {/* Hover Actions */}
+            {/* Hover Actions - positioned top right */}
             <div className={`
-                absolute bottom-3 right-3 flex items-center gap-1.5
-                opacity-0 translate-x-2 transition-all duration-200
-                ${!isActive ? 'group-hover:opacity-100 group-hover:translate-x-0' : ''}
+                absolute top-3 right-3 flex items-center gap-1
+                opacity-0 translate-y-1 transition-all duration-200
+                ${!isActive ? 'group-hover:opacity-100 group-hover:translate-y-0' : ''}
             `}>
                 <button
                     onClick={handleAdd}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-sm"
                     title="Add to collection"
                 >
                     <Plus size={14} />
                 </button>
                 <button
                     onClick={handleAsk}
-                    className="p-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 text-brand-blue-light transition-colors"
+                    className="p-1.5 rounded-lg bg-brand-blue-light/20 hover:bg-brand-blue-light/30 text-brand-blue-light transition-all backdrop-blur-sm"
                     title="Ask Prometheus"
                 >
                     <Sparkles size={14} />

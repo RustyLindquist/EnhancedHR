@@ -59,59 +59,63 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
     };
 
     return (
-        <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+        <div className={`
+            rounded-2xl overflow-hidden transition-all duration-300
+            ${isExpanded
+                ? 'bg-white/[0.03] border border-white/10'
+                : 'bg-transparent border border-white/5 hover:border-white/10'
+            }
+        `}>
             {/* Module Header */}
             <button
                 onClick={onToggle}
-                className="w-full flex items-center justify-between p-5 hover:bg-white/5 transition-colors group"
+                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors group"
             >
-                {/* Left: Chevron + Module Title */}
+                {/* Left: Chevron + Module Number + Title */}
                 <div className="flex items-center gap-3 min-w-0">
                     <ChevronDown
                         size={18}
                         className={`
-                            text-slate-400 transition-transform duration-300 flex-shrink-0
+                            text-slate-500 transition-transform duration-300 flex-shrink-0
                             ${isExpanded ? 'rotate-0' : '-rotate-90'}
                         `}
                     />
-                    <div className="min-w-0">
-                        <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block">
-                            MODULE {moduleIndex + 1}
-                        </span>
-                        <h3 className="text-base font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
-                            {module.title}
-                        </h3>
-                    </div>
+                    <h3 className="text-base font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
+                        <span className="text-slate-400">{moduleIndex + 1}.</span>{' '}
+                        {module.title || 'Module Title Goes Here'}
+                    </h3>
                 </div>
 
                 {/* Right: Progress + Actions (when expanded) */}
                 <div className="flex items-center gap-4 flex-shrink-0">
-                    {/* Progress indicator */}
-                    <div className="hidden sm:flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                style={{ width: `${moduleProgress}%` }}
-                            />
+                    {/* Progress indicator - only show when collapsed */}
+                    {!isExpanded && (
+                        <div className="hidden sm:flex items-center gap-2">
+                            <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-emerald-500/70 rounded-full transition-all duration-500"
+                                    style={{ width: `${moduleProgress}%` }}
+                                />
+                            </div>
+                            <span className="text-[10px] text-slate-500 w-8 text-right">
+                                {moduleProgress}%
+                            </span>
                         </div>
-                        <span className="text-xs text-slate-500 w-10 text-right">
-                            {moduleProgress}%
-                        </span>
-                    </div>
+                    )}
 
                     {/* Action buttons (visible when expanded) */}
                     {isExpanded && (
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                             <button
                                 onClick={handleAskModule}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_10px_rgba(120,192,240,0.2)]"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_10px_rgba(120,192,240,0.2)]"
                             >
                                 <Sparkles size={12} />
                                 ASK
                             </button>
                             <button
                                 onClick={handleSaveModule}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 text-xs font-bold uppercase tracking-wider transition-all"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
                             >
                                 <Bookmark size={12} />
                                 SAVE MODULE
@@ -130,8 +134,8 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
             >
                 <div className="overflow-hidden">
                     <div className="px-5 pb-5">
-                        {/* Lessons Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        {/* Lessons Grid - 4 columns on larger screens */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {module.lessons.map((lesson, lessonIndex) => (
                                 <CourseLessonCard
                                     key={lesson.id}
