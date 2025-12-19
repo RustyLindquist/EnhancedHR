@@ -15,6 +15,20 @@ export interface OpenRouterModel {
     };
 }
 
+// Helper to get just the model for a backend AI instance (useful for embeddings)
+export async function getBackendModel(key: string): Promise<string | null> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+
+    const { data } = await supabase
+        .from('ai_prompt_library')
+        .select('model')
+        .eq('key', key)
+        .single();
+
+    return data?.model || null;
+}
+
 // Helper to fetch and interpolate prompts from Prompt Library
 export async function getBackendPrompt(key: string, variables: Record<string, string>): Promise<{ text: string, model: string | null }> {
     const { createClient } = await import('@/lib/supabase/server');

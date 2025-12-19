@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { fetchOpenRouterModels, OpenRouterModel } from '@/app/actions/ai';
-import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, MessageSquare, Database, FileText, Info } from 'lucide-react';
 
 interface SystemPrompt {
     id: string;
@@ -19,6 +19,8 @@ interface PromptLibraryItem {
     description: string;
     input_variables: string[];
     model?: string;
+    has_prompt?: boolean;
+    category?: string;
 }
 
 interface SystemPromptManagerProps {
@@ -234,33 +236,69 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                             </button>
                         ))
                     ) : (
-                        libraryItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => setSelectedLibraryId(item.id)}
-                                className={`
-                                    flex items-center gap-3 p-4 rounded-xl text-left transition-all border
-                                    ${selectedLibraryId === item.id
-                                        ? 'bg-brand-blue-light/10 border-brand-blue-light/30 shadow-[0_0_15px_rgba(120,192,240,0.1)]'
-                                        : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10'}
-                                `}
-                            >
-                                <div className={`
-                                    w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
-                                    ${selectedLibraryId === item.id ? 'bg-brand-blue-light text-brand-black' : 'bg-white/10 text-slate-400'}
-                                `}>
-                                    <Bot size={18} />
-                                </div>
-                                <div>
-                                    <div className={`font-bold ${selectedLibraryId === item.id ? 'text-white' : 'text-slate-300'}`}>
-                                        {item.key}
+                        <>
+                            {/* Group items by category */}
+                            {['recommendations', 'chat', 'embeddings', 'backend'].map(category => {
+                                const categoryItems = libraryItems.filter(item => (item.category || 'backend') === category);
+                                if (categoryItems.length === 0) return null;
+
+                                const categoryLabels: Record<string, string> = {
+                                    recommendations: 'Recommendations',
+                                    chat: 'Chat & Conversations',
+                                    embeddings: 'Embeddings (RAG)',
+                                    backend: 'Other Backend AI'
+                                };
+
+                                const CategoryIcon = category === 'embeddings' ? Database :
+                                                    category === 'chat' ? MessageSquare :
+                                                    category === 'recommendations' ? Sparkles : Bot;
+
+                                return (
+                                    <div key={category} className="space-y-2">
+                                        <div className="flex items-center gap-2 px-2 pt-4 pb-1">
+                                            <CategoryIcon size={12} className="text-slate-500" />
+                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                {categoryLabels[category] || category}
+                                            </span>
+                                        </div>
+                                        {categoryItems.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => setSelectedLibraryId(item.id)}
+                                                className={`
+                                                    flex items-center gap-3 p-4 rounded-xl text-left transition-all border w-full
+                                                    ${selectedLibraryId === item.id
+                                                        ? 'bg-brand-blue-light/10 border-brand-blue-light/30 shadow-[0_0_15px_rgba(120,192,240,0.1)]'
+                                                        : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10'}
+                                                `}
+                                            >
+                                                <div className={`
+                                                    w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0
+                                                    ${selectedLibraryId === item.id ? 'bg-brand-blue-light text-brand-black' : 'bg-white/10 text-slate-400'}
+                                                `}>
+                                                    {item.has_prompt === false ? <Database size={18} /> : <Bot size={18} />}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className={`font-bold truncate ${selectedLibraryId === item.id ? 'text-white' : 'text-slate-300'}`}>
+                                                        {item.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-500 truncate">
+                                                            {item.model || 'No model set'}
+                                                        </span>
+                                                        {item.has_prompt === false && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">
+                                                                Model Only
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
-                                    <div className="text-xs text-slate-500 truncate max-w-[180px]">
-                                        {item.description || 'No description'}
-                                    </div>
-                                </div>
-                            </button>
-                        ))
+                                );
+                            })}
+                        </>
                     )}
                 </div>
 
@@ -377,18 +415,40 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                                         <Bot size={14} /> {viewMode === 'agents' ? 'System Instruction' : 'Task Prompt Template'}
                                     </label>
-                                    {viewMode === 'library' && selectedLibraryItem && selectedLibraryItem.input_variables && (
-                                        <div className="text-xs text-brand-blue-light bg-brand-blue-light/10 p-2 rounded-lg border border-brand-blue-light/20">
-                                            <strong>Available Variables:</strong> {selectedLibraryItem.input_variables.map(v => ` {${v}}`).join(', ')}
+
+                                    {/* Show info message for model-only instances */}
+                                    {viewMode === 'library' && selectedLibraryItem && selectedLibraryItem.has_prompt === false ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-black/20 rounded-xl border border-white/5 p-8">
+                                            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
+                                                <Info size={32} className="text-slate-500" />
+                                            </div>
+                                            <div className="text-center max-w-md">
+                                                <h3 className="text-lg font-bold text-slate-300 mb-2">No System Prompt Required</h3>
+                                                <p className="text-sm text-slate-500 leading-relaxed">
+                                                    This AI instance uses the selected model for <strong className="text-slate-400">embedding generation</strong> only.
+                                                    It doesn't require a system prompt — just select the embedding model above.
+                                                </p>
+                                            </div>
+                                            <div className="text-xs text-slate-600 bg-slate-800/50 px-4 py-2 rounded-lg">
+                                                Used by: {selectedLibraryItem.description || 'Backend process'}
+                                            </div>
                                         </div>
+                                    ) : (
+                                        <>
+                                            {viewMode === 'library' && selectedLibraryItem && selectedLibraryItem.input_variables && selectedLibraryItem.input_variables.length > 0 && (
+                                                <div className="text-xs text-brand-blue-light bg-brand-blue-light/10 p-2 rounded-lg border border-brand-blue-light/20">
+                                                    <strong>Available Variables:</strong> {selectedLibraryItem.input_variables.map(v => ` {${v}}`).join(', ')}
+                                                </div>
+                                            )}
+                                            <textarea
+                                                value={editedInstruction}
+                                                onChange={(e) => setEditedInstruction(e.target.value)}
+                                                className="w-full flex-1 bg-black/30 border border-white/10 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[300px]"
+                                                placeholder={viewMode === 'agents' ? "Enter system instruction..." : "Enter prompt template..."}
+                                                spellCheck={false}
+                                            />
+                                        </>
                                     )}
-                                    <textarea
-                                        value={editedInstruction}
-                                        onChange={(e) => setEditedInstruction(e.target.value)}
-                                        className="w-full flex-1 bg-black/30 border border-white/10 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[300px]"
-                                        placeholder={viewMode === 'agents' ? "Enter system instruction..." : "Enter prompt template..."}
-                                        spellCheck={false}
-                                    />
                                 </div>
                             </div>
                         </>
