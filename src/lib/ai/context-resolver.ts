@@ -1,141 +1,228 @@
 import { createClient } from '@/lib/supabase/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * RAGScope defines what content the AI can access via vector search.
+ *
+ * Object-Oriented Context Engineering Scope Types:
+ * 1. Global Academy - All course content (for general browsing)
+ * 2. Platform Scope - All courses + ALL user's custom context (for Platform Assistant)
+ * 3. Course Scope - Specific course(s) + Personal Context (for Course Assistant/Tutor)
+ * 4. Collection Scope - Items in collection + Personal Context (for Collection Assistant)
+ * 5. Personal Context - User's global context (always included unless explicitly excluded)
+ */
 export interface RAGScope {
-    isGlobalAcademy?: boolean;
-    allowedCourseIds?: number[];
-    allowedItemIds?: string[]; // Source IDs (unified_embeddings.source_id)
-    includeProfiles?: boolean;
-    userId?: string;
+    // Scope type flags
+    isGlobalAcademy?: boolean;        // All course content
+    isPlatformScope?: boolean;        // All courses + all user context (Platform Assistant)
+
+    // Specific content filters
+    allowedCourseIds?: number[];      // Specific courses to search
+    collectionId?: string;            // Specific collection to search
+    allowedItemIds?: string[];        // Specific item IDs (source_id in unified_embeddings)
+
+    // User context settings
+    userId?: string;                  // Required for personal context features
+    includePersonalContext?: boolean; // Include global personal context (default: true)
+    includeAllUserContext?: boolean;  // Include ALL user context across all collections
+
+    // Legacy/special
     isAllConversations?: boolean;
 }
 
 export interface PageContext {
-    type: 'COLLECTION' | 'COURSE' | 'PAGE';
+    type: 'COLLECTION' | 'COURSE' | 'PAGE' | 'PLATFORM' | 'DASHBOARD';
     id?: string;
-    collectionId?: string; // Legacy support
+    collectionId?: string;
+    agentType?: string;
 }
 
+// Map of collection aliases to their database labels
+const COLLECTION_ALIAS_MAP: Record<string, string> = {
+    'personal-context': 'Personal Context',
+    'favorites': 'Favorites',
+    'research': 'Workspace',
+    'to_learn': 'Watchlist',
+    'workspace': 'Workspace',
+    'watchlist': 'Watchlist'
+};
+
 export class ContextResolver {
-    
+
     /**
      * Resolves the RAG Scope for a given user context.
      * Determines what content the AI is allowed to see.
+     *
+     * CRITICAL: Personal Context is ALWAYS included unless explicitly excluded.
+     * This ensures the AI knows about the user in every conversation.
      */
     static async resolve(userId: string, context: PageContext): Promise<RAGScope> {
         const supabase = await createClient();
 
-        // 1. Academy Scope (Global)
+        // Base scope - always include user ID and personal context
+        const baseScope: RAGScope = {
+            userId,
+            includePersonalContext: true  // Personal context always included
+        };
+
+        // 1. Platform/Dashboard Scope (Platform Assistant)
+        // Searches ALL courses + ALL user's custom context from all collections
+        if (
+            context.type === 'PLATFORM' ||
+            context.type === 'DASHBOARD' ||
+            context.id === 'dashboard' ||
+            context.agentType === 'platform_assistant'
+        ) {
+            return {
+                ...baseScope,
+                isPlatformScope: true,
+                includeAllUserContext: true
+            };
+        }
+
+        // 2. Academy Scope (browsing all courses)
         if (context.collectionId === 'academy' || context.id === 'academy') {
-            return { isGlobalAcademy: true };
+            return {
+                ...baseScope,
+                isGlobalAcademy: true
+            };
         }
 
-        // 2. Specific Course Scope
-        // If the user is on a specific Course page (not just collection), 
-        // we might want to Scope to THAT course. 
-        // BUT, the prompt usually implies "Collection Assistant". 
-        // If context.type is COURSE, we probably limit to that course.
+        // 3. Course Scope (Course Assistant/Tutor)
+        // Searches specific course + personal context
         if (context.type === 'COURSE' && context.id) {
-            return { allowedCourseIds: [parseInt(context.id)] };
+            return {
+                ...baseScope,
+                allowedCourseIds: [parseInt(context.id)]
+            };
         }
 
-        // 3. Conversations Collection
+        // 4. Conversations Collection (special handling)
         if (context.collectionId === 'conversations' || context.collectionId === 'conversations-collection') {
-            return { isAllConversations: true };
+            return {
+                ...baseScope,
+                isAllConversations: true
+            };
         }
 
-        // 4. Custom / Personal Collections
-        // We need to fetch the items in this collection to know what to Scope to.
+        // 5. Personal Context Collection
+        // When viewing personal context, include ALL user context
+        if (context.collectionId === 'personal-context' || context.id === 'personal-context') {
+            return {
+                ...baseScope,
+                includeAllUserContext: true
+            };
+        }
+
+        // 6. Named Collections (Favorites, Workspace, Watchlist, Custom)
         if (context.collectionId || (context.type === 'COLLECTION' && context.id)) {
             const collectionId = context.collectionId || context.id!;
-            
-            // Special "Implicit" Collections
-            if (collectionId === 'favorites') {
-                return await this.resolveFavorites(supabase, userId);
-            }
-            if (collectionId === 'watchlist') {
-                return await this.resolveWatchlist(supabase, userId);
-            }
-            if (collectionId === 'workspace') {
-                 // Workspace might be a real DB collection or an implicit one.
-                 // For now assuming it matches a standard collection resolution.
-            }
 
-            // Standard Custom Collection
-            return await this.resolveCustomCollection(supabase, userId, collectionId);
+            // Resolve collection alias to actual ID if needed
+            const resolvedCollectionId = await this.resolveCollectionId(supabase, userId, collectionId);
+
+            if (resolvedCollectionId) {
+                // For collections, search:
+                // 1. Custom context added TO this collection
+                // 2. Courses/content added to this collection
+                // 3. Personal context (always)
+                return await this.resolveCollectionScope(supabase, userId, resolvedCollectionId, baseScope);
+            }
         }
 
-        // Fallback: Default to Global Academy if no specific scope found? 
-        // Or specific empty scope? 
-        // "AI panels... should always be specific to the context...".
-        // If on Dashboard, maybe Global?
-        return { isGlobalAcademy: true }; 
+        // 7. Fallback: Platform-wide scope (be generous with context)
+        return {
+            ...baseScope,
+            isPlatformScope: true
+        };
     }
 
-    // --- Specific Resolvers ---
+    /**
+     * Resolve collection alias (e.g., 'favorites') to actual UUID
+     */
+    private static async resolveCollectionId(
+        supabase: SupabaseClient,
+        userId: string,
+        collectionIdOrAlias: string
+    ): Promise<string | null> {
+        // Check if it's an alias
+        const label = COLLECTION_ALIAS_MAP[collectionIdOrAlias];
 
-    private static async resolveCustomCollection(supabase: SupabaseClient, userId: string, collectionId: string): Promise<RAGScope> {
+        if (label) {
+            const { data } = await supabase
+                .from('user_collections')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('label', label)
+                .maybeSingle();
+
+            return data?.id || null;
+        }
+
+        // Assume it's already a UUID
+        return collectionIdOrAlias;
+    }
+
+    /**
+     * Build scope for a specific collection.
+     * Includes: collection's custom context + courses in collection + personal context
+     */
+    private static async resolveCollectionScope(
+        supabase: SupabaseClient,
+        userId: string,
+        collectionId: string,
+        baseScope: RAGScope
+    ): Promise<RAGScope> {
         const scope: RAGScope = {
+            ...baseScope,
+            collectionId,  // Search custom context in this collection
             allowedCourseIds: [],
             allowedItemIds: []
         };
 
-        // Fetch User Context Items for this Collection
-        const { data: items } = await supabase
+        // Fetch collection_items to find courses/content in this collection
+        const { data: collectionItems } = await supabase
+            .from('collection_items')
+            .select('item_type, item_id, course_id')
+            .eq('collection_id', collectionId);
+
+        if (collectionItems) {
+            for (const item of collectionItems) {
+                if (item.course_id) {
+                    scope.allowedCourseIds?.push(item.course_id);
+                } else if (item.item_type === 'COURSE' && item.item_id) {
+                    scope.allowedCourseIds?.push(parseInt(item.item_id));
+                } else if (item.item_id) {
+                    // For modules, lessons, conversations, etc.
+                    scope.allowedItemIds?.push(item.item_id);
+                }
+            }
+        }
+
+        // Also include custom context items in this collection
+        const { data: contextItems } = await supabase
             .from('user_context_items')
-            .select('id, type, content, title') // We might need source_id if we stored it?
-            // Wait, user_context_items stores the *references*.
-            // We need to know what they refer to.
-            // Current schema: content is JSONB.
-            // We need to inspect how items are stored.
+            .select('id')
             .eq('user_id', userId)
             .eq('collection_id', collectionId);
 
-        if (!items) return scope;
-
-        for (const item of items) {
-             // Logic to extract IDs from the content jsonb
-             // Expected content shape: { courseId: 123 } or { fileId: '...' }
-             if (item.type === 'COURSE' || (item.content as any).courseId) {
-                 const cid = (item.content as any).courseId;
-                 if (cid) scope.allowedCourseIds?.push(cid);
-             }
-             else if (item.type === 'LESSON' || (item.content as any).lessonId) {
-                 // If embedding source_type is 'lesson', source_id is lessonId
-                 const lid = (item.content as any).lessonId;
-                 // But wait, lessons are also covered if their COURSE is in scope? 
-                 // If I add just a lesson, I probably only want that lesson.
-                 // Our unified_embeddings for lessons are linked to course_id.
-                 // Filtering by lesson_id is harder unless we index it.
-                 // For MVP, if a Lesson is added, maybe we add the whole course? 
-                 // Or we rely on source_id matching.
-                 // Let's assume unified_embeddings.source_id stores lessonId.
-                 if (lid) scope.allowedItemIds?.push(lid.toString());
-             }
-             else if (item.type === 'FILE' || item.type === 'CUSTOM_CONTEXT') {
-                  // The item itself IS the source. 
-                  // So the unified_embeddings.source_id should match this context item's ID?
-                  // Or the file ID?
-                  // If content is { fileId: '...' }, we use that.
-                  // If it's a raw Text context, maybe the item.id is the source_id?
-                  // Let's assume item.id is the source_id for simple text notes.
-                  // For now, let's push item.id
-                  // Note: Migration needs to ensure this linkage.
-                  scope.allowedItemIds?.push(item.id || (item.content as any).id);
-             }
+        if (contextItems) {
+            for (const item of contextItems) {
+                scope.allowedItemIds?.push(item.id);
+            }
         }
-        
+
         return scope;
     }
 
-    private static async resolveFavorites(supabase: SupabaseClient, userId: string): Promise<RAGScope> {
-         // Mock logic for favorites
-         // Fetch favorites table
-         return { allowedCourseIds: [1, 2] }; // Placeholder
-    }
-
-    private static async resolveWatchlist(supabase: SupabaseClient, userId: string): Promise<RAGScope> {
-         // Mock logic
-         return { allowedCourseIds: [3] }; 
+    /**
+     * Get Personal Context collection ID for a user
+     * Used when we need to fetch personal context explicitly
+     */
+    static async getPersonalContextCollectionId(
+        supabase: SupabaseClient,
+        userId: string
+    ): Promise<string | null> {
+        return this.resolveCollectionId(supabase, userId, 'personal-context');
     }
 }

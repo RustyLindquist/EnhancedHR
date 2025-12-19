@@ -7,6 +7,76 @@ import { generateOpenRouterResponse } from '@/app/actions/ai';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
 
+/**
+ * Format RAG context items for the AI prompt
+ * Organizes by source type for better understanding
+ */
+function formatContextForPrompt(items: any[]): string {
+    if (!items || items.length === 0) return '';
+
+    // Group by source type
+    const grouped: Record<string, any[]> = {};
+    items.forEach(item => {
+        const type = item.source_type || 'unknown';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(item);
+    });
+
+    const sections: string[] = [];
+
+    // Personal context first (user's custom information)
+    if (grouped['custom_context'] || grouped['profile']) {
+        const personalItems = [...(grouped['custom_context'] || []), ...(grouped['profile'] || [])];
+        if (personalItems.length > 0) {
+            sections.push('=== USER\'S PERSONAL CONTEXT ===');
+            personalItems.forEach(item => {
+                const title = item.metadata?.title || 'Personal Note';
+                sections.push(`[${title}]\n${item.content}`);
+            });
+        }
+    }
+
+    // Files uploaded by user
+    if (grouped['file']) {
+        sections.push('\n=== USER\'S UPLOADED DOCUMENTS ===');
+        grouped['file'].forEach(item => {
+            const fileName = item.metadata?.file_name || 'Document';
+            sections.push(`[From: ${fileName}]\n${item.content}`);
+        });
+    }
+
+    // Course content (lessons, modules)
+    if (grouped['lesson'] || grouped['module'] || grouped['course']) {
+        const courseItems = [
+            ...(grouped['lesson'] || []),
+            ...(grouped['module'] || []),
+            ...(grouped['course'] || [])
+        ];
+        if (courseItems.length > 0) {
+            sections.push('\n=== COURSE KNOWLEDGE BASE ===');
+            courseItems.forEach(item => {
+                const courseName = item.metadata?.course_title || 'Course Content';
+                const lessonName = item.metadata?.lesson_title || '';
+                const prefix = lessonName ? `${courseName} > ${lessonName}` : courseName;
+                sections.push(`[${prefix}]\n${item.content}`);
+            });
+        }
+    }
+
+    // Any other content
+    const otherTypes = Object.keys(grouped).filter(t =>
+        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course'].includes(t)
+    );
+    otherTypes.forEach(type => {
+        if (grouped[type].length > 0) {
+            sections.push(`\n=== ${type.toUpperCase()} ===`);
+            grouped[type].forEach(item => sections.push(item.content));
+        }
+    });
+
+    return sections.join('\n\n');
+}
+
 export async function POST(req: NextRequest) {
     try {
         const supabase = await createClient();
@@ -51,44 +121,8 @@ export async function POST(req: NextRequest) {
                 .replace('{{user_org}}', orgName);
         }
 
-        // 2. Fetch Personal Context
-        let personalContextPrompt = "";
-        
-        // 2a. Global Context
-        const { data: globalItems } = await supabase
-            .from('user_context_items')
-            .select('*')
-            .eq('user_id', user.id)
-            .is('collection_id', null);
-
-        if (globalItems && globalItems.length > 0) {
-            personalContextPrompt += "\n\nGLOBAL USER PROFILE & CONTEXT:\n";
-            globalItems.forEach((item: any) => {
-                personalContextPrompt += `- [${item.type}] ${item.title}: ${JSON.stringify(item.content)}\n`;
-            });
-        }
-
-        // 2b. Local Context
-        const activeCollectionId = pageContext?.collectionId || (pageContext?.type === 'COLLECTION' ? pageContext?.id : null);
-        
-        if (activeCollectionId && activeCollectionId !== 'academy' && activeCollectionId !== 'dashboard') {
-             const { data: localItems } = await supabase
-                .from('user_context_items')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('collection_id', activeCollectionId);
-            
-            if (localItems && localItems.length > 0) {
-                personalContextPrompt += `\n\nLOCAL COLLECTION CONTEXT (Collection: ${activeCollectionId}):\n`;
-                localItems.forEach((item: any) => {
-                    personalContextPrompt += `- [${item.type}] ${item.title}: ${JSON.stringify(item.content)}\n`;
-                });
-            }
-        }
-
-        if (personalContextPrompt) {
-            systemInstruction += `\n\nIMPORTANT USER CONTEXT:\nThe following is explicit context provided by the user. Use it to personalize your responses.\n${personalContextPrompt}`;
-        }
+        // 2. Personal Context is now handled via RAG embeddings (see match_unified_embeddings)
+        // The ContextResolver determines what scope of content to include based on page context
 
         // 3. Generate Embedding for Query (Using Google SDK)
         const embeddingResult = await embeddingModel.embedContent(message);
@@ -110,7 +144,8 @@ export async function POST(req: NextRequest) {
             console.error('RAG Error:', matchError);
         }
 
-        const contextText = contextItems?.map((item: any) => item.content).join('\n\n') || '';
+        // Organize context by source type for better AI understanding
+        const contextText = formatContextForPrompt(contextItems || []);
 
         // 4. Construct Prompt
         let fullPrompt = `

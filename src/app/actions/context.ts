@@ -4,12 +4,40 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { ContextItemType } from '@/types';
+import {
+    embedContextItem,
+    embedProfileDetails,
+    updateContextEmbeddings,
+    deleteContextEmbeddings,
+    embedFileChunks
+} from '@/lib/context-embeddings';
+import { parseFileContent, chunkText, uploadFileToStorage } from '@/lib/file-parser';
 
 interface CreateContextItemDTO {
     collection_id?: string | null; // null for Global
     type: ContextItemType;
     title: string;
     content: any;
+}
+
+/**
+ * Extract text content from different item types for embedding
+ */
+function extractTextForEmbedding(type: ContextItemType, content: any, title: string): string {
+    switch (type) {
+        case 'CUSTOM_CONTEXT':
+            return `${title}\n\n${content?.text || ''}`;
+        case 'AI_INSIGHT':
+            return `Insight: ${title}\n${content?.insight || content?.text || ''}`;
+        case 'PROFILE':
+            // Profile is handled separately by embedProfileDetails
+            return '';
+        case 'FILE':
+            // Files are embedded separately after parsing
+            return '';
+        default:
+            return typeof content === 'string' ? content : JSON.stringify(content);
+    }
 }
 
 export async function createContextItem(data: CreateContextItemDTO) {
@@ -22,7 +50,7 @@ export async function createContextItem(data: CreateContextItemDTO) {
     }
 
     const resolvedCollectionId = await resolveCollectionId(supabase, data.collection_id, user.id);
-    
+
     console.log('[createContextItem] Request:', {
         userId: user.id,
         inputCollectionId: data.collection_id,
@@ -50,9 +78,121 @@ export async function createContextItem(data: CreateContextItemDTO) {
 
     console.log('[createContextItem] Success! Inserted:', inserted);
 
+    // Generate embeddings for RAG
+    try {
+        if (data.type === 'PROFILE') {
+            // Profile gets special handling
+            await embedProfileDetails(
+                user.id,
+                inserted.id,
+                data.content,
+                resolvedCollectionId
+            );
+            console.log('[createContextItem] Profile embeddings created');
+        } else if (data.type !== 'FILE') {
+            // Custom context and AI insights get embedded
+            const textToEmbed = extractTextForEmbedding(data.type, data.content, data.title);
+            if (textToEmbed) {
+                const result = await embedContextItem(
+                    user.id,
+                    inserted.id,
+                    data.type,
+                    textToEmbed,
+                    resolvedCollectionId,
+                    { title: data.title }
+                );
+                console.log('[createContextItem] Embeddings created:', result.embeddingCount);
+            }
+        }
+        // FILE type embeddings are handled by createFileContextItem
+    } catch (embeddingError) {
+        // Log but don't fail the creation - embeddings can be regenerated
+        console.error('[createContextItem] Embedding generation failed:', embeddingError);
+    }
+
     revalidatePath('/dashboard');
-    revalidatePath('/academy'); 
-    return { success: true };
+    revalidatePath('/academy');
+    return { success: true, id: inserted.id };
+}
+
+/**
+ * Create a file context item with full parsing and embedding
+ */
+export async function createFileContextItem(
+    collectionId: string | null,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
+    }
+
+    const resolvedCollectionId = await resolveCollectionId(supabase, collectionId, user.id);
+
+    try {
+        // 1. Parse file content
+        const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
+        const textContent = parseResult.success ? parseResult.text : '';
+
+        // 2. Upload to storage
+        const file = new File([fileBuffer], fileName, { type: fileType });
+        const upload = await uploadFileToStorage(file, user.id, resolvedCollectionId || undefined);
+
+        // 3. Create the context item record
+        const { data: inserted, error } = await supabase
+            .from('user_context_items')
+            .insert({
+                user_id: user.id,
+                collection_id: resolvedCollectionId,
+                type: 'FILE',
+                title: fileName,
+                content: {
+                    fileName,
+                    fileType,
+                    fileSize: fileBuffer.byteLength,
+                    url: upload.success ? upload.url : null,
+                    storagePath: upload.success ? upload.path : null,
+                    parsedTextLength: textContent.length,
+                    parseError: parseResult.success ? null : parseResult.error
+                }
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[createFileContextItem] DB Error:', error);
+            return { success: false, error: error.message };
+        }
+
+        // 4. Generate embeddings from parsed content
+        if (textContent && textContent.length > 0) {
+            const chunks = chunkText(textContent, 1000, 200);
+            const embeddingResult = await embedFileChunks(
+                user.id,
+                inserted.id,
+                chunks,
+                resolvedCollectionId,
+                { fileName, fileType }
+            );
+            console.log(`[createFileContextItem] Created ${embeddingResult.embeddingCount} embeddings for file`);
+        }
+
+        revalidatePath('/dashboard');
+        revalidatePath('/academy');
+
+        return { success: true, id: inserted.id };
+
+    } catch (error) {
+        console.error('[createFileContextItem] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'File processing failed'
+        };
+    }
 }
 
 export async function updateContextItem(id: string, updates: { title?: string; content?: any }) {
@@ -62,6 +202,14 @@ export async function updateContextItem(id: string, updates: { title?: string; c
     if (!user) {
         return { success: false, error: 'Unauthorized' };
     }
+
+    // First fetch the existing item to know its type
+    const { data: existing } = await supabase
+        .from('user_context_items')
+        .select('type, collection_id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
 
     const { error } = await supabase
         .from('user_context_items')
@@ -74,6 +222,31 @@ export async function updateContextItem(id: string, updates: { title?: string; c
         return { success: false, error: `Failed to update: ${error.message}` };
     }
 
+    // Re-generate embeddings if content was updated
+    if (updates.content && existing) {
+        try {
+            const newText = extractTextForEmbedding(
+                existing.type,
+                updates.content,
+                updates.title || ''
+            );
+
+            if (newText) {
+                await updateContextEmbeddings(
+                    user.id,
+                    id,
+                    existing.type,
+                    newText,
+                    existing.collection_id,
+                    { title: updates.title }
+                );
+                console.log('[updateContextItem] Embeddings updated');
+            }
+        } catch (embeddingError) {
+            console.error('[updateContextItem] Embedding update failed:', embeddingError);
+        }
+    }
+
     revalidatePath('/dashboard');
     return { success: true };
 }
@@ -84,6 +257,14 @@ export async function deleteContextItem(id: string) {
 
     if (!user) {
         return { success: false, error: 'Unauthorized' };
+    }
+
+    // Delete associated embeddings first
+    try {
+        await deleteContextEmbeddings(id);
+        console.log('[deleteContextItem] Embeddings deleted');
+    } catch (embeddingError) {
+        console.error('[deleteContextItem] Error deleting embeddings:', embeddingError);
     }
 
     const { error } = await supabase
