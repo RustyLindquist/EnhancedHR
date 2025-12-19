@@ -17,9 +17,6 @@ interface MonthlyPayoutData {
     }[];
     totalWatchTime: number;
     totalCitations: number;
-    watchEarnings: number;
-    citationEarnings: number;
-    totalPayout: number;
 }
 
 export default async function AdminPayoutsPage() {
@@ -75,7 +72,7 @@ export default async function AdminPayoutsPage() {
         .gte('last_accessed', selectedMonth.startDate)
         .lte('last_accessed', selectedMonth.endDate);
 
-    // Fetch citations for the selected month
+    // Fetch citations for the selected month (for analytics, not compensation)
     const { data: citationsData } = await supabase
         .from('ai_content_citations')
         .select('author_id, course_id, created_at')
@@ -124,7 +121,7 @@ export default async function AdminPayoutsPage() {
         }
     });
 
-    // Process citations
+    // Process citations (for analytics only)
     citationsData?.forEach(citation => {
         if (citation.author_id && authorData[citation.author_id]) {
             if (citation.course_id) {
@@ -143,7 +140,7 @@ export default async function AdminPayoutsPage() {
         }
     });
 
-    // Transform to final format
+    // Transform to final format (without earnings - those are calculated client-side based on profit input)
     const payoutData: MonthlyPayoutData[] = Object.values(authorData)
         .map(author => {
             const courses = Object.entries(author.courseStats).map(([courseId, stats]) => ({
@@ -155,8 +152,6 @@ export default async function AdminPayoutsPage() {
 
             const totalWatchTime = courses.reduce((sum, c) => sum + c.watchTimeMinutes, 0);
             const totalCitations = courses.reduce((sum, c) => sum + c.citations, 0);
-            const watchEarnings = totalWatchTime * 0.10;
-            const citationEarnings = totalCitations * 0.50;
 
             return {
                 authorId: author.authorId,
@@ -164,29 +159,23 @@ export default async function AdminPayoutsPage() {
                 email: author.email,
                 courses,
                 totalWatchTime: Math.round(totalWatchTime * 100) / 100,
-                totalCitations,
-                watchEarnings: Math.round(watchEarnings * 100) / 100,
-                citationEarnings: Math.round(citationEarnings * 100) / 100,
-                totalPayout: Math.round((watchEarnings + citationEarnings) * 100) / 100
+                totalCitations
             };
         })
         .filter(author => author.totalWatchTime > 0 || author.totalCitations > 0)
-        .sort((a, b) => b.totalPayout - a.totalPayout);
+        .sort((a, b) => b.totalWatchTime - a.totalWatchTime);
 
     // Calculate totals
     const grandTotals = {
         watchTime: payoutData.reduce((sum, a) => sum + a.totalWatchTime, 0),
-        citations: payoutData.reduce((sum, a) => sum + a.totalCitations, 0),
-        watchEarnings: payoutData.reduce((sum, a) => sum + a.watchEarnings, 0),
-        citationEarnings: payoutData.reduce((sum, a) => sum + a.citationEarnings, 0),
-        totalPayout: payoutData.reduce((sum, a) => sum + a.totalPayout, 0)
+        citations: payoutData.reduce((sum, a) => sum + a.totalCitations, 0)
     };
 
     return (
         <div className="space-y-8 animate-fade-in">
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">Expert Payouts</h1>
-                <p className="text-slate-400">Monthly payout reports for expert compensation.</p>
+                <p className="text-slate-400">Monthly profit-share reports for expert compensation based on watch time.</p>
             </div>
 
             <PayoutReportDashboard
