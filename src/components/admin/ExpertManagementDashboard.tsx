@@ -11,13 +11,12 @@ import {
     Loader2,
     Search,
     Filter,
-    DollarSign,
     BookOpen,
     TrendingUp,
-    Eye,
     ChevronDown,
     ChevronUp,
-    Sparkles
+    Sparkles,
+    Percent
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -72,12 +71,10 @@ export default function ExpertManagementDashboard({
     // Calculate summary stats
     const pendingCount = experts.filter(e => e.author_status === 'pending').length;
     const approvedCount = experts.filter(e => e.author_status === 'approved').length;
-    const rejectedCount = experts.filter(e => e.author_status === 'rejected').length;
 
-    // Calculate total monthly watch time and earnings
+    // Calculate total monthly watch time
     const totalWatchTime = Object.values(monthlyStats).reduce((sum, s) => sum + s.watchTimeMinutes, 0);
     const totalCitations = Object.values(monthlyStats).reduce((sum, s) => sum + s.citations, 0);
-    const totalEstimatedPayout = (totalWatchTime * 0.10) + (totalCitations * 0.50);
 
     const handleAction = async (userId: string, action: 'approve' | 'reject') => {
         setProcessingId(userId);
@@ -123,15 +120,16 @@ export default function ExpertManagementDashboard({
         }
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    };
-
     const formatMinutes = (minutes: number) => {
         if (minutes < 60) return `${Math.round(minutes)}m`;
         const hours = Math.floor(minutes / 60);
         const mins = Math.round(minutes % 60);
         return `${hours}h ${mins}m`;
+    };
+
+    const formatPercent = (expertWatchTime: number) => {
+        if (totalWatchTime === 0) return '0%';
+        return `${((expertWatchTime / totalWatchTime) * 100).toFixed(1)}%`;
     };
 
     return (
@@ -165,17 +163,17 @@ export default function ExpertManagementDashboard({
                         <span className="text-3xl font-bold text-brand-blue-light">{formatMinutes(totalWatchTime)}</span>
                     </div>
                     <p className="text-sm text-slate-400">Watch Time ({currentMonth})</p>
-                    <p className="text-xs text-slate-500 mt-1">{totalCitations} AI citations</p>
+                    <p className="text-xs text-slate-500 mt-1">For profit share calculation</p>
                 </div>
 
-                {/* Estimated Payout */}
+                {/* AI Citations */}
                 <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                        <DollarSign className="text-purple-400" size={24} />
-                        <span className="text-3xl font-bold text-purple-400">{formatCurrency(totalEstimatedPayout)}</span>
+                        <Sparkles className="text-purple-400" size={24} />
+                        <span className="text-3xl font-bold text-purple-400">{totalCitations}</span>
                     </div>
-                    <p className="text-sm text-slate-400">Est. Payout ({currentMonth})</p>
-                    <p className="text-xs text-slate-500 mt-1">$0.10/min + $0.50/citation</p>
+                    <p className="text-sm text-slate-400">AI Citations ({currentMonth})</p>
+                    <p className="text-xs text-slate-500 mt-1">Content quality indicator</p>
                 </div>
             </div>
 
@@ -228,7 +226,7 @@ export default function ExpertManagementDashboard({
                     filteredExperts.map((expert) => {
                         const stats = monthlyStats[expert.id] || { watchTimeMinutes: 0, citations: 0, courseCount: 0 };
                         const totalCourses = courseCountByAuthor[expert.id] || 0;
-                        const estimatedPayout = (stats.watchTimeMinutes * 0.10) + (stats.citations * 0.50);
+                        const sharePercent = formatPercent(stats.watchTimeMinutes);
                         const isExpanded = expandedId === expert.id;
 
                         return (
@@ -272,12 +270,12 @@ export default function ExpertManagementDashboard({
                                                 <p className="text-slate-500 text-xs">Watch Time</p>
                                             </div>
                                             <div className="text-center">
-                                                <p className="text-white font-bold">{stats.citations}</p>
+                                                <p className="text-purple-400 font-bold">{stats.citations}</p>
                                                 <p className="text-slate-500 text-xs">Citations</p>
                                             </div>
                                             <div className="text-center">
-                                                <p className="text-purple-400 font-bold">{formatCurrency(estimatedPayout)}</p>
-                                                <p className="text-slate-500 text-xs">Est. Payout</p>
+                                                <p className="text-brand-blue-light font-bold">{sharePercent}</p>
+                                                <p className="text-slate-500 text-xs">Share</p>
                                             </div>
                                         </div>
                                     )}
@@ -356,21 +354,22 @@ export default function ExpertManagementDashboard({
                                                         <p className="text-xs text-slate-500">Total Watch Time</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-2xl font-bold text-white">{stats.citations}</p>
+                                                        <p className="text-2xl font-bold text-purple-400">{stats.citations}</p>
                                                         <p className="text-xs text-slate-500">AI Citations</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.watchTimeMinutes * 0.10)}</p>
-                                                        <p className="text-xs text-slate-500">Watch Earnings</p>
+                                                        <p className="text-2xl font-bold text-brand-blue-light">{sharePercent}</p>
+                                                        <p className="text-xs text-slate-500">Profit Share</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-2xl font-bold text-purple-400">{formatCurrency(stats.citations * 0.50)}</p>
-                                                        <p className="text-xs text-slate-500">Citation Earnings</p>
+                                                        <p className="text-2xl font-bold text-white">{totalCourses}</p>
+                                                        <p className="text-xs text-slate-500">Total Courses</p>
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-                                                    <span className="text-sm text-slate-400">Estimated Total Payout</span>
-                                                    <span className="text-xl font-bold text-brand-blue-light">{formatCurrency(estimatedPayout)}</span>
+                                                <div className="mt-4 pt-4 border-t border-white/10">
+                                                    <p className="text-xs text-slate-500">
+                                                        Profit share is calculated based on watch time proportion. See the Payouts page to calculate actual earnings.
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
