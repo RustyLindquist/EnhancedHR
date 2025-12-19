@@ -1,12 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getContextForScope } from '@/lib/ai/context';
-import { ContextScope } from '@/lib/ai/types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ContextResolver } from '@/lib/ai/context-resolver';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const SITE_NAME = 'EnhancedHR';
+
+// Initialize Gemini for embeddings
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+
+/**
+ * Format RAG context items for the AI prompt
+ * Organizes by source type for better understanding
+ */
+function formatContextForPrompt(items: any[]): string {
+    if (!items || items.length === 0) return '';
+
+    // Group by source type
+    const grouped: Record<string, any[]> = {};
+    items.forEach(item => {
+        const type = item.source_type || 'unknown';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(item);
+    });
+
+    const sections: string[] = [];
+
+    // Personal context first (user's custom information)
+    if (grouped['custom_context'] || grouped['profile']) {
+        const personalItems = [...(grouped['custom_context'] || []), ...(grouped['profile'] || [])];
+        if (personalItems.length > 0) {
+            sections.push('=== USER\'S PERSONAL CONTEXT ===');
+            personalItems.forEach(item => {
+                const title = item.metadata?.title || 'Personal Note';
+                sections.push(`[${title}]\n${item.content}`);
+            });
+        }
+    }
+
+    // Files uploaded by user
+    if (grouped['file']) {
+        sections.push('\n=== USER\'S UPLOADED DOCUMENTS ===');
+        grouped['file'].forEach(item => {
+            const fileName = item.metadata?.file_name || 'Document';
+            sections.push(`[From: ${fileName}]\n${item.content}`);
+        });
+    }
+
+    // Course content (lessons, modules)
+    if (grouped['lesson'] || grouped['module'] || grouped['course']) {
+        const courseItems = [
+            ...(grouped['lesson'] || []),
+            ...(grouped['module'] || []),
+            ...(grouped['course'] || [])
+        ];
+        if (courseItems.length > 0) {
+            sections.push('\n=== COURSE KNOWLEDGE BASE ===');
+            courseItems.forEach(item => {
+                const courseName = item.metadata?.course_title || 'Course Content';
+                const lessonName = item.metadata?.lesson_title || '';
+                const prefix = lessonName ? `${courseName} > ${lessonName}` : courseName;
+                sections.push(`[${prefix}]\n${item.content}`);
+            });
+        }
+    }
+
+    // Any other content
+    const otherTypes = Object.keys(grouped).filter(t =>
+        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course'].includes(t)
+    );
+    otherTypes.forEach(type => {
+        if (grouped[type].length > 0) {
+            sections.push(`\n=== ${type.toUpperCase()} ===`);
+            grouped[type].forEach(item => sections.push(item.content));
+        }
+    });
+
+    return sections.join('\n\n');
+}
 
 // Developer models use direct Gemini API (format: gemini-xxx)
 // Production models use OpenRouter (format: provider/model-name)
@@ -46,10 +120,32 @@ export async function POST(req: NextRequest) {
         const systemInstruction = promptData?.system_instruction || 'You are a helpful AI assistant.';
         const model = promptData?.model || 'google/gemini-2.0-flash-001';
 
-        // 2. Fetch Context
-        const scope: ContextScope = contextScope || { type: 'PLATFORM' };
-        const contextItems = await getContextForScope(scope, message);
-        const contextString = contextItems.map(item => `[${item.type}] ${item.content}`).join('\n\n');
+        // 2. Generate embedding for the user's query
+        const embeddingResult = await embeddingModel.embedContent(message);
+        const queryEmbedding = embeddingResult.embedding.values;
+
+        // 3. Resolve RAG scope based on agent type and page context
+        // Include agentType in pageContext for proper scope resolution
+        const enhancedPageContext = {
+            ...(pageContext || { type: 'PAGE', id: 'dashboard' }),
+            agentType
+        };
+        const ragScope = await ContextResolver.resolve(user.id, enhancedPageContext);
+
+        // 4. Fetch context using unified embeddings RAG
+        const { data: contextItems, error: ragError } = await supabase.rpc('match_unified_embeddings', {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.5,
+            match_count: 8,
+            filter_scope: ragScope
+        });
+
+        if (ragError) {
+            console.error('[Stream API] RAG Error:', ragError);
+        }
+
+        // Format context for the prompt with proper organization
+        const contextString = formatContextForPrompt(contextItems || []);
 
         const encoder = new TextEncoder();
         let fullResponse = '';
@@ -69,7 +165,7 @@ export async function POST(req: NextRequest) {
                         model,
                         streaming: true,
                         isDeveloper: isDeveloperModel(model),
-                        sources: contextItems.map(c => ({ type: c.type, id: c.id }))
+                        sources: (contextItems || []).map((c: any) => ({ type: c.source_type, id: c.source_id }))
                     }
                 });
 
