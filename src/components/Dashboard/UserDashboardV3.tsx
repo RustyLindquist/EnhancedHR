@@ -136,49 +136,46 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
-            {/* Scrollable content with 200px padding from header (140px + 60px from mt-[60px] container) */}
-            <div className="max-w-6xl mx-auto px-8 pt-[140px]">
+            {/* Scrollable content - wider container for more cards per row */}
+            {/* 100px padding from header (60px header + 100px = 160px from top) */}
+            <div className="max-w-[1800px] mx-auto px-8 pt-[160px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
-                    PROMETHEUS AI SECTION - Tightened & Refined
-                    mb-36 for ~150px gap before Trending section (current 96px + 50px = 144px)
+                    PROMETHEUS AI SECTION - Centered Two-Column Layout
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="flex flex-col items-center relative z-10 mb-36">
-
-                    {/* Logo & Title - Condensed */}
-                    <div className="flex flex-col items-center mb-6 group cursor-default">
-                        <div className="relative mb-4 transition-transform duration-700 group-hover:scale-105">
-                            <div className="absolute inset-0 bg-brand-orange/20 blur-[40px] rounded-full animate-pulse-slow" />
-                            {/* Flame reduced by 15%: 192px * 0.85 ≈ 163px → using w-40 (160px) */}
-                            <img
-                                src="/images/logos/EnhancedHR-logo-mark-flame.png"
-                                alt="Prometheus AI"
-                                className="w-40 h-40 relative z-10 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain"
-                            />
-                        </div>
-                        <h1 className="text-3xl font-extralight text-white tracking-tight text-center mb-1">
-                            Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
-                        </h1>
-                        <p className="text-sm text-slate-500 font-light">Your personal learning assistant</p>
-                    </div>
-
-                    {/* Prompt Section */}
-                    <div className="w-full max-w-3xl">
-
-                        {/* View More Link - Aligned Right */}
-                        <div className="flex justify-end mb-3">
-                            <button
-                                onClick={() => setIsDrawerOpen(true)}
-                                className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
-                            >
-                                <Sparkles size={10} />
-                                <span>more prompts</span>
-                                <ChevronRight size={10} />
-                            </button>
+                <div className="relative z-10 mb-16 flex flex-col items-center">
+                    {/* Centered container for logo + prompts side by side */}
+                    <div className="flex gap-10 mb-6 items-stretch w-full max-w-2xl">
+                        {/* Left Column: Logo & Description - Vertically centered to match prompts height */}
+                        <div className="flex flex-col items-center justify-center group cursor-default flex-1">
+                            <div className="relative mb-3 transition-transform duration-700 group-hover:scale-105">
+                                <div className="absolute inset-0 bg-brand-orange/20 blur-[40px] rounded-full animate-pulse-slow" />
+                                <img
+                                    src="/images/logos/EnhancedHR-logo-mark-flame.png"
+                                    alt="Prometheus AI"
+                                    className="w-24 h-24 relative z-10 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain"
+                                />
+                            </div>
+                            <h1 className="text-xl font-extralight text-white tracking-tight mb-1 text-center">
+                                Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
+                            </h1>
+                            <p className="text-xs text-slate-500 font-light text-center max-w-[180px]">
+                                Your personal learning assistant
+                            </p>
                         </div>
 
-                        {/* Prompt Cards - 2x2 Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        {/* Right Column: Prompt Cards - Stacked, right-aligned with prompt box */}
+                        <div className="w-80 flex flex-col gap-2">
+                            <div className="flex justify-end mb-1">
+                                <button
+                                    onClick={() => setIsDrawerOpen(true)}
+                                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
+                                >
+                                    <Sparkles size={10} />
+                                    <span>more prompts</span>
+                                    <ChevronRight size={10} />
+                                </button>
+                            </div>
                             {[
                                 {
                                     id: 'cap-1',
@@ -212,18 +209,23 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                 <button
                                     key={card.id}
                                     onClick={() => handlePromptClick(card.prompt)}
-                                    className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-4 text-left transition-all duration-300"
+                                    className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg px-3 py-2 text-left transition-all duration-300"
                                 >
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-500`} />
-                                    <div className="relative z-10">
-                                        <h3 className="text-sm font-medium text-slate-200 group-hover:text-white mb-0.5 transition-colors">{card.title}</h3>
-                                        <p className="text-xs text-slate-600 group-hover:text-slate-400 transition-colors">{card.description}</p>
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-lg transition-opacity duration-500`} />
+                                    <div className="relative z-10 flex items-center justify-between gap-2">
+                                        <div>
+                                            <h3 className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">{card.title}</h3>
+                                            <p className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{card.description}</p>
+                                        </div>
+                                        <ChevronRight size={12} className="text-slate-500 group-hover:text-slate-400 flex-shrink-0" />
                                     </div>
                                 </button>
                             ))}
                         </div>
+                    </div>
 
-                        {/* Input Box - Tight against prompts */}
+                    {/* Input Box - Centered below, same width as container above */}
+                    <div className="w-full max-w-2xl">
                         <div className="relative">
                             <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
                             <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
@@ -253,9 +255,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                 </form>
                             </div>
                         </div>
-
                         {/* AI Disclaimer */}
-                        <p className="text-center text-[10px] text-slate-600/60 mt-3">AI can make mistakes. Verify important information.</p>
+                        <p className="text-center text-[10px] text-slate-600/60 mt-2">AI can make mistakes. Verify important information.</p>
                     </div>
                 </div>
 
@@ -294,8 +295,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     {/* Course Cards Grid */}
                     <div className="min-h-[220px]">
                         {activeTab === 'trending' ? (
-                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                                {trendingCourses.length > 0 ? trendingCourses.slice(0, 4).map((course, idx) => (
+                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                                {trendingCourses.length > 0 ? trendingCourses.slice(0, 8).map((course, idx) => (
                                     <UniversalCard
                                         key={course.id}
                                         type="COURSE"
@@ -319,13 +320,13 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                 )}
                             </div>
                         ) : (
-                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                                 {loadingRecommendations ? (
                                     <div className="col-span-full flex justify-center py-16">
                                         <Loader2 size={24} className="animate-spin text-brand-blue-light" />
                                     </div>
                                 ) : recommendedCourses.length > 0 ? (
-                                    recommendedCourses.slice(0, 4).map((course) => (
+                                    recommendedCourses.slice(0, 8).map((course) => (
                                         <UniversalCard
                                             key={course.id}
                                             type="COURSE"
@@ -365,7 +366,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                             {inProgressCourses.map(course => (
                                 <UniversalCard
                                     key={course.id}

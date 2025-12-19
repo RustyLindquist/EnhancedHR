@@ -273,7 +273,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             <div className={`${bottomHeight} px-5 py-4 flex flex-col justify-between relative bg-[#0B1120] transition-all duration-300`}>
 
                 {/* Description / Content Preview */}
-                <div className="flex-1 overflow-hidden min-h-0">
+                <div className="flex-1 min-h-0">
 
                     {type === 'MODULE' || type === 'LESSON' || type === 'RESOURCE' ? (
                         <div className="mb-2">
@@ -283,7 +283,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             <p className="text-[13px] text-slate-300 line-clamp-2 font-light leading-snug">{description}</p>
                         </div>
                     ) : (
-                        <p className="text-[13px] text-slate-300 leading-relaxed line-clamp-4 font-light">
+                        <p className="text-[13px] text-slate-300 leading-relaxed line-clamp-3 font-light">
                             {description}
                         </p>
                     )}
