@@ -16,7 +16,8 @@ import {
   Users,
   Bot,
   Brain,
-  TrendingUp
+  TrendingUp,
+  DollarSign
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -704,7 +705,8 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin/courses', label: 'Courses', icon: BookOpen },
-    { id: 'admin/authors', label: 'Experts', icon: GraduationCap },
+    { id: 'admin/experts', label: 'Experts', icon: GraduationCap },
+    { id: 'admin/payouts', label: 'Payouts', icon: DollarSign },
     { id: 'admin/prompts', label: 'AI Agents', icon: MessageSquare },
     { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
