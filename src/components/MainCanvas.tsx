@@ -1287,6 +1287,55 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     };
 
+    // Navigate to a lesson within its course
+    const handleLessonClick = async (lessonItem: any) => {
+        const lessonId = lessonItem.id;
+        const moduleId = lessonItem.module_id;
+
+        // Get course_id from the lesson's module relationship
+        const courseId = lessonItem.course_id || lessonItem.modules?.course_id || lessonItem.modules?.courses?.id;
+
+        if (!courseId) {
+            console.error('Lesson is missing course_id:', lessonItem);
+            return;
+        }
+
+        // Load course data
+        setSelectedCourseId(courseId);
+
+        try {
+            const syllabus = await fetchCourseModules(courseId);
+
+            // Fetch progress if user is logged in
+            const supabase = createClient();
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+
+            if (authUser) {
+                const { completedLessonIds } = await fetchUserCourseProgress(authUser.id, courseId);
+                syllabus.forEach(m => {
+                    m.lessons.forEach(l => {
+                        if (completedLessonIds.includes(l.id)) {
+                            l.isCompleted = true;
+                        }
+                    });
+                });
+            }
+
+            setSelectedCourseSyllabus(syllabus);
+
+            const resources = generateMockResources(courseId);
+            setSelectedCourseResources(resources);
+
+            // Set the lesson and module to open and go directly to player
+            setResumeLessonId(lessonId);
+            setResumeModuleId(moduleId);
+            setIsPlayerActive(true);
+
+        } catch (error) {
+            console.error("Failed to load course for lesson:", error);
+        }
+    };
+
     const handleDragStart = (item: DragItem) => {
         setIsDragging(true);
         setDraggedItem(item);
@@ -1959,6 +2008,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
                                     else if (item.itemType === 'MODULE') {
                                         handleModuleClick(item);
+                                    }
+                                    else if (item.itemType === 'LESSON') {
+                                        handleLessonClick(item);
                                     }
                                     else if (item.itemType === 'CONVERSATION') {
                                         handleOpenConversation(item.id);
@@ -2860,8 +2912,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                         if (i.itemType === 'MODULE') {
                                                                             handleModuleClick(i);
                                                                         } else if (i.itemType === 'LESSON') {
-                                                                            // TODO: Navigate to specific lesson
-                                                                            console.log('Open lesson:', i);
+                                                                            handleLessonClick(i);
                                                                         }
                                                                     }}
                                                                     onDragStart={handleDragStart}

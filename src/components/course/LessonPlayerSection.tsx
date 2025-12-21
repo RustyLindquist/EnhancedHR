@@ -109,26 +109,6 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         <div className="relative animate-fade-in">
             {/* Video Player Container */}
             <div className="relative">
-                {/* Navigation Arrows - Positioned outside video */}
-                {hasPrevious && (
-                    <button
-                        onClick={onPreviousLesson}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-30 w-10 h-10 rounded-full bg-brand-black/90 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-xl backdrop-blur-sm"
-                        aria-label="Previous lesson"
-                    >
-                        <ChevronLeft size={20} />
-                    </button>
-                )}
-                {hasNext && (
-                    <button
-                        onClick={onNextLesson}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 w-10 h-10 rounded-full bg-brand-black/90 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 hover:border-white/40 transition-all shadow-xl backdrop-blur-sm"
-                        aria-label="Next lesson"
-                    >
-                        <ChevronRight size={20} />
-                    </button>
-                )}
-
                 {/* Video/Quiz Container */}
                 <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5">
                     {isQuiz && lesson.quiz_data ? (
@@ -228,62 +208,93 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                 </div>
             </div>
 
-            {/* Lesson Info Bar */}
-            <div className="mt-4 bg-white/[0.03] border border-white/10 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm">
-                {/* Left: Lesson Info */}
-                <div className="flex items-center gap-4 min-w-0">
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-3 mb-0.5">
-                            <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
-                                LESSON {lessonNumber}
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                                {lesson.duration}
-                            </span>
+            {/* Lesson Info Bar with Navigation */}
+            <div className="mt-4 flex items-center gap-4">
+                {/* Previous Lesson Arrow */}
+                <button
+                    onClick={onPreviousLesson}
+                    disabled={!hasPrevious}
+                    className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                        hasPrevious
+                            ? 'bg-white/[0.05] border border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:scale-105'
+                            : 'bg-white/[0.02] border border-white/5 text-slate-600 cursor-not-allowed'
+                    }`}
+                    aria-label="Previous lesson"
+                >
+                    <ChevronLeft size={24} />
+                </button>
+
+                {/* Lesson Info Container */}
+                <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm">
+                    {/* Left: Lesson Info */}
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-3 mb-0.5">
+                                <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
+                                    LESSON {lessonNumber}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                    {lesson.duration}
+                                </span>
+                            </div>
+                            <h2 className="text-base font-bold text-white truncate">
+                                {lesson.title || 'Active Lesson Title Goes Here'}
+                            </h2>
                         </div>
-                        <h2 className="text-base font-bold text-white truncate">
-                            {lesson.title || 'Active Lesson Title Goes Here'}
-                        </h2>
+                    </div>
+
+                    {/* Right: Instructor + Actions */}
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                        {/* Author Avatar & Name */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-slate-700 border border-white/10 overflow-hidden flex-shrink-0">
+                                <img
+                                    src={instructor.avatar}
+                                    alt={instructor.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div className="hidden sm:block">
+                                <p className="text-sm font-semibold text-white">{instructor.name}</p>
+                                <p className="text-[9px] text-slate-500 uppercase tracking-wider">{instructor.title}</p>
+                            </div>
+                        </div>
+
+                        <div className="h-6 w-px bg-white/10" />
+
+                        {/* Ask Button */}
+                        <button
+                            onClick={handleAsk}
+                            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
+                        >
+                            <Sparkles size={12} />
+                            ASK
+                        </button>
+
+                        {/* Save Button */}
+                        <button
+                            onClick={handleSave}
+                            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
+                        >
+                            <Bookmark size={12} />
+                            SAVE
+                        </button>
                     </div>
                 </div>
 
-                {/* Right: Instructor + Actions */}
-                <div className="flex items-center gap-4 flex-shrink-0">
-                    {/* Author Avatar & Name */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-700 border border-white/10 overflow-hidden flex-shrink-0">
-                            <img
-                                src={instructor.avatar}
-                                alt={instructor.name}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                        <div className="hidden sm:block">
-                            <p className="text-sm font-semibold text-white">{instructor.name}</p>
-                            <p className="text-[9px] text-slate-500 uppercase tracking-wider">{instructor.title}</p>
-                        </div>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/10" />
-
-                    {/* Ask Button */}
-                    <button
-                        onClick={handleAsk}
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
-                    >
-                        <Sparkles size={12} />
-                        ASK
-                    </button>
-
-                    {/* Save Button */}
-                    <button
-                        onClick={handleSave}
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
-                    >
-                        <Bookmark size={12} />
-                        SAVE
-                    </button>
-                </div>
+                {/* Next Lesson Arrow */}
+                <button
+                    onClick={onNextLesson}
+                    disabled={!hasNext}
+                    className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                        hasNext
+                            ? 'bg-white/[0.05] border border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:scale-105'
+                            : 'bg-white/[0.02] border border-white/5 text-slate-600 cursor-not-allowed'
+                    }`}
+                    aria-label="Next lesson"
+                >
+                    <ChevronRight size={24} />
+                </button>
             </div>
 
             {/* Trial Time Indicator */}

@@ -483,8 +483,11 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .select(`
                     *,
                     modules (
+                        id,
                         title,
+                        course_id,
                         courses (
+                            id,
                             title,
                             image_url,
                             author
@@ -497,6 +500,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                     itemType: 'LESSON',
                     moduleTitle: l.modules?.title,
                     courseTitle: l.modules?.courses?.title,
+                    course_id: l.modules?.course_id,
                     image: l.modules?.courses?.image_url, // Use Course Image
                     author: l.modules?.courses?.author
                 })) || [])
