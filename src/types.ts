@@ -201,7 +201,7 @@ export interface ProfileDetails {
 }
 
 // Drag Item Types (used for drag/drop and modal operations)
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE';
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE';
 
 export interface DragItem {
   type: DragItemType;

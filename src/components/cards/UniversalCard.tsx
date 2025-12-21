@@ -137,12 +137,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
+    const didDragRef = React.useRef(false);
 
     const handleDragIntentChange = React.useCallback((isDragging: boolean) => {
         setIsDraggable(isDragging);
-        if (isDragging) {
-            setShouldPreventClick(true);
-        }
+        // Don't set shouldPreventClick here - only set it when actual drag starts
     }, []);
 
     const handleClick = React.useCallback((e: React.MouseEvent) => {
@@ -167,6 +166,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 draggable={draggable && isDraggable}
                 onDragStart={(e) => {
                     if (isDraggable && onDragStart) {
+                        // Mark that a drag actually started - this will prevent click
+                        didDragRef.current = true;
+                        setShouldPreventClick(true);
+                        // Hide native drag preview since we use CustomDragLayer
+                        const emptyImg = new Image();
+                        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                        e.dataTransfer.setDragImage(emptyImg, 0, 0);
                         onDragStart(e);
                     } else {
                         e.preventDefault();
@@ -174,6 +180,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 }}
                 onDragEnd={() => {
                     setIsDraggable(false);
+                    didDragRef.current = false;
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}

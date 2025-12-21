@@ -376,7 +376,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         {/* Collapse Toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute -right-3 top-9 bg-[#5694C7] border border-white/20 rounded-full p-1 text-white hover:bg-[#5694C7]/90 hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
+          className="absolute -right-3 top-9 bg-white/10 border border-white/10 rounded-full p-1 text-white/40 hover:bg-[#5694C7] hover:border-white/20 hover:text-white hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
         >
           {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>

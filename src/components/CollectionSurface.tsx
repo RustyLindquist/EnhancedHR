@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { LucideIcon, Flame } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LucideIcon, Star, Search, Clock, Plus, Folder, ChevronUp, ChevronDown } from 'lucide-react';
 import { COLLECTION_PORTALS } from '../constants';
+import { Collection } from '../types';
 
 interface PortalProps {
   id: string;
@@ -58,7 +59,7 @@ const PortalItem: React.FC<PortalProps> = ({ id, label, icon: Icon, color, onDro
 
   return (
     <div
-      className="group relative flex flex-col items-center justify-center w-1/4 h-full transition-all duration-500 cursor-pointer pointer-events-auto"
+      className="group relative flex flex-col items-center justify-center min-w-[100px] max-w-[160px] flex-1 h-full transition-all duration-500 cursor-pointer pointer-events-auto"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -94,28 +95,23 @@ const PortalItem: React.FC<PortalProps> = ({ id, label, icon: Icon, color, onDro
       {/* Stacked Content Container */}
       <div className="relative z-10 flex flex-col items-center gap-2 mb-2">
 
-        {/* Icon Container */}
+        {/* Icon */}
         <div className={`transition-transform duration-500 ${isHovered ? '-translate-y-2 scale-110' : 'group-hover:-translate-y-1 group-hover:scale-105'}`}>
-          <div
-            className={`p-2.5 rounded-full bg-black border shadow-[0_0_15px_rgba(0,0,0,0.5)] transition-all ${isHovered ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'border-white/20 group-hover:border-white/40'}`}
-            style={{ boxShadow: isHovered ? `0 0 30px ${color}` : `0 0 0 1px ${color}20` }}
-          >
-            <div className="relative">
-              <Icon size={20} color={color} className={`drop-shadow-[0_0_5px_rgba(255,255,255,0.2)] relative z-10 ${isFlaring ? 'animate-ping' : ''}`} />
-            </div>
-          </div>
+          <Icon
+            size={20}
+            color={color}
+            className={`drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all ${isFlaring ? 'animate-ping' : ''}`}
+            style={{ filter: isHovered ? `drop-shadow(0 0 12px ${color})` : undefined }}
+          />
         </div>
 
-        {/* Label Group */}
-        <div className="flex items-center gap-1.5">
-          <Flame size={10} className={`transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} color={color} fill={color} />
-          <span
-            className={`text-[10px] font-bold tracking-[0.2em] uppercase transition-colors drop-shadow-sm ${isHovered ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
-            style={{ textShadow: `0 0 20px ${color}` }}
-          >
-            {label}
-          </span>
-        </div>
+        {/* Label */}
+        <span
+          className={`text-[10px] font-bold tracking-[0.2em] uppercase transition-colors drop-shadow-sm text-center ${isHovered ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
+          style={{ textShadow: `0 0 20px ${color}` }}
+        >
+          {label}
+        </span>
 
       </div>
     </div>
@@ -127,24 +123,107 @@ interface CollectionSurfaceProps {
   isDragging?: boolean;
   activeFlareId?: string | null;
   onCollectionClick?: (id: string) => void;
+  customCollections?: Collection[];
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
+
+// Default colors for custom collections that don't have one
+const CUSTOM_COLLECTION_COLORS = [
+  '#10b981', // Emerald
+  '#8b5cf6', // Violet
+  '#f59e0b', // Amber
+  '#ec4899', // Pink
+  '#06b6d4', // Cyan
+  '#84cc16', // Lime
+];
 
 const CollectionSurface: React.FC<CollectionSurfaceProps> = ({
   onDropCourse,
   isDragging = false,
   activeFlareId = null,
-  onCollectionClick
+  onCollectionClick,
+  customCollections = [],
+  isOpen = true,
+  onToggle
 }) => {
-  return (
-    <div className="relative w-full h-28 flex-shrink-0 z-[60]">
-      {/* Visual Background Footer Bar */}
-      <div className="absolute inset-0 border-t border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.2)] z-10"></div>
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(4); // Default to base portals
 
-      {/* Visual Gradients to blend surface with canvas */}
+  // Calculate how many portals can fit
+  useEffect(() => {
+    const calculateVisibleCount = () => {
+      if (!containerRef.current) return;
+
+      const containerWidth = containerRef.current.offsetWidth - 96; // Subtract padding (px-12 = 48px each side)
+      const minPortalWidth = 120; // Minimum width per portal
+      const maxPortals = Math.floor(containerWidth / minPortalWidth);
+
+      // Always show at least the 4 base portals, cap at reasonable max
+      setVisibleCount(Math.max(4, Math.min(maxPortals, 8)));
+    };
+
+    calculateVisibleCount();
+    window.addEventListener('resize', calculateVisibleCount);
+    return () => window.removeEventListener('resize', calculateVisibleCount);
+  }, []);
+
+  // Build the list of portals to show
+  // Base portals: Favorites, Workspace, Watchlist (3)
+  // Then custom collections that fit
+  // Finally: New/Other always at the end
+  const basePortals = COLLECTION_PORTALS.filter(p => p.id !== 'new');
+  const newOtherPortal = COLLECTION_PORTALS.find(p => p.id === 'new')!;
+
+  // Only show truly custom collections (isCustom: true), not the default ones
+  // Also filter by ID and label to be thorough
+  const basePortalIds = new Set(basePortals.map(p => p.id));
+  const basePortalLabels = new Set(['Favorites', 'Workspace', 'Watchlist']);
+  const uniqueCustomCollections = customCollections.filter(col =>
+    col.isCustom !== false &&
+    !basePortalIds.has(col.id) &&
+    !basePortalLabels.has(col.label)
+  );
+
+  // How many custom collections can we show?
+  // visibleCount includes base portals (3) + custom + new/other (1)
+  const customSlotsAvailable = Math.max(0, visibleCount - basePortals.length - 1);
+
+  const visibleCustomCollections = uniqueCustomCollections.slice(0, customSlotsAvailable).map((col, index) => ({
+    id: col.id,
+    label: col.label,
+    icon: Folder,
+    color: col.color || CUSTOM_COLLECTION_COLORS[index % CUSTOM_COLLECTION_COLORS.length]
+  }));
+
+  const allVisiblePortals = [
+    ...basePortals,
+    ...visibleCustomCollections,
+    newOtherPortal
+  ];
+
+  return (
+    <div className={`relative w-full flex-shrink-0 z-[60] transition-all duration-300 ${isOpen ? 'h-28' : 'h-6'}`}>
+      {/* Collapse Toggle Button - Always visible at top center */}
+      {onToggle && (
+        <button
+          onClick={onToggle}
+          className="absolute left-1/2 -translate-x-1/2 bg-white/10 border border-white/10 rounded-full p-1 text-white/40 hover:bg-[#5694C7] hover:border-white/20 hover:text-white hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md pointer-events-auto"
+          style={{ top: isOpen ? '-12px' : '-6px' }}
+        >
+          {isOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
+      )}
+
+      {/* Visual Background Footer Bar */}
+      <div className={`absolute inset-0 border-t border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.2)] z-10 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}></div>
 
       {/* Content Container - Fits exactly within parent h-28 */}
-      <div className="absolute inset-0 w-full h-full flex justify-between items-center px-12 pointer-events-none z-20">
-        {COLLECTION_PORTALS.map(portal => (
+      <div
+        ref={containerRef}
+        className={`absolute inset-0 w-full h-full flex justify-center items-center gap-4 px-12 pointer-events-none z-20 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        {allVisiblePortals.map(portal => (
           <PortalItem
             key={portal.id}
             id={portal.id}

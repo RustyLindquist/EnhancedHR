@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { BookOpen } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
 import CourseHeader from './CourseHeader';
@@ -17,6 +18,7 @@ interface CoursePageV2Props {
     onDragStart: (item: DragItem) => void;
     onAddToCollection: (item: DragItem) => void;
     onAskPrometheus: (prompt: string) => void;
+    onViewExpert?: (expertId: string) => void;
     userId: string;
     initialLessonId?: string;
     initialModuleId?: string;
@@ -32,6 +34,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     onDragStart,
     onAddToCollection,
     onAskPrometheus,
+    onViewExpert,
     userId,
     initialLessonId,
     initialModuleId
@@ -323,7 +326,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     };
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden bg-brand-black">
+        <div className="flex flex-col h-full w-full overflow-hidden">
             {/* Header */}
             <CourseHeader
                 course={course}
@@ -348,6 +351,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                             course={course}
                             onStartLearning={() => transitionToPlayer()}
                             onAskPrometheus={onAskPrometheus}
+                            onViewExpert={onViewExpert}
                         />
                     ) : (
                         currentLesson && (
@@ -369,24 +373,37 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 </div>
 
                 {/* Modules Section */}
-                <div className="mt-8 space-y-4">
-                    {syllabus.map((module, index) => (
-                        <ModuleContainer
-                            key={module.id}
-                            module={module}
-                            moduleIndex={index}
-                            isExpanded={expandedModules.includes(module.id)}
-                            isFirstModule={index === 0}
-                            activeLessonId={activeLessonId}
-                            completedLessons={completedLessons}
-                            onToggle={() => handleModuleToggle(module.id)}
-                            onLessonClick={(lesson) => handleLessonClick(lesson, module.id)}
-                            onAskPrometheus={onAskPrometheus}
-                            onAddToCollection={onAddToCollection}
-                            onDragStart={onDragStart}
-                            courseTitle={course.title}
-                        />
-                    ))}
+                <div className="mt-8">
+                    {/* Section Header - Centered */}
+                    <div className="flex items-center justify-center gap-3 py-[25px]">
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
+                        <div className="flex items-center gap-2">
+                            <BookOpen size={14} className="text-brand-blue-light" />
+                            <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-slate-400">
+                                COURSE MODULES
+                            </h2>
+                        </div>
+                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
+                    </div>
+                    <div className="space-y-4">
+                        {syllabus.map((module, index) => (
+                            <ModuleContainer
+                                key={module.id}
+                                module={module}
+                                moduleIndex={index}
+                                isExpanded={expandedModules.includes(module.id)}
+                                isFirstModule={index === 0}
+                                activeLessonId={activeLessonId}
+                                completedLessons={completedLessons}
+                                onToggle={() => handleModuleToggle(module.id)}
+                                onLessonClick={(lesson) => handleLessonClick(lesson, module.id)}
+                                onAskPrometheus={onAskPrometheus}
+                                onAddToCollection={onAddToCollection}
+                                onDragStart={onDragStart}
+                                courseTitle={course.title}
+                            />
+                        ))}
+                    </div>
                 </div>
 
                 {/* Resources Section */}
