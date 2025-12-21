@@ -1,10 +1,13 @@
 'use server';
 
+import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { Course } from '@/types';
 
 export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?: any }> {
+    // Opt out of caching for this server action
+    noStore();
     const admin = createAdminClient();
     const supabase = await createClient();
     
@@ -105,6 +108,9 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
         };
     });
 
+    // Debug log for troubleshooting
+    console.log(`[fetchCoursesAction] Returning ${mappedCourses.length} courses. IDs: ${mappedCourses.slice(0, 5).map((c: any) => c.id).join(', ')}...`);
+
     return {
         courses: mappedCourses,
         debug: {
@@ -112,7 +118,8 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
             rawCount: coursesData?.length,
             userId,
             error: error ? JSON.stringify(error) : null,
-            collectionCount: Object.keys(collectionMap).length
+            collectionCount: Object.keys(collectionMap).length,
+            courseIds: coursesData?.map((c: any) => c.id).slice(0, 10)
         }
     };
 }

@@ -100,7 +100,7 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
             )}
 
             {/* Card Content */}
-            <div className="p-4">
+            <div className="px-4 py-[26px]">
                 {/* Top Row: Lesson Number/Quiz Badge + Duration */}
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
                             </span>
                         )}
                     </div>
-                    <span className="text-[10px] font-medium text-slate-500">
+                    <span className="text-[10px] font-medium text-slate-500 transition-opacity duration-200 group-hover:opacity-0">
                         {formatDuration(lesson.duration)}
                     </span>
                 </div>
@@ -145,7 +145,7 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
             <div className={`
                 absolute top-3 right-3 flex items-center gap-1
                 opacity-0 translate-y-1 transition-all duration-200
-                ${!isActive ? 'group-hover:opacity-100 group-hover:translate-y-0' : ''}
+                group-hover:opacity-100 group-hover:translate-y-0
             `}>
                 <button
                     onClick={handleAdd}

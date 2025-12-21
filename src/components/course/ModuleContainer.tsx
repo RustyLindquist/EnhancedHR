@@ -133,7 +133,7 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                 `}
             >
                 <div className="overflow-hidden">
-                    <div className="px-5 pb-5">
+                    <div className="px-5 pt-3 pb-5">
                         {/* Lessons Grid - 4 columns on larger screens */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {module.lessons.map((lesson, lessonIndex) => (

@@ -49,10 +49,14 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
 
     // UI state
-    const [expandedModules, setExpandedModules] = useState<string[]>(() => {
-        // Default: first module expanded
-        return syllabus.length > 0 ? [syllabus[0].id] : [];
-    });
+    const [expandedModules, setExpandedModules] = useState<string[]>([]);
+
+    // Expand first module by default when syllabus loads
+    useEffect(() => {
+        if (syllabus.length > 0 && expandedModules.length === 0) {
+            setExpandedModules([syllabus[0].id]);
+        }
+    }, [syllabus]);
 
     // Progress state
     const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
@@ -373,9 +377,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 </div>
 
                 {/* Modules Section */}
-                <div className="mt-8">
+                <div>
                     {/* Section Header - Centered */}
-                    <div className="flex items-center justify-center gap-3 py-[25px]">
+                    <div className="flex items-center justify-center gap-3 py-[45px]">
                         <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
                         <div className="flex items-center gap-2">
                             <BookOpen size={14} className="text-brand-blue-light" />
