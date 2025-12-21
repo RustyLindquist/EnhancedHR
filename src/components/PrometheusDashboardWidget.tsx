@@ -37,10 +37,10 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
     };
 
     return (
-        <div className="flex flex-col items-center relative z-10 w-full animate-fade-in">
+        <div className="flex gap-8 items-start relative z-10 w-full animate-fade-in">
 
-            {/* Logo & Title - Condensed */}
-            <div className="flex flex-col items-center mb-6 group cursor-default">
+            {/* Logo & Title - Left Column */}
+            <div className="flex flex-col items-center flex-shrink-0 group cursor-default">
                 <div className="relative mb-4 transition-transform duration-700 group-hover:scale-105">
                     <div className="absolute inset-0 bg-brand-orange/20 blur-[40px] rounded-full animate-pulse-slow" />
                     <img
@@ -52,11 +52,11 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
                 <h1 className="text-3xl font-extralight text-white tracking-tight text-center mb-1">
                     Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
                 </h1>
-                <p className="text-sm text-slate-500 font-light">Your personal learning assistant</p>
+                <p className="text-sm text-slate-500 font-light text-center">Your personal<br />learning assistant</p>
             </div>
 
-            {/* Prompt Section */}
-            <div className="w-full max-w-3xl">
+            {/* Prompt Section - Right Column */}
+            <div className="flex-1 max-w-3xl">
 
                 {/* View More Link - Aligned Right */}
                 <div className="flex justify-end mb-3">
