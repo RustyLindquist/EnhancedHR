@@ -572,6 +572,42 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
                 <h3 className="text-lg font-bold text-white truncate">{item.title}</h3>
             </div>
         );
+    } else if (item.type === 'CONVERSATION') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-cyan-400/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-cyan-400/20 rounded text-cyan-400">
+                        <MessageSquare size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Conversation</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+            </div>
+        );
+    } else if (item.type === 'CONTEXT') {
+        Content = (
+            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-brand-orange/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
+                <div className="p-2 bg-brand-orange/20 rounded text-brand-orange">
+                    <FileText size={20} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
+                    <p className="text-[10px] text-slate-400">Context</p>
+                </div>
+            </div>
+        );
+    } else if (item.type === 'PROFILE') {
+        Content = (
+            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-cyan-400/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
+                <div className="p-2 bg-cyan-400/20 rounded text-cyan-400">
+                    <Users size={20} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
+                    <p className="text-[10px] text-slate-400">Profile</p>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -685,6 +721,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         // Force refresh of collection items so it appears immediately
         setRefreshTrigger(prev => prev + 1);
 
+        // Refresh collection counts in the parent (nav panel)
+        if (onCollectionUpdate) {
+            onCollectionUpdate();
+        }
+
         if (propOnAddToCollection) {
             propOnAddToCollection(itemId as any, collectionId);
         }
@@ -711,6 +752,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [isDragging, setIsDragging] = useState(false);
     const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
 
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -1800,18 +1842,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         isDragging={isDragging}
                         activeFlareId={flaringPortalId}
                         onCollectionClick={() => { }}
+                        customCollections={customCollections}
+                        isOpen={isCollectionSurfaceOpen}
+                        onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
                         onDropCourse={(portalId) => {
                             if (draggedItem) {
-                                if (draggedItem.type === 'COURSE') {
-                                    if (portalId === 'new') {
+                                if (portalId === 'new') {
+                                    // Open modal for New/Other collection selection
+                                    if (draggedItem.type === 'COURSE') {
                                         onOpenModal(courses.find(c => c.id === draggedItem.id));
                                     } else {
-                                        onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
-                                        setFlaringPortalId(portalId);
-                                        setTimeout(() => setFlaringPortalId(null), 500);
+                                        // For non-course items, pass the dragItem as context
+                                        onOpenModal(draggedItem as any);
                                     }
                                 } else {
-                                    // Handle non-course items (Mock)
+                                    // Add to existing collection
+                                    onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
                                     setFlaringPortalId(portalId);
                                     setTimeout(() => setFlaringPortalId(null), 500);
                                 }
@@ -1922,6 +1968,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     }
                                 }}
                                 onAdd={(item) => onOpenModal(item as any)}
+                                onDragStart={handleDragStart}
                             />
                         </div>
                     ))}
@@ -2760,6 +2807,8 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                                             actionLabel="VIEW"
                                                                                             onAction={() => handleCourseClick(course.id)}
                                                                                             onAdd={() => handleAddButtonClick(course.id)}
+                                                                                            draggable={true}
+                                                                                            onDragStart={() => handleCourseDragStart(course.id)}
                                                                                         />
                                                                                     </div>
                                                                                 </LazyCourseCard>
@@ -2815,6 +2864,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                             console.log('Open lesson:', i);
                                                                         }
                                                                     }}
+                                                                    onDragStart={handleDragStart}
                                                                 />
                                                             </div>
                                                         ))}
@@ -2844,6 +2894,8 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                             actionLabel="VIEW"
                                                                             onAction={() => handleCourseClick(course.id)}
                                                                             onAdd={() => handleAddButtonClick(course.id)}
+                                                                            draggable={true}
+                                                                            onDragStart={() => handleCourseDragStart(course.id)}
                                                                         />
                                                                     </div>
                                                                 </LazyCourseCard>
@@ -2862,6 +2914,12 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                     onAction={() => handleOpenConversation(conversation.id)}
                                                                     onRemove={() => handleDeleteConversation(conversation.id)}
                                                                     onAdd={() => onOpenModal(conversation)}
+                                                                    draggable={true}
+                                                                    onDragStart={() => handleDragStart({
+                                                                        type: 'CONVERSATION',
+                                                                        id: conversation.id,
+                                                                        title: conversation.title,
+                                                                    })}
                                                                 />
                                                             </div>
                                                         ))}
@@ -2934,6 +2992,9 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                             <CollectionSurface
                                 isDragging={isDragging}
                                 activeFlareId={flaringPortalId}
+                                customCollections={customCollections}
+                                isOpen={isCollectionSurfaceOpen}
+                                onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
                                 onCollectionClick={(id) => {
                                     if (id === 'new') {
                                         onOpenModal();
@@ -2943,16 +3004,19 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                 }}
                                 onDropCourse={(portalId) => {
                                     if (draggedItem) {
-                                        // Only supporting Course Drop to portals for now as per previous logic, 
-                                        // but MainCanvas supports generic items if we extended App logic.
-                                        if (draggedItem.type === 'COURSE') {
-                                            if (portalId === 'new') {
+                                        if (portalId === 'new') {
+                                            // Open modal for New/Other collection selection
+                                            if (draggedItem.type === 'COURSE') {
                                                 onOpenModal(courses.find(c => c.id === draggedItem.id));
                                             } else {
-                                                onImmediateAddToCollection(Number(draggedItem.id), portalId);
-                                                setFlaringPortalId(portalId);
-                                                setTimeout(() => setFlaringPortalId(null), 500);
+                                                // For non-course items, pass the dragItem as context
+                                                onOpenModal(draggedItem as any);
                                             }
+                                        } else {
+                                            // Add to existing collection
+                                            onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
+                                            setFlaringPortalId(portalId);
+                                            setTimeout(() => setFlaringPortalId(null), 500);
                                         }
                                         setIsDragging(false);
                                         setDraggedItem(null);

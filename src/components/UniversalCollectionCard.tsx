@@ -1,5 +1,5 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType } from '../types';
 import UniversalCard, { CardType } from './cards/UniversalCard';
 
 // Unified type for all renderable items in a collection
@@ -19,15 +19,51 @@ interface UniversalCollectionCardProps {
     onRemove: (id: string, type: string) => void;
     onClick: (item: CollectionItemDetail) => void;
     onAdd?: (item: CollectionItemDetail) => void;
+    onDragStart?: (item: DragItem) => void;
 }
 
-const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick, onAdd }) => {
+const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick, onAdd, onDragStart }) => {
+
+    // Map itemType to DragItemType
+    const getDragItemType = (itemType: string): DragItemType => {
+        switch (itemType) {
+            case 'COURSE': return 'COURSE';
+            case 'MODULE': return 'MODULE';
+            case 'LESSON': return 'LESSON';
+            case 'RESOURCE': return 'RESOURCE';
+            case 'CONVERSATION': return 'CONVERSATION';
+            case 'AI_INSIGHT':
+            case 'CUSTOM_CONTEXT':
+            case 'FILE': return 'CONTEXT';
+            case 'PROFILE': return 'PROFILE';
+            default: return 'CONTEXT';
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent) => {
+        const dragItem: DragItem = {
+            type: getDragItemType(item.itemType),
+            id: item.id,
+            title: item.title || 'Untitled',
+            subtitle: (item as any).author || (item as any).courseTitle || undefined,
+            image: (item as any).image || undefined,
+            meta: (item as any).duration || (item as any).meta || undefined,
+        };
+        e.dataTransfer.setData('application/json', JSON.stringify(dragItem));
+        // Hide native drag preview since we use CustomDragLayer
+        const emptyImg = new Image();
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+        onDragStart?.(dragItem);
+    };
 
     let cardProps: any = {
         title: item.title || 'Untitled',
         onAction: () => onClick(item),
         onRemove: () => onRemove(String(item.id), item.itemType),
-        onAdd: onAdd ? () => onAdd(item) : undefined
+        onAdd: onAdd ? () => onAdd(item) : undefined,
+        draggable: !!onDragStart,
+        onDragStart: onDragStart ? handleDragStart : undefined
     };
 
     // Mapping Logic

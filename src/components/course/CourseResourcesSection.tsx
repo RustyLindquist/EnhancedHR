@@ -46,9 +46,9 @@ const CourseResourcesSection: React.FC<CourseResourcesSectionProps> = ({
     };
 
     return (
-        <div className="mt-12 animate-fade-in">
+        <div className="mt-8 animate-fade-in">
             {/* Section Header - Centered */}
-            <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="flex items-center justify-center gap-3 py-[20px]">
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
                 <div className="flex items-center gap-2">
                     <FileText size={14} className="text-brand-orange" />

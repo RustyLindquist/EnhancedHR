@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Star, CheckCircle, Sparkles } from 'lucide-react';
+import { Star, CheckCircle, ExternalLink } from 'lucide-react';
 import { Course } from '../../types';
 
 interface CourseDescriptionSectionProps {
     course: Course;
     onStartLearning: () => void;
     onAskPrometheus: (prompt: string) => void;
+    onViewExpert?: (expertId: string) => void;
 }
 
 // Default skills if not provided by course
@@ -21,7 +22,8 @@ const DEFAULT_SKILLS = [
 const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     course,
     onStartLearning,
-    onAskPrometheus
+    onAskPrometheus,
+    onViewExpert
 }) => {
     // Parse skills from course or use defaults
     const skills = (course as any).skills || DEFAULT_SKILLS;
@@ -32,6 +34,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
 
     // Mock instructor data (would come from course in real implementation)
     const instructor = {
+        id: (course as any).authorId || 'expert-1',
         name: course.author || 'Rusty Lindquist',
         title: 'CEO | HR Engineering',
         avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
@@ -42,31 +45,63 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
         onAskPrometheus(prompt);
     };
 
-    const handleAskInstructor = () => {
-        const prompt = `Tell me more about ${instructor.name} and their expertise in ${course.title}. What makes them qualified to teach this course?`;
-        onAskPrometheus(prompt);
+    const handleViewExpertPage = () => {
+        if (onViewExpert) {
+            onViewExpert(instructor.id);
+        }
     };
 
     return (
         <div className="animate-fade-in">
-            {/* Course Category Badges - at the very top */}
-            <div className="flex flex-wrap gap-2 mb-6">
-                <span className="px-3 py-1 rounded-full bg-brand-orange/20 text-brand-orange text-[10px] font-bold uppercase tracking-wider border border-brand-orange/20">
-                    Leadership
-                </span>
-                <span className="px-3 py-1 rounded-full bg-brand-blue-light/20 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider border border-brand-blue-light/20">
-                    Communication
-                </span>
+            {/* Featured Course Image - Full Width at Top */}
+            <div className="relative w-full h-[350px] rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.5),0_8px_25px_rgba(0,0,0,0.4)]">
+                {course.image ? (
+                    <img
+                        src={course.image}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                        <div className="text-center">
+                            <span className="text-6xl">📊</span>
+                            <p className="text-slate-500 text-sm mt-2">Course Preview</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Rating & Categories Badge - Top Right */}
+                <div className="absolute top-4 right-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-black/70 backdrop-blur-sm border border-white/10">
+                    {/* Category Tags */}
+                    <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-brand-orange text-[10px] font-bold uppercase tracking-wider">
+                            Leadership
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider">
+                            Communication
+                        </span>
+                    </div>
+                    {/* Divider */}
+                    <div className="w-px h-5 bg-white/20" />
+                    {/* Star Rating */}
+                    <div className="flex items-center gap-1.5">
+                        <Star size={16} fill="#fbbf24" className="text-amber-400" />
+                        <span className="text-base font-bold text-white">{course.rating?.toFixed(1) || '4.2'}</span>
+                    </div>
+                </div>
+
+                {/* Subtle gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
             </div>
 
-            {/* Three Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Column 1: Description + Skills + Credits (5 cols) */}
-                <div className="lg:col-span-5 space-y-6">
+            {/* Two Column Layout - 70/30 Split with Divider */}
+            <div className="flex flex-col lg:flex-row pb-[75px] mt-8">
+                {/* Column 1: Course Description (70%) */}
+                <div className="lg:w-[70%] space-y-6">
                     {/* Description */}
                     <div>
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-orange">
+                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
                                 DESCRIPTION
                             </h3>
                             <span className="text-[10px] text-slate-500">{course.duration}</span>
@@ -79,84 +114,57 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                         </div>
                     </div>
 
-                    {/* Skills You'll Learn */}
-                    <div>
-                        <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-orange mb-3">
-                            SKILLS YOU'LL LEARN
-                        </h3>
-                        <ul className="space-y-2">
-                            {skills.map((skill: string, index: number) => (
-                                <li key={index} className="flex items-start gap-2 text-sm text-slate-300">
-                                    <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                                    <span>{skill}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Credits You'll Earn - Inline */}
-                    <div>
-                        <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-orange mb-3">
-                            CREDITS YOU'LL EARN
-                        </h3>
-                        <div className="flex items-center gap-8">
-                            {(hasSHRM || !hasSHRM && !hasHRCI) && (
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-brand-blue-light">2</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-slate-400 uppercase">SHRM</span>
-                                        <span className="text-[10px] text-slate-500">RECERTIFICATION</span>
-                                    </div>
-                                </div>
-                            )}
-                            {(hasHRCI || !hasSHRM && !hasHRCI) && (
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-[#c084fc]">1.5</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-slate-400 uppercase">HRCI</span>
-                                        <span className="text-[10px] text-slate-500">CREDIT HOURS</span>
-                                    </div>
-                                </div>
-                            )}
+                    {/* Skills and Credits - 60/40 Split */}
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Skills You'll Learn (60%) */}
+                        <div className="lg:w-[60%]">
+                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
+                                SKILLS YOU'LL LEARN
+                            </h3>
+                            <ul className="space-y-2">
+                                {skills.map((skill: string, index: number) => (
+                                    <li key={index} className="flex items-start gap-2 text-sm text-slate-300">
+                                        <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                                        <span>{skill}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                    </div>
-                </div>
 
-                {/* Column 2: Course Image (4 cols) */}
-                <div className="lg:col-span-4">
-                    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
-                        {course.image ? (
-                            <img
-                                src={course.image}
-                                alt={course.title}
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-                                <div className="text-center">
-                                    <span className="text-6xl">📊</span>
-                                    <p className="text-slate-500 text-sm mt-2">Course Preview</p>
+                        {/* Credits You'll Earn (40%) */}
+                        <div className="lg:w-[40%]">
+                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
+                                CREDITS YOU'LL EARN
+                            </h3>
+                            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
+                                <div className="grid grid-cols-2 gap-6">
+                                    {/* SHRM Column */}
+                                    {(hasSHRM || !hasSHRM && !hasHRCI) && (
+                                        <div className="flex flex-col items-center text-center">
+                                            <span className="text-4xl font-bold text-brand-blue-light">2</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM</span>
+                                            <span className="text-[10px] text-slate-500">Recertification</span>
+                                        </div>
+                                    )}
+                                    {/* HRCI Column */}
+                                    {(hasHRCI || !hasSHRM && !hasHRCI) && (
+                                        <div className="flex flex-col items-center text-center">
+                                            <span className="text-4xl font-bold text-[#c084fc]">1.5</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI</span>
+                                            <span className="text-[10px] text-slate-500">Credit Hours</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
-
-                        {/* Rating Badge - Top Right */}
-                        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
-                            <Star size={14} fill="#fbbf24" className="text-amber-400" />
-                            <span className="text-sm font-bold text-white">{course.rating?.toFixed(1) || '4.2'}</span>
                         </div>
-
-                        {/* Subtle gradient overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
                     </div>
                 </div>
 
-                {/* Column 3: Instructor Info (3 cols) */}
-                <div className="lg:col-span-3 space-y-4">
-                    <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light">
-                        INSTRUCTOR
-                    </h3>
+                {/* Vertical Divider */}
+                <div className="hidden lg:block w-px bg-white/10 flex-shrink-0 mx-[15px]" />
 
+                {/* Column 2: Instructor Info (30%) */}
+                <div className="lg:w-[30%] space-y-4">
                     {/* Instructor Name & Title */}
                     <div className="flex items-center gap-4">
                         <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-blue-light/30 flex-shrink-0 shadow-[0_0_20px_rgba(120,192,240,0.15)]">
@@ -186,13 +194,13 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                         </p>
                     </div>
 
-                    {/* Ask About Expert Button */}
+                    {/* Expert Page Button */}
                     <button
-                        onClick={handleAskInstructor}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_15px_rgba(120,192,240,0.2)] active:scale-95"
+                        onClick={handleViewExpertPage}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_15px_rgba(120,192,240,0.2)] active:scale-95"
                     >
-                        <Sparkles size={14} />
-                        Ask About Expert
+                        <ExternalLink size={14} />
+                        Expert Page
                     </button>
                 </div>
             </div>

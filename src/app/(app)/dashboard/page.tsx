@@ -207,7 +207,7 @@ function HomeContent() {
           const { syncConversationCollectionsAction } = await import('@/app/actions/collections');
           const targetIds = finalSelectionIds.filter(id => id !== 'new');
 
-          await syncConversationCollectionsAction(user.id, modalItem.id, targetIds);
+          await syncConversationCollectionsAction(user.id, String(modalItem.id), targetIds);
           await refreshCollectionCounts();
         } else {
           console.error('User missing during save!');

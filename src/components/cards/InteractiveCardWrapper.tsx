@@ -62,11 +62,10 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
         mouseDownTimeRef.current = Date.now();
         mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
 
-        // Set a timer to detect drag intent after 200ms of holding
-        dragIntentTimerRef.current = setTimeout(() => {
-            setIsDragIntent(true);
-            onDragIntentChange?.(true);
-        }, 200);
+        // Enable drag intent immediately on mouse down
+        // This allows instant drag-and-drop without waiting
+        setIsDragIntent(true);
+        onDragIntentChange?.(true);
     }, [disabled, onDragIntentChange]);
 
     const handleMouseUp = useCallback(() => {
@@ -85,19 +84,9 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
     }, [isDragIntent, onDragIntentChange]);
 
     const handleMouseMoveForDrag = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        // If mouse moves significantly while holding, trigger drag intent immediately
-        if (mouseDownPosRef.current && !isDragIntent && dragIntentTimerRef.current) {
-            const deltaX = Math.abs(e.clientX - mouseDownPosRef.current.x);
-            const deltaY = Math.abs(e.clientY - mouseDownPosRef.current.y);
-
-            if (deltaX > 5 || deltaY > 5) {
-                clearTimeout(dragIntentTimerRef.current);
-                dragIntentTimerRef.current = null;
-                setIsDragIntent(true);
-                onDragIntentChange?.(true);
-            }
-        }
-    }, [isDragIntent, onDragIntentChange]);
+        // No longer needed since drag intent is set immediately on mouse down
+        // Keeping function for compatibility but it's now a no-op
+    }, []);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (!cardRef.current || disabled) return;
