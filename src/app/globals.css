@@ -203,34 +203,81 @@ body {
 }
 
 /* View transition animations for course page */
+/* Slide left (for going forward: description->player, current->next lesson) */
+.course-slide-out-left {
+  animation: slideOutLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.course-slide-in-right {
+  animation: slideInRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Slide right (for going backward: player->description, current->previous lesson) */
+.course-slide-out-right {
+  animation: slideOutRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.course-slide-in-left {
+  animation: slideInLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Default state (no animation) */
+.course-view-stable {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Legacy fallback */
 .course-view-exit {
-  animation: slideOutUp 400ms ease-out forwards;
+  animation: slideOutLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .course-view-enter {
-  animation: slideInUp 400ms ease-out forwards;
-}
-
-@keyframes slideOutUp {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: slideInRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Module expand/collapse animation */
