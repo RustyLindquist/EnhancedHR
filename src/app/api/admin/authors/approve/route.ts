@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,14 +10,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Verify Admin
+        // Verify Admin (check both role and membership_status for backwards compatibility)
         const { data: adminProfile } = await supabase
             .from('profiles')
-            .select('membership_status')
+            .select('role, membership_status')
             .eq('id', user.id)
             .single();
 
-        if (adminProfile?.membership_status !== 'admin') {
+        if (adminProfile?.role !== 'admin' && adminProfile?.membership_status !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -27,14 +27,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
         }
 
-        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        const newAuthorStatus = action === 'approve' ? 'approved' : 'rejected';
+        const newApplicationStatus = action === 'approve' ? 'approved' : 'rejected';
+        // When approved, change role from pending_author to author
+        // When rejected, keep as pending_author so they can resubmit
+        const newRole = action === 'approve' ? 'author' : 'pending_author';
+
+        // Use admin client to bypass RLS for updating other users' profiles
+        const adminSupabase = await createAdminClient();
 
         // Update Profile
-        const { error } = await supabase
+        const { error } = await adminSupabase
             .from('profiles')
             .update({
-                author_status: newStatus,
-                updated_at: new Date().toISOString()
+                author_status: newAuthorStatus,
+                application_status: newApplicationStatus,
+                role: newRole
             })
             .eq('id', userId);
 

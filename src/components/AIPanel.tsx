@@ -67,7 +67,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
+      document.body.style.cursor = 'default';
     };
   }, [isDragging]);
 

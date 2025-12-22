@@ -271,6 +271,11 @@ function HomeContent() {
     if (id === 'new') {
       handleOpenModal(undefined);
     } else {
+      // Always clear the active course when selecting a collection
+      // This ensures clicking Academy always returns to All Courses view
+      if (id === 'academy') {
+        setActiveCourseId(null);
+      }
       setActiveCollectionId(id);
     }
   };

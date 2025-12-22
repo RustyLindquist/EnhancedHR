@@ -981,6 +981,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     useEffect(() => {
         if (initialCourseId) {
             setSelectedCourseId(initialCourseId);
+        } else {
+            // Clear course selection when initialCourseId becomes null/undefined
+            // This handles cases like clicking Academy nav while viewing a course
+            setSelectedCourseId(null);
+            setIsPlayerActive(false);
         }
     }, [initialCourseId]);
 
