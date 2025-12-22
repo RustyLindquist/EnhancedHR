@@ -137,126 +137,128 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
             {/* Scrollable content - wider container for more cards per row */}
-            {/* 100px padding from header (60px header + 100px = 160px from top) */}
-            <div className="max-w-[1800px] mx-auto px-8 pt-[160px]">
+            {/* 50px padding from top of dashboard area */}
+            <div className="max-w-[1800px] mx-auto px-8 pt-[50px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
-                    PROMETHEUS AI SECTION - Centered Two-Column Layout
+                    PROMETHEUS AI SECTION - Compact Two-Column Layout (Centered)
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="relative z-10 mb-16 flex flex-col items-center">
-                    {/* Centered container for logo + prompts side by side */}
-                    <div className="flex gap-10 mb-6 items-stretch w-full max-w-2xl">
-                        {/* Left Column: Logo & Description - Vertically centered to match prompts height */}
-                        <div className="flex flex-col items-center justify-center group cursor-default flex-1">
-                            <div className="relative mb-3 transition-transform duration-700 group-hover:scale-105">
-                                <div className="absolute inset-0 bg-brand-orange/20 blur-[40px] rounded-full animate-pulse-slow" />
+                <div className="relative z-10 mb-12 flex justify-center">
+                    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center lg:items-stretch">
+                        {/* Left Column: Logo & Tagline - Compact vertical layout */}
+                        <div className="flex flex-col items-center justify-center group cursor-default lg:w-48 flex-shrink-0">
+                            <div className="relative mb-2 transition-transform duration-700 group-hover:scale-105">
+                                <div className="absolute inset-0 bg-brand-orange/20 blur-[30px] rounded-full animate-pulse-slow" />
                                 <img
                                     src="/images/logos/EnhancedHR-logo-mark-flame.png"
                                     alt="Prometheus AI"
-                                    className="w-24 h-24 relative z-10 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain"
+                                    className="w-20 h-20 lg:w-24 lg:h-24 relative z-10 drop-shadow-[0_0_25px_rgba(255,147,0,0.4)] object-contain"
                                 />
                             </div>
-                            <h1 className="text-xl font-extralight text-white tracking-tight mb-1 text-center">
+                            <h1 className="text-lg font-extralight text-white tracking-tight mb-0.5 text-center whitespace-nowrap">
                                 Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
                             </h1>
-                            <p className="text-xs text-slate-500 font-light text-center max-w-[180px]">
-                                Your personal learning assistant
+                            <p className="text-xs text-slate-500 font-light text-center">
+                                Your Personal Learning Assistant
                             </p>
                         </div>
 
-                        {/* Right Column: Prompt Cards - Stacked, right-aligned with prompt box */}
-                        <div className="w-80 flex flex-col gap-2">
-                            <div className="flex justify-end mb-1">
-                                <button
-                                    onClick={() => setIsDrawerOpen(true)}
-                                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
-                                >
-                                    <Sparkles size={10} />
-                                    <span>more prompts</span>
-                                    <ChevronRight size={10} />
-                                </button>
-                            </div>
-                            {[
-                                {
-                                    id: 'cap-1',
-                                    title: 'Difficult Conversations',
-                                    description: 'Role-play challenging discussions',
-                                    prompt: 'I need to have a difficult conversation with an employee who is underperforming. Can you role-play this with me?',
-                                    accent: 'from-blue-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-2',
-                                    title: 'Policy & Compliance',
-                                    description: 'Draft policies and communications',
-                                    prompt: 'I need to draft an email announcing a new Return to Office policy. Help me write a balanced message.',
-                                    accent: 'from-emerald-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-3',
-                                    title: 'Strategic Analysis',
-                                    description: 'Analyze leadership and decisions',
-                                    prompt: 'Analyze my leadership style based on a recent situation I will describe.',
-                                    accent: 'from-purple-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-4',
-                                    title: 'Creative Solutions',
-                                    description: 'Brainstorm ideas and initiatives',
-                                    prompt: 'I want to launch a wellness initiative for a remote team. Give me 5 creative, low-cost ideas.',
-                                    accent: 'from-amber-500/20 to-transparent'
-                                }
-                            ].map((card) => (
-                                <button
-                                    key={card.id}
-                                    onClick={() => handlePromptClick(card.prompt)}
-                                    className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg px-3 py-2 text-left transition-all duration-300"
-                                >
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-lg transition-opacity duration-500`} />
-                                    <div className="relative z-10 flex items-center justify-between gap-2">
-                                        <div>
-                                            <h3 className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">{card.title}</h3>
-                                            <p className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{card.description}</p>
-                                        </div>
-                                        <ChevronRight size={12} className="text-slate-500 group-hover:text-slate-400 flex-shrink-0" />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Input Box - Centered below, same width as container above */}
-                    <div className="w-full max-w-2xl">
-                        <div className="relative">
-                            <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
-                            <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
-                                <div className="p-2.5 text-brand-orange/60">
-                                    <Flame size={18} />
-                                </div>
-                                <form onSubmit={handleAiSubmit} className="flex-1 flex">
-                                    <input
-                                        type="text"
-                                        value={aiPrompt}
-                                        onChange={(e) => setAiPrompt(e.target.value)}
-                                        placeholder="Ask anything..."
-                                        className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-600 px-2 font-light h-11"
-                                    />
+                        {/* Right Column: Prompt Cards (2x2 grid) + Input Box */}
+                        <div className="flex-1 w-full max-w-3xl">
+                            {/* 2x2 Prompt Grid + More Prompts Link */}
+                            <div className="mb-3">
+                                <div className="flex justify-end mb-2">
                                     <button
-                                        type="submit"
-                                        disabled={!aiPrompt.trim()}
-                                        className={`
-                                            p-2.5 rounded-lg transition-all duration-300 mr-1
-                                            ${aiPrompt.trim()
-                                                ? 'bg-brand-blue-light text-brand-black hover:bg-white'
-                                                : 'bg-white/[0.03] text-slate-700 cursor-not-allowed'}
-                                        `}
+                                        onClick={() => setIsDrawerOpen(true)}
+                                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
                                     >
-                                        <ArrowRight size={18} />
+                                        <Sparkles size={10} />
+                                        <span>more prompts</span>
+                                        <ChevronRight size={10} />
                                     </button>
-                                </form>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {[
+                                        {
+                                            id: 'cap-1',
+                                            title: 'Difficult Conversations',
+                                            description: 'Role-play challenging discussions',
+                                            prompt: 'I need to have a difficult conversation with an employee who is underperforming. Can you role-play this with me?',
+                                            accent: 'from-blue-500/20 to-transparent'
+                                        },
+                                        {
+                                            id: 'cap-2',
+                                            title: 'Policy & Compliance',
+                                            description: 'Draft policies and communications',
+                                            prompt: 'I need to draft an email announcing a new Return to Office policy. Help me write a balanced message.',
+                                            accent: 'from-emerald-500/20 to-transparent'
+                                        },
+                                        {
+                                            id: 'cap-3',
+                                            title: 'Strategic Analysis',
+                                            description: 'Analyze leadership and decisions',
+                                            prompt: 'Analyze my leadership style based on a recent situation I will describe.',
+                                            accent: 'from-purple-500/20 to-transparent'
+                                        },
+                                        {
+                                            id: 'cap-4',
+                                            title: 'Creative Solutions',
+                                            description: 'Brainstorm ideas and initiatives',
+                                            prompt: 'I want to launch a wellness initiative for a remote team. Give me 5 creative, low-cost ideas.',
+                                            accent: 'from-amber-500/20 to-transparent'
+                                        }
+                                    ].map((card) => (
+                                        <button
+                                            key={card.id}
+                                            onClick={() => handlePromptClick(card.prompt)}
+                                            className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg px-3 py-2 text-left transition-all duration-300"
+                                        >
+                                            <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-lg transition-opacity duration-500`} />
+                                            <div className="relative z-10 flex items-center justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <h3 className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors truncate">{card.title}</h3>
+                                                    <p className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">{card.description}</p>
+                                                </div>
+                                                <ChevronRight size={12} className="text-slate-500 group-hover:text-slate-400 flex-shrink-0" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Input Box */}
+                            <div className="relative">
+                                <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
+                                <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
+                                    <div className="p-2.5 text-brand-orange/60">
+                                        <Flame size={18} />
+                                    </div>
+                                    <form onSubmit={handleAiSubmit} className="flex-1 flex">
+                                        <input
+                                            type="text"
+                                            value={aiPrompt}
+                                            onChange={(e) => setAiPrompt(e.target.value)}
+                                            placeholder="Ask anything..."
+                                            className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-600 px-2 font-light h-11"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!aiPrompt.trim()}
+                                            className={`
+                                                p-2.5 rounded-lg transition-all duration-300 mr-1
+                                                ${aiPrompt.trim()
+                                                    ? 'bg-brand-blue-light text-brand-black hover:bg-white'
+                                                    : 'bg-white/[0.03] text-slate-700 cursor-not-allowed'}
+                                            `}
+                                        >
+                                            <ArrowRight size={18} />
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {/* AI Disclaimer */}
+                            <p className="text-center text-[10px] text-slate-600/60 mt-2">AI can make mistakes. Verify important information.</p>
                         </div>
-                        {/* AI Disclaimer */}
-                        <p className="text-center text-[10px] text-slate-600/60 mt-2">AI can make mistakes. Verify important information.</p>
                     </div>
                 </div>
 

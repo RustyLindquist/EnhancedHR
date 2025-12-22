@@ -31,7 +31,7 @@ export default function InstructorsMarketingPage() {
 
                     <div className="flex flex-col md:flex-row items-center justify-center gap-6">
                         <Link
-                            href="/join/instructor"
+                            href="/join/expert"
                             className="px-8 py-4 rounded-full bg-brand-orange text-white font-bold text-lg hover:bg-white hover:text-brand-black transition-all shadow-[0_0_30px_rgba(255,147,0,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] hover:-translate-y-1 flex items-center gap-2"
                         >
                             Become an Expert <ArrowRight size={20} />
@@ -175,7 +175,7 @@ export default function InstructorsMarketingPage() {
                         Ready to share your knowledge?
                     </h2>
                     <Link
-                        href="/join/instructor"
+                        href="/join/expert"
                         className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-brand-black font-bold text-xl hover:bg-brand-orange hover:text-white transition-all shadow-2xl hover:scale-105"
                     >
                         Apply Now <ArrowRight size={24} />

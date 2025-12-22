@@ -28,8 +28,12 @@ interface Expert {
     linkedin_url: string;
     author_status: 'pending' | 'approved' | 'rejected';
     created_at: string;
-    updated_at: string;
     avatar_url?: string;
+    credentials?: string;
+    course_proposal_title?: string;
+    course_proposal_description?: string;
+    application_status?: string;
+    application_submitted_at?: string;
 }
 
 interface MonthlyStats {
@@ -314,13 +318,38 @@ export default function ExpertManagementDashboard({
                                 {/* Expanded Details */}
                                 {isExpanded && (
                                     <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
-                                        {/* Bio */}
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Professional Bio</h4>
-                                            <p className="text-sm text-slate-300 bg-black/20 p-3 rounded-lg border border-white/5">
-                                                {expert.author_bio || 'No bio provided'}
-                                            </p>
-                                        </div>
+                                        {/* Credentials (for pending applications) */}
+                                        {expert.credentials && (
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Credentials & Background</h4>
+                                                <p className="text-sm text-slate-300 bg-black/20 p-3 rounded-lg border border-white/5 whitespace-pre-wrap">
+                                                    {expert.credentials}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Course Proposal (for pending applications) */}
+                                        {expert.course_proposal_title && (
+                                            <div className="bg-brand-orange/5 border border-brand-orange/20 rounded-lg p-4">
+                                                <h4 className="text-xs font-bold text-brand-orange uppercase tracking-wider mb-2">Course Proposal</h4>
+                                                <p className="text-lg font-bold text-white mb-2">{expert.course_proposal_title}</p>
+                                                {expert.course_proposal_description && (
+                                                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                                                        {expert.course_proposal_description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Bio (legacy field) */}
+                                        {expert.author_bio && (
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Professional Bio</h4>
+                                                <p className="text-sm text-slate-300 bg-black/20 p-3 rounded-lg border border-white/5">
+                                                    {expert.author_bio}
+                                                </p>
+                                            </div>
+                                        )}
 
                                         {/* Links & Metadata */}
                                         <div className="flex flex-wrap gap-4">
@@ -335,10 +364,9 @@ export default function ExpertManagementDashboard({
                                                 </a>
                                             )}
                                             <span className="text-sm text-slate-500">
-                                                Applied: {new Date(expert.created_at).toLocaleDateString()}
-                                            </span>
-                                            <span className="text-sm text-slate-500">
-                                                Updated: {new Date(expert.updated_at).toLocaleDateString()}
+                                                Applied: {expert.application_submitted_at
+                                                    ? new Date(expert.application_submitted_at).toLocaleDateString()
+                                                    : new Date(expert.created_at).toLocaleDateString()}
                                             </span>
                                         </div>
 

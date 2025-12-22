@@ -45,31 +45,59 @@ export async function middleware(request: NextRequest) {
     }
 
     // Protected routes pattern
-    const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
+    const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
                             request.nextUrl.pathname.startsWith('/courses') ||
                             request.nextUrl.pathname.startsWith('/instructors');
-    
+
     // Billing page check
     const isBillingPage = request.nextUrl.pathname.startsWith('/settings');
+
+    // Expert application page (for pending authors)
+    const isExpertApplicationPage = request.nextUrl.pathname.startsWith('/expert-application');
 
     if (!user && isProtectedRoute) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
+    // Protect expert-application page - must be logged in
+    if (!user && isExpertApplicationPage) {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
+
     // Redirect to dashboard if logged in and trying to access login
     if (user && request.nextUrl.pathname === '/login') {
+        // Check if user is a pending_author first
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.role === 'pending_author') {
+            return NextResponse.redirect(new URL('/expert-application', request.url))
+        }
         return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // Access Control: Check Membership Status
-    if (user && isProtectedRoute && !isBillingPage && !request.nextUrl.pathname.startsWith('/api')) {
+    // Access Control: Check role and membership status
+    if (user && (isProtectedRoute || isExpertApplicationPage) && !isBillingPage && !request.nextUrl.pathname.startsWith('/api')) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('membership_status, trial_minutes_used')
+            .select('membership_status, trial_minutes_used, role')
             .eq('id', user.id)
             .single();
 
         if (profile) {
+            // Pending authors must use the expert-application page
+            if (profile.role === 'pending_author') {
+                if (!isExpertApplicationPage) {
+                    return NextResponse.redirect(new URL('/expert-application', request.url))
+                }
+                // Allow them to stay on expert-application page
+                return response
+            }
+
+            // For regular users, check membership/trial status
             const isInactive = profile.membership_status === 'inactive';
             const isTrialExpired = profile.membership_status === 'trial' && (profile.trial_minutes_used || 0) >= 60;
 

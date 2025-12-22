@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AdminUser, promoteUser, createUser, deleteUser } from '@/app/actions/users';
-import { User, Shield, MoreVertical, Plus, Search, Check, X, Trash2, AlertTriangle } from 'lucide-react';
+import { AdminUser, promoteUser, createUser, deleteUser, resetUserPassword } from '@/app/actions/users';
+import { User, Shield, MoreVertical, Plus, Search, Check, X, Trash2, AlertTriangle, Key } from 'lucide-react';
 
 interface UsersTableProps {
     initialUsers: AdminUser[];
@@ -13,6 +13,7 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+    const [userToResetPassword, setUserToResetPassword] = useState<AdminUser | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Filter users
@@ -123,6 +124,13 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                             {user.role === 'admin' ? 'Demote' : 'Promote'}
                                         </button>
                                         <button
+                                            onClick={() => setUserToResetPassword(user)}
+                                            className="text-slate-500 hover:text-brand-orange transition-colors p-1"
+                                            title="Reset Password"
+                                        >
+                                            <Key size={16} />
+                                        </button>
+                                        <button
                                             onClick={() => setUserToDelete(user)}
                                             className="text-slate-500 hover:text-red-400 transition-colors p-1"
                                             title="Delete User"
@@ -180,6 +188,14 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Reset Password Modal */}
+            {userToResetPassword && (
+                <ResetPasswordModal
+                    user={userToResetPassword}
+                    onClose={() => setUserToResetPassword(null)}
+                />
             )}
         </div>
     );
@@ -242,6 +258,131 @@ function CreateUserModal({ onClose, onSuccess }: { onClose: () => void, onSucces
                         <button type="button" onClick={onClose} className="px-4 py-2 text-slate-300 hover:text-white">Cancel</button>
                         <button type="submit" disabled={loading} className="px-6 py-2 bg-brand-blue text-brand-black font-bold rounded-lg hover:bg-brand-blue-light disabled:opacity-50">
                             {loading ? 'Creating...' : 'Create User'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function ResetPasswordModal({ user, onClose }: { user: AdminUser, onClose: () => void }) {
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError('');
+
+        if (newPassword.length < 6) {
+            setError('Password must be at least 6 characters');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        setLoading(true);
+
+        const res = await resetUserPassword(user.id, newPassword);
+
+        if (res?.error) {
+            setError(res.error);
+            setLoading(false);
+        } else {
+            setSuccess(true);
+            setLoading(false);
+        }
+    }
+
+    if (success) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in-up">
+                    <div className="flex flex-col items-center text-center mb-6">
+                        <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 text-emerald-500">
+                            <Check size={32} />
+                        </div>
+                        <h2 className="text-xl font-bold text-white mb-2">Password Reset</h2>
+                        <p className="text-slate-400">
+                            Password for <span className="text-white font-medium">{user.fullName}</span> has been successfully updated.
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        className="w-full px-4 py-2.5 bg-brand-blue text-brand-black rounded-xl font-bold hover:bg-brand-blue-light transition-colors"
+                    >
+                        Done
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in-up">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-brand-orange/10 rounded-full flex items-center justify-center text-brand-orange">
+                            <Key size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Reset Password</h2>
+                            <p className="text-sm text-slate-400">{user.email}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={24} /></button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">New Password</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            placeholder="Enter new password"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-blue transition-colors"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Confirm Password</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            placeholder="Confirm new password"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-blue transition-colors"
+                        />
+                    </div>
+
+                    {error && <div className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg">{error}</div>}
+
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 px-4 py-2.5 bg-brand-orange text-white rounded-xl font-bold hover:bg-brand-orange/90 disabled:opacity-50 transition-colors"
+                        >
+                            {loading ? 'Resetting...' : 'Reset Password'}
                         </button>
                     </div>
                 </form>

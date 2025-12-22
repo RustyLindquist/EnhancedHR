@@ -46,7 +46,7 @@ export async function createAdminClient() {
 
     // Use pure supabase-js for admin/service role interaction
     const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-    
+
     return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
         auth: {
             autoRefreshToken: false,

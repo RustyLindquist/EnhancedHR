@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import ExpertManagementDashboard from '@/components/admin/ExpertManagementDashboard';
 import { redirect } from 'next/navigation';
 
@@ -22,22 +22,39 @@ export default async function AdminExpertsPage() {
         return <div>Access Denied</div>;
     }
 
+    // Use admin client to bypass RLS for fetching all experts
+    const adminSupabase = await createAdminClient();
+
     // Fetch all experts (pending, approved, rejected)
-    const { data: experts } = await supabase
+    // Note: email is in auth.users, not profiles - we add placeholder for now
+    const { data: experts, error: expertsError } = await adminSupabase
         .from('profiles')
         .select(`
             id,
             full_name,
-            email,
             author_bio,
             linkedin_url,
             author_status,
             created_at,
-            updated_at,
-            avatar_url
+            avatar_url,
+            credentials,
+            course_proposal_title,
+            course_proposal_description,
+            application_status,
+            application_submitted_at
         `)
         .in('author_status', ['pending', 'approved', 'rejected'])
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
+
+    if (expertsError) {
+        console.error('Error fetching experts:', expertsError);
+    }
+
+    // Add placeholder email for now (email is in auth.users table, not profiles)
+    const expertsWithEmail = (experts || []).map(expert => ({
+        ...expert,
+        email: '' // Email not available in profiles table
+    }));
 
     // Get current month date range
     const now = new Date();
@@ -119,7 +136,7 @@ export default async function AdminExpertsPage() {
             </div>
 
             <ExpertManagementDashboard
-                experts={experts || []}
+                experts={expertsWithEmail}
                 monthlyStats={processedStats}
                 courseCountByAuthor={courseCountByAuthor}
                 currentMonth={now.toLocaleString('default', { month: 'long', year: 'numeric' })}
