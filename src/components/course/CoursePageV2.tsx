@@ -42,7 +42,8 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     // View mode state
     const [viewMode, setViewMode] = useState<ViewMode>('description');
     const [isTransitioning, setIsTransitioning] = useState(false);
-    const [transitionDirection, setTransitionDirection] = useState<'enter' | 'exit'>('enter');
+    const [transitionPhase, setTransitionPhase] = useState<'stable' | 'exit' | 'enter'>('stable');
+    const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left'); // left = forward, right = backward
 
     // Active content state
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -133,62 +134,97 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         return `${indices.moduleIndex + 1}.${indices.lessonIndex + 1}`;
     }, [getLessonIndex]);
 
-    // Navigation functions
+    // Navigation functions with slide transitions
     const goToNextLesson = useCallback(() => {
-        if (!activeLessonId) return;
+        if (!activeLessonId || isTransitioning) return;
 
         const indices = getLessonIndex(activeLessonId);
         if (!indices) return;
 
-        const currentModule = syllabus[indices.moduleIndex];
+        const currentMod = syllabus[indices.moduleIndex];
+        let nextLessonId: string | null = null;
+        let nextModuleId: string | null = null;
 
         // Try next lesson in same module
-        if (indices.lessonIndex < currentModule.lessons.length - 1) {
-            const nextLesson = currentModule.lessons[indices.lessonIndex + 1];
-            setActiveLessonId(nextLesson.id);
-            return;
+        if (indices.lessonIndex < currentMod.lessons.length - 1) {
+            nextLessonId = currentMod.lessons[indices.lessonIndex + 1].id;
+            nextModuleId = currentMod.id;
         }
-
         // Try first lesson of next module
-        if (indices.moduleIndex < syllabus.length - 1) {
+        else if (indices.moduleIndex < syllabus.length - 1) {
             const nextModule = syllabus[indices.moduleIndex + 1];
             if (nextModule.lessons.length > 0) {
-                setActiveModuleId(nextModule.id);
-                setActiveLessonId(nextModule.lessons[0].id);
-                // Expand next module
-                setExpandedModules(prev =>
-                    prev.includes(nextModule.id) ? prev : [...prev, nextModule.id]
-                );
+                nextLessonId = nextModule.lessons[0].id;
+                nextModuleId = nextModule.id;
             }
         }
-    }, [activeLessonId, getLessonIndex, syllabus]);
+
+        if (!nextLessonId) return;
+
+        // Animate transition: slide left (forward)
+        setIsTransitioning(true);
+        setSlideDirection('left');
+        setTransitionPhase('exit');
+
+        setTimeout(() => {
+            setActiveLessonId(nextLessonId);
+            setActiveModuleId(nextModuleId);
+            if (nextModuleId && !expandedModules.includes(nextModuleId)) {
+                setExpandedModules(prev => [...prev, nextModuleId!]);
+            }
+            setTransitionPhase('enter');
+
+            setTimeout(() => {
+                setTransitionPhase('stable');
+                setIsTransitioning(false);
+            }, 350);
+        }, 350);
+    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules]);
 
     const goToPreviousLesson = useCallback(() => {
-        if (!activeLessonId) return;
+        if (!activeLessonId || isTransitioning) return;
 
         const indices = getLessonIndex(activeLessonId);
         if (!indices) return;
+
+        let prevLessonId: string | null = null;
+        let prevModuleId: string | null = null;
 
         // Try previous lesson in same module
         if (indices.lessonIndex > 0) {
-            const prevLesson = syllabus[indices.moduleIndex].lessons[indices.lessonIndex - 1];
-            setActiveLessonId(prevLesson.id);
-            return;
+            prevLessonId = syllabus[indices.moduleIndex].lessons[indices.lessonIndex - 1].id;
+            prevModuleId = syllabus[indices.moduleIndex].id;
         }
-
         // Try last lesson of previous module
-        if (indices.moduleIndex > 0) {
+        else if (indices.moduleIndex > 0) {
             const prevModule = syllabus[indices.moduleIndex - 1];
             if (prevModule.lessons.length > 0) {
-                setActiveModuleId(prevModule.id);
-                setActiveLessonId(prevModule.lessons[prevModule.lessons.length - 1].id);
-                // Expand previous module
-                setExpandedModules(prev =>
-                    prev.includes(prevModule.id) ? prev : [...prev, prevModule.id]
-                );
+                prevLessonId = prevModule.lessons[prevModule.lessons.length - 1].id;
+                prevModuleId = prevModule.id;
             }
         }
-    }, [activeLessonId, getLessonIndex, syllabus]);
+
+        if (!prevLessonId) return;
+
+        // Animate transition: slide right (backward)
+        setIsTransitioning(true);
+        setSlideDirection('right');
+        setTransitionPhase('exit');
+
+        setTimeout(() => {
+            setActiveLessonId(prevLessonId);
+            setActiveModuleId(prevModuleId);
+            if (prevModuleId && !expandedModules.includes(prevModuleId)) {
+                setExpandedModules(prev => [...prev, prevModuleId!]);
+            }
+            setTransitionPhase('enter');
+
+            setTimeout(() => {
+                setTransitionPhase('stable');
+                setIsTransitioning(false);
+            }, 350);
+        }, 350);
+    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules]);
 
     // Check if there's a next/previous lesson
     const hasNextLesson = useMemo(() => {
@@ -218,8 +254,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
     // View mode transition handlers
     const transitionToPlayer = useCallback((lessonId?: string, moduleId?: string) => {
+        if (isTransitioning) return;
+
         setIsTransitioning(true);
-        setTransitionDirection('exit');
+        setSlideDirection('left'); // Forward: description slides left, player comes from right
+        setTransitionPhase('exit');
 
         // Determine which lesson to start
         let targetLessonId = lessonId;
@@ -249,7 +288,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             setViewMode('player');
             setActiveLessonId(targetLessonId || null);
             setActiveModuleId(targetModuleId || null);
-            setTransitionDirection('enter');
+            setTransitionPhase('enter');
 
             // Expand the module containing the active lesson
             if (targetModuleId && !expandedModules.includes(targetModuleId)) {
@@ -257,40 +296,75 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             }
 
             setTimeout(() => {
+                setTransitionPhase('stable');
                 setIsTransitioning(false);
-            }, 400);
-        }, 400);
-    }, [syllabus, completedLessons, expandedModules]);
+            }, 350);
+        }, 350);
+    }, [syllabus, completedLessons, expandedModules, isTransitioning]);
 
     const transitionToDescription = useCallback(() => {
+        if (isTransitioning) return;
+
         setIsTransitioning(true);
-        setTransitionDirection('exit');
+        setSlideDirection('right'); // Backward: player slides right, description comes from left
+        setTransitionPhase('exit');
 
         setTimeout(() => {
             setViewMode('description');
-            setTransitionDirection('enter');
+            setTransitionPhase('enter');
 
             setTimeout(() => {
+                setTransitionPhase('stable');
                 setIsTransitioning(false);
-            }, 400);
-        }, 400);
-    }, []);
+            }, 350);
+        }, 350);
+    }, [isTransitioning]);
 
     // Handle lesson click
     const handleLessonClick = useCallback((lesson: Lesson, moduleId: string) => {
+        if (isTransitioning) return;
+
         if (viewMode === 'description') {
             transitionToPlayer(lesson.id, moduleId);
         } else {
-            // Already in player mode, just switch lesson
-            setActiveLessonId(lesson.id);
-            setActiveModuleId(moduleId);
+            // Already in player mode - determine direction based on lesson order
+            const currentIndices = activeLessonId ? getLessonIndex(activeLessonId) : null;
+            const targetIndices = getLessonIndex(lesson.id);
 
-            // Ensure module is expanded
-            if (!expandedModules.includes(moduleId)) {
-                setExpandedModules(prev => [...prev, moduleId]);
+            if (!currentIndices || !targetIndices || lesson.id === activeLessonId) {
+                // Same lesson or can't determine - just set without animation
+                setActiveLessonId(lesson.id);
+                setActiveModuleId(moduleId);
+                if (!expandedModules.includes(moduleId)) {
+                    setExpandedModules(prev => [...prev, moduleId]);
+                }
+                return;
             }
+
+            // Determine if going forward or backward
+            const isForward = targetIndices.moduleIndex > currentIndices.moduleIndex ||
+                (targetIndices.moduleIndex === currentIndices.moduleIndex && targetIndices.lessonIndex > currentIndices.lessonIndex);
+
+            // Animate transition
+            setIsTransitioning(true);
+            setSlideDirection(isForward ? 'left' : 'right');
+            setTransitionPhase('exit');
+
+            setTimeout(() => {
+                setActiveLessonId(lesson.id);
+                setActiveModuleId(moduleId);
+                if (!expandedModules.includes(moduleId)) {
+                    setExpandedModules(prev => [...prev, moduleId]);
+                }
+                setTransitionPhase('enter');
+
+                setTimeout(() => {
+                    setTransitionPhase('stable');
+                    setIsTransitioning(false);
+                }, 350);
+            }, 350);
         }
-    }, [viewMode, transitionToPlayer, expandedModules]);
+    }, [viewMode, transitionToPlayer, expandedModules, isTransitioning, activeLessonId, getLessonIndex]);
 
     // Handle module toggle
     const handleModuleToggle = useCallback((moduleId: string) => {
@@ -323,10 +397,17 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         }
     }, []);
 
-    // Compute transition classes
+    // Compute transition classes based on direction and phase
     const getTransitionClass = () => {
-        if (!isTransitioning) return 'course-view-enter';
-        return transitionDirection === 'exit' ? 'course-view-exit' : 'course-view-enter';
+        if (transitionPhase === 'stable') return 'course-view-stable';
+
+        if (slideDirection === 'left') {
+            // Forward transition (description->player, current->next)
+            return transitionPhase === 'exit' ? 'course-slide-out-left' : 'course-slide-in-right';
+        } else {
+            // Backward transition (player->description, current->previous)
+            return transitionPhase === 'exit' ? 'course-slide-out-right' : 'course-slide-in-left';
+        }
     };
 
     return (

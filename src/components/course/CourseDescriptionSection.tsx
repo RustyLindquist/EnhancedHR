@@ -95,7 +95,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
             </div>
 
             {/* Two Column Layout - 70/30 Split with Divider */}
-            <div className="flex flex-col lg:flex-row pb-[75px] mt-8">
+            <div className="flex flex-col lg:flex-row mt-8">
                 {/* Column 1: Course Description (70%) */}
                 <div className="lg:w-[70%] space-y-6">
                     {/* Description */}
@@ -161,7 +161,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                 </div>
 
                 {/* Vertical Divider */}
-                <div className="hidden lg:block w-px bg-white/10 flex-shrink-0 mx-[15px]" />
+                <div className="hidden lg:block w-px bg-white/10 flex-shrink-0 mx-[40px]" />
 
                 {/* Column 2: Instructor Info (30%) */}
                 <div className="lg:w-[30%] space-y-4">
