@@ -25,8 +25,6 @@ INSERT INTO courses (
   duration,
   rating,
   badges,
-  is_saved,
-  status,
   created_at
 ) VALUES (
   1000,
@@ -38,8 +36,6 @@ INSERT INTO courses (
   '8h 30m',
   4.9,
   ARRAY['SHRM', 'HRCI', 'REQUIRED'],
-  false,
-  'published',
   NOW()
 ) ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -47,8 +43,7 @@ INSERT INTO courses (
   description = EXCLUDED.description,
   duration = EXCLUDED.duration,
   rating = EXCLUDED.rating,
-  badges = EXCLUDED.badges,
-  status = EXCLUDED.status;
+  badges = EXCLUDED.badges;
 
 -- =====================================================
 -- STEP 2: Clean up existing modules/lessons for this course
