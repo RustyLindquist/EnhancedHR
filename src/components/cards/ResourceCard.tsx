@@ -70,6 +70,10 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                 draggable={draggable && isDraggable}
                 onDragStart={(e) => {
                     if (isDraggable && onDragStart) {
+                        // Hide native drag preview since we use CustomDragLayer
+                        const emptyImg = new Image();
+                        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                        e.dataTransfer.setDragImage(emptyImg, 0, 0);
                         onDragStart(e);
                     } else {
                         e.preventDefault();

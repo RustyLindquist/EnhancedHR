@@ -65,6 +65,11 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
     };
 
     const handleDragStart = (e: React.DragEvent) => {
+        // Hide native drag preview since we use CustomDragLayer
+        const emptyImg = new Image();
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+
         const dragItem: DragItem = {
             type: 'LESSON',
             id: lesson.id,
