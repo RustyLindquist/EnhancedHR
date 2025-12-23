@@ -48,6 +48,8 @@ interface MainCanvasProps {
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
     academyResetKey?: number; // Triggers filter reset when Academy is clicked
+    initialStatusFilter?: string[]; // Pre-apply status filter when navigating to Academy
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -649,7 +651,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     activeConversationId,
     useDashboardV3,
     onCollectionUpdate,
-    academyResetKey
+    academyResetKey,
+    initialStatusFilter,
+    onNavigateWithFilter
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -756,6 +760,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             setIsPlayerActive(false);
         }
     }, [academyResetKey]);
+
+    // Apply initial status filter when navigating to Academy with pre-set filter
+    useEffect(() => {
+        if (initialStatusFilter && initialStatusFilter.length > 0 && activeCollectionId === 'academy') {
+            const newFilters = { ...INITIAL_FILTERS, status: initialStatusFilter };
+            setActiveFilters(newFilters);
+            setPendingFilters(newFilters);
+        }
+    }, [initialStatusFilter, activeCollectionId]);
 
     useEffect(() => {
         const loadPrompts = async () => {
@@ -1445,6 +1458,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [deleteContextModalOpen, setDeleteContextModalOpen] = useState(false);
     const [contextItemToDelete, setContextItemToDelete] = useState<{ id: string; type: ContextItemType; title: string } | null>(null);
 
+    // Collection Item Delete State (for COURSE, LESSON, MODULE, RESOURCE)
+    const [deleteCollectionItemModalOpen, setDeleteCollectionItemModalOpen] = useState(false);
+    const [collectionItemToDelete, setCollectionItemToDelete] = useState<{ id: string; type: string; title: string } | null>(null);
+
 
 
     // --- Actions ---
@@ -1458,11 +1475,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (!conversationToDelete) return;
         setDeleteConversationModalOpen(false);
         try {
-            await fetch(`/ api / conversations / ${conversationToDelete.id} `, {
+            await fetch(`/api/conversations/${conversationToDelete.id}`, {
                 method: 'DELETE'
             });
             setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
             setConversationToDelete(null);
+            // Refresh collection counts after deletion
+            if (onCollectionUpdate) onCollectionUpdate();
         } catch (error) {
             console.error("Failed to delete conversation", error);
             alert("Failed to delete conversation.");
@@ -1512,25 +1531,41 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setContextItemToDelete(null);
     };
 
+    // Collection Item Delete Handlers (COURSE, LESSON, MODULE, RESOURCE)
+    const initiateDeleteCollectionItem = (id: string, type: string, title: string) => {
+        setCollectionItemToDelete({ id, type, title });
+        setDeleteCollectionItemModalOpen(true);
+    };
+
+    const confirmDeleteCollectionItem = async () => {
+        if (!collectionItemToDelete) return;
+        setDeleteCollectionItemModalOpen(false);
+
+        await removeFromCollection(collectionItemToDelete.id, activeCollectionId);
+        // Update local state to remove item immediately
+        setCollectionItems(prev => prev.filter(i => String(i.id) !== String(collectionItemToDelete.id)));
+        if (onCollectionUpdate) onCollectionUpdate();
+        setCollectionItemToDelete(null);
+    };
+
     // Updated Handler for UniversalCollectionCard
     const handleRemoveItem = async (itemId: string, itemType: string) => {
-        if (itemType === 'COURSE') {
-            removeFromCollection(itemId, activeCollectionId);
-            if (onCollectionUpdate) onCollectionUpdate();
-        } else if (itemType === 'CONVERSATION') {
+        if (itemType === 'CONVERSATION') {
+            // Conversations have their own confirmation modal
             const conv = conversations.find(c => c.id === itemId);
             if (conv) {
                 handleDeleteConversationInitiate(conv);
             }
-        } else {
-            // Context Items (Custom, File, Profile, Insight)
-            // Cast strictly if needed check
-            const type = itemType as ContextItemType;
-            if (type === 'AI_INSIGHT' || type === 'CUSTOM_CONTEXT' || type === 'FILE' || type === 'PROFILE') {
-                const item = collectionItems.find(i => i.id === itemId);
-                const title = item?.title || 'Context Item';
-                initiateDeleteContextItem(itemId, type, title);
-            }
+        } else if (itemType === 'AI_INSIGHT' || itemType === 'CUSTOM_CONTEXT' || itemType === 'FILE' || itemType === 'PROFILE') {
+            // Context Items have their own confirmation modal
+            const item = collectionItems.find(i => i.id === itemId);
+            const title = item?.title || 'Context Item';
+            initiateDeleteContextItem(itemId, itemType as ContextItemType, title);
+        } else if (itemType === 'COURSE' || itemType === 'LESSON' || itemType === 'MODULE' || itemType === 'RESOURCE') {
+            // Standard collection items - use modal confirmation
+            const item = collectionItems.find(i => i.id === itemId || String(i.id) === itemId);
+            const itemName = item?.title || itemType.toLowerCase();
+            initiateDeleteCollectionItem(itemId, itemType, itemName);
         }
     };
 
@@ -1763,7 +1798,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         })
                     : [];
 
-                console.log('[MainCanvas] Fetched Items:', { count: standardItems.length });
                 setCollectionItems(standardItems as CollectionItemDetail[]);
 
             } catch (err) {
@@ -1973,8 +2007,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
             let displayItems = sourceItems;
 
-            // VIRTUAL PROFILE CARD LOGIC (Robust)
-            // VIRTUAL PROFILE CARD LOGIC (Robust)
+            // VIRTUAL PROFILE CARD LOGIC
             if (activeCollectionId === 'personal-context') {
                 // Dedupe Profiles
                 const profiles = displayItems.filter(i => i.itemType === 'PROFILE');
@@ -2768,11 +2801,13 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         user={user}
                                         courses={courses}
                                         onNavigate={onSelectCollection}
+                                        onNavigateWithFilter={onNavigateWithFilter}
                                         onStartCourse={handleCourseClick}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
                                         onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                                         onAddCourse={(course) => onOpenModal(course)}
+                                        onResumeConversation={onResumeConversation}
                                     />
                                 )}
                             </div>
@@ -3138,6 +3173,17 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     itemTitle={contextItemToDelete?.title || 'Item'}
                     confirmText="Delete Item"
                     description="This item will be permanently removed from this collection. This action cannot be undone."
+                />
+
+                {/* Delete Collection Item Confirmation (COURSE, LESSON, MODULE, RESOURCE) */}
+                <DeleteConfirmationModal
+                    isOpen={deleteCollectionItemModalOpen}
+                    onCancel={() => setDeleteCollectionItemModalOpen(false)}
+                    onConfirm={confirmDeleteCollectionItem}
+                    title={`Remove ${collectionItemToDelete?.type || 'Item'}?`}
+                    itemTitle={collectionItemToDelete?.title || 'Item'}
+                    confirmText="Remove Item"
+                    description="This item will be removed from this collection. This action cannot be undone."
                 />
 
                 {/* --- Top Context Panel --- */}

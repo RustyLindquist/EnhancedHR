@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Flame,
     Clock,
     Award,
     TrendingUp,
-    ArrowRight,
     Play,
     Sparkles,
     BookOpen,
@@ -15,36 +13,40 @@ import {
     Loader2,
     ChevronRight
 } from 'lucide-react';
-import { Course } from '@/types';
+import { Course, Conversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
-import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
+import { PromptSuggestion, fetchPromptSuggestionsAction } from '@/app/actions/prompts';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
+import { fetchConversationsAction } from '@/app/actions/conversations';
 import UniversalCard from '../cards/UniversalCard';
+import PrometheusDashboardWidget from '../PrometheusDashboardWidget';
 
 interface UserDashboardV3Props {
     user: any;
     courses: Course[];
     onNavigate: (collectionId: string) => void;
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
     onSetPrometheusPagePrompt: (prompt: string) => void;
     onAddCourse: (course: Course) => void;
+    onResumeConversation?: (conversation: Conversation) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     user,
     courses,
     onNavigate,
+    onNavigateWithFilter,
     onStartCourse,
     onOpenAIPanel,
     onSetAIPrompt,
     onSetPrometheusPagePrompt,
-    onAddCourse
+    onAddCourse,
+    onResumeConversation
 }) => {
-    // ... existing state ...
-    const [aiPrompt, setAiPrompt] = useState('');
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
         coursesCompleted: 0,
@@ -56,13 +58,15 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [recertifications, setRecertifications] = useState<any[]>([]);
     const [userProgress, setUserProgress] = useState<Record<number, { progress: number, lastAccessed: string }>>({});
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [heroPrompts, setHeroPrompts] = useState<PromptSuggestion[]>([]);
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
 
     // Tab State - Recommended is now first/default
     const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+
+    // Conversations State
+    const [recentConversations, setRecentConversations] = useState<Conversation[]>([]);
 
     const router = useRouter();
 
@@ -87,12 +91,25 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     useEffect(() => {
         const loadPrompts = async () => {
-            const prompts = await fetchPromptSuggestions('user_dashboard');
-            setHeroPrompts(prompts.slice(0, 4));
-            setPanelPrompts(prompts.slice(4));
+            const prompts = await fetchPromptSuggestionsAction('user_dashboard');
+            setPanelPrompts(prompts.slice(6)); // Skip first 6 (shown in widget), rest go to drawer
         };
         loadPrompts();
     }, []);
+
+    useEffect(() => {
+        const loadConversations = async () => {
+            if (user?.id) {
+                try {
+                    const conversations = await fetchConversationsAction();
+                    setRecentConversations(conversations.slice(0, 6));
+                } catch (error) {
+                    console.error("Failed to load conversations", error);
+                }
+            }
+        };
+        loadConversations();
+    }, [user?.id]);
 
     useEffect(() => {
         if (activeTab === 'recommended' && recommendedCourses.length === 0 && user?.id) {
@@ -122,14 +139,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     const trendingCourses = courses.filter(c => trendingIds.includes(c.id));
 
-    const handleAiSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (aiPrompt.trim()) {
-            onSetPrometheusPagePrompt(aiPrompt);
-            setAiPrompt('');
-        }
-    };
-
     const handlePromptClick = (prompt: string) => {
         onSetPrometheusPagePrompt(prompt);
     };
@@ -141,125 +150,13 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
             <div className="max-w-[1800px] mx-auto px-8 pt-[50px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
-                    PROMETHEUS AI SECTION - Compact Two-Column Layout (Centered)
+                    PROMETHEUS AI SECTION - Using Widget Component
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="relative z-10 mb-12 flex justify-center">
-                    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center lg:items-stretch">
-                        {/* Left Column: Logo & Tagline - Compact vertical layout */}
-                        <div className="flex flex-col items-center justify-center group cursor-default lg:w-48 flex-shrink-0">
-                            <div className="relative mb-2 transition-transform duration-700 group-hover:scale-105">
-                                <div className="absolute inset-0 bg-brand-orange/20 blur-[30px] rounded-full animate-pulse-slow" />
-                                <img
-                                    src="/images/logos/EnhancedHR-logo-mark-flame.png"
-                                    alt="Prometheus AI"
-                                    className="w-20 h-20 lg:w-24 lg:h-24 relative z-10 drop-shadow-[0_0_25px_rgba(255,147,0,0.4)] object-contain"
-                                />
-                            </div>
-                            <h1 className="text-lg font-extralight text-white tracking-tight mb-0.5 text-center whitespace-nowrap">
-                                Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
-                            </h1>
-                            <p className="text-xs text-slate-500 font-light text-center">
-                                Your Personal Learning Assistant
-                            </p>
-                        </div>
-
-                        {/* Right Column: Prompt Cards (2x2 grid) + Input Box */}
-                        <div className="flex-1 w-full max-w-3xl">
-                            {/* 2x2 Prompt Grid + More Prompts Link */}
-                            <div className="mb-3">
-                                <div className="flex justify-end mb-2">
-                                    <button
-                                        onClick={() => setIsDrawerOpen(true)}
-                                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
-                                    >
-                                        <Sparkles size={10} />
-                                        <span>more prompts</span>
-                                        <ChevronRight size={10} />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {[
-                                        {
-                                            id: 'cap-1',
-                                            title: 'Difficult Conversations',
-                                            description: 'Role-play challenging discussions',
-                                            prompt: 'I need to have a difficult conversation with an employee who is underperforming. Can you role-play this with me?',
-                                            accent: 'from-blue-500/20 to-transparent'
-                                        },
-                                        {
-                                            id: 'cap-2',
-                                            title: 'Policy & Compliance',
-                                            description: 'Draft policies and communications',
-                                            prompt: 'I need to draft an email announcing a new Return to Office policy. Help me write a balanced message.',
-                                            accent: 'from-emerald-500/20 to-transparent'
-                                        },
-                                        {
-                                            id: 'cap-3',
-                                            title: 'Strategic Analysis',
-                                            description: 'Analyze leadership and decisions',
-                                            prompt: 'Analyze my leadership style based on a recent situation I will describe.',
-                                            accent: 'from-purple-500/20 to-transparent'
-                                        },
-                                        {
-                                            id: 'cap-4',
-                                            title: 'Creative Solutions',
-                                            description: 'Brainstorm ideas and initiatives',
-                                            prompt: 'I want to launch a wellness initiative for a remote team. Give me 5 creative, low-cost ideas.',
-                                            accent: 'from-amber-500/20 to-transparent'
-                                        }
-                                    ].map((card) => (
-                                        <button
-                                            key={card.id}
-                                            onClick={() => handlePromptClick(card.prompt)}
-                                            className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-lg px-3 py-2 text-left transition-all duration-300"
-                                        >
-                                            <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-lg transition-opacity duration-500`} />
-                                            <div className="relative z-10 flex items-center justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <h3 className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors truncate">{card.title}</h3>
-                                                    <p className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors truncate">{card.description}</p>
-                                                </div>
-                                                <ChevronRight size={12} className="text-slate-500 group-hover:text-slate-400 flex-shrink-0" />
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Input Box */}
-                            <div className="relative">
-                                <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
-                                <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
-                                    <div className="p-2.5 text-brand-orange/60">
-                                        <Flame size={18} />
-                                    </div>
-                                    <form onSubmit={handleAiSubmit} className="flex-1 flex">
-                                        <input
-                                            type="text"
-                                            value={aiPrompt}
-                                            onChange={(e) => setAiPrompt(e.target.value)}
-                                            placeholder="Ask anything..."
-                                            className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-600 px-2 font-light h-11"
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={!aiPrompt.trim()}
-                                            className={`
-                                                p-2.5 rounded-lg transition-all duration-300 mr-1
-                                                ${aiPrompt.trim()
-                                                    ? 'bg-brand-blue-light text-brand-black hover:bg-white'
-                                                    : 'bg-white/[0.03] text-slate-700 cursor-not-allowed'}
-                                            `}
-                                        >
-                                            <ArrowRight size={18} />
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            {/* AI Disclaimer */}
-                            <p className="text-center text-[10px] text-slate-600/60 mt-2">AI can make mistakes. Verify important information.</p>
-                        </div>
-                    </div>
+                <div className="relative z-10 mb-12">
+                    <PrometheusDashboardWidget
+                        onSetPrometheusPagePrompt={onSetPrometheusPagePrompt}
+                        onOpenDrawer={() => setIsDrawerOpen(true)}
+                    />
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════════
@@ -294,100 +191,148 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         </button>
                     </div>
 
-                    {/* Course Cards Grid */}
+                    {/* Course Cards - Horizontal Scroll */}
                     <div className="min-h-[220px]">
                         {activeTab === 'trending' ? (
-                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                                {trendingCourses.length > 0 ? trendingCourses.slice(0, 8).map((course, idx) => (
-                                    <UniversalCard
-                                        key={course.id}
-                                        type="COURSE"
-                                        title={course.title}
-                                        subtitle={course.author}
-                                        description={course.description}
-                                        imageUrl={course.image}
-                                        meta={course.duration}
-                                        categories={[`#${idx + 1} TRENDING`]}
-                                        credits={{
-                                            shrm: course.badges?.includes('SHRM'),
-                                            hrci: course.badges?.includes('HRCI')
-                                        }}
-                                        actionLabel="VIEW"
-                                        rating={course.rating}
-                                        onAction={() => onStartCourse(course.id)}
-                                        onAdd={() => onAddCourse(course)}
-                                    />
-                                )) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">No trending courses available</div>
-                                )}
-                            </div>
+                            trendingCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {trendingCourses.slice(0, 8).map((course, idx) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={[`#${idx + 1} TRENDING`]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">No trending courses available</div>
+                            )
                         ) : (
-                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                                {loadingRecommendations ? (
-                                    <div className="col-span-full flex justify-center py-16">
-                                        <Loader2 size={24} className="animate-spin text-brand-blue-light" />
-                                    </div>
-                                ) : recommendedCourses.length > 0 ? (
-                                    recommendedCourses.slice(0, 8).map((course) => (
-                                        <UniversalCard
-                                            key={course.id}
-                                            type="COURSE"
-                                            title={course.title}
-                                            subtitle={course.author}
-                                            description={course.description}
-                                            imageUrl={course.image}
-                                            meta={course.duration}
-                                            categories={["FOR YOU"]}
-                                            credits={{
-                                                shrm: course.badges?.includes('SHRM'),
-                                                hrci: course.badges?.includes('HRCI')
-                                            }}
-                                            actionLabel="VIEW"
-                                            rating={course.rating}
-                                            onAction={() => onStartCourse(course.id)}
-                                            onAdd={() => onAddCourse(course)}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">
-                                        Unable to generate recommendations
-                                    </div>
-                                )}
-                            </div>
+                            loadingRecommendations ? (
+                                <div className="flex justify-center py-16">
+                                    <Loader2 size={24} className="animate-spin text-brand-blue-light" />
+                                </div>
+                            ) : recommendedCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {recommendedCourses.slice(0, 8).map((course) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={["FOR YOU"]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">
+                                    Unable to generate recommendations
+                                </div>
+                            )
                         )}
                     </div>
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════════
+                    CONTINUE THE CONVERSATION SECTION
+                ══════════════════════════════════════════════════════════════════ */}
+                {recentConversations.length > 0 && (
+                    <div className="mb-14">
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={16} className="text-brand-blue-light" />
+                                <h2 className="text-lg font-light text-white">Continue the Conversation</h2>
+                            </div>
+                            <button
+                                onClick={() => onNavigate('conversations')}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
+                        </div>
+
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
+                            {recentConversations.map(conversation => (
+                                <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
+                                    <UniversalCard
+                                        type="CONVERSATION"
+                                        title={conversation.title || 'Untitled Conversation'}
+                                        description={conversation.lastMessage || 'No messages yet.'}
+                                        meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
+                                        actionLabel="CHAT"
+                                        onAction={() => onResumeConversation?.(conversation)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ══════════════════════════════════════════════════════════════════
                     CONTINUE LEARNING SECTION
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="mb-14">
-                    <div className="flex items-center gap-2 mb-5">
-                        <Play size={16} className="text-brand-blue-light" />
-                        <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                    <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-2">
+                            <Play size={16} className="text-brand-blue-light" />
+                            <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                        </div>
+                        {inProgressCourses.length > 0 && (
+                            <button
+                                onClick={() => onNavigateWithFilter?.('academy', ['IN_PROGRESS'])}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
+                        )}
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
                             {inProgressCourses.map(course => (
-                                <UniversalCard
-                                    key={course.id}
-                                    type="COURSE"
-                                    title={course.title}
-                                    subtitle={course.author}
-                                    description={course.description}
-                                    imageUrl={course.image}
-                                    meta={`${course.progress}% Complete`}
-                                    categories={["IN PROGRESS"]}
-                                    actionLabel="RESUME"
-                                    rating={course.rating}
-                                    onAction={() => onStartCourse(course.id)}
-                                    // onAdd={() => onAddCourse(course)}
-                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress?
-                                    // But user said "on Dashboard, there should only be the 'add' icon".
-                                    // Let's ensure consistency.
-                                    onAdd={() => onAddCourse(course)}
-                                />
+                                <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                    <UniversalCard
+                                        type="COURSE"
+                                        title={course.title}
+                                        subtitle={course.author}
+                                        description={course.description}
+                                        imageUrl={course.image}
+                                        meta={`${course.progress}% Complete`}
+                                        categories={["IN PROGRESS"]}
+                                        actionLabel="RESUME"
+                                        rating={course.rating}
+                                        onAction={() => onStartCourse(course.id)}
+                                        onAdd={() => onAddCourse(course)}
+                                    />
+                                </div>
                             ))}
                         </div>
                     ) : (

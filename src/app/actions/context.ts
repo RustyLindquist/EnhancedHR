@@ -501,7 +501,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                     moduleTitle: l.modules?.title,
                     courseTitle: l.modules?.courses?.title,
                     course_id: l.modules?.course_id,
-                    image: l.modules?.courses?.image_url, // Use Course Image
+                    image: l.modules?.courses?.image_url,
                     author: l.modules?.courses?.author
                 })) || [])
         );
@@ -556,7 +556,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
     ];
 
     return {
-        courses: allStandardItems, // Naming legacy: 'courses' prop carries all DB-backed entity items
+        courses: allStandardItems,
         contextItems: contextItems || [],
         debug: { resolvedId, groupedCounts: {
             courses: grouped.courses.length,

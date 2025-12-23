@@ -66,18 +66,29 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
 
     console.log('[getCollectionCountsAction] Starting count for user:', userId);
 
-    // Fetch User Collections for Alias Mapping
+    // Fetch User Collections for Alias Mapping (ordered by created_at for consistent resolution)
     const { data: userCollections, error: userCollError } = await admin
         .from('user_collections')
-        .select('id, label, is_custom')
-        .eq('user_id', userId);
+        .select('id, label, is_custom, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
 
     if (userCollError) {
         console.error('[getCollectionCountsAction] Error fetching user collections:', userCollError);
     }
 
+    // DIAGNOSTIC: Log all collections to identify duplicates
+    console.log('[getCollectionCountsAction] All collections:', userCollections?.map(c => ({
+        id: c.id,
+        label: c.label,
+        is_custom: c.is_custom,
+        created_at: c.created_at
+    })));
+
     // Build UUID -> Alias map for system collections (based on label)
+    // Only map the FIRST (oldest) collection for each label to ensure consistent counts
     const uuidToAlias: Record<string, string> = {};
+    const aliasToUuid: Record<string, string> = {}; // Track which alias already has a UUID assigned
     const labelToAlias: Record<string, string> = {
         'favorites': 'favorites',
         'workspace': 'research',
@@ -90,14 +101,25 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
     if (userCollections) {
         userCollections.forEach((c: any) => {
             const lowerLabel = c.label?.toLowerCase().trim();
-            if (lowerLabel === 'personal context') personalContextId = c.id;
 
-            // Map UUID to alias if it's a system collection (by label)
+            // Only set personalContextId once (first/oldest)
+            if (lowerLabel === 'personal context' && !personalContextId) {
+                personalContextId = c.id;
+            }
+
+            // Map UUID to alias only if this alias hasn't been assigned yet (first wins)
             if (lowerLabel && labelToAlias[lowerLabel]) {
-                uuidToAlias[c.id] = labelToAlias[lowerLabel];
+                const alias = labelToAlias[lowerLabel];
+                if (!aliasToUuid[alias]) {
+                    uuidToAlias[c.id] = alias;
+                    aliasToUuid[alias] = c.id;
+                }
             }
         });
     }
+
+    // DIAGNOSTIC: Log primary collection mapping
+    console.log('[getCollectionCountsAction] Primary collections (aliasToUuid):', aliasToUuid);
 
     // 1. Count items from collection_items table (courses, modules, lessons, conversations)
     const { data: collectionItems, error: itemsError } = await admin
@@ -194,6 +216,16 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         }
     }
 
+    // DIAGNOSTIC: Log counts by UUID before alias mapping
+    console.log('[getCollectionCountsAction] Counts by UUID (before alias mapping):',
+        Object.entries(counts)
+            .filter(([key]) => key.includes('-')) // Only UUIDs
+            .map(([uuid, count]) => {
+                const col = userCollections?.find(c => c.id === uuid);
+                return { uuid, label: col?.label, count, isPrimary: !!uuidToAlias[uuid] };
+            })
+    );
+
     // 6. Map UUID counts to system aliases AT THE END (not during iteration to avoid double counting)
     // This creates alias keys that the UI expects (e.g., 'favorites', 'research', 'to_learn', 'personal-context')
     userCollections?.forEach((col: any) => {
@@ -202,6 +234,9 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
             counts[alias] = counts[col.id];
         }
     });
+
+    // DIAGNOSTIC: Log final counts
+    console.log('[getCollectionCountsAction] Final counts:', counts);
 
     return counts;
 }
@@ -226,11 +261,15 @@ async function resolveCollectionId(supabase: any, collectionId: string, userId: 
     // Let's use createAdminClient inside here if we suspect RLS issues. 
     // However, the caller will likely use Admin Client.
 
+    // Use consistent ordering to ensure we always get the same collection
+    // when there are duplicates (matches context.ts resolution)
     const { data } = await supabase
         .from('user_collections')
         .select('id')
         .eq('user_id', userId)
         .eq('label', targetLabel)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
     if (data) return data.id;
@@ -416,7 +455,144 @@ export async function syncConversationCollectionsAction(userId: string, conversa
             .eq('item_type', 'CONVERSATION')
             .in('collection_id', toRemove);
     }
-    
+
     revalidatePath('/dashboard');
     return { success: true };
+}
+
+/**
+ * Cleanup duplicate collections for the current user.
+ * - Moves items from duplicate collections to the primary (oldest) collection
+ * - Deletes duplicate collections
+ * - Returns a summary of what was cleaned up
+ */
+export async function cleanupDuplicateCollectionsAction() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const admin = createAdminClient();
+
+    // System collection labels to clean up
+    const systemLabels = ['Favorites', 'Workspace', 'Watchlist', 'Personal Context'];
+
+    const results: {
+        label: string;
+        primaryId: string;
+        duplicatesRemoved: number;
+        itemsMoved: number;
+    }[] = [];
+
+    for (const label of systemLabels) {
+        // Find all collections with this label, ordered by created_at
+        const { data: collections } = await admin
+            .from('user_collections')
+            .select('id, label, created_at')
+            .eq('user_id', user.id)
+            .ilike('label', label)
+            .order('created_at', { ascending: true });
+
+        if (!collections || collections.length <= 1) {
+            // No duplicates for this label
+            continue;
+        }
+
+        const primaryCollection = collections[0];
+        const duplicates = collections.slice(1);
+        const duplicateIds = duplicates.map(d => d.id);
+
+        console.log(`[cleanupDuplicateCollections] ${label}: Primary=${primaryCollection.id}, Duplicates=${duplicateIds.length}`);
+
+        // 1. Move collection_items from duplicates to primary
+        const { data: itemsToMove } = await admin
+            .from('collection_items')
+            .select('*')
+            .in('collection_id', duplicateIds);
+
+        let itemsMoved = 0;
+        if (itemsToMove && itemsToMove.length > 0) {
+            for (const item of itemsToMove) {
+                // Check if this item already exists in primary
+                const { data: existing } = await admin
+                    .from('collection_items')
+                    .select('collection_id')
+                    .eq('collection_id', primaryCollection.id)
+                    .eq('item_id', item.item_id)
+                    .eq('item_type', item.item_type)
+                    .maybeSingle();
+
+                if (!existing) {
+                    // Move item to primary collection
+                    await admin
+                        .from('collection_items')
+                        .update({ collection_id: primaryCollection.id })
+                        .eq('collection_id', item.collection_id)
+                        .eq('item_id', item.item_id)
+                        .eq('item_type', item.item_type);
+                    itemsMoved++;
+                } else {
+                    // Delete duplicate item
+                    await admin
+                        .from('collection_items')
+                        .delete()
+                        .eq('collection_id', item.collection_id)
+                        .eq('item_id', item.item_id)
+                        .eq('item_type', item.item_type);
+                }
+            }
+        }
+
+        // 2. Move user_context_items from duplicates to primary
+        const { data: contextToMove } = await admin
+            .from('user_context_items')
+            .select('*')
+            .in('collection_id', duplicateIds);
+
+        if (contextToMove && contextToMove.length > 0) {
+            for (const item of contextToMove) {
+                // Check if this item already exists in primary
+                const { data: existing } = await admin
+                    .from('user_context_items')
+                    .select('id')
+                    .eq('collection_id', primaryCollection.id)
+                    .eq('id', item.id)
+                    .maybeSingle();
+
+                if (!existing) {
+                    await admin
+                        .from('user_context_items')
+                        .update({ collection_id: primaryCollection.id })
+                        .eq('id', item.id);
+                    itemsMoved++;
+                }
+            }
+        }
+
+        // 3. Delete duplicate collections
+        const { error: deleteError } = await admin
+            .from('user_collections')
+            .delete()
+            .in('id', duplicateIds);
+
+        if (deleteError) {
+            console.error(`[cleanupDuplicateCollections] Error deleting duplicates for ${label}:`, deleteError);
+        }
+
+        results.push({
+            label,
+            primaryId: primaryCollection.id,
+            duplicatesRemoved: duplicates.length,
+            itemsMoved
+        });
+    }
+
+    console.log('[cleanupDuplicateCollections] Results:', results);
+
+    revalidatePath('/dashboard');
+    return {
+        success: true,
+        results,
+        summary: `Cleaned up ${results.reduce((sum, r) => sum + r.duplicatesRemoved, 0)} duplicate collections, moved ${results.reduce((sum, r) => sum + r.itemsMoved, 0)} items`
+    };
 }

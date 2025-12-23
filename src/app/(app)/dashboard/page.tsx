@@ -328,6 +328,8 @@ function HomeContent() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   // Reset trigger for Academy view - increments to force filter reset
   const [academyResetKey, setAcademyResetKey] = useState(0);
+  // Initial status filter for Academy (e.g., ['IN_PROGRESS'] from "view all" on dashboard)
+  const [initialStatusFilter, setInitialStatusFilter] = useState<string[]>([]);
 
   const handleOpenAIPanel = () => {
     if (activeCollectionId !== 'prometheus') {
@@ -339,6 +341,12 @@ function HomeContent() {
   const handleCourseSelect = useCallback((courseId: string | null) => {
     // Only update if value actually changed to prevent loops
     setActiveCourseId(prev => prev === courseId ? prev : courseId);
+  }, []);
+
+  // Navigate to a collection with a pre-set status filter
+  const handleNavigateWithFilter = useCallback((collectionId: string, statusFilter: string[]) => {
+    setInitialStatusFilter(statusFilter);
+    setActiveCollectionId(collectionId);
   }, []);
 
   // Handle Resuming Conversation from MainCanvas
@@ -441,6 +449,8 @@ function HomeContent() {
             if (user) refreshCollectionsAndCounts(user.id);
           }}
           academyResetKey={academyResetKey}
+          initialStatusFilter={initialStatusFilter}
+          onNavigateWithFilter={handleNavigateWithFilter}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
