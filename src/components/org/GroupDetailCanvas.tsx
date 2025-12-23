@@ -49,7 +49,7 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
     if (!fullGroup) return null;
 
     return (
-        <div className="flex flex-col h-full bg-transparent overflow-y-auto pb-20 animate-fade-in">
+        <div className="flex flex-col h-full bg-transparent overflow-y-auto pb-36 animate-fade-in">
             {/* Header Content moved to MainCanvas GlobalTopPanel */}
 
             {/* Platform Usage (Aggregated Mock) */}
