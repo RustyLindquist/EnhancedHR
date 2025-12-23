@@ -428,7 +428,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             />
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 py-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 pt-6 pb-36">
                 <div className={`${getTransitionClass()}`}>
                     {/* Course Description or Player */}
                     {viewMode === 'description' ? (

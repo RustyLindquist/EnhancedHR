@@ -198,7 +198,7 @@ const OrgAdminDashboard: React.FC<OrgAdminDashboardProps> = ({ user, orgId, onOp
             </div>
 
             {/* --- DASHBOARD CONTENT --- */}
-            <div className="flex-1 px-8 pb-12 max-w-7xl mx-auto w-full z-20">
+            <div className="flex-1 px-8 pb-36 max-w-7xl mx-auto w-full z-20">
 
                 {/* Tabs */}
                 <div className="flex items-center space-x-8 border-b border-white/10 mb-8">
