@@ -166,6 +166,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         setSlideDirection('left');
         setTransitionPhase('exit');
 
+        // Record that user accessed next lesson
+        if (nextLessonId) {
+            updateLastAccessed(nextLessonId);
+        }
+
         setTimeout(() => {
             setActiveLessonId(nextLessonId);
             setActiveModuleId(nextModuleId);
@@ -179,7 +184,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setIsTransitioning(false);
             }, 350);
         }, 350);
-    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules]);
+    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules, updateLastAccessed]);
 
     const goToPreviousLesson = useCallback(() => {
         if (!activeLessonId || isTransitioning) return;
@@ -211,6 +216,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         setSlideDirection('right');
         setTransitionPhase('exit');
 
+        // Record that user accessed previous lesson
+        updateLastAccessed(prevLessonId);
+
         setTimeout(() => {
             setActiveLessonId(prevLessonId);
             setActiveModuleId(prevModuleId);
@@ -224,7 +232,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setIsTransitioning(false);
             }, 350);
         }, 350);
-    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules]);
+    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules, updateLastAccessed]);
 
     // Check if there's a next/previous lesson
     const hasNextLesson = useMemo(() => {
@@ -284,6 +292,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             }
         }
 
+        // Record that user accessed this lesson (for progress tracking)
+        if (targetLessonId) {
+            updateLastAccessed(targetLessonId);
+        }
+
         setTimeout(() => {
             setViewMode('player');
             setActiveLessonId(targetLessonId || null);
@@ -300,7 +313,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setIsTransitioning(false);
             }, 350);
         }, 350);
-    }, [syllabus, completedLessons, expandedModules, isTransitioning]);
+    }, [syllabus, completedLessons, expandedModules, isTransitioning, updateLastAccessed]);
 
     const transitionToDescription = useCallback(() => {
         if (isTransitioning) return;
@@ -311,6 +324,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
         setTimeout(() => {
             setViewMode('description');
+            // Clear active lesson/module when returning to description
+            setActiveLessonId(null);
+            setActiveModuleId(null);
             setTransitionPhase('enter');
 
             setTimeout(() => {
@@ -341,6 +357,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 return;
             }
 
+            // Record that user accessed this lesson
+            updateLastAccessed(lesson.id);
+
             // Determine if going forward or backward
             const isForward = targetIndices.moduleIndex > currentIndices.moduleIndex ||
                 (targetIndices.moduleIndex === currentIndices.moduleIndex && targetIndices.lessonIndex > currentIndices.lessonIndex);
@@ -364,7 +383,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 }, 350);
             }, 350);
         }
-    }, [viewMode, transitionToPlayer, expandedModules, isTransitioning, activeLessonId, getLessonIndex]);
+    }, [viewMode, transitionToPlayer, expandedModules, isTransitioning, activeLessonId, getLessonIndex, updateLastAccessed]);
 
     // Handle module toggle
     const handleModuleToggle = useCallback((moduleId: string) => {
