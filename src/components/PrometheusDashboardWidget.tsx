@@ -37,40 +37,39 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
     };
 
     return (
-        <div className="flex gap-8 items-stretch relative z-10 w-full animate-fade-in">
+        <div className="flex gap-8 items-center relative z-10 w-full animate-fade-in">
 
-            {/* Logo & Title - Left Column - Stretch to match right column height */}
-            <div className="flex flex-col items-center flex-shrink-0 group cursor-default justify-between">
-                {/* Logo at top */}
+            {/* Logo & Title - Left Column - Compact to match right column height */}
+            <div className="flex flex-col items-center flex-shrink-0 group cursor-default justify-center gap-3">
+                {/* Logo */}
                 <div className="relative transition-transform duration-700 group-hover:scale-105">
-                    <div className="absolute inset-0 bg-brand-orange/20 blur-[50px] rounded-full animate-pulse-slow" />
+                    <div className="absolute inset-0 bg-brand-orange/20 blur-[30px] rounded-full animate-pulse-slow" />
                     <img
                         src="/images/logos/EnhancedHR-logo-mark-flame.png"
                         alt="Prometheus AI"
-                        className="w-56 h-56 relative z-10 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain"
+                        className="w-24 h-24 relative z-10 drop-shadow-[0_0_25px_rgba(255,147,0,0.4)] object-contain"
                     />
                 </div>
-                {/* Text at bottom */}
+                {/* Text */}
                 <div className="text-center">
-                    <h1 className="text-3xl font-extralight text-white tracking-tight mb-1">
+                    <h1 className="text-xl font-extralight text-white tracking-tight mb-0.5">
                         Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
                     </h1>
-                    <p className="text-lg text-slate-500 font-light">Your personal learning assistant</p>
+                    <p className="text-xs text-slate-500 font-light">Your personal learning assistant</p>
                 </div>
             </div>
 
             {/* Prompt Section - Right Column */}
             <div className="flex-1 max-w-3xl flex flex-col">
 
-                {/* View More Link - Aligned Right */}
+                {/* View More Button - Aligned Right */}
                 <div className="flex justify-end mb-3">
                     <button
                         onClick={onOpenDrawer}
-                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
                     >
                         <Sparkles size={10} />
-                        <span>more prompts</span>
-                        <ChevronRight size={10} />
+                        <span>More Prompts</span>
                     </button>
                 </div>
 
@@ -160,10 +159,10 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
                     </div>
                 </div>
 
-            </div>
+                {/* AI Disclaimer - Centered below prompt box */}
+                <p className="text-center text-[9px] text-slate-500/50 mt-2">AI can make mistakes. Verify important information.</p>
 
-            {/* AI Disclaimer - Positioned at bottom right, outside the flex alignment */}
-            <p className="absolute bottom-0 right-0 text-[10px] text-slate-600/60 translate-y-6">AI can make mistakes. Verify important information.</p>
+            </div>
         </div>
     );
 };
