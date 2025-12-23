@@ -37,33 +37,33 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
     };
 
     return (
-        <div className="flex gap-8 items-center relative z-10 w-full animate-fade-in">
+        <div className="flex gap-8 items-stretch relative z-10 w-full animate-fade-in">
 
-            {/* Logo & Title - Left Column - Compact to match right column height */}
-            <div className="flex flex-col items-center flex-shrink-0 group cursor-default justify-center gap-3">
+            {/* Logo & Title - Left Column - Matches height of right column */}
+            <div className="flex flex-col items-center flex-shrink-0 group cursor-default justify-center w-40">
                 {/* Logo */}
-                <div className="relative transition-transform duration-700 group-hover:scale-105">
-                    <div className="absolute inset-0 bg-brand-orange/20 blur-[30px] rounded-full animate-pulse-slow" />
+                <div className="relative transition-transform duration-700 group-hover:scale-105 mb-2">
+                    <div className="absolute inset-0 bg-brand-orange/20 blur-[25px] rounded-full animate-pulse-slow" />
                     <img
                         src="/images/logos/EnhancedHR-logo-mark-flame.png"
                         alt="Prometheus AI"
-                        className="w-24 h-24 relative z-10 drop-shadow-[0_0_25px_rgba(255,147,0,0.4)] object-contain"
+                        className="w-20 h-20 relative z-10 drop-shadow-[0_0_20px_rgba(255,147,0,0.4)] object-contain"
                     />
                 </div>
                 {/* Text */}
                 <div className="text-center">
-                    <h1 className="text-xl font-extralight text-white tracking-tight mb-0.5">
+                    <h1 className="text-lg font-extralight text-white tracking-tight mb-0.5">
                         Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
                     </h1>
-                    <p className="text-xs text-slate-500 font-light">Your personal learning assistant</p>
+                    <p className="text-[10px] text-slate-500 font-light">Your personal learning assistant</p>
                 </div>
             </div>
 
-            {/* Prompt Section - Right Column */}
-            <div className="flex-1 max-w-3xl flex flex-col">
+            {/* Prompt Section - Right Column - Extends to right margin */}
+            <div className="flex-1 flex flex-col">
 
                 {/* View More Button - Aligned Right */}
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-end mb-2">
                     <button
                         onClick={onOpenDrawer}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
