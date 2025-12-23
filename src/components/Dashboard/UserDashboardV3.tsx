@@ -15,11 +15,12 @@ import {
     Loader2,
     ChevronRight
 } from 'lucide-react';
-import { Course } from '@/types';
+import { Course, Conversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
+import { fetchConversationsAction } from '@/app/actions/conversations';
 import UniversalCard from '../cards/UniversalCard';
 
 interface UserDashboardV3Props {
@@ -31,6 +32,7 @@ interface UserDashboardV3Props {
     onSetAIPrompt: (prompt: string) => void;
     onSetPrometheusPagePrompt: (prompt: string) => void;
     onAddCourse: (course: Course) => void;
+    onResumeConversation?: (conversation: Conversation) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
@@ -41,7 +43,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     onOpenAIPanel,
     onSetAIPrompt,
     onSetPrometheusPagePrompt,
-    onAddCourse
+    onAddCourse,
+    onResumeConversation
 }) => {
     // ... existing state ...
     const [aiPrompt, setAiPrompt] = useState('');
@@ -63,6 +66,9 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+
+    // Conversations State
+    const [recentConversations, setRecentConversations] = useState<Conversation[]>([]);
 
     const router = useRouter();
 
@@ -93,6 +99,20 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
         };
         loadPrompts();
     }, []);
+
+    useEffect(() => {
+        const loadConversations = async () => {
+            if (user?.id) {
+                try {
+                    const conversations = await fetchConversationsAction();
+                    setRecentConversations(conversations.slice(0, 6));
+                } catch (error) {
+                    console.error("Failed to load conversations", error);
+                }
+            }
+        };
+        loadConversations();
+    }, [user?.id]);
 
     useEffect(() => {
         if (activeTab === 'recommended' && recommendedCourses.length === 0 && user?.id) {
@@ -361,6 +381,33 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         )}
                     </div>
                 </div>
+
+                {/* ══════════════════════════════════════════════════════════════════
+                    CONTINUE THE CONVERSATION SECTION
+                ══════════════════════════════════════════════════════════════════ */}
+                {recentConversations.length > 0 && (
+                    <div className="mb-14">
+                        <div className="flex items-center gap-2 mb-5">
+                            <MessageSquare size={16} className="text-brand-blue-light" />
+                            <h2 className="text-lg font-light text-white">Continue the Conversation</h2>
+                        </div>
+
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
+                            {recentConversations.map(conversation => (
+                                <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
+                                    <UniversalCard
+                                        type="CONVERSATION"
+                                        title={conversation.title || 'Untitled Conversation'}
+                                        description={conversation.lastMessage || 'No messages yet.'}
+                                        meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
+                                        actionLabel="CHAT"
+                                        onAction={() => onResumeConversation?.(conversation)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* ══════════════════════════════════════════════════════════════════
                     CONTINUE LEARNING SECTION

@@ -2773,6 +2773,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         onSetAIPrompt={onSetAIPrompt}
                                         onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                                         onAddCourse={(course) => onOpenModal(course)}
+                                        onResumeConversation={onResumeConversation}
                                     />
                                 )}
                             </div>
