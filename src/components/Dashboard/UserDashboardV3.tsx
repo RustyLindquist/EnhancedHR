@@ -294,66 +294,70 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         </button>
                     </div>
 
-                    {/* Course Cards Grid */}
+                    {/* Course Cards - Horizontal Scroll */}
                     <div className="min-h-[220px]">
                         {activeTab === 'trending' ? (
-                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                                {trendingCourses.length > 0 ? trendingCourses.slice(0, 8).map((course, idx) => (
-                                    <UniversalCard
-                                        key={course.id}
-                                        type="COURSE"
-                                        title={course.title}
-                                        subtitle={course.author}
-                                        description={course.description}
-                                        imageUrl={course.image}
-                                        meta={course.duration}
-                                        categories={[`#${idx + 1} TRENDING`]}
-                                        credits={{
-                                            shrm: course.badges?.includes('SHRM'),
-                                            hrci: course.badges?.includes('HRCI')
-                                        }}
-                                        actionLabel="VIEW"
-                                        rating={course.rating}
-                                        onAction={() => onStartCourse(course.id)}
-                                        onAdd={() => onAddCourse(course)}
-                                    />
-                                )) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">No trending courses available</div>
-                                )}
-                            </div>
+                            trendingCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {trendingCourses.slice(0, 8).map((course, idx) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={[`#${idx + 1} TRENDING`]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">No trending courses available</div>
+                            )
                         ) : (
-                            <div className="grid gap-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                                {loadingRecommendations ? (
-                                    <div className="col-span-full flex justify-center py-16">
-                                        <Loader2 size={24} className="animate-spin text-brand-blue-light" />
-                                    </div>
-                                ) : recommendedCourses.length > 0 ? (
-                                    recommendedCourses.slice(0, 8).map((course) => (
-                                        <UniversalCard
-                                            key={course.id}
-                                            type="COURSE"
-                                            title={course.title}
-                                            subtitle={course.author}
-                                            description={course.description}
-                                            imageUrl={course.image}
-                                            meta={course.duration}
-                                            categories={["FOR YOU"]}
-                                            credits={{
-                                                shrm: course.badges?.includes('SHRM'),
-                                                hrci: course.badges?.includes('HRCI')
-                                            }}
-                                            actionLabel="VIEW"
-                                            rating={course.rating}
-                                            onAction={() => onStartCourse(course.id)}
-                                            onAdd={() => onAddCourse(course)}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">
-                                        Unable to generate recommendations
-                                    </div>
-                                )}
-                            </div>
+                            loadingRecommendations ? (
+                                <div className="flex justify-center py-16">
+                                    <Loader2 size={24} className="animate-spin text-brand-blue-light" />
+                                </div>
+                            ) : recommendedCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {recommendedCourses.slice(0, 8).map((course) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={["FOR YOU"]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">
+                                    Unable to generate recommendations
+                                </div>
+                            )
                         )}
                     </div>
                 </div>
@@ -368,26 +372,23 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
                             {inProgressCourses.map(course => (
-                                <UniversalCard
-                                    key={course.id}
-                                    type="COURSE"
-                                    title={course.title}
-                                    subtitle={course.author}
-                                    description={course.description}
-                                    imageUrl={course.image}
-                                    meta={`${course.progress}% Complete`}
-                                    categories={["IN PROGRESS"]}
-                                    actionLabel="RESUME"
-                                    rating={course.rating}
-                                    onAction={() => onStartCourse(course.id)}
-                                    // onAdd={() => onAddCourse(course)}
-                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress?
-                                    // But user said "on Dashboard, there should only be the 'add' icon".
-                                    // Let's ensure consistency.
-                                    onAdd={() => onAddCourse(course)}
-                                />
+                                <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                    <UniversalCard
+                                        type="COURSE"
+                                        title={course.title}
+                                        subtitle={course.author}
+                                        description={course.description}
+                                        imageUrl={course.image}
+                                        meta={`${course.progress}% Complete`}
+                                        categories={["IN PROGRESS"]}
+                                        actionLabel="RESUME"
+                                        rating={course.rating}
+                                        onAction={() => onStartCourse(course.id)}
+                                        onAdd={() => onAddCourse(course)}
+                                    />
+                                </div>
                             ))}
                         </div>
                     ) : (
