@@ -47,6 +47,7 @@ interface MainCanvasProps {
     activeConversationId?: string | null;
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
+    academyResetKey?: number; // Triggers filter reset when Academy is clicked
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -647,7 +648,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onResumeConversation,
     activeConversationId,
     useDashboardV3,
-    onCollectionUpdate
+    onCollectionUpdate,
+    academyResetKey
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -741,6 +743,18 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [userProgress, setUserProgress] = useState<Record<number, any>>({});
     const [drawerMode, setDrawerMode] = useState<'filters' | 'prompts' | 'help'>('filters');
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
+
+    // Reset to All Courses view when Academy is clicked (via academyResetKey prop)
+    // This handles the case where user is already on Academy but viewing a course
+    useEffect(() => {
+        if (academyResetKey !== undefined && academyResetKey > 0) {
+            setActiveFilters(INITIAL_FILTERS);
+            setPendingFilters(INITIAL_FILTERS);
+            setSelectedCourseId(null);
+            setSelectedInstructorId(null);
+            setIsPlayerActive(false);
+        }
+    }, [academyResetKey]);
 
     useEffect(() => {
         const loadPrompts = async () => {
