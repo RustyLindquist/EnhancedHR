@@ -1,7 +1,8 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
-import { Shield, Clock, User, CreditCard, Key, Mail, Building2 } from 'lucide-react';
+import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
+import { Shield, Clock, User, CreditCard, Mail, Building2 } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
 
@@ -58,12 +59,7 @@ export default async function AccountPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-white/10">
-                                <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">
-                                    <Key size={16} />
-                                    Reset Password
-                                </button>
-                            </div>
+                            <ChangePasswordPanel />
                         </div>
                     </section>
 
@@ -161,7 +157,7 @@ export default async function AccountPage() {
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
                                                 <h3 className="text-3xl font-bold text-white mb-2">{membershipTitle}</h3>
 
-                                                {mStatus === 'trial' && (
+                                                {mStatus === 'trial' && role !== 'admin' && aStatus !== 'approved' && aStatus !== 'pending' && (
                                                     <p className="text-slate-400 flex items-center gap-2">
                                                         <Clock size={16} className="text-brand-orange" />
                                                         {60 - (profile?.trial_minutes_used || 0)} minutes remaining
