@@ -117,7 +117,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -143,7 +143,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role, membership_status')
+          .select('full_name, role, membership_status, author_status')
           .eq('id', user.id)
           .single();
 
@@ -153,13 +153,15 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Prioritize profile role, fallback to metadata
         const role = profile?.role || user.user_metadata?.role || user.app_metadata?.role;
         const membershipStatus = profile?.membership_status;
+        const authorStatus = profile?.author_status;
 
         setUserProfile({
           fullName,
           email: user.email || '',
           initials,
           role,
-          membershipStatus
+          membershipStatus,
+          authorStatus
         });
 
         // Check for impersonation
@@ -400,7 +402,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   item={item}
                   isOpen={isOpen}
                   count={['personal-context', 'conversations'].includes(item.id) ? getCollectionCount(item.id) : undefined}
-                  isActive={activeCollectionId === item.id || (pathname?.includes(item.id) && item.id !== 'dashboard')}
+                  isActive={activeCollectionId === item.id}
                   onClick={() => {
                     if (item.id.startsWith('admin/') || item.id === 'admin') {
                       router.push(`/${item.id}`);
@@ -588,7 +590,39 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   My Account
                 </button>
 
+                {/* Expert Dashboard Link - Only for approved experts */}
+                {userProfile?.authorStatus === 'approved' && (
+                  <button
+                    onClick={() => {
+                      router.push('/author');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <PenTool size={16} className="mr-3 text-brand-orange" />
+                      Expert Dashboard
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
 
+                {/* Platform Dashboard Link - Show when in Expert Dashboard */}
+                {pathname?.startsWith('/author') && (
+                  <button
+                    onClick={() => {
+                      router.push('/dashboard');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <LayoutDashboard size={16} className="mr-3 text-brand-blue-light" />
+                      Platform Dashboard
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
 
                 <button
                   onClick={() => setMenuView('backgrounds')}

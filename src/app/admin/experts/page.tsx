@@ -26,7 +26,6 @@ export default async function AdminExpertsPage() {
     const adminSupabase = await createAdminClient();
 
     // Fetch all experts (pending, approved, rejected)
-    // Note: email is in auth.users, not profiles - we add placeholder for now
     const { data: experts, error: expertsError } = await adminSupabase
         .from('profiles')
         .select(`
@@ -41,7 +40,8 @@ export default async function AdminExpertsPage() {
             course_proposal_title,
             course_proposal_description,
             application_status,
-            application_submitted_at
+            application_submitted_at,
+            phone_number
         `)
         .in('author_status', ['pending', 'approved', 'rejected'])
         .order('created_at', { ascending: false });
@@ -50,10 +50,25 @@ export default async function AdminExpertsPage() {
         console.error('Error fetching experts:', expertsError);
     }
 
-    // Add placeholder email for now (email is in auth.users table, not profiles)
+    // Fetch emails from auth.users using admin client
+    const expertIds = (experts || []).map(e => e.id);
+    const emailMap: Record<string, string> = {};
+
+    if (expertIds.length > 0) {
+        const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
+        if (authUsers?.users) {
+            authUsers.users.forEach(user => {
+                if (expertIds.includes(user.id)) {
+                    emailMap[user.id] = user.email || '';
+                }
+            });
+        }
+    }
+
+    // Add email from auth.users to each expert
     const expertsWithEmail = (experts || []).map(expert => ({
         ...expert,
-        email: '' // Email not available in profiles table
+        email: emailMap[expert.id] || ''
     }));
 
     // Get current month date range

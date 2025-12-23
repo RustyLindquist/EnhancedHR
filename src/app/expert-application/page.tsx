@@ -5,6 +5,7 @@ import { saveExpertApplication, getExpertApplication, logout } from './actions'
 import {
     User,
     Linkedin,
+    Phone,
     FileText,
     BookOpen,
     ArrowRight,
@@ -20,6 +21,7 @@ import Link from 'next/link'
 
 interface ApplicationData {
     full_name: string
+    phone_number: string
     linkedin_url: string
     credentials: string
     course_proposal_title: string
@@ -35,6 +37,7 @@ export default function ExpertApplicationPage() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [application, setApplication] = useState<ApplicationData>({
         full_name: '',
+        phone_number: '',
         linkedin_url: '',
         credentials: '',
         course_proposal_title: '',
@@ -50,6 +53,7 @@ export default function ExpertApplicationPage() {
             if (result.data) {
                 setApplication({
                     full_name: result.data.full_name || '',
+                    phone_number: result.data.phone_number || '',
                     linkedin_url: result.data.linkedin_url || '',
                     credentials: result.data.credentials || '',
                     course_proposal_title: result.data.course_proposal_title || '',
@@ -70,6 +74,7 @@ export default function ExpertApplicationPage() {
 
         const formData = new FormData()
         formData.append('full_name', application.full_name)
+        formData.append('phone_number', application.phone_number)
         formData.append('linkedin_url', application.linkedin_url)
         formData.append('credentials', application.credentials)
         formData.append('course_proposal_title', application.course_proposal_title)
@@ -238,6 +243,21 @@ export default function ExpertApplicationPage() {
                                                 onChange={(e) => setApplication(prev => ({ ...prev, full_name: e.target.value }))}
                                                 disabled={!isEditable}
                                                 placeholder="Dr. Jane Smith"
+                                                className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium disabled:opacity-50"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
+                                        <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                            <Phone size={16} className="text-slate-500 mr-3" />
+                                            <input
+                                                type="tel"
+                                                value={application.phone_number}
+                                                onChange={(e) => setApplication(prev => ({ ...prev, phone_number: e.target.value }))}
+                                                disabled={!isEditable}
+                                                placeholder="+1 (555) 123-4567"
                                                 className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium disabled:opacity-50"
                                             />
                                         </div>

@@ -16,7 +16,7 @@ export async function getExpertApplication() {
     // Get profile with application data
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select('full_name, linkedin_url, credentials, course_proposal_title, course_proposal_description, application_status, application_submitted_at')
+        .select('full_name, phone_number, linkedin_url, credentials, course_proposal_title, course_proposal_description, application_status, application_submitted_at')
         .eq('id', user.id)
         .single()
 
@@ -28,6 +28,7 @@ export async function getExpertApplication() {
     return {
         data: {
             full_name: profile?.full_name || user.user_metadata?.full_name || '',
+            phone_number: profile?.phone_number || '',
             linkedin_url: profile?.linkedin_url || '',
             credentials: profile?.credentials || '',
             course_proposal_title: profile?.course_proposal_title || '',
@@ -48,6 +49,7 @@ export async function saveExpertApplication(formData: FormData) {
     }
 
     const fullName = formData.get('full_name') as string
+    const phoneNumber = formData.get('phone_number') as string
     const linkedinUrl = formData.get('linkedin_url') as string
     const credentials = formData.get('credentials') as string
     const courseProposalTitle = formData.get('course_proposal_title') as string
@@ -70,6 +72,7 @@ export async function saveExpertApplication(formData: FormData) {
     // Build update object
     const updateData: Record<string, any> = {
         full_name: fullName,
+        phone_number: phoneNumber,
         linkedin_url: linkedinUrl,
         credentials: credentials,
         course_proposal_title: courseProposalTitle,

@@ -719,6 +719,12 @@ export const ORG_NAV_ITEMS: NavItemConfig[] = [
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
 ];
 
+export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'author', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'author/courses', label: 'My Courses', icon: BookOpen },
+    { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
+];
+
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },

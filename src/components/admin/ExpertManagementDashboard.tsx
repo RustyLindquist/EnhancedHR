@@ -16,7 +16,9 @@ import {
     ChevronDown,
     ChevronUp,
     Sparkles,
-    Percent
+    Percent,
+    Mail,
+    Phone
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -24,6 +26,7 @@ interface Expert {
     id: string;
     full_name: string;
     email: string;
+    phone_number?: string;
     author_bio: string;
     linkedin_url: string;
     author_status: 'pending' | 'approved' | 'rejected';
@@ -318,6 +321,31 @@ export default function ExpertManagementDashboard({
                                 {/* Expanded Details */}
                                 {isExpanded && (
                                     <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
+                                        {/* Contact Information */}
+                                        {(expert.email || expert.phone_number) && (
+                                            <div className="bg-brand-blue-light/5 border border-brand-blue-light/20 rounded-lg p-4">
+                                                <h4 className="text-xs font-bold text-brand-blue-light uppercase tracking-wider mb-3">Contact Information</h4>
+                                                <div className="flex flex-wrap gap-6">
+                                                    {expert.email && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Mail size={16} className="text-slate-400" />
+                                                            <a href={`mailto:${expert.email}`} className="text-sm text-white hover:text-brand-blue-light transition-colors">
+                                                                {expert.email}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {expert.phone_number && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Phone size={16} className="text-slate-400" />
+                                                            <a href={`tel:${expert.phone_number}`} className="text-sm text-white hover:text-brand-blue-light transition-colors">
+                                                                {expert.phone_number}
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Credentials (for pending applications) */}
                                         {expert.credentials && (
                                             <div>
