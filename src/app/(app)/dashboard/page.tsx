@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
@@ -9,7 +9,7 @@ import AddCollectionModal from '@/components/AddCollectionModal';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 
 import {
@@ -19,10 +19,15 @@ import {
 } from 'lucide-react';
 
 function HomeContent() {
+  // URL params and router - needed early for navigation handlers
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const courseIdParam = searchParams.get('courseId');
+  const collectionParam = searchParams.get('collection');
+
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true); // Restore default open
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
-  // ...
 
 
   // Lifted State: Courses source of truth
@@ -275,6 +280,13 @@ function HomeContent() {
       // This ensures clicking Academy always returns to All Courses view
       if (id === 'academy') {
         setActiveCourseId(null);
+        // Increment reset key to trigger filter reset in MainCanvas
+        // This works even if already on Academy (clicking Academy again)
+        setAcademyResetKey(prev => prev + 1);
+        // Clear URL params to prevent useEffect from re-setting the course
+        if (courseIdParam) {
+          router.replace('/dashboard?collection=academy', { scroll: false });
+        }
       }
       setActiveCollectionId(id);
     }
@@ -314,6 +326,8 @@ function HomeContent() {
   // Lifted state for Context Awareness
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  // Reset trigger for Academy view - increments to force filter reset
+  const [academyResetKey, setAcademyResetKey] = useState(0);
 
   const handleOpenAIPanel = () => {
     if (activeCollectionId !== 'prometheus') {
@@ -321,9 +335,11 @@ function HomeContent() {
     }
   };
 
-  const handleCourseSelect = (courseId: string | null) => {
-    setActiveCourseId(courseId);
-  };
+  // Memoized to prevent useEffect re-runs in MainCanvas
+  const handleCourseSelect = useCallback((courseId: string | null) => {
+    // Only update if value actually changed to prevent loops
+    setActiveCourseId(prev => prev === courseId ? prev : courseId);
+  }, []);
 
   // Handle Resuming Conversation from MainCanvas
   const handleResumeConversation = (conversation: any) => {
@@ -348,10 +364,6 @@ function HomeContent() {
     setActiveConversationId(id);
     setRightOpen(true);
   };
-
-  const searchParams = useSearchParams();
-  const courseIdParam = searchParams.get('courseId');
-  const collectionParam = searchParams.get('collection');
 
   // Navigation & Collection State
   const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
@@ -414,7 +426,7 @@ function HomeContent() {
         <MainCanvas
           courses={courses}
           activeCollectionId={activeCollectionId}
-          onSelectCollection={setActiveCollectionId}
+          onSelectCollection={handleSelectCollection}
           customCollections={customCollections}
           onOpenModal={handleOpenModal}
           onImmediateAddToCollection={handleImmediateAddToCollection}
@@ -428,6 +440,7 @@ function HomeContent() {
           onCollectionUpdate={() => {
             if (user) refreshCollectionsAndCounts(user.id);
           }}
+          academyResetKey={academyResetKey}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}

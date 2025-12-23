@@ -47,6 +47,7 @@ interface MainCanvasProps {
     activeConversationId?: string | null;
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
+    academyResetKey?: number; // Triggers filter reset when Academy is clicked
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -647,7 +648,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onResumeConversation,
     activeConversationId,
     useDashboardV3,
-    onCollectionUpdate
+    onCollectionUpdate,
+    academyResetKey
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -742,6 +744,19 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [drawerMode, setDrawerMode] = useState<'filters' | 'prompts' | 'help'>('filters');
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
 
+    // Reset to All Courses view when Academy is clicked (via academyResetKey prop)
+    // This handles the case where user is already on Academy but viewing a course
+    useEffect(() => {
+        if (academyResetKey !== undefined && academyResetKey > 0) {
+            setActiveFilters(INITIAL_FILTERS);
+            setPendingFilters(INITIAL_FILTERS);
+            // Only update if not already null to prevent cascading effects
+            setSelectedCourseId(prev => prev === null ? prev : null);
+            setSelectedInstructorId(prev => prev === null ? prev : null);
+            setIsPlayerActive(false);
+        }
+    }, [academyResetKey]);
+
     useEffect(() => {
         const loadPrompts = async () => {
             const prompts = await fetchPromptSuggestions('user_dashboard');
@@ -806,9 +821,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
 
     // Sync selectedCourseId with parent (for AI Panel Context)
+    // Use a ref to track previously synced value and prevent redundant calls
+    const lastSyncedCourseId = useRef<string | null>(null);
     useEffect(() => {
-        if (onCourseSelect) {
-            onCourseSelect(selectedCourseId ? String(selectedCourseId) : null);
+        const courseIdStr = selectedCourseId ? String(selectedCourseId) : null;
+        // Only call parent if value actually changed
+        if (onCourseSelect && lastSyncedCourseId.current !== courseIdStr) {
+            lastSyncedCourseId.current = courseIdStr;
+            onCourseSelect(courseIdStr);
         }
     }, [selectedCourseId, onCourseSelect]);
 
@@ -972,19 +992,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     useEffect(() => {
         setExpandedFooter(false);
         // If collection changes, ensure we exit course/instructor view
-        setSelectedCourseId(null);
-        setSelectedInstructorId(null);
+        // Use functional updates to prevent setting null when already null
+        setSelectedCourseId(prev => prev === null ? prev : null);
+        setSelectedInstructorId(prev => prev === null ? prev : null);
         setIsPlayerActive(false);
     }, [activeCollectionId]);
 
     // Sync selectedCourseId with initialCourseId prop (which acts as activeCourseId from parent)
     useEffect(() => {
         if (initialCourseId) {
-            setSelectedCourseId(initialCourseId);
+            // Only set if different to prevent loops
+            setSelectedCourseId(prev => prev === initialCourseId ? prev : initialCourseId);
         } else {
             // Clear course selection when initialCourseId becomes null/undefined
             // This handles cases like clicking Academy nav while viewing a course
-            setSelectedCourseId(null);
+            // Use functional update to prevent setting null when already null
+            setSelectedCourseId(prev => prev === null ? prev : null);
             setIsPlayerActive(false);
         }
     }, [initialCourseId]);

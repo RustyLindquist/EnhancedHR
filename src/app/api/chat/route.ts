@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateOpenRouterResponse } from '@/app/actions/ai';
-
-// Initialize Gemini (Keep for Embeddings ONLY to preserve RAG compatibility)
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
-const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+import { generateQueryEmbedding } from '@/lib/ai/embedding';
 
 /**
  * Format RAG context items for the AI prompt
@@ -124,9 +120,8 @@ export async function POST(req: NextRequest) {
         // 2. Personal Context is now handled via RAG embeddings (see match_unified_embeddings)
         // The ContextResolver determines what scope of content to include based on page context
 
-        // 3. Generate Embedding for Query (Using Google SDK)
-        const embeddingResult = await embeddingModel.embedContent(message);
-        const embedding = embeddingResult.embedding.values;
+        // 3. Generate Embedding for Query (uses model from ai_prompt_library)
+        const embedding = await generateQueryEmbedding(message);
 
         // [NEW] Resolve Context Scope
         const { ContextResolver } = await import('@/lib/ai/context-resolver');

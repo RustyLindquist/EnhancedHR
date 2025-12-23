@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ContextResolver } from '@/lib/ai/context-resolver';
+import { generateQueryEmbedding } from '@/lib/ai/embedding';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const SITE_NAME = 'EnhancedHR';
-
-// Initialize Gemini for embeddings
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
 
 /**
  * Format RAG context items for the AI prompt
@@ -120,9 +116,8 @@ export async function POST(req: NextRequest) {
         const systemInstruction = promptData?.system_instruction || 'You are a helpful AI assistant.';
         const model = promptData?.model || 'google/gemini-2.0-flash-001';
 
-        // 2. Generate embedding for the user's query
-        const embeddingResult = await embeddingModel.embedContent(message);
-        const queryEmbedding = embeddingResult.embedding.values;
+        // 2. Generate embedding for the user's query (uses model from ai_prompt_library)
+        const queryEmbedding = await generateQueryEmbedding(message);
 
         // 3. Resolve RAG scope based on agent type and page context
         // Include agentType in pageContext for proper scope resolution

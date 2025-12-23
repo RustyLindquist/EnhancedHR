@@ -10,7 +10,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/ai/embedding';
+import { generateEmbedding, generateFileEmbedding } from '@/lib/ai/embedding';
 import { chunkText } from '@/lib/file-parser';
 import { ContextItemType } from '@/types';
 
@@ -224,7 +224,8 @@ export async function embedFileChunks(
     try {
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
-            const embedding = await generateEmbedding(chunk);
+            // Use file-specific embedding model from ai_prompt_library
+            const embedding = await generateFileEmbedding(chunk);
 
             if (!embedding || embedding.length === 0) {
                 console.warn(`Failed to generate embedding for file chunk ${i + 1}/${chunks.length}`);
