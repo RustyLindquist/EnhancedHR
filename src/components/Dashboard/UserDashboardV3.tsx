@@ -27,6 +27,7 @@ interface UserDashboardV3Props {
     user: any;
     courses: Course[];
     onNavigate: (collectionId: string) => void;
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
@@ -39,6 +40,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     user,
     courses,
     onNavigate,
+    onNavigateWithFilter,
     onStartCourse,
     onOpenAIPanel,
     onSetAIPrompt,
@@ -387,9 +389,18 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                 ══════════════════════════════════════════════════════════════════ */}
                 {recentConversations.length > 0 && (
                     <div className="mb-14">
-                        <div className="flex items-center gap-2 mb-5">
-                            <MessageSquare size={16} className="text-brand-blue-light" />
-                            <h2 className="text-lg font-light text-white">Continue the Conversation</h2>
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={16} className="text-brand-blue-light" />
+                                <h2 className="text-lg font-light text-white">Continue the Conversation</h2>
+                            </div>
+                            <button
+                                onClick={() => onNavigate('conversations')}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
                         </div>
 
                         <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
@@ -413,9 +424,20 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     CONTINUE LEARNING SECTION
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="mb-14">
-                    <div className="flex items-center gap-2 mb-5">
-                        <Play size={16} className="text-brand-blue-light" />
-                        <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                    <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-2">
+                            <Play size={16} className="text-brand-blue-light" />
+                            <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                        </div>
+                        {inProgressCourses.length > 0 && (
+                            <button
+                                onClick={() => onNavigateWithFilter?.('academy', ['IN_PROGRESS'])}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
+                        )}
                     </div>
 
                     {inProgressCourses.length > 0 ? (

@@ -48,6 +48,8 @@ interface MainCanvasProps {
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
     academyResetKey?: number; // Triggers filter reset when Academy is clicked
+    initialStatusFilter?: string[]; // Pre-apply status filter when navigating to Academy
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -649,7 +651,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     activeConversationId,
     useDashboardV3,
     onCollectionUpdate,
-    academyResetKey
+    academyResetKey,
+    initialStatusFilter,
+    onNavigateWithFilter
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -756,6 +760,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             setIsPlayerActive(false);
         }
     }, [academyResetKey]);
+
+    // Apply initial status filter when navigating to Academy with pre-set filter
+    useEffect(() => {
+        if (initialStatusFilter && initialStatusFilter.length > 0 && activeCollectionId === 'academy') {
+            const newFilters = { ...INITIAL_FILTERS, status: initialStatusFilter };
+            setActiveFilters(newFilters);
+            setPendingFilters(newFilters);
+        }
+    }, [initialStatusFilter, activeCollectionId]);
 
     useEffect(() => {
         const loadPrompts = async () => {
@@ -2768,6 +2781,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         user={user}
                                         courses={courses}
                                         onNavigate={onSelectCollection}
+                                        onNavigateWithFilter={onNavigateWithFilter}
                                         onStartCourse={handleCourseClick}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
