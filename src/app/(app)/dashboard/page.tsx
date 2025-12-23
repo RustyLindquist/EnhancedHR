@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
@@ -335,9 +335,11 @@ function HomeContent() {
     }
   };
 
-  const handleCourseSelect = (courseId: string | null) => {
-    setActiveCourseId(courseId);
-  };
+  // Memoized to prevent useEffect re-runs in MainCanvas
+  const handleCourseSelect = useCallback((courseId: string | null) => {
+    // Only update if value actually changed to prevent loops
+    setActiveCourseId(prev => prev === courseId ? prev : courseId);
+  }, []);
 
   // Handle Resuming Conversation from MainCanvas
   const handleResumeConversation = (conversation: any) => {
