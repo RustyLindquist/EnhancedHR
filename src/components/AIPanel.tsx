@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkl
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import { parseStreamResponse, stripInsightTags, StreamInsightMetadata } from '@/lib/ai/insight-stream-parser';
+import { AIResponseFooter } from '@/components/ai';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -45,6 +47,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialPromptRun = useRef(false);
+
+  // Insight metadata from the last AI response
+  const [insightMetadata, setInsightMetadata] = useState<StreamInsightMetadata | null>(null);
 
   // Handle Resizing logic
   useEffect(() => {
@@ -212,20 +217,41 @@ const AIPanel: React.FC<AIPanelProps> = ({
           const chunk = decoder.decode(value, { stream: true });
           fullText += chunk;
 
-          // Update the last message with accumulated text
+          // Update the last message with accumulated text (cleaned for display)
           setMessages(prev => {
             const updated = [...prev];
             if (updated.length > 0) {
-              updated[updated.length - 1] = { role: 'model', content: fullText };
+              // Display cleaned content while streaming
+              const displayContent = stripInsightTags(fullText);
+              updated[updated.length - 1] = { role: 'model', content: displayContent };
             }
             return updated;
           });
         }
       }
 
-      // Save the complete message
-      if (activeConvId && fullText) {
-        saveMessage(activeConvId, 'model', fullText);
+      // Parse the complete response to extract insight metadata
+      const parsedResponse = parseStreamResponse(fullText);
+
+      // Update the final message with fully parsed content
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0) {
+          updated[updated.length - 1] = { role: 'model', content: parsedResponse.content };
+        }
+        return updated;
+      });
+
+      // Set insight metadata if present
+      if (parsedResponse.metadata) {
+        setInsightMetadata(parsedResponse.metadata);
+      } else {
+        setInsightMetadata(null);
+      }
+
+      // Save the complete message (raw content for potential re-processing)
+      if (activeConvId && parsedResponse.rawContent) {
+        saveMessage(activeConvId, 'model', parsedResponse.rawContent);
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
@@ -429,24 +455,59 @@ const AIPanel: React.FC<AIPanelProps> = ({
                 </>
               ) : (
                 <div className="space-y-6">
-                  {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
-                        ? 'bg-brand-blue-light text-brand-black rounded-tr-none'
-                        : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/10'
-                        }`}>
-                        <div className="flex items-center gap-2 mb-1 opacity-50 text-[10px] font-bold uppercase tracking-wider">
-                          {msg.role === 'user' ? <User size={10} /> : <agentInfo.icon size={10} />}
-                          {msg.role === 'user' ? 'You' : agentInfo.name}
+                  {messages.map((msg, idx) => {
+                    const isLastMessage = idx === messages.length - 1;
+                    const isAIMessage = msg.role === 'model';
+                    const showInsightFooter = isLastMessage && isAIMessage && insightMetadata && !isLoading;
+
+                    return (
+                      <div key={idx}>
+                        <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
+                            ? 'bg-brand-blue-light text-brand-black rounded-tr-none'
+                            : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/10'
+                            }`}>
+                            <div className="flex items-center gap-2 mb-1 opacity-50 text-[10px] font-bold uppercase tracking-wider">
+                              {msg.role === 'user' ? <User size={10} /> : <agentInfo.icon size={10} />}
+                              {msg.role === 'user' ? 'You' : agentInfo.name}
+                            </div>
+                            {msg.role === 'user' ? (
+                              <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                            ) : (
+                              <MarkdownRenderer content={msg.content} className="text-sm leading-relaxed" />
+                            )}
+                          </div>
                         </div>
-                        {msg.role === 'user' ? (
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
-                        ) : (
-                          <MarkdownRenderer content={msg.content} className="text-sm leading-relaxed" />
+
+                        {/* Show insight footer for last AI message */}
+                        {showInsightFooter && (
+                          <div className="mt-3 max-w-[85%]">
+                            <AIResponseFooter
+                              pendingInsights={insightMetadata.pendingInsights.filter(i => i.status === 'pending')}
+                              autoCapturedCount={insightMetadata.autoSavedCount}
+                              isAutoMode={insightMetadata.isAutoMode}
+                              followUpSuggestions={insightMetadata.followUpSuggestions}
+                              onFollowUpClick={(prompt) => handleSendMessage(prompt)}
+                              onViewPersonalContext={() => {
+                                window.location.href = '/collections/personal';
+                              }}
+                              onInsightStatusChange={(insightId, status) => {
+                                setInsightMetadata(prev => {
+                                  if (!prev) return null;
+                                  return {
+                                    ...prev,
+                                    pendingInsights: prev.pendingInsights.map(i =>
+                                      i.id === insightId ? { ...i, status } : i
+                                    ),
+                                  };
+                                });
+                              }}
+                            />
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {isLoading && (
                     <div className="flex justify-start">
                       <div className="bg-white/5 border border-white/10 p-4 rounded-2xl rounded-tl-none flex items-center gap-2 text-slate-400 text-sm">

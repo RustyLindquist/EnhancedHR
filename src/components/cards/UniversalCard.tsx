@@ -5,7 +5,7 @@ import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Pap
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE';
 
 interface UniversalCardProps {
     type: CardType;
@@ -109,6 +109,15 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(234, 88, 12, 0.5)' // Orange
         },
+        AI_INSIGHT: { // Bright Orange #FF9300 for AI-generated insights
+            headerColor: 'bg-[#7a4500]', // Darker base for contrast
+            borderColor: 'border-[#FF9300]/40',
+            labelColor: 'text-orange-100',
+            barColor: 'bg-[#FF9300]', // Bright orange as requested
+            icon: FileText,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(255, 147, 0, 0.6)' // #FF9300 glow
+        },
         PROFILE: { // Brand Medium Blue
             headerColor: 'bg-[#054C74]',
             borderColor: 'border-cyan-400/30',
@@ -127,13 +136,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isMediaCard = ['COURSE', 'MODULE', 'LESSON'].includes(type);
 
     // Layout Tweaks:
-    // Conversation, Context & Resource need more text space (40% top / 60% bottom)
-    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'RESOURCE', 'PROFILE'].includes(type);
+    // Conversation, Context, AI_Insight & Resource need more text space (40% top / 60% bottom)
+    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE'].includes(type);
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, and Profile cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'PROFILE';
+    // For Course, Module, Lesson, Conversation, Context, AI_Insight, and Profile cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -203,7 +212,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
                     {/* Row 1: Type Label & Core Actions */}
                     <div className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
-                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70 truncate mr-2">{type.replace('_', ' ')}</span>
+                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70 truncate mr-2">{type === 'AI_INSIGHT' ? 'CONTEXT' : type.replace('_', ' ')}</span>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {onRemove && (
                                 <button
@@ -226,11 +235,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Title Section */}
-                {/* Conversation, Context, Profile cards: centered between header bar and bottom of top section */}
+                {/* Conversation, Context, AI_Insight, Profile cards: centered between header bar and bottom of top section */}
                 {/* Other text-heavy cards: centered with padding for header */}
                 {/* Media cards: positioned at bottom */}
                 <div className={`absolute left-0 right-0 z-10 px-4 ${
-                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'PROFILE')
+                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE')
                         ? 'top-[calc(50%+20px)] -translate-y-1/2'
                         : isTextHeavy
                             ? 'top-1/2 -translate-y-1/2 pt-8'
@@ -254,7 +263,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                 </div>
                             )}
                         </div>
-                    ) : type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'PROFILE' && subtitle ? (
+                    ) : type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && subtitle ? (
                         <p className="text-xs font-medium text-white/70 tracking-wide truncate">
                             {subtitle}
                         </p>
@@ -301,7 +310,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
-                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'PROFILE' && meta && (
+                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && meta && (
                             <div className="flex items-center gap-1.5 truncate">
                                 <Clock size={12} className="flex-shrink-0" />
                                 <span className="text-[10px] font-bold tracking-wider uppercase truncate">{meta}</span>
@@ -332,16 +341,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </div>
                     )}
 
-                    {/* Conversation, Context, Profile cards: Show date on right (no button) */}
-                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'PROFILE') && meta && (
+                    {/* Conversation, Context, AI_Insight, Profile cards: Show date on right (no button) */}
+                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE') && meta && (
                         <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
                             <Clock size={12} />
                             <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                         </div>
                     )}
 
-                    {/* Other cards (not Course, Module, Conversation, Context, or Profile): Show action button */}
-                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'PROFILE' && actionLabel && (
+                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, or Profile): Show action button */}
+                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && actionLabel && (
                         <button
                             onClick={onAction}
                             className={`

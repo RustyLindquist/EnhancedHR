@@ -6,6 +6,8 @@ import { AgentType, ContextScope } from '@/lib/ai/types';
 import { HERO_PROMPTS, SUGGESTION_PANEL_PROMPTS, PromptSuggestion } from '@/lib/prompts';
 import { Message } from '@/types';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import { parseStreamResponse, stripInsightTags, StreamInsightMetadata } from '@/lib/ai/insight-stream-parser';
+import { AIResponseFooter } from '@/components/ai';
 
 interface PrometheusFullPageProps {
     initialPrompt?: string;
@@ -66,12 +68,11 @@ const CAPABILITY_CARDS: CapabilityCardData[] = [
     }
 ];
 
-// Helper to clean AI response for display
+// Helper to clean AI response for display - uses imported stripInsightTags
 const cleanMessageContent = (content: string): string => {
-    return content
-        .replace(/\[\[INSIGHT:.*?\]\]/g, '') // Remove bracket style
-        .replace(/<INSIGHT>[\s\S]*?<\/INSIGHT>/g, '') // Remove tag style
-        .trim();
+    // First parse to extract any metadata at end of stream
+    const parsed = parseStreamResponse(content);
+    return parsed.content;
 };
 
 const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
@@ -94,6 +95,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const lastProcessedPromptRef = useRef<string | undefined>(undefined);
     const [isPromptPanelOpen, setIsPromptPanelOpen] = useState(false);
+
+    // Insight metadata from the last AI response
+    const [insightMetadata, setInsightMetadata] = useState<StreamInsightMetadata | null>(null);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -321,20 +325,41 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     const chunk = decoder.decode(value, { stream: true });
                     fullText += chunk;
 
-                    // Update the last message with accumulated text
+                    // Update the last message with accumulated text (cleaned for display)
                     setMessages(prev => {
                         const updated = [...prev];
                         if (updated.length > 0) {
-                            updated[updated.length - 1] = { role: 'model', content: fullText };
+                            // Display cleaned content while streaming
+                            const displayContent = stripInsightTags(fullText);
+                            updated[updated.length - 1] = { role: 'model', content: displayContent };
                         }
                         return updated;
                     });
                 }
             }
 
-            // Save the complete message
-            if (activeConvId && fullText) {
-                saveMessage(activeConvId, 'model', fullText);
+            // Parse the complete response to extract insight metadata
+            const parsedResponse = parseStreamResponse(fullText);
+
+            // Update the final message with fully parsed content
+            setMessages(prev => {
+                const updated = [...prev];
+                if (updated.length > 0) {
+                    updated[updated.length - 1] = { role: 'model', content: parsedResponse.content };
+                }
+                return updated;
+            });
+
+            // Set insight metadata if present
+            if (parsedResponse.metadata) {
+                setInsightMetadata(parsedResponse.metadata);
+            } else {
+                setInsightMetadata(null);
+            }
+
+            // Save the complete message (raw content for potential re-processing)
+            if (activeConvId && parsedResponse.rawContent) {
+                saveMessage(activeConvId, 'model', parsedResponse.rawContent);
             }
 
             // Build the updated message array for title generation
@@ -405,24 +430,61 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                 className={`flex-1 overflow-y-auto custom-scrollbar relative px-4 py-8 transition-all duration-700 ease-in-out z-10 ${isChatStarted ? 'opacity-100' : 'opacity-0'} pb-56`}
             >
                 <div className="max-w-4xl mx-auto space-y-8">
-                    {messages.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-                            <div className={`max-w-[80%] p-6 rounded-2xl shadow-lg backdrop-blur-md border ${msg.role === 'user'
-                                ? 'bg-brand-blue-light text-brand-black rounded-tr-none border-brand-blue-light'
-                                : 'bg-white/5 text-slate-200 rounded-tl-none border-white/10'
-                                }`}>
-                                <div className="flex items-center gap-2 mb-2 opacity-60 text-xs font-bold uppercase tracking-wider">
-                                    {msg.role === 'user' ? <User size={12} /> : <Flame size={12} className="text-brand-orange" />}
-                                    {msg.role === 'user' ? 'You' : 'Prometheus'}
+                    {messages.map((msg, idx) => {
+                        const isLastMessage = idx === messages.length - 1;
+                        const isAIMessage = msg.role === 'model';
+                        const showInsightFooter = isLastMessage && isAIMessage && insightMetadata && !isLoading;
+
+                        return (
+                            <div key={idx} className="animate-slide-up">
+                                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[80%] p-6 rounded-2xl shadow-lg backdrop-blur-md border ${msg.role === 'user'
+                                        ? 'bg-brand-blue-light text-brand-black rounded-tr-none border-brand-blue-light'
+                                        : 'bg-white/5 text-slate-200 rounded-tl-none border-white/10'
+                                        }`}>
+                                        <div className="flex items-center gap-2 mb-2 opacity-60 text-xs font-bold uppercase tracking-wider">
+                                            {msg.role === 'user' ? <User size={12} /> : <Flame size={12} className="text-brand-orange" />}
+                                            {msg.role === 'user' ? 'You' : 'Prometheus'}
+                                        </div>
+                                        {msg.role === 'user' ? (
+                                            <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                                        ) : (
+                                            <MarkdownRenderer content={cleanMessageContent(msg.content)} className="text-base leading-relaxed" />
+                                        )}
+                                    </div>
                                 </div>
-                                {msg.role === 'user' ? (
-                                    <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
-                                ) : (
-                                    <MarkdownRenderer content={cleanMessageContent(msg.content)} className="text-base leading-relaxed" />
+
+                                {/* Show insight footer for last AI message */}
+                                {showInsightFooter && (
+                                    <div className="mt-4 ml-0 max-w-[80%]">
+                                        <AIResponseFooter
+                                            pendingInsights={insightMetadata.pendingInsights.filter(i => i.status === 'pending')}
+                                            autoCapturedCount={insightMetadata.autoSavedCount}
+                                            isAutoMode={insightMetadata.isAutoMode}
+                                            followUpSuggestions={insightMetadata.followUpSuggestions}
+                                            onFollowUpClick={(prompt) => handleSendMessage(prompt)}
+                                            onViewPersonalContext={() => {
+                                                // Navigate to Personal Context
+                                                window.location.href = '/collections/personal';
+                                            }}
+                                            onInsightStatusChange={(insightId, status) => {
+                                                // Update local metadata state
+                                                setInsightMetadata(prev => {
+                                                    if (!prev) return null;
+                                                    return {
+                                                        ...prev,
+                                                        pendingInsights: prev.pendingInsights.map(i =>
+                                                            i.id === insightId ? { ...i, status } : i
+                                                        ),
+                                                    };
+                                                });
+                                            }}
+                                        />
+                                    </div>
                                 )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {isLoading && (
                         <div className="flex justify-start animate-fade-in">
                             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl rounded-tl-none flex items-center gap-3 text-slate-400 backdrop-blur-md">

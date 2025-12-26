@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { fetchOpenRouterModels, OpenRouterModel } from '@/app/actions/ai';
-import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, MessageSquare, Database, FileText, Info } from 'lucide-react';
+import { fetchOpenRouterModels, OpenRouterModel, initializeInsightInstructions } from '@/app/actions/ai';
+import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, MessageSquare, Database, FileText, Info, Wand2 } from 'lucide-react';
 
 interface SystemPrompt {
     id: string;
     agent_type: string;
     system_instruction: string;
+    insight_instructions?: string;
     model?: string;
 }
 
@@ -56,8 +57,10 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
     const [prompts, setPrompts] = useState<SystemPrompt[]>(initialPrompts);
     const [selectedPromptId, setSelectedPromptId] = useState<string | null>(initialPrompts.length > 0 ? initialPrompts[0].id : null);
     const [editedInstruction, setEditedInstruction] = useState<string>('');
+    const [editedInsightInstructions, setEditedInsightInstructions] = useState<string>('');
     const [selectedModel, setSelectedModel] = useState<string>('');
     const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error' | 'seeding'>('idle');
+    const [activeTab, setActiveTab] = useState<'base' | 'insights'>('base');
 
     // Prompt Library State
     const [libraryItems, setLibraryItems] = useState<PromptLibraryItem[]>([]);
@@ -68,6 +71,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
     const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [modelTab, setModelTab] = useState<'production' | 'developer'>('production');
+    const [isInitializingInsights, setIsInitializingInsights] = useState(false);
 
     // Fetch available models on mount
     useEffect(() => {
@@ -98,6 +102,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
             const prompt = prompts.find(p => p.id === selectedPromptId);
             if (prompt) {
                 setEditedInstruction(prompt.system_instruction);
+                setEditedInsightInstructions(prompt.insight_instructions || '');
                 const model = prompt.model || 'google/gemini-2.0-flash-001';
                 setSelectedModel(model);
                 syncModelTab(model);
@@ -106,12 +111,14 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
             const item = libraryItems.find(i => i.id === selectedLibraryId);
             if (item) {
                 setEditedInstruction(item.prompt_text);
+                setEditedInsightInstructions(''); // Library items don't have insight instructions
                 const model = item.model || '';
                 setSelectedModel(model);
                 syncModelTab(model);
             }
         } else if (viewMode === 'library' && !selectedLibraryId) {
             setEditedInstruction('');
+            setEditedInsightInstructions('');
             setSelectedModel('');
         }
     }, [selectedPromptId, selectedLibraryId, viewMode, prompts, libraryItems]);
@@ -133,6 +140,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                 .from('ai_system_prompts')
                 .update({
                     system_instruction: editedInstruction,
+                    insight_instructions: editedInsightInstructions,
                     model: selectedModel,
                     updated_at: new Date().toISOString()
                 })
@@ -142,7 +150,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
             if (error) {
                 handleError(error);
             } else {
-                setPrompts(prompts.map(p => p.id === selectedPromptId ? { ...p, system_instruction: editedInstruction, model: selectedModel } : p));
+                setPrompts(prompts.map(p => p.id === selectedPromptId ? { ...p, system_instruction: editedInstruction, insight_instructions: editedInsightInstructions, model: selectedModel } : p));
                 handleSuccess();
             }
         } else if (viewMode === 'library' && selectedLibraryId) {
@@ -176,7 +184,31 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
         setTimeout(() => setStatus('idle'), 2000);
     }
 
-    // ... (handleSeed remains the same)
+    const handleInitializeInsightInstructions = async () => {
+        if (!selectedPrompt) return;
+
+        setIsInitializingInsights(true);
+        try {
+            const result = await initializeInsightInstructions(selectedPrompt.agent_type);
+            if (result.success) {
+                // Update local state directly with the returned instructions
+                setEditedInsightInstructions(result.instructions);
+                // Also update the prompts array to keep in sync
+                setPrompts(prompts.map(p =>
+                    p.id === selectedPromptId
+                        ? { ...p, insight_instructions: result.instructions }
+                        : p
+                ));
+                alert(result.message);
+            } else {
+                alert(`Failed to load default: ${result.message}`);
+            }
+        } catch (error: any) {
+            alert(`Error: ${error.message}`);
+        } finally {
+            setIsInitializingInsights(false);
+        }
+    };
 
     const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
     const selectedLibraryItem = libraryItems.find(i => i.id === selectedLibraryId);
@@ -325,7 +357,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                     onClick={handleSave}
                                     disabled={
                                         status === 'saving' ||
-                                        (viewMode === 'agents' && (editedInstruction === selectedPrompt?.system_instruction && selectedModel === selectedPrompt?.model)) ||
+                                        (viewMode === 'agents' && (editedInstruction === selectedPrompt?.system_instruction && editedInsightInstructions === (selectedPrompt?.insight_instructions || '') && selectedModel === selectedPrompt?.model)) ||
                                         (viewMode === 'library' && (editedInstruction === selectedLibraryItem?.prompt_text && selectedModel === selectedLibraryItem?.model))
                                     }
                                     className={`
@@ -412,9 +444,46 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
 
                                 {/* Instruction/Prompt Text */}
                                 <div className="space-y-2 flex-1 flex flex-col">
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                        <Bot size={14} /> {viewMode === 'agents' ? 'System Instruction' : 'Task Prompt Template'}
-                                    </label>
+                                    {/* Tab navigation for agents view */}
+                                    {viewMode === 'agents' && (
+                                        <div className="flex items-center gap-1 border-b border-white/10 mb-2">
+                                            <button
+                                                onClick={() => setActiveTab('base')}
+                                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-[1px] ${
+                                                    activeTab === 'base'
+                                                        ? 'border-brand-blue-light text-white'
+                                                        : 'border-transparent text-slate-500 hover:text-slate-300'
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <Bot size={14} /> Base System Prompt
+                                                </span>
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveTab('insights')}
+                                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-[1px] ${
+                                                    activeTab === 'insights'
+                                                        ? 'border-orange-400 text-white'
+                                                        : 'border-transparent text-slate-500 hover:text-slate-300'
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <Sparkles size={14} className={activeTab === 'insights' ? 'text-orange-400' : ''} /> Insight Training
+                                                    {editedInsightInstructions && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
+                                                            Active
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {viewMode === 'library' && (
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                            <Bot size={14} /> Task Prompt Template
+                                        </label>
+                                    )}
 
                                     {/* Show info message for model-only instances */}
                                     {viewMode === 'library' && selectedLibraryItem && selectedLibraryItem.has_prompt === false ? (
@@ -433,9 +502,76 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                                 Used by: {selectedLibraryItem.description || 'Backend process'}
                                             </div>
                                         </div>
+                                    ) : viewMode === 'agents' ? (
+                                        <>
+                                            {activeTab === 'base' ? (
+                                                <>
+                                                    <p className="text-xs text-slate-500 mb-2">
+                                                        The core personality and behavior instructions for this agent.
+                                                    </p>
+                                                    <textarea
+                                                        value={editedInstruction}
+                                                        onChange={(e) => setEditedInstruction(e.target.value)}
+                                                        className="w-full flex-1 bg-black/30 border border-white/10 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[300px]"
+                                                        placeholder="Enter system instruction..."
+                                                        spellCheck={false}
+                                                    />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="text-xs text-orange-400/80 bg-orange-500/10 p-3 rounded-lg border border-orange-500/20 flex-1">
+                                                            <strong>Insight Training Appendix:</strong> These instructions teach the agent how to identify, capture, and use insights about users. They are appended to the base prompt at runtime.
+                                                        </div>
+                                                        {!editedInsightInstructions && (
+                                                            <button
+                                                                onClick={handleInitializeInsightInstructions}
+                                                                disabled={isInitializingInsights}
+                                                                className="ml-3 flex items-center gap-2 px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                                                            >
+                                                                {isInitializingInsights ? (
+                                                                    <RefreshCw size={14} className="animate-spin" />
+                                                                ) : (
+                                                                    <Wand2 size={14} />
+                                                                )}
+                                                                {isInitializingInsights ? 'Loading...' : 'Load Default'}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {!editedInsightInstructions ? (
+                                                        <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-black/20 rounded-xl border border-orange-500/10 p-8">
+                                                            <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center">
+                                                                <Sparkles size={32} className="text-orange-400" />
+                                                            </div>
+                                                            <div className="text-center max-w-md">
+                                                                <h3 className="text-lg font-bold text-slate-300 mb-2">No Insight Training Configured</h3>
+                                                                <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                                                                    Click <strong className="text-orange-400">"Load Default"</strong> above to load the default insight training instructions for this agent, or write your own below.
+                                                                </p>
+                                                            </div>
+                                                            <textarea
+                                                                value={editedInsightInstructions}
+                                                                onChange={(e) => setEditedInsightInstructions(e.target.value)}
+                                                                className="w-full bg-black/30 border border-orange-500/20 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-orange-400/50 focus:ring-1 focus:ring-orange-400/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[200px]"
+                                                                placeholder="Enter insight identification and usage instructions..."
+                                                                spellCheck={false}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <textarea
+                                                            value={editedInsightInstructions}
+                                                            onChange={(e) => setEditedInsightInstructions(e.target.value)}
+                                                            className="w-full flex-1 bg-black/30 border border-orange-500/20 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-orange-400/50 focus:ring-1 focus:ring-orange-400/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[300px]"
+                                                            placeholder="Enter insight identification and usage instructions..."
+                                                            spellCheck={false}
+                                                        />
+                                                    )}
+                                                </>
+                                            )}
+                                        </>
                                     ) : (
                                         <>
-                                            {viewMode === 'library' && selectedLibraryItem && selectedLibraryItem.input_variables && selectedLibraryItem.input_variables.length > 0 && (
+                                            {selectedLibraryItem && selectedLibraryItem.input_variables && selectedLibraryItem.input_variables.length > 0 && (
                                                 <div className="text-xs text-brand-blue-light bg-brand-blue-light/10 p-2 rounded-lg border border-brand-blue-light/20">
                                                     <strong>Available Variables:</strong> {selectedLibraryItem.input_variables.map(v => ` {${v}}`).join(', ')}
                                                 </div>
@@ -444,7 +580,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                                 value={editedInstruction}
                                                 onChange={(e) => setEditedInstruction(e.target.value)}
                                                 className="w-full flex-1 bg-black/30 border border-white/10 rounded-xl p-6 text-slate-200 focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20 font-mono text-sm leading-relaxed resize-none custom-scrollbar min-h-[300px]"
-                                                placeholder={viewMode === 'agents' ? "Enter system instruction..." : "Enter prompt template..."}
+                                                placeholder="Enter prompt template..."
                                                 spellCheck={false}
                                             />
                                         </>

@@ -102,9 +102,9 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             const insight = item as any;
             cardProps = {
                 ...cardProps,
-                type: 'CONTEXT',
-                subtitle: 'AI Insight',
-                description: insight.content?.insight,
+                type: 'AI_INSIGHT',
+                title: 'AI Insight',
+                description: insight.content?.insight || insight.content?.text || insight.title,
                 meta: insight.created_at ? new Date(insight.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'VIEW'
             };
