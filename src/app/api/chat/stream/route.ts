@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { ContextResolver } from '@/lib/ai/context-resolver';
 import { generateQueryEmbedding } from '@/lib/ai/embedding';
+import { extractInsights, stripInsightTags } from '@/lib/ai/insight-analyzer';
+import { processInsight, getInsightSettings } from '@/app/actions/insights';
+import { generateFollowUpSuggestions } from '@/lib/ai/quick-ai';
+import type { ExtractedInsight, PendingInsight, InsightFollowUp } from '@/types/insights';
+
+/**
+ * Special delimiter for insight metadata at end of stream.
+ * Client should parse this out to extract insight data.
+ */
+export const INSIGHT_META_START = '\n\n<!--__INSIGHT_META__:';
+export const INSIGHT_META_END = ':__END_META__-->';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
@@ -109,11 +120,16 @@ export async function POST(req: NextRequest) {
         // 1. Fetch System Prompt and Model
         const { data: promptData } = await supabase
             .from('ai_system_prompts')
-            .select('system_instruction, model')
+            .select('system_instruction, insight_instructions, model')
             .eq('agent_type', agentType)
             .single();
 
-        const systemInstruction = promptData?.system_instruction || 'You are a helpful AI assistant.';
+        // Concatenate base prompt with insight instructions if present
+        const baseInstruction = promptData?.system_instruction || 'You are a helpful AI assistant.';
+        const insightInstructions = promptData?.insight_instructions || '';
+        const systemInstruction = insightInstructions
+            ? `${baseInstruction}\n\n${insightInstructions}`
+            : baseInstruction;
         const model = promptData?.model || 'google/gemini-2.0-flash-001';
 
         // 2. Generate embedding for the user's query (uses model from ai_prompt_library)
@@ -145,8 +161,14 @@ export async function POST(req: NextRequest) {
         const encoder = new TextEncoder();
         let fullResponse = '';
 
-        // Log helper & Insight Extraction
-        const logInteraction = async () => {
+        // Track pending insights for response
+        let pendingInsightsForResponse: PendingInsight[] = [];
+        let autoSavedCount = 0;
+        let followUpSuggestions: InsightFollowUp[] = [];
+
+        // Log helper & Enhanced Insight Extraction
+        // Returns metadata string to append to stream
+        const logInteractionAndGetMetadata = async (): Promise<string> => {
             try {
                 // 1. Log Interaction
                 await supabase.from('ai_logs').insert({
@@ -164,47 +186,85 @@ export async function POST(req: NextRequest) {
                     }
                 });
 
-                // 2. Extract & Save Insights
-                // Format 1: [[INSIGHT: type|content]]
-                const bracketRegex = /\[\[INSIGHT:\s*(.*?)\|(.*?)\]\]/g;
-                // Format 2: <INSIGHT>content</INSIGHT>
-                const tagRegex = /<INSIGHT>([\s\S]*?)<\/INSIGHT>/g;
+                // 2. Get user's insight settings
+                const settings = await getInsightSettings();
+                const autoSave = settings.autoInsights;
 
-                const insights = [];
-                let match;
+                // 3. Extract Insights using enhanced analyzer
+                const extractedInsights = extractInsights(fullResponse, agentType, conversationId);
 
-                // Process Bracket Format
-                while ((match = bracketRegex.exec(fullResponse)) !== null) {
-                    insights.push({
-                        user_id: user.id,
-                        collection_id: null, // Global context by default for Tutor
-                        type: 'insight', 
-                        title: `Insight: ${match[1].trim()}`,
-                        content: match[2].trim(),
-                        created_at: new Date().toISOString()
-                    });
+                if (extractedInsights.length > 0) {
+                    console.log(`[Stream API] Extracted ${extractedInsights.length} insights`);
+
+                    // Process each insight
+                    for (const insight of extractedInsights) {
+                        const result = await processInsight(insight, autoSave);
+
+                        if (result.action === 'pending') {
+                            // User needs to approve - add to pending list
+                            pendingInsightsForResponse.push({
+                                id: crypto.randomUUID(),
+                                insight,
+                                status: 'pending',
+                                createdAt: new Date().toISOString(),
+                            });
+                        } else if (result.action === 'saved' && autoSave) {
+                            // Auto-saved - count for notification
+                            autoSavedCount++;
+                            pendingInsightsForResponse.push({
+                                id: result.insightId || crypto.randomUUID(),
+                                insight,
+                                status: 'saved',
+                                createdAt: new Date().toISOString(),
+                            });
+                        }
+                        // 'skipped' and 'merged' don't need UI notification
+                    }
                 }
 
-                // Process Tag Format
-                while ((match = tagRegex.exec(fullResponse)) !== null) {
-                    insights.push({
-                        user_id: user.id,
-                        collection_id: null,
-                        type: 'insight',
-                        title: 'New Insight',
-                        content: match[1].trim(),
-                        created_at: new Date().toISOString()
-                    });
+                // 4. Generate follow-up suggestions if we have insights in context
+                // Get insight summary from context items
+                const insightItems = (contextItems || []).filter(
+                    (item: any) => item.metadata?.item_type === 'AI_INSIGHT'
+                );
+                if (insightItems.length > 0) {
+                    const insightSummary = insightItems
+                        .map((item: any) => {
+                            const category = item.metadata?.category || 'context';
+                            return `[${category}] ${item.content}`;
+                        })
+                        .join('\n');
+
+                    const suggestions = await generateFollowUpSuggestions(
+                        message,
+                        stripInsightTags(fullResponse).substring(0, 500),
+                        insightSummary
+                    );
+
+                    followUpSuggestions = suggestions.map((prompt, idx) => ({
+                        prompt,
+                        category: insightItems[idx % insightItems.length]?.metadata?.category,
+                    }));
                 }
 
-                if (insights.length > 0) {
-                    console.log(`[Stream API] Saving ${insights.length} extracted insights.`);
-                    const { error } = await supabase.from('user_context_items').insert(insights);
-                    if (error) console.error('Failed to save insights:', error);
+                // 5. Build metadata object
+                const metadata = {
+                    pendingInsights: pendingInsightsForResponse,
+                    autoSavedCount,
+                    isAutoMode: autoSave,
+                    followUpSuggestions,
+                };
+
+                // Only return metadata if there's something to show
+                if (pendingInsightsForResponse.length > 0 || followUpSuggestions.length > 0) {
+                    return `${INSIGHT_META_START}${JSON.stringify(metadata)}${INSIGHT_META_END}`;
                 }
+
+                return '';
 
             } catch (logErr) {
-                console.error('Failed to log AI interaction or save insights:', logErr);
+                console.error('Failed to log AI interaction or process insights:', logErr);
+                return '';
             }
         };
 
@@ -296,8 +356,12 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 },
-                async flush() {
-                    await logInteraction();
+                async flush(controller) {
+                    // Process insights and get metadata to append
+                    const metadata = await logInteractionAndGetMetadata();
+                    if (metadata) {
+                        controller.enqueue(encoder.encode(metadata));
+                    }
                 }
             });
 
@@ -399,8 +463,12 @@ export async function POST(req: NextRequest) {
                     }
                 }
             },
-            async flush() {
-                await logInteraction();
+            async flush(controller) {
+                // Process insights and get metadata to append
+                const metadata = await logInteractionAndGetMetadata();
+                if (metadata) {
+                    controller.enqueue(encoder.encode(metadata));
+                }
             }
         });
 
