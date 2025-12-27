@@ -154,6 +154,18 @@ const AIPanel: React.FC<AIPanelProps> = ({
     }
   };
 
+  const updateConversationTitle = async (convId: string, title: string) => {
+    try {
+      await fetch(`/api/conversations/${convId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+    } catch (error) {
+      console.error('Failed to update conversation title', error);
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
@@ -161,6 +173,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+
+    // Track if this is a new conversation (for title generation)
+    const isNewConversation = !conversationId;
 
     let activeConvId = conversationId;
     if (!activeConvId) {
@@ -252,6 +267,28 @@ const AIPanel: React.FC<AIPanelProps> = ({
       // Save the complete message (raw content for potential re-processing)
       if (activeConvId && parsedResponse.rawContent) {
         saveMessage(activeConvId, 'model', parsedResponse.rawContent);
+      }
+
+      // Generate title for new conversations (skip for course-specific chats which already have descriptive titles)
+      if (isNewConversation && activeConvId && fullText && contextScope.type !== 'COURSE') {
+        try {
+          // Clean the response text for title generation
+          const cleanedResponse = stripInsightTags(fullText).substring(0, 200);
+
+          const titleResponse = await getAgentResponse(effectiveAgentType,
+            `Based on this conversation where the user asked: "${text}" and you responded with: "${cleanedResponse}...", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`,
+            contextScope, [], activeConvId, 'ai_panel_title_gen');
+          const generatedTitle = titleResponse.text.trim().replace(/^["']|["']$/g, '');
+
+          if (generatedTitle) {
+            updateConversationTitle(activeConvId, generatedTitle);
+          }
+        } catch (titleError) {
+          console.error('Error generating title:', titleError);
+          // Fallback to first few words of user message
+          const fallbackTitle = text.split(' ').slice(0, 4).join(' ') + '...';
+          updateConversationTitle(activeConvId, fallbackTitle);
+        }
       }
     } catch (error) {
       console.error('Error getting AI response:', error);
