@@ -23,6 +23,46 @@ import {
 } from '@/lib/ai/insight-analyzer';
 
 /**
+ * Resolve the Personal Context collection ID for a user.
+ * Creates the collection if it doesn't exist.
+ */
+async function getPersonalContextCollectionId(userId: string): Promise<string | null> {
+  const admin = createAdminClient();
+
+  // Look for existing Personal Context collection
+  const { data: existing } = await admin
+    .from('user_collections')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('label', 'Personal Context')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    return existing.id;
+  }
+
+  // Auto-create if missing
+  const { data: created, error } = await admin
+    .from('user_collections')
+    .insert({
+      user_id: userId,
+      label: 'Personal Context',
+      color: '#64748B' // Slate
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[Insights] Failed to create Personal Context collection:', error);
+    return null;
+  }
+
+  return created?.id || null;
+}
+
+/**
  * Get user's insight generation settings.
  */
 export async function getInsightSettings(): Promise<InsightSettings> {
@@ -159,6 +199,9 @@ export async function saveInsight(
   const admin = createAdminClient();
 
   try {
+    // Resolve the Personal Context collection ID
+    const personalContextId = await getPersonalContextCollectionId(user.id);
+
     // Build the content object
     const insightContent: AIInsightContent = {
       insight: insight.content,
@@ -174,12 +217,12 @@ export async function saveInsight(
     const categoryLabel = INSIGHT_CATEGORY_LABELS[insight.category] || 'Insight';
     const title = `AI Insight: ${categoryLabel}`;
 
-    // Insert into user_context_items
+    // Insert into user_context_items with the resolved Personal Context collection ID
     const { data: created, error } = await admin
       .from('user_context_items')
       .insert({
         user_id: user.id,
-        collection_id: null, // Personal Context (global)
+        collection_id: personalContextId, // Use resolved Personal Context collection ID
         type: 'AI_INSIGHT',
         title,
         content: insightContent,
@@ -200,7 +243,7 @@ export async function saveInsight(
         created.id,
         'AI_INSIGHT',
         embeddingText,
-        null, // Global context
+        personalContextId, // Use resolved Personal Context collection ID
         {
           item_type: 'AI_INSIGHT',
           category: insight.category,
@@ -210,6 +253,7 @@ export async function saveInsight(
     }
 
     revalidatePath('/dashboard');
+    revalidatePath('/personal-context');
     return { success: true, insightId: created?.id };
 
   } catch (error) {
