@@ -9,13 +9,11 @@ import {
     Zap,
     MessageSquare,
     Layers,
-    X,
     Loader2,
     ChevronRight
 } from 'lucide-react';
 import { Course, Conversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
-import { PromptSuggestion, fetchPromptSuggestionsAction } from '@/app/actions/prompts';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
 import { fetchConversationsAction } from '@/app/actions/conversations';
@@ -34,6 +32,10 @@ interface UserDashboardV3Props {
     onAddCourse: (course: Course) => void;
     onResumeConversation?: (conversation: Conversation) => void;
     onCourseDragStart?: (courseId: number) => void;
+    onOpenDrawer: () => void;
+    onDeleteConversation?: (conversationId: string) => void;
+    onConversationDragStart?: (conversation: Conversation) => void;
+    onAddConversation?: (conversation: Conversation) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
@@ -47,7 +49,11 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     onSetPrometheusPagePrompt,
     onAddCourse,
     onResumeConversation,
-    onCourseDragStart
+    onCourseDragStart,
+    onOpenDrawer,
+    onDeleteConversation,
+    onConversationDragStart,
+    onAddConversation
 }) => {
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
@@ -59,8 +65,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [trendingIds, setTrendingIds] = useState<number[]>([]);
     const [recertifications, setRecertifications] = useState<any[]>([]);
     const [userProgress, setUserProgress] = useState<Record<number, { progress: number, lastAccessed: string }>>({});
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
 
     // Tab State - Recommended is now first/default
     const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
@@ -91,13 +95,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
         loadData();
     }, [user?.id]);
 
-    useEffect(() => {
-        const loadPrompts = async () => {
-            const prompts = await fetchPromptSuggestionsAction('user_dashboard');
-            setPanelPrompts(prompts.slice(6)); // Skip first 6 (shown in widget), rest go to drawer
-        };
-        loadPrompts();
-    }, []);
 
     useEffect(() => {
         const loadConversations = async () => {
@@ -157,7 +154,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                 <div className="relative z-10 mb-12">
                     <PrometheusDashboardWidget
                         onSetPrometheusPagePrompt={onSetPrometheusPagePrompt}
-                        onOpenDrawer={() => setIsDrawerOpen(true)}
+                        onOpenDrawer={onOpenDrawer}
                     />
                 </div>
 
@@ -294,6 +291,10 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                         meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
                                         actionLabel="CHAT"
                                         onAction={() => onResumeConversation?.(conversation)}
+                                        onRemove={() => onDeleteConversation?.(conversation.id)}
+                                        onAdd={() => onAddConversation?.(conversation)}
+                                        draggable={!!onConversationDragStart}
+                                        onDragStart={() => onConversationDragStart?.(conversation)}
                                     />
                                 </div>
                             ))}
@@ -416,56 +417,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     )}
                 </div>
 
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════════════
-                PROMPTS DRAWER
-            ══════════════════════════════════════════════════════════════════ */}
-            <div
-                className={`
-                    fixed top-[60px] left-0 w-full z-[100]
-                    transition-transform duration-500 ease-out
-                    ${isDrawerOpen ? 'translate-y-0' : '-translate-y-full'}
-                `}
-            >
-                <div className="bg-[#0a0d12]/98 backdrop-blur-2xl border-b border-white/5 shadow-2xl pb-8">
-                    <div className="max-w-6xl mx-auto px-8 pt-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-light text-white flex items-center gap-2">
-                                <Sparkles size={16} className="text-brand-blue-light" />
-                                Prompt Library
-                            </h2>
-                            <button
-                                onClick={() => setIsDrawerOpen(false)}
-                                className="p-2 rounded-lg hover:bg-white/5 text-slate-500 hover:text-white transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-                            {panelPrompts.map(p => (
-                                <button
-                                    key={p.id}
-                                    onClick={() => {
-                                        handlePromptClick(p.prompt);
-                                        setIsDrawerOpen(false);
-                                    }}
-                                    className="text-left p-4 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.03] hover:border-white/[0.08] transition-all group"
-                                >
-                                    <div className="flex items-center gap-2 text-slate-600 group-hover:text-brand-blue-light mb-2 transition-colors">
-                                        <MessageSquare size={12} />
-                                        <span className="text-[10px] uppercase tracking-wider">{p.category}</span>
-                                    </div>
-                                    <div className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors line-clamp-2">
-                                        {p.label}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <div className="w-full h-screen bg-black/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
             </div>
 
         </div>

@@ -2953,6 +2953,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         onAddCourse={(course) => onOpenModal(course)}
                                         onResumeConversation={onResumeConversation}
                                         onCourseDragStart={handleCourseDragStart}
+                                        onOpenDrawer={() => toggleDrawer('prompts')}
+                                        onDeleteConversation={handleDeleteConversation}
+                                        onConversationDragStart={(conv) => handleDragStart({
+                                            type: 'CONVERSATION',
+                                            id: conv.id,
+                                            title: conv.title || 'Conversation',
+                                        })}
+                                        onAddConversation={(conv) => onOpenModal(conv)}
                                     />
                                 )}
                             </div>

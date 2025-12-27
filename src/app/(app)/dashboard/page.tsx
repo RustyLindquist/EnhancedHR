@@ -272,6 +272,15 @@ function HomeContent() {
     setIsAddModalOpen(true);
   };
 
+  // Handler for adding a conversation to a collection from AI Panel
+  const handleAddConversationToCollection = (conversationId: string, title: string) => {
+    handleOpenModal({
+      type: 'CONVERSATION',
+      id: conversationId,
+      title: title
+    });
+  };
+
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
       handleOpenModal(undefined);
@@ -469,6 +478,7 @@ function HomeContent() {
             contextScope={contextScope}
             conversationId={activeConversationId}
             onConversationIdChange={setActiveConversationId}
+            onAddConversationToCollection={handleAddConversationToCollection}
           />
         )}
       </div>

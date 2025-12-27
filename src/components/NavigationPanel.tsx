@@ -26,6 +26,44 @@ import {
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 
+// Animated Count Badge with warm glow effect on count change
+const AnimatedCountBadge: React.FC<{
+  count: number;
+  isActive: boolean;
+}> = ({ count, isActive }) => {
+  const [isGlowing, setIsGlowing] = useState(false);
+  const prevCountRef = useRef<number>(count);
+
+  useEffect(() => {
+    // Only trigger glow if count actually changed (not on initial mount)
+    if (prevCountRef.current !== count && prevCountRef.current !== undefined) {
+      setIsGlowing(true);
+      const timer = setTimeout(() => setIsGlowing(false), 1000);
+      return () => clearTimeout(timer);
+    }
+    prevCountRef.current = count;
+  }, [count]);
+
+  return (
+    <span
+      className={`
+        relative text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-300 overflow-visible
+        ${isActive
+          ? 'bg-brand-blue-light text-brand-black border-brand-blue-light'
+          : 'text-slate-500 bg-white/5 border-white/5 group-hover:text-slate-300'
+        }
+      `}
+    >
+      {/* Warm glow effect layer - extends beyond bounds for organic circular glow */}
+      {isGlowing && (
+        <span className="absolute -inset-2 rounded-full animate-count-glow pointer-events-none" />
+      )}
+      {/* Count number */}
+      <span className="relative z-10">{count}</span>
+    </span>
+  );
+};
+
 interface NavigationPanelProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -82,18 +120,22 @@ const NavItem: React.FC<{
         )}
 
         {isOpen && (
-          <div className="flex-1 flex justify-between items-center ml-3 overflow-hidden">
-            <span className={`
-              truncate transition-colors 
-              ${customTextClass ? customTextClass : (isActive ? 'text-white font-medium' : 'text-slate-400 font-medium group-hover:text-slate-200')}
-              text-sm tracking-wide
-            `}>
-              {item.label}
-            </span>
-            {count !== undefined && count > 0 && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${isActive ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'text-slate-500 bg-white/5 border-white/5 group-hover:text-slate-300'}`}>
-                {count}
+          <div className="flex-1 flex justify-between items-center ml-3 min-w-0">
+            {/* Label wrapper with overflow-hidden for truncation */}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <span className={`
+                block truncate transition-colors
+                ${customTextClass ? customTextClass : (isActive ? 'text-white font-medium' : 'text-slate-400 font-medium group-hover:text-slate-200')}
+                text-sm tracking-wide
+              `}>
+                {item.label}
               </span>
+            </div>
+            {/* Badge container - allows glow overflow */}
+            {count !== undefined && count > 0 && (
+              <div className="flex-shrink-0 ml-2 overflow-visible">
+                <AnimatedCountBadge count={count} isActive={isActive} />
+              </div>
             )}
           </div>
         )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MoreHorizontal, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Download, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus } from 'lucide-react';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -15,6 +15,7 @@ interface AIPanelProps {
   initialPrompt?: string;
   conversationId?: string | null;
   onConversationIdChange?: (id: string) => void;
+  onAddConversationToCollection?: (conversationId: string, title: string) => void;
 }
 
 import { Message } from '@/types';
@@ -26,7 +27,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
   contextScope = { type: 'PLATFORM' },
   initialPrompt,
   conversationId: propConversationId,
-  onConversationIdChange
+  onConversationIdChange,
+  onAddConversationToCollection
 }) => {
   const [width, setWidth] = useState(384); // Default w-96
   const [isDragging, setIsDragging] = useState(false);
@@ -92,6 +94,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
   }, [messages, isLoading]);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationTitle, setConversationTitle] = useState<string>('New Conversation');
 
   // Sync prop conversationId to local state and fetch messages
   useEffect(() => {
@@ -184,6 +187,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       if (newConv) {
         activeConvId = newConv.id;
         setConversationId(activeConvId);
+        setConversationTitle(title);
         if (onConversationIdChange && activeConvId) {
           onConversationIdChange(activeConvId);
         }
@@ -282,12 +286,14 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
           if (generatedTitle) {
             updateConversationTitle(activeConvId, generatedTitle);
+            setConversationTitle(generatedTitle);
           }
         } catch (titleError) {
           console.error('Error generating title:', titleError);
           // Fallback to first few words of user message
           const fallbackTitle = text.split(' ').slice(0, 4).join(' ') + '...';
           updateConversationTitle(activeConvId, fallbackTitle);
+          setConversationTitle(fallbackTitle);
         }
       }
     } catch (error) {
@@ -375,7 +381,16 @@ const AIPanel: React.FC<AIPanelProps> = ({
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
               </div>
             </div>
-            <MoreHorizontal size={16} className="text-slate-500 cursor-pointer hover:text-white transition-colors flex-shrink-0" />
+            {/* Add to Collection Button - only show when there's an active conversation */}
+            {conversationId && onAddConversationToCollection && (
+              <button
+                onClick={() => onAddConversationToCollection(conversationId, conversationTitle)}
+                className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                title="Save this conversation to a Collection"
+              >
+                <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, ChevronRight, Play, Award } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Play, Award, Plus } from 'lucide-react';
 import { Course, Module, Lesson } from '../../types';
 
 interface CourseStats {
@@ -20,6 +20,7 @@ interface CourseHeaderProps {
     stats: CourseStats;
     onBack: () => void;
     onResume: () => void;
+    onAddToCollection: () => void;
 }
 
 const CourseHeader: React.FC<CourseHeaderProps> = ({
@@ -29,7 +30,8 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
     currentLesson,
     stats,
     onBack,
-    onResume
+    onResume,
+    onAddToCollection
 }) => {
     // Determine button text based on state
     const getButtonText = () => {
@@ -99,19 +101,26 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
 
                 {/* Right Section: Action Buttons */}
                 <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Add to Collection Button */}
+                    <button
+                        onClick={onAddToCollection}
+                        className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                        title="Save this course to a Collection"
+                    >
+                        <Plus size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+                    </button>
+
                     {/* Certificate Button */}
                     <button
                         disabled={!isComplete}
-                        className={`
-                            flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all
-                            ${isComplete
-                                ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                                : 'bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed'
-                            }
-                        `}
+                        className={`group flex items-center justify-center w-10 h-10 rounded-full transition-all ${
+                            isComplete
+                                ? 'bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500/30 hover:scale-105 active:scale-95 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                                : 'bg-white/5 border border-white/10 cursor-not-allowed'
+                        }`}
+                        title="View Your Certificate For This Course"
                     >
-                        <Award size={14} />
-                        CERTIFICATE
+                        <Award size={20} className={`transition-colors ${isComplete ? 'text-amber-400 group-hover:text-amber-300' : 'text-slate-500'}`} />
                     </button>
 
                     {/* Resume/Start Button */}
