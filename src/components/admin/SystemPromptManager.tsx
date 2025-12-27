@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { fetchOpenRouterModels, OpenRouterModel, initializeInsightInstructions } from '@/app/actions/ai';
-import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, MessageSquare, Database, FileText, Info, Wand2 } from 'lucide-react';
+import { getAllModelPricing, getCostByAgent, type ModelPricing, type AgentCostSummary } from '@/app/actions/cost-analytics';
+import { Save, CheckCircle, AlertCircle, Bot, RefreshCw, Cpu, ChevronDown, ChevronRight, Plus, X, Trash2, Sparkles, MessageSquare, Database, FileText, Info, Wand2, DollarSign, TrendingDown } from 'lucide-react';
 
 interface SystemPrompt {
     id: string;
@@ -73,7 +74,12 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
     const [modelTab, setModelTab] = useState<'production' | 'developer'>('production');
     const [isInitializingInsights, setIsInitializingInsights] = useState(false);
 
-    // Fetch available models on mount
+    // Pricing state
+    const [modelPricing, setModelPricing] = useState<Map<string, ModelPricing>>(new Map());
+    const [agentCosts, setAgentCosts] = useState<AgentCostSummary[]>([]);
+    const [isLoadingPricing, setIsLoadingPricing] = useState(false);
+
+    // Fetch available models and pricing on mount
     useEffect(() => {
         const loadModels = async () => {
             setIsLoadingModels(true);
@@ -84,6 +90,24 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
             setIsLoadingModels(false);
         };
         loadModels();
+
+        const loadPricing = async () => {
+            setIsLoadingPricing(true);
+            try {
+                const [pricing, costs] = await Promise.all([
+                    getAllModelPricing(),
+                    getCostByAgent(30)
+                ]);
+                const pricingMap = new Map(pricing.map(p => [p.model_id, p]));
+                setModelPricing(pricingMap);
+                setAgentCosts(costs);
+            } catch (error) {
+                console.error('Error loading pricing:', error);
+            } finally {
+                setIsLoadingPricing(false);
+            }
+        };
+        loadPricing();
     }, []);
 
     // Fetch Library Items
@@ -213,7 +237,32 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
     const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
     const selectedLibraryItem = libraryItems.find(i => i.id === selectedLibraryId);
 
-    // ... (Empty State check remains same)
+    // Get current agent's cost summary
+    const currentAgentCost = viewMode === 'agents' && selectedPrompt
+        ? agentCosts.find(c => c.agent_type === selectedPrompt.agent_type)
+        : null;
+
+    // Helper to format pricing
+    const formatPricing = (modelId: string): string => {
+        const pricing = modelPricing.get(modelId);
+        if (!pricing) return '';
+        const promptPrice = pricing.prompt_price_per_million;
+        const completionPrice = pricing.completion_price_per_million;
+        if (promptPrice === 0 && completionPrice === 0) return ' (Free)';
+        return ` ($${promptPrice.toFixed(2)}/$${completionPrice.toFixed(2)} per M)`;
+    };
+
+    // Helper to get quality tier badge color
+    const getTierColor = (tier: string | null) => {
+        switch (tier) {
+            case 'free': return 'text-emerald-400';
+            case 'economy': return 'text-blue-400';
+            case 'standard': return 'text-yellow-400';
+            case 'premium': return 'text-purple-400';
+            case 'flagship': return 'text-rose-400';
+            default: return 'text-slate-400';
+        }
+    };
 
     return (
         <div className="flex flex-col h-[calc(100vh-140px)] gap-6">
@@ -421,7 +470,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                                 availableModels.length > 0 ? (
                                                     availableModels.map(model => (
                                                         <option key={model.id} value={model.id}>
-                                                            {model.name}
+                                                            {model.name}{formatPricing(model.id)}
                                                         </option>
                                                     ))
                                                 ) : (
@@ -439,6 +488,63 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
                                             {modelTab === 'production' && isLoadingModels ? <RefreshCw size={14} className="animate-spin" /> : '▼'}
                                         </div>
                                     </div>
+
+                                    {/* Selected Model Pricing Info */}
+                                    {selectedModel && modelPricing.get(selectedModel) && (
+                                        <div className="bg-slate-800/50 border border-white/5 rounded-lg p-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <DollarSign size={14} className="text-emerald-400" />
+                                                    <span className="text-xs text-slate-400">Pricing:</span>
+                                                </div>
+                                                <div className="text-xs">
+                                                    <span className={getTierColor(modelPricing.get(selectedModel)?.quality_tier || null)}>
+                                                        {modelPricing.get(selectedModel)?.quality_tier?.toUpperCase() || 'UNKNOWN'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-2 flex items-center gap-4 text-xs">
+                                                <div>
+                                                    <span className="text-slate-500">Prompt:</span>
+                                                    <span className="ml-1 text-slate-300">${modelPricing.get(selectedModel)?.prompt_price_per_million.toFixed(2)}/M</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Completion:</span>
+                                                    <span className="ml-1 text-slate-300">${modelPricing.get(selectedModel)?.completion_price_per_million.toFixed(2)}/M</span>
+                                                </div>
+                                                {modelPricing.get(selectedModel)?.context_length && (
+                                                    <div>
+                                                        <span className="text-slate-500">Context:</span>
+                                                        <span className="ml-1 text-slate-300">{(modelPricing.get(selectedModel)!.context_length! / 1000).toFixed(0)}K</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Agent Cost Summary (30 days) */}
+                                    {currentAgentCost && currentAgentCost.total_cost > 0 && (
+                                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <TrendingDown size={14} className="text-emerald-400" />
+                                                <span className="text-xs font-bold text-emerald-400">Last 30 Days Usage</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2 text-xs">
+                                                <div>
+                                                    <span className="text-slate-500">Requests:</span>
+                                                    <span className="ml-1 text-slate-300">{currentAgentCost.total_requests.toLocaleString()}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Tokens:</span>
+                                                    <span className="ml-1 text-slate-300">{(currentAgentCost.total_tokens / 1000).toFixed(0)}K</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Cost:</span>
+                                                    <span className="ml-1 text-emerald-400 font-medium">${currentAgentCost.total_cost.toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
 

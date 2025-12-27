@@ -5,7 +5,17 @@ import { generateQueryEmbedding } from '@/lib/ai/embedding';
 import { extractInsights, stripInsightTags } from '@/lib/ai/insight-analyzer';
 import { processInsight, getInsightSettings } from '@/app/actions/insights';
 import { generateFollowUpSuggestions } from '@/lib/ai/quick-ai';
+import { getCachedPricing, calculateCost } from '@/app/actions/cost-analytics';
 import type { ExtractedInsight, PendingInsight, InsightFollowUp } from '@/types/insights';
+
+/**
+ * Token usage tracking for cost analytics
+ */
+interface TokenUsage {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+}
 
 /**
  * Special delimiter for insight metadata at end of stream.
@@ -132,6 +142,14 @@ export async function POST(req: NextRequest) {
             : baseInstruction;
         const model = promptData?.model || 'google/gemini-2.0-flash-001';
 
+        // Fetch user's org_id for multi-tenant analytics
+        const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', user.id)
+            .single();
+        const userOrgId = userProfile?.org_id || null;
+
         // 2. Generate embedding for the user's query (uses model from ai_prompt_library)
         const queryEmbedding = await generateQueryEmbedding(message);
 
@@ -166,11 +184,31 @@ export async function POST(req: NextRequest) {
         let autoSavedCount = 0;
         let followUpSuggestions: InsightFollowUp[] = [];
 
+        // Token usage tracking for cost analytics
+        let tokenUsage: TokenUsage = {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0
+        };
+
         // Log helper & Enhanced Insight Extraction
         // Returns metadata string to append to stream
         const logInteractionAndGetMetadata = async (): Promise<string> => {
             try {
-                // 1. Log Interaction
+                // 1. Calculate cost using cached pricing
+                let costUsd = 0;
+                try {
+                    const pricing = await getCachedPricing(model);
+                    costUsd = await calculateCost(
+                        tokenUsage.prompt_tokens,
+                        tokenUsage.completion_tokens,
+                        pricing
+                    );
+                } catch (pricingError) {
+                    console.warn('[Stream API] Could not calculate cost:', pricingError);
+                }
+
+                // 2. Log Interaction with token counts and cost
                 await supabase.from('ai_logs').insert({
                     user_id: user.id,
                     conversation_id: conversationId || null,
@@ -178,6 +216,12 @@ export async function POST(req: NextRequest) {
                     page_context: pageContext || 'streaming_chat',
                     prompt: message,
                     response: fullResponse,
+                    prompt_tokens: tokenUsage.prompt_tokens || null,
+                    completion_tokens: tokenUsage.completion_tokens || null,
+                    total_tokens: tokenUsage.total_tokens || null,
+                    model_id: model,
+                    cost_usd: costUsd || null,
+                    org_id: userOrgId,
                     metadata: {
                         model,
                         streaming: true,
@@ -345,6 +389,17 @@ export async function POST(req: NextRequest) {
 
                             try {
                                 const parsed = JSON.parse(data);
+
+                                // Capture token usage from Gemini response
+                                // Gemini uses usageMetadata field
+                                if (parsed.usageMetadata) {
+                                    tokenUsage = {
+                                        prompt_tokens: parsed.usageMetadata.promptTokenCount || 0,
+                                        completion_tokens: parsed.usageMetadata.candidatesTokenCount || 0,
+                                        total_tokens: parsed.usageMetadata.totalTokenCount || 0
+                                    };
+                                }
+
                                 const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (content) {
                                     fullResponse += content;
@@ -357,6 +412,11 @@ export async function POST(req: NextRequest) {
                     }
                 },
                 async flush(controller) {
+                    // Log token usage for debugging
+                    if (tokenUsage.total_tokens > 0) {
+                        console.log('[Stream API] Token usage captured (Gemini):', tokenUsage);
+                    }
+
                     // Process insights and get metadata to append
                     const metadata = await logInteractionAndGetMetadata();
                     if (metadata) {
@@ -452,6 +512,17 @@ export async function POST(req: NextRequest) {
 
                         try {
                             const parsed = JSON.parse(data);
+
+                            // Capture token usage from OpenRouter response
+                            // Usage data comes in the response chunks
+                            if (parsed.usage) {
+                                tokenUsage = {
+                                    prompt_tokens: parsed.usage.prompt_tokens || 0,
+                                    completion_tokens: parsed.usage.completion_tokens || 0,
+                                    total_tokens: parsed.usage.total_tokens || 0
+                                };
+                            }
+
                             const content = parsed.choices?.[0]?.delta?.content;
                             if (content) {
                                 fullResponse += content;
@@ -464,6 +535,11 @@ export async function POST(req: NextRequest) {
                 }
             },
             async flush(controller) {
+                // Log token usage for debugging
+                if (tokenUsage.total_tokens > 0) {
+                    console.log('[Stream API] Token usage captured:', tokenUsage);
+                }
+
                 // Process insights and get metadata to append
                 const metadata = await logInteractionAndGetMetadata();
                 if (metadata) {
