@@ -257,6 +257,9 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
         setIsLoading(true);
         setIsPromptPanelOpen(false);
 
+        // Track if this is a new conversation (for title generation)
+        const isNewConversation = !currentConversationId;
+
         try {
             // Ensure we have a conversation ID
             let activeConvId = currentConversationId;
@@ -366,12 +369,16 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
             const aiMsg: Message = { role: 'model', content: fullText };
             const updatedMessages = [...messages, userMsg, aiMsg];
 
-            // Generate title logic...
-            if (messages.length === 0 && onTitleChange && fullText) {
+            // Generate title for new conversations
+            // Use isNewConversation flag instead of messages.length to avoid state closure issues
+            if (isNewConversation && onTitleChange && fullText) {
                 try {
+                    // Clean the response text for title generation (remove insight tags and metadata)
+                    const cleanedResponse = stripInsightTags(fullText).substring(0, 200);
+
                     // Use non-streaming for title generation (simpler)
                     const titleResponse = await getAgentResponse(agentType,
-                        `Based on this conversation where the user asked: "${text}" and you responded with: "${fullText.substring(0, 200)}...", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`,
+                        `Based on this conversation where the user asked: "${text}" and you responded with: "${cleanedResponse}...", generate a very concise title (maximum 5 words) that captures the main topic or intent. Respond with ONLY the title, no quotes or extra text.`,
                         contextScope, [], activeConvId, 'prometheus_full_page_title_gen');
                     const generatedTitle = titleResponse.text.trim().replace(/^["']|["']$/g, '');
 
