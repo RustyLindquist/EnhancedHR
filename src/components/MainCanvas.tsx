@@ -14,7 +14,7 @@ import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType, HelpTopic } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
@@ -31,6 +31,8 @@ import TopContextPanel from './TopContextPanel';
 import GlobalTopPanel from './GlobalTopPanel';
 import PrometheusDashboardWidget from './PrometheusDashboardWidget';
 import PrometheusHelpContent from './PrometheusHelpContent';
+import HelpPanel from './help/HelpPanel';
+import { HelpTopicId } from './help/HelpContent';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -265,7 +267,7 @@ const GenericVisual = () => (
     <div className="flex justify-center gap-6 opacity-40 select-none pointer-events-none">
         {[1, 2, 3].map((i) => (
             <div key={i} className={`
-w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 bg - white / 5 
+w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 bg - white / 5
               flex flex - col p - 4 gap - 3 transform
               ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
 `}>
@@ -278,6 +280,69 @@ w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 
                 </div>
             </div>
         ))}
+    </div>
+);
+
+const HelpVisual = () => (
+    <div className="flex justify-center gap-6 opacity-80 select-none pointer-events-none scale-90">
+        {/* Card 1: Left - Tilted */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-5 gap-4 transform -rotate-6 translate-y-8 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-[#4B8BB3]/10 rounded-bl-full"></div>
+            <div className="w-10 h-10 rounded-lg bg-[#4B8BB3]/20 flex items-center justify-center text-[#4B8BB3]">
+                <Sparkles size={20} />
+            </div>
+            <div className="space-y-2 mt-2">
+                <div className="w-3/4 h-3 bg-white/10 rounded"></div>
+                <div className="w-1/2 h-3 bg-white/10 rounded"></div>
+            </div>
+            <div className="mt-auto">
+                <div className="w-full h-16 bg-white/5 rounded-lg border border-white/5 p-3">
+                    <div className="w-full h-1.5 bg-[#4B8BB3]/30 rounded-full mb-2"></div>
+                    <div className="w-3/4 h-1.5 bg-white/10 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Card 2: Center - Main Feature Card */}
+        <div className="w-56 h-72 rounded-xl border border-[#4B8BB3]/30 bg-[#0f172a] shadow-2xl flex flex-col p-6 gap-4 transform -translate-y-2 z-10 relative overflow-hidden">
+            <div className="absolute -top-3 -right-3 w-10 h-10 bg-[#4B8BB3] rounded-full flex items-center justify-center shadow-lg border border-white/20">
+                <HelpCircle size={20} className="text-white" />
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-[#4B8BB3]/20 flex items-center justify-center text-[#4B8BB3] mb-2">
+                <Lightbulb size={24} />
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded-full"></div>
+            <div className="w-2/3 h-2 bg-white/10 rounded-full"></div>
+
+            <div className="mt-auto space-y-2">
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
+                    <div className="w-6 h-6 rounded bg-[#4B8BB3]/30"></div>
+                    <div className="flex-1 h-2 bg-white/20 rounded"></div>
+                </div>
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
+                    <div className="w-6 h-6 rounded bg-slate-700"></div>
+                    <div className="flex-1 h-2 bg-slate-600 rounded"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Card 3: Right - Tilted */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-5 gap-4 transform rotate-6 translate-y-8 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-brand-orange/10 rounded-bl-full"></div>
+            <div className="w-10 h-10 rounded-lg bg-brand-orange/20 flex items-center justify-center text-brand-orange">
+                <Flame size={20} />
+            </div>
+            <div className="space-y-2 mt-2">
+                <div className="w-full h-3 bg-white/10 rounded"></div>
+                <div className="w-2/3 h-3 bg-white/10 rounded"></div>
+            </div>
+            <div className="mt-auto">
+                <div className="w-full h-16 bg-white/5 rounded-lg border border-white/5 p-3">
+                    <div className="w-3/4 h-1.5 bg-brand-orange/20 rounded-full mb-2"></div>
+                    <div className="w-1/2 h-1.5 bg-white/10 rounded-full"></div>
+                </div>
+            </div>
+        </div>
     </div>
 );
 
@@ -833,6 +898,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
 
+    // --- HELP COLLECTION STATE ---
+    const [helpTopics, setHelpTopics] = useState<HelpTopic[]>([]);
+    const [isLoadingHelpTopics, setIsLoadingHelpTopics] = useState(false);
+    const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
+    const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId>('ai-insights');
+
     // Sync selectedCourseId with parent (for AI Panel Context)
     // Use a ref to track previously synced value and prevent redundant calls
     const lastSyncedCourseId = useRef<string | null>(null);
@@ -1009,6 +1080,50 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setSelectedCourseId(prev => prev === null ? prev : null);
         setSelectedInstructorId(prev => prev === null ? prev : null);
         setIsPlayerActive(false);
+    }, [activeCollectionId]);
+
+    // Fetch help topics when navigating to Help collection
+    useEffect(() => {
+        if (activeCollectionId === 'help') {
+            const fetchHelpTopics = async () => {
+                setIsLoadingHelpTopics(true);
+                try {
+                    const supabase = createClient();
+                    const { data, error } = await supabase
+                        .from('help_topics')
+                        .select('id, slug, title, summary, category, icon_name, display_order, is_active, created_at')
+                        .eq('is_active', true)
+                        .order('display_order', { ascending: true });
+
+                    if (error) {
+                        console.error('Error fetching help topics:', error);
+                        return;
+                    }
+
+                    // Map database fields to HelpTopic type
+                    const topics: HelpTopic[] = (data || []).map(row => ({
+                        type: 'HELP' as const,
+                        id: row.id,
+                        slug: row.slug,
+                        title: row.title,
+                        summary: row.summary,
+                        category: row.category,
+                        iconName: row.icon_name,
+                        displayOrder: row.display_order,
+                        isActive: row.is_active,
+                        createdAt: row.created_at
+                    }));
+
+                    setHelpTopics(topics);
+                } catch (err) {
+                    console.error('Error fetching help topics:', err);
+                } finally {
+                    setIsLoadingHelpTopics(false);
+                }
+            };
+
+            fetchHelpTopics();
+        }
     }, [activeCollectionId]);
 
     // Sync selectedCourseId with initialCourseId prop (which acts as activeCourseId from parent)
@@ -1727,6 +1842,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         if (activeCollectionId === 'instructors') return 'Course Experts';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
+        if (activeCollectionId === 'help') return 'Platform Features';
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
         if (predefined) return predefined.label;
@@ -1743,6 +1859,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'instructors') return 'Academy';
         if (activeCollectionId === 'personal-context') return 'Personal Context';
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
+        if (activeCollectionId === 'help') return 'Help Collection';
         return 'My Collection';
     };
 
@@ -1845,6 +1962,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'conversations') return <ConversationVisual />;
         if (activeCollectionId === 'company') return <CompanyVisual />;
         if (activeCollectionId === 'instructors') return <InstructorVisual />;
+        if (activeCollectionId === 'help') return <HelpVisual />;
         return <GenericVisual />;
     };
 
@@ -2682,7 +2800,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus */}
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help */}
                                     {!(activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'conversations' ||
                                         activeCollectionId === 'research' ||
@@ -2693,6 +2811,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         activeCollectionId === 'dashboard' ||
                                         activeCollectionId === 'prometheus' ||
                                         activeCollectionId === 'certifications' ||
+                                        activeCollectionId === 'help' ||
                                         viewingGroup ||
                                         (customCollections && customCollections.some(c => c.id === activeCollectionId))
                                     ) && (
@@ -2814,6 +2933,64 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                         ) : activeCollectionId === 'org-team' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
                                 <TeamManagement />
+                            </div>
+                        ) : activeCollectionId === 'help' ? (
+                            // --- HELP COLLECTION VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
+                                    {isLoadingHelpTopics ? (
+                                        <div className="text-white p-10 font-bold">Loading help topics...</div>
+                                    ) : helpTopics.length === 0 ? (
+                                        <div className="text-slate-500 p-10 flex flex-col items-center">
+                                            <p className="text-lg mb-2">No help topics available.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+                                            {helpTopics.map((topic, index) => (
+                                                <div
+                                                    key={topic.id}
+                                                    className="animate-fade-in-up"
+                                                    style={{ animationDelay: `${index * 50}ms` }}
+                                                >
+                                                    <UniversalCard
+                                                        type="HELP"
+                                                        title={topic.title}
+                                                        description={topic.summary}
+                                                        meta={topic.category || 'Platform'}
+                                                        onAction={() => {
+                                                            setActiveHelpTopicId(topic.slug as HelpTopicId);
+                                                            setIsHelpPanelOpen(true);
+                                                        }}
+                                                        draggable={false}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Help Collection Footer */}
+                                    {helpTopics.length > 0 && (
+                                        <div className="col-span-full flex flex-col items-center justify-center pt-20 pb-10 opacity-60">
+                                            <div className="mb-6 relative w-32 h-32">
+                                                <div className="absolute inset-0 bg-[#4B8BB3]/20 blur-2xl rounded-full"></div>
+                                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                                    <HelpCircle className="text-[#4B8BB3] w-full h-full" strokeWidth={1} />
+                                                </div>
+                                            </div>
+                                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Explore Platform Features</h3>
+                                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                                Click any card above to learn more about that feature. Use the Collection Assistant to ask questions about the platform.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* HelpPanel for viewing topic content */}
+                                <HelpPanel
+                                    isOpen={isHelpPanelOpen}
+                                    onClose={() => setIsHelpPanelOpen(false)}
+                                    topicId={activeHelpTopicId}
+                                />
                             </div>
                         ) : (
                             <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>

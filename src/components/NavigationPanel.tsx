@@ -590,6 +590,17 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   My Account
                 </button>
 
+                <button
+                  onClick={() => {
+                    router.push('/settings');
+                    setIsProfileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <Settings size={16} className="mr-3 text-slate-400" />
+                  Settings
+                </button>
+
                 {/* Expert Dashboard Link - Only for approved experts */}
                 {userProfile?.authorStatus === 'approved' && (
                   <button

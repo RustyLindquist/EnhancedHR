@@ -17,7 +17,8 @@ import {
   Bot,
   Brain,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  HelpCircle
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -700,6 +701,7 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'certifications', label: 'Certifications', icon: Award },
   { id: 'personal-context', label: 'Personal Context', icon: Brain },
+  { id: 'help', label: 'Help', icon: HelpCircle, color: 'text-brand-blue-light' },
 ];
 
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [

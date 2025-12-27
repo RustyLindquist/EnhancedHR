@@ -35,7 +35,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[75vh]
             `}
                 style={{
-                    top: isOpen ? '60px' : '-100%'
+                    top: isOpen ? '0' : '-100%'
                 }}
             >
                 {/* Header - Padding increased to clear sidebars (Nav: 288px, AI: ~400px) */}
