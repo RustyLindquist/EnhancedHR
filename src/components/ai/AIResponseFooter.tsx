@@ -10,6 +10,7 @@ import {
   ExtractedInsight,
 } from '@/types/insights';
 import { saveInsight, declineInsight } from '@/app/actions/insights';
+import { dispatchCollectionRefresh } from '@/lib/collection-events';
 
 interface AIResponseFooterProps {
   /** Pending insights for manual approval mode */
@@ -64,6 +65,10 @@ const AIResponseFooter: React.FC<AIResponseFooterProps> = ({
         if (result.success) {
           setDismissedInsights((prev) => new Set([...prev, pending.id]));
           onInsightStatusChange?.(pending.id, 'saved');
+
+          // Trigger collection count refresh via global event system
+          // This ensures the nav panel count updates immediately
+          dispatchCollectionRefresh();
         } else {
           console.error('[AIResponseFooter] Failed to save insight:', result.error);
         }

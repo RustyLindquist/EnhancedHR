@@ -895,6 +895,31 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     }, [savedItemIds, onCollectionUpdate, refreshTrigger, user?.id]);
 
+    // Listen for global collection refresh events (from insight saves, etc.)
+    useEffect(() => {
+        const handleCollectionRefresh = () => {
+            console.log('[MainCanvas] Collection refresh event received');
+            if (user?.id) {
+                import('@/app/actions/collections').then(mod => {
+                    mod.getCollectionCountsAction(user.id).then(setCollectionCounts);
+                });
+            }
+            // Also refresh collection items if we're viewing a collection
+            if (activeCollectionId && activeCollectionId !== 'academy' && activeCollectionId !== 'dashboard') {
+                setRefreshTrigger(prev => prev + 1);
+            }
+            // Notify parent (AppLayout/Dashboard) to also refresh
+            if (onCollectionUpdate) {
+                onCollectionUpdate();
+            }
+        };
+
+        window.addEventListener('collection:refresh', handleCollectionRefresh);
+        return () => {
+            window.removeEventListener('collection:refresh', handleCollectionRefresh);
+        };
+    }, [user?.id, activeCollectionId, onCollectionUpdate]);
+
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
 
