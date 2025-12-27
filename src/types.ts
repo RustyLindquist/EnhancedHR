@@ -200,6 +200,22 @@ export interface ProfileDetails {
     collections?: string[];
 }
 
+// --- Help System Types ---
+
+export interface HelpTopic {
+    type: 'HELP';
+    id: string;
+    slug: string;
+    title: string;
+    summary: string;
+    category?: string;
+    iconName?: string;
+    displayOrder: number;
+    isActive?: boolean;
+    createdAt?: string;
+    collections?: string[]; // For ContextCard compatibility (help topics are not draggable)
+}
+
 // Drag Item Types (used for drag/drop and modal operations)
 export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE';
 
@@ -214,7 +230,7 @@ export interface DragItem {
 }
 
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | DragItem;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | HelpTopic | DragItem;
 
 export interface BackgroundTheme {
   id: string;
