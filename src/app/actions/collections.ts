@@ -404,10 +404,13 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
 export async function syncConversationCollectionsAction(userId: string, conversationId: string, targetIds: string[]) {
     const admin = createAdminClient();
 
-    // 1. Resolve Targets
+    // Nav filter IDs that are not real collections - filter these out
+    const NAV_FILTER_IDS = ['conversations', 'prometheus', 'dashboard', 'academy', 'certifications', 'instructors'];
+
+    // 1. Resolve Targets (filter out nav-filter IDs)
     const resolvedTargetIds: string[] = [];
     for (const id of targetIds) {
-        if (id === 'new') continue;
+        if (id === 'new' || NAV_FILTER_IDS.includes(id)) continue;
         const resolved = await resolveCollectionId(admin, id, userId);
         if (resolved) resolvedTargetIds.push(resolved);
     }

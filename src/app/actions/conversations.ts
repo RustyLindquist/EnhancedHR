@@ -76,7 +76,8 @@ export async function fetchConversationsAction(): Promise<Conversation[]> {
             type: 'CONVERSATION',
             lastMessage: lastMsgContent,
             messages: sortedMessages,
-            collections: ['conversations', ...(c.metadata?.collection_ids || [])],
+            // Only include actual collection IDs, not nav filters like 'conversations'
+            collections: c.metadata?.collection_ids || [],
             isSaved: (c.metadata?.collection_ids?.length || 0) > 0 || c.is_saved
         };
     });

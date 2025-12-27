@@ -26,8 +26,31 @@
   --animate-neon-float-2: neon-float 9s ease-in-out infinite;
   --animate-neon-float-3: neon-float 12s ease-in-out infinite;
   --animate-shine: shine 1s;
+  --animate-count-glow: count-glow 1000ms ease-out forwards;
 
   /* Keyframes */
+  @keyframes count-glow {
+    0% {
+      opacity: 0;
+      box-shadow: 0 0 0px 0px rgba(251, 191, 36, 0);
+      background-color: rgba(251, 191, 36, 0);
+    }
+    15% {
+      opacity: 1;
+      box-shadow: 0 0 20px 8px rgba(251, 191, 36, 0.8);
+      background-color: rgba(251, 191, 36, 0.3);
+    }
+    40% {
+      opacity: 1;
+      box-shadow: 0 0 16px 6px rgba(251, 191, 36, 0.6);
+      background-color: rgba(251, 191, 36, 0.2);
+    }
+    100% {
+      opacity: 0;
+      box-shadow: 0 0 0px 0px rgba(251, 191, 36, 0);
+      background-color: rgba(251, 191, 36, 0);
+    }
+  }
   @keyframes float {
 
     0%,

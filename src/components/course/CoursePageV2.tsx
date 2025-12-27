@@ -444,6 +444,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                         transitionToPlayer();
                     }
                 }}
+                onAddToCollection={() => onAddToCollection({
+                    type: 'COURSE',
+                    id: course.id,
+                    title: course.title
+                })}
             />
 
             {/* Main Content Area */}
