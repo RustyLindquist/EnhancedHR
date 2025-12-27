@@ -453,6 +453,7 @@ function HomeContent() {
           initialCourseId={activeCourseId ? parseInt(activeCourseId, 10) : undefined}
           onResumeConversation={handleResumeConversation}
           activeConversationId={activeConversationId}
+          onClearConversation={() => setActiveConversationId(null)}
           useDashboardV3={true}
           onCollectionUpdate={() => {
             if (user) refreshCollectionsAndCounts(user.id);
