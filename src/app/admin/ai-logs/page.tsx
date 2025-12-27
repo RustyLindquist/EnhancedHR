@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Search, Filter, MessageSquare, User, Bot, Calendar, ChevronRight, X, Layout } from 'lucide-react';
+import { Loader2, Search, Filter, MessageSquare, User, Bot, Calendar, ChevronRight, X, Layout, TrendingUp, TrendingDown, DollarSign, Zap, Clock, Hash } from 'lucide-react';
 import { format } from 'date-fns';
+import { getUsageOverview, getCostByAgent, getAgentTypes, type UsageOverview, type AgentCostSummary } from '@/app/actions/cost-analytics';
 
 interface AILog {
     id: string;
@@ -14,6 +15,11 @@ interface AILog {
     prompt: string;
     response: string;
     created_at: string;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    cost_usd?: number;
+    model_id?: string;
     metadata: any;
     user?: {
         full_name: string;
@@ -21,6 +27,17 @@ interface AILog {
         email: string;
     };
 }
+
+// Agent type display configuration
+const AGENT_LABELS: Record<string, { label: string; color: string }> = {
+    platform_assistant: { label: 'Platform', color: 'from-blue-500 to-blue-600' },
+    course_assistant: { label: 'Course Assistant', color: 'from-emerald-500 to-emerald-600' },
+    course_tutor: { label: 'Course Tutor', color: 'from-purple-500 to-purple-600' },
+    collection_assistant: { label: 'Collection', color: 'from-amber-500 to-amber-600' },
+};
+
+// Agent types to exclude from filter buttons (backend-only agents)
+const HIDDEN_AGENT_TYPES = ['recommendations', 'title_generation', 'embeddings', 'insight_extraction'];
 
 export default function AdminAILogsPage() {
     const [logs, setLogs] = useState<AILog[]>([]);
@@ -31,25 +48,58 @@ export default function AdminAILogsPage() {
     const [conversationLogs, setConversationLogs] = useState<AILog[]>([]);
     const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
+    // Analytics state
+    const [selectedAgentFilter, setSelectedAgentFilter] = useState<string>('all');
+    const [agentTypes, setAgentTypes] = useState<string[]>([]);
+    const [usageOverview, setUsageOverview] = useState<UsageOverview | null>(null);
+    const [agentCosts, setAgentCosts] = useState<AgentCostSummary[]>([]);
+    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+
     const supabase = createClient();
 
     useEffect(() => {
         fetchLogs();
+        fetchAnalytics();
     }, []);
+
+    useEffect(() => {
+        fetchLogs();
+    }, [selectedAgentFilter]);
+
+    const fetchAnalytics = async () => {
+        setIsLoadingAnalytics(true);
+        try {
+            const [overview, agents, types] = await Promise.all([
+                getUsageOverview(7),
+                getCostByAgent(30),
+                getAgentTypes()
+            ]);
+            setUsageOverview(overview);
+            setAgentCosts(agents);
+            setAgentTypes(types);
+        } catch (error) {
+            console.error('Error fetching analytics:', error);
+        } finally {
+            setIsLoadingAnalytics(false);
+        }
+    };
 
     const fetchLogs = async () => {
         setIsLoading(true);
         try {
-            // Fetch logs with user details
-            // Note: We need to join with profiles. Since Supabase client doesn't support deep joins easily without foreign keys set up perfectly for this view,
-            // we might need to fetch profiles separately or rely on the view.
-            // Let's try a direct join if the foreign key exists.
-
-            const { data, error } = await supabase
+            // Build query with optional agent filter
+            let query = supabase
                 .from('ai_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(100);
+
+            // Apply agent filter if not 'all'
+            if (selectedAgentFilter && selectedAgentFilter !== 'all') {
+                query = query.eq('agent_type', selectedAgentFilter);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
@@ -123,12 +173,118 @@ export default function AdminAILogsPage() {
             <div className={`flex-1 flex flex-col min-w-0 ${selectedLog ? 'hidden md:flex md:w-1/2 lg:w-2/5 border-r border-white/10' : 'w-full'}`}>
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 bg-[#0f172a]/50 backdrop-blur-xl sticky top-0 z-10">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="p-6 border-b border-white/10 bg-[#0f172a]/50 backdrop-blur-xl sticky top-0 z-10 space-y-4">
+                    <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-light tracking-wide">AI Conversation Logs</h1>
-                        <button onClick={fetchLogs} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <button onClick={() => { fetchLogs(); fetchAnalytics(); }} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
                             <Layout size={20} className="text-slate-400" />
                         </button>
+                    </div>
+
+                    {/* Usage Analytics Dashboard */}
+                    <div className="grid grid-cols-4 gap-3">
+                        {/* Requests Card */}
+                        <div className="bg-[#1e293b]/50 border border-white/5 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Requests (7d)</span>
+                                <Hash size={12} className="text-slate-500" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <span className="text-xl font-bold text-white">
+                                    {isLoadingAnalytics ? '...' : usageOverview?.totalRequests.toLocaleString() || '0'}
+                                </span>
+                                {!isLoadingAnalytics && usageOverview && usageOverview.requestsChange !== 0 && (
+                                    <span className={`text-[10px] flex items-center gap-0.5 ${usageOverview.requestsChange > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {usageOverview.requestsChange > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                        {Math.abs(usageOverview.requestsChange).toFixed(0)}%
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Cost Card */}
+                        <div className="bg-[#1e293b]/50 border border-white/5 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Cost (7d)</span>
+                                <DollarSign size={12} className="text-slate-500" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <span className="text-xl font-bold text-white">
+                                    ${isLoadingAnalytics ? '...' : usageOverview?.totalCost.toFixed(2) || '0.00'}
+                                </span>
+                                {!isLoadingAnalytics && usageOverview && usageOverview.costChange !== 0 && (
+                                    <span className={`text-[10px] flex items-center gap-0.5 ${usageOverview.costChange < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {usageOverview.costChange > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                        {Math.abs(usageOverview.costChange).toFixed(0)}%
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Tokens Card */}
+                        <div className="bg-[#1e293b]/50 border border-white/5 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Tokens (7d)</span>
+                                <Zap size={12} className="text-slate-500" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <span className="text-xl font-bold text-white">
+                                    {isLoadingAnalytics ? '...' : (usageOverview?.totalTokens ? (usageOverview.totalTokens / 1000).toFixed(0) + 'K' : '0')}
+                                </span>
+                                {!isLoadingAnalytics && usageOverview && usageOverview.tokensChange !== 0 && (
+                                    <span className={`text-[10px] flex items-center gap-0.5 ${usageOverview.tokensChange > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {usageOverview.tokensChange > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                        {Math.abs(usageOverview.tokensChange).toFixed(0)}%
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Avg Conversation Length Card */}
+                        <div className="bg-[#1e293b]/50 border border-white/5 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Avg Length</span>
+                                <Clock size={12} className="text-slate-500" />
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <span className="text-xl font-bold text-white">
+                                    {isLoadingAnalytics ? '...' : usageOverview?.avgConversationLength.toFixed(1) || '0'}
+                                </span>
+                                <span className="text-[10px] text-slate-500">msgs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Agent Filter Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={() => setSelectedAgentFilter('all')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                selectedAgentFilter === 'all'
+                                    ? 'bg-white/10 text-white border border-white/20'
+                                    : 'bg-white/5 text-slate-400 border border-transparent hover:bg-white/10 hover:text-white'
+                            }`}
+                        >
+                            All Agents
+                        </button>
+                        {agentTypes
+                            .filter(agent => !HIDDEN_AGENT_TYPES.includes(agent))
+                            .map((agent) => {
+                                const config = AGENT_LABELS[agent] || { label: agent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), color: 'from-slate-500 to-slate-600' };
+                                return (
+                                    <button
+                                        key={agent}
+                                        onClick={() => setSelectedAgentFilter(agent)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            selectedAgentFilter === agent
+                                                ? `bg-gradient-to-r ${config.color} text-white shadow-lg`
+                                                : 'bg-white/5 text-slate-400 border border-transparent hover:bg-white/10 hover:text-white'
+                                        }`}
+                                    >
+                                        {config.label}
+                                    </button>
+                                );
+                            })}
                     </div>
 
                     {/* Search */}
@@ -182,15 +338,30 @@ export default function AdminAILogsPage() {
                                     <p className="text-sm text-white line-clamp-2 font-medium">{log.prompt}</p>
                                 </div>
 
-                                <div className="flex items-center gap-3 text-[10px] text-slate-500 uppercase tracking-wider">
-                                    <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
-                                        <Bot size={10} /> {log.agent_type}
-                                    </span>
-                                    {log.page_context && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase tracking-wider">
                                         <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
-                                            <Layout size={10} /> {log.page_context}
+                                            <Bot size={10} /> {AGENT_LABELS[log.agent_type]?.label || log.agent_type}
                                         </span>
-                                    )}
+                                        {log.page_context && (
+                                            <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
+                                                <Layout size={10} /> {log.page_context}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* Token & Cost Info */}
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                        {log.total_tokens != null && log.total_tokens > 0 && (
+                                            <span className="flex items-center gap-1">
+                                                <Zap size={10} /> {log.total_tokens.toLocaleString()}
+                                            </span>
+                                        )}
+                                        {log.cost_usd != null && log.cost_usd > 0 && (
+                                            <span className="flex items-center gap-1 text-emerald-400/80">
+                                                <DollarSign size={10} /> {log.cost_usd.toFixed(4)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))
