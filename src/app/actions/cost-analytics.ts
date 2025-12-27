@@ -481,3 +481,331 @@ export async function getAgentTypes(): Promise<string[]> {
   const unique = [...new Set(data.map(r => r.agent_type))];
   return unique.filter(Boolean).sort();
 }
+
+// ============================================================================
+// Analytics Context for AI Assistant
+// ============================================================================
+
+export type AnalyticsAccessLevel = 'platform_admin' | 'org_admin' | 'expert';
+export type ExpertScopeFilter = 'personal' | 'platform';
+
+export interface AnalyticsScope {
+  accessLevel: AnalyticsAccessLevel;
+  orgId?: string;
+  courseIds?: number[];  // For experts
+  expertScopeFilter?: ExpertScopeFilter;  // Allow experts to toggle between personal/platform view
+}
+
+export interface AnalyticsContext {
+  usageMetrics: {
+    totalRequests: number;
+    totalCost: number;
+    totalTokens: number;
+    avgTokensPerRequest: number;
+    avgCostPerRequest: number;
+    requestsTrend: string;
+    costTrend: string;
+  };
+  agentBreakdown: Array<{
+    agent: string;
+    requests: number;
+    cost: number;
+    tokens: number;
+    percentOfTotal: number;
+  }>;
+  topicSummary: Array<{
+    topic: string;
+    count: number;
+    percentage: number;
+  }>;
+  recentQuestions: string[];
+  timeRange: string;
+  scope: string;  // Description of the data scope
+}
+
+/**
+ * Determine the user's analytics access scope based on their role
+ */
+export async function getAnalyticsScope(): Promise<AnalyticsScope | null> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Get user profile with org and role info
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, membership_status, org_id')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile) return null;
+
+  // Platform Admin - full access
+  if (profile.role === 'admin') {
+    return { accessLevel: 'platform_admin' };
+  }
+
+  // Org Admin - org-scoped access
+  if (profile.membership_status === 'org_admin' && profile.org_id) {
+    return { accessLevel: 'org_admin', orgId: profile.org_id };
+  }
+
+  // Expert - check if they have authored courses
+  const { data: courses } = await supabase
+    .from('courses')
+    .select('id')
+    .eq('author_id', user.id);
+
+  if (courses && courses.length > 0) {
+    return {
+      accessLevel: 'expert',
+      courseIds: courses.map(c => c.id)
+    };
+  }
+
+  return null;  // No analytics access
+}
+
+/**
+ * Get comprehensive analytics context for the analytics assistant
+ * This provides aggregated, anonymized data for AI analysis
+ * Respects role-based access controls
+ */
+export async function getAnalyticsContext(
+  daysBack: number = 30,
+  scope?: AnalyticsScope
+): Promise<AnalyticsContext> {
+  const supabase = await createClient();
+
+  // If no scope provided, determine from user role
+  const effectiveScope = scope || await getAnalyticsScope();
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysBack);
+
+  // Build base query
+  let query = supabase
+    .from('ai_logs')
+    .select('agent_type, prompt, total_tokens, cost_usd, created_at, page_context, org_id')
+    .gte('created_at', startDate.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  // Apply scope filters
+  let scopeDescription = 'Platform-wide';
+  let isExpertPlatformView = false;
+
+  if (effectiveScope?.accessLevel === 'org_admin' && effectiveScope.orgId) {
+    query = query.eq('org_id', effectiveScope.orgId);
+    scopeDescription = 'Your organization';
+  } else if (effectiveScope?.accessLevel === 'expert') {
+    // Expert can toggle between personal (their courses) and platform-wide
+    const scopeFilter = effectiveScope.expertScopeFilter || 'personal';
+
+    if (scopeFilter === 'personal' && effectiveScope.courseIds?.length) {
+      // Filter to course-related conversations
+      const coursePatterns = effectiveScope.courseIds.map(id => `course-${id}`);
+      query = query.or(coursePatterns.map(p => `page_context.like.${p}%`).join(','));
+      scopeDescription = 'Your courses';
+    } else {
+      // Platform-wide view for experts - aggregated data only
+      scopeDescription = 'Platform-wide (aggregated)';
+      isExpertPlatformView = true;
+    }
+  }
+
+  // Fetch logs for the period
+  const { data: logs, error } = await query;
+
+  if (error || !logs) {
+    return {
+      usageMetrics: {
+        totalRequests: 0,
+        totalCost: 0,
+        totalTokens: 0,
+        avgTokensPerRequest: 0,
+        avgCostPerRequest: 0,
+        requestsTrend: 'stable',
+        costTrend: 'stable',
+      },
+      agentBreakdown: [],
+      topicSummary: [],
+      recentQuestions: [],
+      timeRange: `Last ${daysBack} days`,
+      scope: scopeDescription,
+    };
+  }
+
+  // Calculate usage metrics
+  const totalRequests = logs.length;
+  const totalCost = logs.reduce((sum, r) => sum + (r.cost_usd || 0), 0);
+  const totalTokens = logs.reduce((sum, r) => sum + (r.total_tokens || 0), 0);
+
+  // Get overview for trend calculation
+  const overview = await getUsageOverview(daysBack);
+
+  // Calculate agent breakdown
+  const agentMap: Record<string, { requests: number; cost: number; tokens: number }> = {};
+  logs.forEach(log => {
+    if (!agentMap[log.agent_type]) {
+      agentMap[log.agent_type] = { requests: 0, cost: 0, tokens: 0 };
+    }
+    agentMap[log.agent_type].requests++;
+    agentMap[log.agent_type].cost += log.cost_usd || 0;
+    agentMap[log.agent_type].tokens += log.total_tokens || 0;
+  });
+
+  const agentBreakdown = Object.entries(agentMap)
+    .map(([agent, stats]) => ({
+      agent,
+      requests: stats.requests,
+      cost: stats.cost,
+      tokens: stats.tokens,
+      percentOfTotal: totalRequests > 0 ? (stats.requests / totalRequests) * 100 : 0,
+    }))
+    .sort((a, b) => b.requests - a.requests);
+
+  // Extract topic patterns from prompts (simple keyword extraction)
+  const topicKeywords: Record<string, number> = {};
+  const commonTopics = [
+    'onboarding', 'performance', 'review', 'training', 'compliance',
+    'leadership', 'management', 'policy', 'benefits', 'compensation',
+    'recruiting', 'hiring', 'interview', 'feedback', 'development',
+    'career', 'promotion', 'termination', 'harassment', 'diversity',
+    'remote', 'hybrid', 'engagement', 'retention', 'culture'
+  ];
+
+  logs.forEach(log => {
+    const promptLower = log.prompt.toLowerCase();
+    commonTopics.forEach(topic => {
+      if (promptLower.includes(topic)) {
+        topicKeywords[topic] = (topicKeywords[topic] || 0) + 1;
+      }
+    });
+  });
+
+  const topicSummary = Object.entries(topicKeywords)
+    .map(([topic, count]) => ({
+      topic: topic.charAt(0).toUpperCase() + topic.slice(1),
+      count,
+      percentage: totalRequests > 0 ? (count / totalRequests) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // Get recent unique questions
+  // For expert platform view, show topic-based summaries instead of raw questions for privacy
+  let recentQuestions: string[];
+
+  if (isExpertPlatformView) {
+    // For experts viewing platform data, provide anonymized topic-based insights instead
+    recentQuestions = topicSummary.slice(0, 5).map(t =>
+      `Questions about "${t.topic}" (${t.count} conversations)`
+    );
+  } else {
+    // For personal views (own courses, org, or platform admin), show actual questions
+    recentQuestions = logs
+      .slice(0, 20)
+      .map(log => {
+        const prompt = log.prompt.substring(0, 100);
+        return prompt.length === 100 ? prompt + '...' : prompt;
+      })
+      .filter((q, i, arr) => arr.indexOf(q) === i)
+      .slice(0, 10);
+  }
+
+  return {
+    usageMetrics: {
+      totalRequests,
+      totalCost,
+      totalTokens,
+      avgTokensPerRequest: totalRequests > 0 ? totalTokens / totalRequests : 0,
+      avgCostPerRequest: totalRequests > 0 ? totalCost / totalRequests : 0,
+      requestsTrend: overview.requestsChange > 5 ? 'increasing' : overview.requestsChange < -5 ? 'decreasing' : 'stable',
+      costTrend: overview.costChange > 5 ? 'increasing' : overview.costChange < -5 ? 'decreasing' : 'stable',
+    },
+    agentBreakdown,
+    topicSummary,
+    recentQuestions,
+    timeRange: `Last ${daysBack} days`,
+    scope: scopeDescription,
+  };
+}
+
+/**
+ * Format analytics context as a string for AI consumption
+ * Respects role-based access and includes scope information
+ */
+export async function getAnalyticsContextString(
+  daysBack: number = 30,
+  scopeFilter?: ExpertScopeFilter
+): Promise<string> {
+  // Get the user's base scope
+  const baseScope = await getAnalyticsScope();
+
+  // Apply scope filter override for experts
+  let scope = baseScope;
+  if (baseScope?.accessLevel === 'expert' && scopeFilter) {
+    scope = { ...baseScope, expertScopeFilter: scopeFilter };
+  }
+
+  const context = await getAnalyticsContext(daysBack, scope || undefined);
+
+  const sections = [
+    `## AI Usage Analytics (${context.timeRange})`,
+    `**Data Scope:** ${context.scope}`,
+    '',
+    '### Usage Metrics',
+    `- Total Requests: ${context.usageMetrics.totalRequests.toLocaleString()}`,
+    `- Total Cost: $${context.usageMetrics.totalCost.toFixed(2)}`,
+    `- Total Tokens: ${(context.usageMetrics.totalTokens / 1000).toFixed(0)}K`,
+    `- Avg Tokens/Request: ${context.usageMetrics.avgTokensPerRequest.toFixed(0)}`,
+    `- Avg Cost/Request: $${context.usageMetrics.avgCostPerRequest.toFixed(4)}`,
+    `- Request Trend: ${context.usageMetrics.requestsTrend}`,
+    `- Cost Trend: ${context.usageMetrics.costTrend}`,
+    '',
+    '### Usage by Agent',
+    ...context.agentBreakdown.map(a =>
+      `- ${a.agent}: ${a.requests} requests (${a.percentOfTotal.toFixed(1)}%), $${a.cost.toFixed(2)}`
+    ),
+    '',
+    '### Top Topics (from user queries)',
+    ...context.topicSummary.map(t =>
+      `- ${t.topic}: ${t.count} mentions (${t.percentage.toFixed(1)}%)`
+    ),
+    '',
+    '### Sample Recent Questions',
+    ...context.recentQuestions.map(q => `- "${q}"`),
+  ];
+
+  return sections.join('\n');
+}
+
+/**
+ * Get analytics context for Org Admins
+ * Returns aggregated, privacy-preserving data (no raw conversations)
+ */
+export async function getOrgAnalyticsContext(
+  orgId: string,
+  daysBack: number = 30
+): Promise<AnalyticsContext> {
+  return getAnalyticsContext(daysBack, {
+    accessLevel: 'org_admin',
+    orgId
+  });
+}
+
+/**
+ * Get analytics context for Experts (course authors)
+ * Returns data filtered to their courses only
+ */
+export async function getExpertAnalyticsContext(
+  courseIds: number[],
+  daysBack: number = 30
+): Promise<AnalyticsContext> {
+  return getAnalyticsContext(daysBack, {
+    accessLevel: 'expert',
+    courseIds
+  });
+}
