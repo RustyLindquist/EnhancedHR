@@ -68,8 +68,7 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
                     >
                         <div className={`absolute inset-0 bg-gradient-to-br ${ACCENT_COLORS[index % ACCENT_COLORS.length]} opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-500`} />
                         <div className="relative z-10">
-                            <h3 className="text-sm font-medium text-slate-200 group-hover:text-white mb-1 transition-colors">{prompt.label}</h3>
-                            <p className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors line-clamp-2">{prompt.category}</p>
+                            <h3 className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors line-clamp-2">{prompt.label}</h3>
                         </div>
                     </button>
                 ))}
