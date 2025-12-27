@@ -33,6 +33,7 @@ interface UserDashboardV3Props {
     onSetPrometheusPagePrompt: (prompt: string) => void;
     onAddCourse: (course: Course) => void;
     onResumeConversation?: (conversation: Conversation) => void;
+    onCourseDragStart?: (courseId: number) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
@@ -45,7 +46,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     onSetAIPrompt,
     onSetPrometheusPagePrompt,
     onAddCourse,
-    onResumeConversation
+    onResumeConversation,
+    onCourseDragStart
 }) => {
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
@@ -214,6 +216,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                                 rating={course.rating}
                                                 onAction={() => onStartCourse(course.id)}
                                                 onAdd={() => onAddCourse(course)}
+                                                draggable={!!onCourseDragStart}
+                                                onDragStart={() => onCourseDragStart?.(course.id)}
                                             />
                                         </div>
                                     ))}
@@ -246,6 +250,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                                 rating={course.rating}
                                                 onAction={() => onStartCourse(course.id)}
                                                 onAdd={() => onAddCourse(course)}
+                                                draggable={!!onCourseDragStart}
+                                                onDragStart={() => onCourseDragStart?.(course.id)}
                                             />
                                         </div>
                                     ))}
@@ -331,6 +337,8 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                         rating={course.rating}
                                         onAction={() => onStartCourse(course.id)}
                                         onAdd={() => onAddCourse(course)}
+                                        draggable={!!onCourseDragStart}
+                                        onDragStart={() => onCourseDragStart?.(course.id)}
                                     />
                                 </div>
                             ))}
