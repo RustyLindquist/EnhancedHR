@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download } from 'lucide-react';
+import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
 import CollectionSurface from './CollectionSurface';
@@ -47,6 +48,7 @@ interface MainCanvasProps {
     initialCourseId?: number | null;
     onResumeConversation?: (conversation: Conversation) => void;
     activeConversationId?: string | null;
+    onClearConversation?: () => void;
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
     academyResetKey?: number; // Triggers filter reset when Academy is clicked
@@ -714,6 +716,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     initialCourseId,
     onResumeConversation,
     activeConversationId,
+    onClearConversation,
     useDashboardV3,
     onCollectionUpdate,
     academyResetKey,
@@ -1793,8 +1796,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     const handleSaveConversation = () => {
-        if (activeConversation) {
-            onOpenModal(activeConversation);
+        // Use effective conversation - either activeConversation or from conversations array via activeConversationId
+        const effectiveConversation = activeConversation || (activeConversationId ? conversations.find(c => c.id === activeConversationId) : null);
+        if (effectiveConversation) {
+            onOpenModal(effectiveConversation);
         }
     };
 
@@ -1853,9 +1858,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setActiveConversation(null);
         setPrometheusConversationTitle('New Conversation');
         setPrometheusPagePrompt(''); // Clear prompt
-        // Force refresh? 
-        // PrometheusFullPage uses currentConversationId. If we set activeConversation to null, we pass undefined.
-        // It should start new.
+        // Clear parent's activeConversationId so we don't reload the old conversation
+        if (onClearConversation) {
+            onClearConversation();
+        }
     };
 
     // Dynamic Title Generator
@@ -2721,40 +2727,53 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     ) : activeCollectionId === 'prometheus' ? (
                                         /* Prometheus Actions */
                                         <div className="flex items-center gap-3">
-                                            {activeConversation && (
-                                                <button
-                                                    onClick={handleNewConversation}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                                >
-                                                    <MessageSquare size={14} /> New Conversation
-                                                </button>
-                                            )}
+                                            {/* Compute effective conversation data (handles both activeConversation and activeConversationId) */}
+                                            {(() => {
+                                                const effectiveConversation = activeConversation || (activeConversationId ? conversations.find(c => c.id === activeConversationId) : null);
+                                                const effectiveMessages = effectiveConversation?.messages || [];
+                                                const effectiveTitle = effectiveConversation?.title || prometheusConversationTitle || 'Prometheus Conversation';
+                                                const hasActiveConversation = effectiveConversation !== null;
+                                                const hasMessages = effectiveMessages.length > 0;
 
+                                                return (
+                                                    <>
+                                                        {hasActiveConversation && (
+                                                            <button
+                                                                onClick={handleNewConversation}
+                                                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                            >
+                                                                <MessageSquare size={14} /> New Conversation
+                                                            </button>
+                                                        )}
 
+                                                        {/* Export Button - circular icon */}
+                                                        {hasMessages && (
+                                                            <button
+                                                                onClick={() => exportConversationAsMarkdown(
+                                                                    effectiveMessages,
+                                                                    effectiveTitle,
+                                                                    'Prometheus AI'
+                                                                )}
+                                                                className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                                                title="Export conversation as Markdown"
+                                                            >
+                                                                <Download size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                            </button>
+                                                        )}
 
-                                            {activeConversation && prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
-                                                <button
-                                                    onClick={handleSaveConversation}
-                                                    disabled={!!activeConversation?.isSaved}
-                                                    className={`
-                                        flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
-                                        ${activeConversation?.isSaved
-                                                            ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
-                                                            : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
-                                                        }
-`}
-                                                >
-                                                    {activeConversation?.isSaved ? (
-                                                        <>
-                                                            <Check size={14} /> Saved to Collection
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Plus size={14} /> Add to Collection
-                                                        </>
-                                                    )}
-                                                </button>
-                                            )}
+                                                        {/* Add to Collection Button - circular icon, always enabled for multi-collection support */}
+                                                        {hasActiveConversation && effectiveTitle !== 'New Conversation' && (
+                                                            <button
+                                                                onClick={handleSaveConversation}
+                                                                className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                                                title="Save this conversation to a Collection"
+                                                            >
+                                                                <Plus size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
                                         /* Dashboard V3 Stats in Header - Smaller with warm glow */
@@ -3148,10 +3167,11 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 })}
                                             </div>
                                         ) : (
-                                            // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Personal, Custom)
                                             (activeCollectionId === 'favorites' ||
                                                 activeCollectionId === 'research' ||
                                                 activeCollectionId === 'to_learn' ||
+                                                activeCollectionId === 'conversations' ||
                                                 activeCollectionId === 'personal-context' ||
                                                 activeCollectionId === 'org-collections' ||
                                                 activeCollectionId === 'org-analytics' ||

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download } from 'lucide-react';
+import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -381,15 +382,29 @@ const AIPanel: React.FC<AIPanelProps> = ({
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
               </div>
             </div>
-            {/* Add to Collection Button - only show when there's an active conversation */}
-            {conversationId && onAddConversationToCollection && (
-              <button
-                onClick={() => onAddConversationToCollection(conversationId, conversationTitle)}
-                className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95 flex-shrink-0"
-                title="Save this conversation to a Collection"
-              >
-                <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-              </button>
+            {/* Action Buttons - only show when there's an active conversation with messages */}
+            {conversationId && messages.length > 0 && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Export Button */}
+                <button
+                  onClick={() => exportConversationAsMarkdown(messages, conversationTitle, agentInfo.name)}
+                  className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                  title="Export conversation as Markdown"
+                >
+                  <Download size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                </button>
+
+                {/* Add to Collection Button */}
+                {onAddConversationToCollection && (
+                  <button
+                    onClick={() => onAddConversationToCollection(conversationId, conversationTitle)}
+                    className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                    title="Save this conversation to a Collection"
+                  >
+                    <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
