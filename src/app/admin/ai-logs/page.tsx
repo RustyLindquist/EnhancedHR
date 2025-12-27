@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Search, Filter, MessageSquare, User, Bot, Calendar, ChevronRight, X, Layout, TrendingUp, TrendingDown, DollarSign, Zap, Clock, Hash } from 'lucide-react';
+import { Loader2, Search, Filter, MessageSquare, User, Bot, Calendar, ChevronRight, X, Layout, TrendingUp, TrendingDown, DollarSign, Zap, Clock, Hash, Sparkles, Send, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import { getUsageOverview, getCostByAgent, getAgentTypes, type UsageOverview, type AgentCostSummary } from '@/app/actions/cost-analytics';
+import { getUsageOverview, getCostByAgent, getAgentTypes, getAnalyticsContextString, type UsageOverview, type AgentCostSummary } from '@/app/actions/cost-analytics';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface AILog {
     id: string;
@@ -54,6 +55,13 @@ export default function AdminAILogsPage() {
     const [usageOverview, setUsageOverview] = useState<UsageOverview | null>(null);
     const [agentCosts, setAgentCosts] = useState<AgentCostSummary[]>([]);
     const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+
+    // AI Analytics Panel state
+    const [isAnalyticsPanelOpen, setIsAnalyticsPanelOpen] = useState(false);
+    const [analyticsMessages, setAnalyticsMessages] = useState<Array<{ role: 'user' | 'model'; content: string }>>([]);
+    const [analyticsInput, setAnalyticsInput] = useState('');
+    const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+    const analyticsMessagesEndRef = useRef<HTMLDivElement>(null);
 
     const supabase = createClient();
 
@@ -167,6 +175,90 @@ export default function AdminAILogsPage() {
         log.agent_type.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Scroll to bottom of analytics messages
+    useEffect(() => {
+        analyticsMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [analyticsMessages, isAnalyticsLoading]);
+
+    // Send message to analytics assistant
+    const sendAnalyticsMessage = async (text: string) => {
+        if (!text.trim() || isAnalyticsLoading) return;
+
+        const userMsg = { role: 'user' as const, content: text };
+        setAnalyticsMessages(prev => [...prev, userMsg]);
+        setAnalyticsInput('');
+        setIsAnalyticsLoading(true);
+
+        try {
+            // Get analytics context
+            const analyticsContext = await getAnalyticsContextString(30);
+
+            // Build history
+            const history = analyticsMessages.map(m => ({ role: m.role, parts: m.content }));
+
+            // Add placeholder for streaming
+            setAnalyticsMessages(prev => [...prev, { role: 'model', content: '' }]);
+
+            // Call streaming API with analytics_assistant agent
+            const response = await fetch('/api/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `${text}\n\n---\nANALYTICS DATA:\n${analyticsContext}`,
+                    agentType: 'analytics_assistant',
+                    contextScope: { type: 'PLATFORM' },
+                    history,
+                    pageContext: 'admin_ai_logs'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Streaming failed: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullText += chunk;
+
+                    // Update the last message with accumulated text
+                    // Strip any insight metadata tags
+                    const cleanText = fullText.replace(/<!--__INSIGHT_META__:[\s\S]*?:__END_META__-->/, '');
+                    setAnalyticsMessages(prev => {
+                        const updated = [...prev];
+                        if (updated.length > 0) {
+                            updated[updated.length - 1] = { role: 'model', content: cleanText };
+                        }
+                        return updated;
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Analytics assistant error:', error);
+            setAnalyticsMessages(prev => {
+                const updated = prev.filter(m => m.content !== '');
+                return [...updated, { role: 'model', content: 'Sorry, I encountered an error analyzing the data. Please try again.' }];
+            });
+        } finally {
+            setIsAnalyticsLoading(false);
+        }
+    };
+
+    // Suggested prompts for analytics
+    const suggestedPrompts = [
+        "What topics are users asking about most?",
+        "Which agent is most cost-effective?",
+        "What content gaps do you see?",
+        "Suggest L&D priorities based on queries"
+    ];
+
     return (
         <div className="flex h-full bg-transparent text-white">
             {/* Main List Area */}
@@ -176,9 +268,22 @@ export default function AdminAILogsPage() {
                 <div className="p-6 border-b border-white/10 bg-[#0f172a]/50 backdrop-blur-xl sticky top-0 z-10 space-y-4">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-light tracking-wide">AI Conversation Logs</h1>
-                        <button onClick={() => { fetchLogs(); fetchAnalytics(); }} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                            <Layout size={20} className="text-slate-400" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsAnalyticsPanelOpen(!isAnalyticsPanelOpen)}
+                                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
+                                    isAnalyticsPanelOpen
+                                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10'
+                                }`}
+                            >
+                                <Sparkles size={14} />
+                                AI Analytics
+                            </button>
+                            <button onClick={() => { fetchLogs(); fetchAnalytics(); }} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                                <Layout size={20} className="text-slate-400" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Usage Analytics Dashboard */}
@@ -457,6 +562,120 @@ export default function AdminAILogsPage() {
                     </div>
                 </div>
             )}
+
+            {/* AI Analytics Panel (Right Side) */}
+            <div
+                className={`
+                    fixed right-0 top-0 h-full z-50
+                    bg-[#0A0D12] border-l border-white/10
+                    flex flex-col
+                    transition-all duration-300 ease-in-out
+                    ${isAnalyticsPanelOpen ? 'w-96 translate-x-0' : 'w-0 translate-x-full'}
+                `}
+            >
+                {isAnalyticsPanelOpen && (
+                    <>
+                        {/* Panel Header */}
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-purple-600/10">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                                    <Sparkles size={16} className="text-purple-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-white">AI Analytics</h2>
+                                    <p className="text-[10px] text-slate-500">Ask about patterns & trends</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsAnalyticsPanelOpen(false)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                <X size={16} className="text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* Messages Area */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {analyticsMessages.length === 0 ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                                            <Sparkles size={14} className="text-purple-400" />
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl rounded-tl-none text-sm text-slate-300">
+                                            <p>I can analyze your AI conversation data to identify patterns, trends, and opportunities.</p>
+                                            <p className="mt-2 text-slate-500 text-xs">Try asking me about topics, costs, or content gaps.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Suggested Prompts */}
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider px-1">Suggested Questions</p>
+                                        {suggestedPrompts.map((prompt, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => sendAnalyticsMessage(prompt)}
+                                                className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/30 rounded-lg text-sm text-slate-300 hover:text-white transition-all"
+                                            >
+                                                {prompt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {analyticsMessages.map((msg, idx) => (
+                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[90%] p-3 rounded-xl text-sm ${
+                                                msg.role === 'user'
+                                                    ? 'bg-purple-500/20 border border-purple-500/30 text-white rounded-tr-none'
+                                                    : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none'
+                                            }`}>
+                                                {msg.role === 'user' ? (
+                                                    <div>{msg.content}</div>
+                                                ) : (
+                                                    <MarkdownRenderer content={msg.content} className="text-sm" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isAnalyticsLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-white/5 border border-white/10 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-400 text-sm">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Analyzing...
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={analyticsMessagesEndRef} />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-4 border-t border-white/10 bg-black/20">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={analyticsInput}
+                                    onChange={(e) => setAnalyticsInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && sendAnalyticsMessage(analyticsInput)}
+                                    placeholder="Ask about patterns..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg py-3 px-4 pr-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20"
+                                />
+                                <button
+                                    onClick={() => sendAnalyticsMessage(analyticsInput)}
+                                    disabled={isAnalyticsLoading || !analyticsInput.trim()}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Send size={14} />
+                                </button>
+                            </div>
+                            <p className="text-[9px] text-slate-600 text-center mt-2">AI analyzes aggregated data only</p>
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

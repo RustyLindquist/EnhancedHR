@@ -18,6 +18,7 @@ import {
   Brain,
   TrendingUp,
   DollarSign,
+  BarChart2,
   HelpCircle
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
@@ -724,6 +725,7 @@ export const ORG_NAV_ITEMS: NavItemConfig[] = [
 export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
     { id: 'author', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'author/courses', label: 'My Courses', icon: BookOpen },
+    { id: 'author/analytics', label: 'AI Analytics', icon: BarChart2 },
     { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
 ];
 

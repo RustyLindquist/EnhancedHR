@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Layers, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, Settings, LogOut, BarChart2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
@@ -56,6 +56,12 @@ export default async function OrgLayout({
                         <Layers size={18} />
                         <span className="text-sm font-medium">Collections</span>
                     </Link>
+                    {profile.membership_status === 'org_admin' && (
+                        <Link href="/org/analytics" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                            <BarChart2 size={18} />
+                            <span className="text-sm font-medium">AI Analytics</span>
+                        </Link>
+                    )}
                     <Link href="/org/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
                         <Settings size={18} />
                         <span className="text-sm font-medium">Settings</span>
