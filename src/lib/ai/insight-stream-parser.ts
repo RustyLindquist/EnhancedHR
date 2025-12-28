@@ -90,9 +90,9 @@ export function parseStreamResponse(fullResponse: string): ParsedStreamResponse 
  * @returns Clean response without insight tags
  */
 export function stripInsightTags(response: string): string {
-  // Remove enhanced format
+  // Remove enhanced format with any attributes (handles category/confidence in any order)
   let cleaned = response.replace(
-    /<INSIGHT\s+category="\w+"\s+confidence="\w+">([\s\S]*?)<\/INSIGHT>/gi,
+    /<INSIGHT\s+[^>]*>([\s\S]*?)<\/INSIGHT>/gi,
     ''
   );
 

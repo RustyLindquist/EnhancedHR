@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE';
 
 interface UniversalCardProps {
     type: CardType;
@@ -18,6 +18,7 @@ interface UniversalCardProps {
     categories?: string[]; // Up to 3
     rating?: number; // 0-5
     credits?: { shrm?: number | boolean; hrci?: number | boolean }; // Available credits
+    collections?: string[]; // List of collection names for footer display
     onAction?: () => void;
     onRemove?: () => void;
     onAdd?: () => void;
@@ -46,6 +47,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     categories,
     rating,
     credits,
+    collections,
     onAction,
     onRemove,
     onAdd,
@@ -74,13 +76,14 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             glowColor: 'rgba(120, 192, 240, 0.6)'
         },
         LESSON: {
-            headerColor: 'bg-[#0B1120]',
-            borderColor: 'border-blue-500/30',
-            labelColor: 'text-slate-400',
+            headerColor: 'bg-[#063F5F]',
+            borderColor: 'border-[#78C0F0]/30',
+            labelColor: 'text-[#78C0F0]',
             barColor: 'hidden',
             icon: null,
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.6)'
+            glowColor: 'rgba(120, 192, 240, 0.6)',
+            bodyColor: 'bg-[#063F5F]'
         },
         RESOURCE: { // Red/Terra-cotta
             headerColor: 'bg-[#4A2020]',
@@ -135,6 +138,17 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             icon: HelpCircle,
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(75, 139, 179, 0.6)' // #4B8BB3 glow
+        },
+        NOTE: { // Notes Card - Olive green #9A9724
+            headerColor: 'bg-[#9A9724]/80',
+            borderColor: 'border-[#9A9724]/40',
+            labelColor: 'text-white',
+            barColor: 'bg-[#9A9724]/80',
+            icon: StickyNote,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(154, 151, 36, 0.4)', // #9A9724 glow
+            bodyColor: 'bg-[#9A9724]/70', // Slightly more opaque for better text readability
+            footerTextColor: 'text-white'
         }
     }[type];
 
@@ -145,13 +159,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isMediaCard = ['COURSE', 'MODULE', 'LESSON'].includes(type);
 
     // Layout Tweaks:
-    // Conversation, Context, AI_Insight, Resource, Profile & Help need more text space (40% top / 60% bottom)
-    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP'].includes(type);
+    // Conversation, Context, AI_Insight, Resource, Profile, Help & Note need more text space (40% top / 60% bottom)
+    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE'].includes(type);
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, and Help cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP';
+    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, and Note cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -202,7 +216,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-white/10 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#9A9724]/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#9A9724]/70' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
             >
 
             {/* --- Top Section --- */}
@@ -212,7 +226,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 {isMediaCard && imageUrl && (
                     <>
                         <img src={imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-90" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/30 to-transparent"></div>
+                        {type === 'LESSON' ? (
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#063F5F] via-[#063F5F]/30 to-transparent"></div>
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/30 to-transparent"></div>
+                        )}
                     </>
                 )}
 
@@ -244,11 +262,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Title Section */}
-                {/* Conversation, Context, AI_Insight, Profile cards: centered between header bar and bottom of top section */}
+                {/* Conversation, Context, AI_Insight, Profile, Help, Note cards: centered between header bar and bottom of top section */}
                 {/* Other text-heavy cards: centered with padding for header */}
                 {/* Media cards: positioned at bottom */}
                 <div className={`absolute left-0 right-0 z-10 px-4 ${
-                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP')
+                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE')
                         ? 'top-[calc(50%+20px)] -translate-y-1/2'
                         : isTextHeavy
                             ? 'top-1/2 -translate-y-1/2 pt-8'
@@ -295,10 +313,15 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             </div>
 
             {/* --- Bottom Section (Body) --- */}
-            <div className={`${bottomHeight} px-5 py-4 flex flex-col justify-between relative bg-[#0B1120] transition-all duration-300`}>
+            <div className={`${bottomHeight} px-5 py-4 flex flex-col justify-between relative ${(config as any).bodyColor || 'bg-[#0B1120]'} transition-all duration-300`}>
+
+                {/* Dark overlay for NOTE cards - about half as dark as header overlay (bg-black/40) for better text contrast */}
+                {type === 'NOTE' && (
+                    <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
+                )}
 
                 {/* Description / Content Preview */}
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 relative z-10">
 
                     {type === 'MODULE' || type === 'LESSON' || type === 'RESOURCE' ? (
                         <div className="mb-2">
@@ -315,11 +338,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Footer (Meta + Action) */}
-                <div className="flex items-center justify-between mt-4 pt-2 border-t border-white/5 gap-2">
+                <div className="flex items-center justify-between mt-4 pt-2 border-t border-white/5 gap-2 relative z-10">
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
-                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && meta && (
+                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && meta && (
                             <div className="flex items-center gap-1.5 truncate">
                                 <Clock size={12} className="flex-shrink-0" />
                                 <span className="text-[10px] font-bold tracking-wider uppercase truncate">{meta}</span>
@@ -350,6 +373,30 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </div>
                     )}
 
+                    {/* NOTE cards: Show collections on left and date on right */}
+                    {type === 'NOTE' && (
+                        <>
+                            {/* Left side: Collections list */}
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                {collections && collections.length > 0 ? (
+                                    <span className="text-[10px] font-medium text-white/80 truncate">
+                                        {collections.slice(0, 2).join(', ')}
+                                        {collections.length > 2 && ` +${collections.length - 2}`}
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-white/50 italic">No collections</span>
+                                )}
+                            </div>
+                            {/* Right side: Date */}
+                            {meta && (
+                                <div className="flex items-center gap-1.5 text-white/80 flex-shrink-0">
+                                    <Clock size={12} />
+                                    <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
+                                </div>
+                            )}
+                        </>
+                    )}
+
                     {/* Conversation, Context, AI_Insight, Profile, Help cards: Show date on right (no button) */}
                     {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP') && meta && (
                         <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
@@ -358,8 +405,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </div>
                     )}
 
-                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, Profile, or Help): Show action button */}
-                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && actionLabel && (
+                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, Profile, Help, or Note): Show action button */}
+                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && actionLabel && (
                         <button
                             onClick={onAction}
                             className={`

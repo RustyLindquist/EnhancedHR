@@ -217,7 +217,7 @@ export interface HelpTopic {
 }
 
 // Drag Item Types (used for drag/drop and modal operations)
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE';
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE';
 
 export interface DragItem {
   type: DragItemType;
@@ -227,6 +227,21 @@ export interface DragItem {
   image?: string; // For preview
   meta?: string;
   collections?: string[]; // For modal compatibility
+}
+
+// --- Note Types ---
+
+export interface Note {
+  type: 'NOTE';
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  course_id: number | null;
+  course_title?: string;
+  created_at: string;
+  updated_at: string;
+  collections?: string[];
 }
 
 // The polymorphic Context Object (Card)
@@ -288,6 +303,19 @@ export interface Module {
   title: string;
   duration: string; // Added duration
   lessons: Lesson[];
+}
+
+// Lesson search result with parent course context
+export interface LessonSearchResult {
+  id: string;
+  title: string;
+  duration: string;
+  type: 'video' | 'quiz' | 'article';
+  module_id: string;
+  course_id: number;
+  course_title: string;
+  course_image?: string;
+  course_author: string;
 }
 
 export interface AuthorProfile {
