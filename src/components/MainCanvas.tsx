@@ -2900,7 +2900,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
                                         </span>
                                     </div>
-                                    {activeFilterCount > 0 ? (
+                                    {activeCollectionId === 'academy' && activeFilterCount > 0 ? (
                                         <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
                                             Filtered <span className="font-bold text-white">Results</span>
                                             <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
