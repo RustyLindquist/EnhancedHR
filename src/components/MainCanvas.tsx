@@ -919,17 +919,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }, []);
 
     const handleCreateNote = useCallback(async (collectionId?: string, courseId?: number) => {
+        console.log('[MainCanvas.handleCreateNote] Called with collectionId:', collectionId, 'courseId:', courseId);
         try {
             const note = await createNoteAction({
                 course_id: courseId
             });
+            console.log('[MainCanvas.handleCreateNote] Created note:', note?.id);
 
             if (note) {
                 setNotes(prev => [note, ...prev]);
 
                 // If creating in a specific collection, add it there
+                console.log('[MainCanvas.handleCreateNote] Checking if should add to collection:', collectionId, 'condition:', collectionId && collectionId !== 'notes');
                 if (collectionId && collectionId !== 'notes') {
-                    await addNoteToCollectionAction(note.id, collectionId);
+                    console.log('[MainCanvas.handleCreateNote] Calling addNoteToCollectionAction...');
+                    const result = await addNoteToCollectionAction(note.id, collectionId);
+                    console.log('[MainCanvas.handleCreateNote] addNoteToCollectionAction result:', result);
                 }
 
                 // Open the editor for the new note
@@ -1878,6 +1883,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (conv) {
                 handleDeleteConversationInitiate(conv);
             }
+        } else if (itemType === 'NOTE') {
+            // Notes - remove from collection (not delete the note itself)
+            const { removeNoteFromCollectionAction } = await import('@/app/actions/notes');
+            const resolvedCollectionId = customCollections.find(c =>
+                c.id === activeCollectionId || c.label === activeCollectionId
+            )?.id || activeCollectionId;
+            await removeNoteFromCollectionAction(itemId, resolvedCollectionId);
+            // Refresh the collection
+            setRefreshTrigger(prev => prev + 1);
         } else if (itemType === 'AI_INSIGHT' || itemType === 'CUSTOM_CONTEXT' || itemType === 'FILE' || itemType === 'PROFILE') {
             // Context Items have their own confirmation modal
             const item = collectionItems.find(i => i.id === itemId);
@@ -2460,6 +2474,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     else if (item.itemType === 'CONVERSATION') {
                                         handleOpenConversation(item.id);
                                     }
+                                    else if (item.itemType === 'NOTE') {
+                                        // Open the note editor
+                                        setEditingNoteId(item.id as string);
+                                    }
                                     else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
                                         handleOpenContextEditor(item.itemType, item as any);
                                     }
@@ -2968,24 +2986,31 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 </button>
                             ) : (
                                 <>
-                                    {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                                    {/* Expanded to include Personal Context, Favorites, Workspace (research), Watchlist (to_learn), Company, and Custom Collections */}
                                     {(activeCollectionId === 'personal-context' ||
                                         activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
+                                        activeCollectionId === 'company' ||
                                         customCollections.some(c => c.id === activeCollectionId)) && (
                                             <div className="flex items-center gap-2 mr-4">
+                                                <button
+                                                    onClick={() => handleCreateNote(activeCollectionId)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                >
+                                                    <Plus size={14} /> Note
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
-                                                    <Plus size={14} /> Add Context
+                                                    <Plus size={14} /> Context
                                                 </button>
                                                 <button
                                                     onClick={() => handleOpenContextEditor('FILE')}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
-                                                    <Plus size={14} /> Add File
+                                                    <Plus size={14} /> File
                                                 </button>
                                             </div>
                                         )}

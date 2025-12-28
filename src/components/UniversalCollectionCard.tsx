@@ -1,5 +1,5 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note } from '../types';
 import UniversalCard, { CardType } from './cards/UniversalCard';
 
 // Unified type for all renderable items in a collection
@@ -12,7 +12,8 @@ export type CollectionItemDetail =
     | (AIInsight & { itemType: 'AI_INSIGHT' })
     | (CustomContext & { itemType: 'CUSTOM_CONTEXT' })
     | (ContextFile & { itemType: 'FILE' })
-    | (ProfileDetails & { itemType: 'PROFILE' });
+    | (ProfileDetails & { itemType: 'PROFILE' })
+    | (Note & { itemType: 'NOTE' });
 
 interface UniversalCollectionCardProps {
     item: CollectionItemDetail;
@@ -32,6 +33,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             case 'LESSON': return 'LESSON';
             case 'RESOURCE': return 'RESOURCE';
             case 'CONVERSATION': return 'CONVERSATION';
+            case 'NOTE': return 'NOTE';
             case 'AI_INSIGHT':
             case 'CUSTOM_CONTEXT':
             case 'FILE': return 'CONTEXT';
@@ -182,6 +184,21 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 subtitle: content.subtitle || 'Resource',
                 description: content.description || 'Reference Material',
                 actionLabel: 'OPEN'
+            };
+            break;
+        }
+        case 'NOTE': {
+            const note = item as Note;
+            // Strip markdown and truncate for preview
+            const plainContent = (note.content || '').replace(/[#*_`~\[\]]/g, '').trim();
+            const preview = plainContent.length > 150 ? plainContent.slice(0, 150) + '...' : plainContent;
+            cardProps = {
+                ...cardProps,
+                type: 'NOTE',
+                title: note.title || 'Untitled Note',
+                description: preview || 'No content',
+                meta: note.updated_at ? new Date(note.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
+                actionLabel: 'EDIT'
             };
             break;
         }
