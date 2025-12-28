@@ -400,6 +400,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         modules: string[];
         lessons: string[];
         conversations: string[];
+        notes: string[];
         itemsWithoutType: any[];
     }
 
@@ -414,6 +415,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         modules: [],
         lessons: [],
         conversations: [],
+        notes: [],
         itemsWithoutType: []
     };
 
@@ -427,6 +429,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             grouped.lessons.push(item.item_id);
         } else if (item.item_type === 'CONVERSATION') {
             grouped.conversations.push(item.item_id);
+        } else if (item.item_type === 'NOTE') {
+            grouped.notes.push(item.item_id);
         } else {
             grouped.itemsWithoutType.push(item);
         }
@@ -520,22 +524,56 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                     itemType: 'CONVERSATION',
                     title: cov.title || 'Untitled Conversation',
                     // Map last message or similar if needed for card
-                    lastMessage: cov.last_message || cov.preview || '' 
+                    lastMessage: cov.last_message || cov.preview || ''
                 })) || [])
         );
     } else {
         promises.push(Promise.resolve([]));
     }
 
-    // E. Context Items (Already fetched but logic should be here or separate? 
+    // E. Notes
+    if (grouped.notes.length > 0) {
+        promises.push(
+            admin.from('notes')
+                .select(`
+                    id,
+                    user_id,
+                    title,
+                    content,
+                    course_id,
+                    created_at,
+                    updated_at,
+                    courses (
+                        title
+                    )
+                `)
+                .in('id', grouped.notes)
+                .then(({ data }) => data?.map((note: any) => ({
+                    id: note.id,
+                    user_id: note.user_id,
+                    title: note.title || 'Untitled Note',
+                    content: note.content,
+                    course_id: note.course_id,
+                    course_title: note.courses?.title || null,
+                    created_at: note.created_at,
+                    updated_at: note.updated_at,
+                    itemType: 'NOTE',
+                    type: 'NOTE'
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // F. Context Items (Already fetched but logic should be here or separate?
     // The original code fetched them separately. We can keep that or merge.
     // Let's keep fetching them separately as they are in a different table 'user_context_items'
     // BUT we need to return them in the 'contextItems' prop or merge into 'courses' (which is actually 'items').
     // The frontend hook `useCollections` merges them: `items: [...courses, ...mappedContext]`.
     // So distinct is fine.
-    
+
     // Execute fetches
-    const [courses, modules, lessons, conversations] = await Promise.all(promises);
+    const [courses, modules, lessons, conversations, notes] = await Promise.all(promises);
 
     // 3. Fetch Context Items (Same as before)
     const { data: contextItems } = await admin
@@ -545,14 +583,15 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         .order('created_at', { ascending: false });
 
     // Combine "Courses" (which is actually 'Standard Items') and strictly typed ContextItems
-    // The frontend expects 'courses' to be the array of standard items (Courses, Modules, Lessons, Convos)
+    // The frontend expects 'courses' to be the array of standard items (Courses, Modules, Lessons, Convos, Notes)
     // and 'contextItems' to be the user_context_items table rows.
-    
+
     const allStandardItems = [
         ...courses,
         ...modules,
         ...lessons,
-        ...conversations
+        ...conversations,
+        ...notes
     ];
 
     return {
@@ -562,7 +601,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             courses: grouped.courses.length,
             modules: grouped.modules.length,
             lessons: grouped.lessons.length,
-            conversations: grouped.conversations.length
+            conversations: grouped.conversations.length,
+            notes: grouped.notes.length
         }}
     };
 }
