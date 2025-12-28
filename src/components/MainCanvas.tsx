@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -57,6 +57,8 @@ interface MainCanvasProps {
     academyResetKey?: number; // Triggers filter reset when Academy is clicked
     initialStatusFilter?: string[]; // Pre-apply status filter when navigating to Academy
     onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
+    previousCollectionId?: string | null; // Previous page for back navigation
+    onGoBack?: () => void; // Handler to go back to previous page
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -738,7 +740,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onCollectionUpdate,
     academyResetKey,
     initialStatusFilter,
-    onNavigateWithFilter
+    onNavigateWithFilter,
+    previousCollectionId,
+    onGoBack
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -2882,7 +2886,18 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                 {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
                 {activeCollectionId !== 'org-team' && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
-                        <div>
+                        <div className="flex items-center gap-4">
+                            {/* Back Button - appears when there's a previous page to navigate to */}
+                            {previousCollectionId && onGoBack && (
+                                <button
+                                    onClick={onGoBack}
+                                    className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                    title="Go Back"
+                                >
+                                    <ArrowLeft size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+                                </button>
+                            )}
+                            <div>
                             {viewingGroup ? (
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
@@ -2940,6 +2955,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
                                 </>
                             )}
+                            </div>
                         </div>
 
                         <div className="flex space-x-4 items-center">
