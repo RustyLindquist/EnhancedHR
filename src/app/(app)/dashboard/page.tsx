@@ -285,6 +285,11 @@ function HomeContent() {
     if (id === 'new') {
       handleOpenModal(undefined);
     } else {
+      // Track previous collection for back navigation (only if actually changing)
+      if (id !== activeCollectionId) {
+        setPreviousCollectionId(activeCollectionId);
+      }
+
       // Always clear the active course when selecting a collection
       // This ensures clicking Academy always returns to All Courses view
       if (id === 'academy') {
@@ -384,6 +389,15 @@ function HomeContent() {
 
   // Navigation & Collection State
   const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
+  const [previousCollectionId, setPreviousCollectionId] = useState<string | null>(null);
+
+  // Go back to previous collection
+  const handleGoBack = useCallback(() => {
+    if (previousCollectionId) {
+      setActiveCollectionId(previousCollectionId);
+      setPreviousCollectionId(null); // Clear after going back (one-step only)
+    }
+  }, [previousCollectionId]);
 
   useEffect(() => {
     if (courseIdParam) {
@@ -461,6 +475,8 @@ function HomeContent() {
           academyResetKey={academyResetKey}
           initialStatusFilter={initialStatusFilter}
           onNavigateWithFilter={handleNavigateWithFilter}
+          previousCollectionId={previousCollectionId}
+          onGoBack={handleGoBack}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
