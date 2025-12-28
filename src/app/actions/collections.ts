@@ -208,6 +208,16 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         counts['certifications'] = certificationCount;
     }
 
+    // 4b. Count Notes
+    const { count: notesCount, error: notesError } = await admin
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+    if (!notesError && notesCount !== null) {
+        counts['notes'] = notesCount;
+    }
+
     // 5. Virtual Profile Count Logic for Personal Context
     if (personalContextId) {
         const hasProfileItem = contextItems?.some((i: any) => i.collection_id === personalContextId && i.type === 'PROFILE');

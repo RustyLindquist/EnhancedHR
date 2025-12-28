@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download } from 'lucide-react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -15,11 +15,14 @@ import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType, HelpTopic } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
 import { deleteCollection, renameCollection } from '@/app/actions/collections';
+import { searchLessonsAction } from '@/app/actions/courses';
+import { getNotesAction, createNoteAction, addNoteToCollectionAction } from '@/app/actions/notes';
+import NoteEditorPanel from './NoteEditorPanel';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
 import DeleteConfirmationModal from './DeleteConfirmationModal'; // Updated import
@@ -73,6 +76,7 @@ interface FilterState {
     ratingFilter: RatingFilterType;
     dateFilterType: DateFilterType;
     customDays: string; // Stored as string to handle empty input easily
+    includeLessons: boolean; // Include individual lessons in search results
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -83,7 +87,8 @@ const INITIAL_FILTERS: FilterState = {
     status: [],
     ratingFilter: 'ALL',
     dateFilterType: 'ALL',
-    customDays: '30'
+    customDays: '30',
+    includeLessons: false // Default to courses only
 };
 
 // --- VISUAL COMPONENTS ---
@@ -678,6 +683,18 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
                 </div>
             </div>
         );
+    } else if (item.type === 'NOTE') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#9A9724]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-[#9A9724]/20 rounded text-[#9A9724]">
+                        <StickyNote size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-[#9A9724] uppercase tracking-wider">Note</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+            </div>
+        );
     }
 
     return (
@@ -728,6 +745,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
     const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
     const [isLoadingCollection, setIsLoadingCollection] = useState(false);
+
+    // Ref to skip the next collection items fetch after a manual delete
+    // This prevents the flash caused by refetching after we've already updated local state
+    const skipNextCollectionFetchRef = useRef(false);
 
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
 
@@ -812,6 +833,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [activeFilters, setActiveFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [pendingFilters, setPendingFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [visibleCourses, setVisibleCourses] = useState<Course[]>(courses);
+    const [visibleLessons, setVisibleLessons] = useState<LessonSearchResult[]>([]);
+    const [isLoadingLessons, setIsLoadingLessons] = useState(false);
     const [userProgress, setUserProgress] = useState<Record<number, any>>({});
     const [drawerMode, setDrawerMode] = useState<'filters' | 'prompts' | 'help'>('filters');
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
@@ -857,6 +880,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [editingContextItem, setEditingContextItem] = useState<UserContextItem | null>(null);
     const [contextTypeToAdd, setContextTypeToAdd] = useState<ContextItemType>('CUSTOM_CONTEXT');
 
+    // --- NOTES STATE ---
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+    const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+    const [noteToDelete, setNoteToDelete] = useState<{ id: string; title: string } | null>(null);
+    const [deleteNoteModalOpen, setDeleteNoteModalOpen] = useState(false);
+
     const handleOpenContextEditor = (type: ContextItemType = 'CUSTOM_CONTEXT', item: UserContextItem | null = null) => {
         setContextTypeToAdd(type);
         setEditingContextItem(item);
@@ -871,6 +902,86 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             fetchCollectionItems(activeCollectionId).then(res => setCollectionItems(res.items));
         }
     };
+
+    // --- NOTE HANDLERS ---
+    const handleOpenNoteEditor = useCallback((noteId: string) => {
+        setEditingNoteId(noteId);
+        setIsNoteEditorOpen(true);
+    }, []);
+
+    const handleCloseNoteEditor = useCallback(() => {
+        setIsNoteEditorOpen(false);
+        setEditingNoteId(null);
+    }, []);
+
+    const handleCreateNote = useCallback(async (collectionId?: string, courseId?: number) => {
+        try {
+            const note = await createNoteAction({
+                course_id: courseId
+            });
+
+            if (note) {
+                setNotes(prev => [note, ...prev]);
+
+                // If creating in a specific collection, add it there
+                if (collectionId && collectionId !== 'notes') {
+                    await addNoteToCollectionAction(note.id, collectionId);
+                }
+
+                // Open the editor for the new note
+                setEditingNoteId(note.id);
+                setIsNoteEditorOpen(true);
+
+                // Update counts
+                if (onCollectionUpdate) onCollectionUpdate();
+            } else {
+                alert('Failed to create note. The notes table may not exist yet. Please run the database migration.');
+            }
+        } catch (error) {
+            console.error('[MainCanvas] Error creating note:', error);
+            alert('Error creating note: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
+    }, [onCollectionUpdate]);
+
+    const handleNoteDeleted = useCallback((noteId: string) => {
+        setNotes(prev => prev.filter(n => n.id !== noteId));
+        if (onCollectionUpdate) onCollectionUpdate();
+    }, [onCollectionUpdate]);
+
+    const handleNoteSaved = useCallback(() => {
+        // Refresh notes list to get updated titles
+        if (activeCollectionId === 'notes') {
+            getNotesAction().then(setNotes);
+        }
+        if (onCollectionUpdate) onCollectionUpdate();
+    }, [activeCollectionId, onCollectionUpdate]);
+
+    const handleDeleteNoteInitiate = useCallback((note: Note) => {
+        setNoteToDelete({ id: note.id, title: note.title });
+        setDeleteNoteModalOpen(true);
+    }, []);
+
+    const confirmDeleteNote = useCallback(async () => {
+        if (!noteToDelete) return;
+        setDeleteNoteModalOpen(false);
+
+        const { deleteNoteAction } = await import('@/app/actions/notes');
+        const result = await deleteNoteAction(noteToDelete.id);
+
+        if (result.success) {
+            setNotes(prev => prev.filter(n => n.id !== noteToDelete.id));
+            if (onCollectionUpdate) onCollectionUpdate();
+        } else {
+            alert('Failed to delete note: ' + (result.error || 'Unknown error'));
+        }
+        setNoteToDelete(null);
+    }, [noteToDelete, onCollectionUpdate]);
+
+    const cancelDeleteNote = useCallback(() => {
+        setDeleteNoteModalOpen(false);
+        setNoteToDelete(null);
+    }, []);
+
     const [flaringPortalId, setFlaringPortalId] = useState<string | null>(null);
 
     const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
@@ -931,6 +1042,26 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [isLoadingHelpTopics, setIsLoadingHelpTopics] = useState(false);
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
     const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId>('ai-insights');
+
+    // --- NOTES FETCH ---
+    const fetchNotes = async () => {
+        try {
+            setIsLoadingNotes(true);
+            const fetchedNotes = await getNotesAction();
+            setNotes(fetchedNotes);
+        } catch (error) {
+            console.error('[MainCanvas] Error fetching notes:', error);
+        } finally {
+            setIsLoadingNotes(false);
+        }
+    };
+
+    // Fetch notes when navigating to notes collection or on refresh
+    useEffect(() => {
+        if (activeCollectionId === 'notes') {
+            fetchNotes();
+        }
+    }, [activeCollectionId, refreshTrigger]);
 
     // Sync selectedCourseId with parent (for AI Panel Context)
     // Use a ref to track previously synced value and prevent redundant calls
@@ -1282,6 +1413,40 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         return () => clearTimeout(exitTimeout);
     }, [activeFilters, activeCollectionId, courses]); // Added activeCollectionId dependency
 
+    // --- Lesson Search Effect ---
+    // Fetch lessons when lesson search is enabled and search query exists
+    useEffect(() => {
+        // Only search lessons in Academy when toggle is on and there's a search query
+        if (!activeFilters.includeLessons || !activeFilters.searchQuery || activeCollectionId !== 'academy') {
+            setVisibleLessons([]);
+            return;
+        }
+
+        let cancelled = false;
+        setIsLoadingLessons(true);
+
+        searchLessonsAction(activeFilters.searchQuery)
+            .then((results) => {
+                if (!cancelled) {
+                    setVisibleLessons(results);
+                }
+            })
+            .catch((error) => {
+                console.error('Failed to search lessons:', error);
+                if (!cancelled) {
+                    setVisibleLessons([]);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsLoadingLessons(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeFilters.includeLessons, activeFilters.searchQuery, activeCollectionId]);
 
     // State for Group Management Trigger (Lifted Up)
     const [groupManageTrigger, setGroupManageTrigger] = useState(0);
@@ -1308,6 +1473,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleResetFilters = () => {
         setPendingFilters(INITIAL_FILTERS);
         setActiveFilters(INITIAL_FILTERS);
+        setVisibleLessons([]); // Clear lesson search results
     };
 
     const toggleArrayFilter = (field: keyof FilterState, value: string) => {
@@ -1472,7 +1638,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     // Navigate to a lesson within its course
-    const handleLessonClick = async (lessonItem: any) => {
+    // autoPlay: if true, opens the player immediately; if false, just loads and selects the lesson
+    const handleLessonClick = async (lessonItem: any, autoPlay: boolean = true) => {
         const lessonId = lessonItem.id;
         const moduleId = lessonItem.module_id;
 
@@ -1510,10 +1677,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             const resources = generateMockResources(courseId);
             setSelectedCourseResources(resources);
 
-            // Set the lesson and module to open and go directly to player
+            // Set the lesson and module to open
             setResumeLessonId(lessonId);
             setResumeModuleId(moduleId);
-            setIsPlayerActive(true);
+
+            // Only auto-play if requested (default behavior for existing calls)
+            if (autoPlay) {
+                setIsPlayerActive(true);
+            }
 
         } catch (error) {
             console.error("Failed to load course for lesson:", error);
@@ -1667,6 +1838,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (result.success) {
             // Update local state to remove item immediately
             setCollectionItems(prev => prev.filter(item => item.id !== contextItemToDelete.id));
+            // Skip the next fetch since we already updated local state
+            skipNextCollectionFetchRef.current = true;
             if (onCollectionUpdate) onCollectionUpdate();
         } else {
             alert('Failed to delete context item: ' + result.error);
@@ -1687,6 +1860,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         await removeFromCollection(collectionItemToDelete.id, activeCollectionId);
         // Update local state to remove item immediately
         setCollectionItems(prev => prev.filter(i => String(i.id) !== String(collectionItemToDelete.id)));
+        // Skip the next fetch since we already updated local state
+        skipNextCollectionFetchRef.current = true;
         if (onCollectionUpdate) onCollectionUpdate();
         setCollectionItemToDelete(null);
     };
@@ -1862,6 +2037,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (onClearConversation) {
             onClearConversation();
         }
+        // Navigate to Prometheus to start the new conversation
+        onSelectCollection('prometheus');
     };
 
     // Dynamic Title Generator
@@ -1917,6 +2094,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // --- CONTEXT ITEMS FETCHING EFFECT ---
     // --- CONTEXT ITEMS & COLLECTION COURSES FETCHING EFFECT ---
     useEffect(() => {
+        // Skip fetch if we just did a manual delete (prevents flash from refetching)
+        if (skipNextCollectionFetchRef.current) {
+            skipNextCollectionFetchRef.current = false;
+            return;
+        }
+
         const loadMixedItems = async () => {
             // Guard: Don't fetch for system pages that aren't collections
             if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy') {
@@ -2137,12 +2320,60 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             activeCollectionId === 'research' ||
             activeCollectionId === 'to_learn' ||
             activeCollectionId === 'conversations' || // Added conversations
+            activeCollectionId === 'notes' || // Added notes
             activeCollectionId === 'personal-context' ||
             customCollections.some(c => c.id === activeCollectionId);
 
         if (isUniversalCollection) {
-            if (isLoadingCollection && activeCollectionId !== 'personal-context' && activeCollectionId !== 'conversations') {
+            if (isLoadingCollection && activeCollectionId !== 'personal-context' && activeCollectionId !== 'conversations' && activeCollectionId !== 'notes') {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
+            }
+
+            // Notes collection - render note cards directly
+            if (activeCollectionId === 'notes') {
+                if (isLoadingNotes) {
+                    return <div className="text-white p-10 font-bold">Loading notes...</div>;
+                }
+
+                if (notes.length === 0) {
+                    return (
+                        <div className="text-slate-500 p-10 flex flex-col items-center">
+                            <div className="mb-6 relative w-24 h-24">
+                                <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-5 border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm rounded-xl">
+                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1.5} />
+                                </div>
+                            </div>
+                            <p className="text-lg mb-2">No notes yet.</p>
+                            <p className="text-sm text-slate-400">Click "New Note" to create your first note.</p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        {notes.map((note, index) => (
+                            <div key={note.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+                                <UniversalCard
+                                    type="NOTE"
+                                    title={note.title}
+                                    description={note.content.length > 150 ? note.content.slice(0, 150) + '...' : note.content}
+                                    meta={new Date(note.updated_at).toLocaleDateString()}
+                                    collections={note.collections}
+                                    onAction={() => handleOpenNoteEditor(note.id)}
+                                    onRemove={() => handleDeleteNoteInitiate(note)}
+                                    onAdd={() => onOpenModal({ type: 'NOTE', id: note.id, title: note.title } as any)}
+                                    draggable={true}
+                                    onDragStart={() => handleDragStart({
+                                        type: 'NOTE',
+                                        id: note.id,
+                                        title: note.title
+                                    })}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                );
             }
 
             // Determine items source
@@ -2404,7 +2635,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     ) : (
                         <>
                             {/* Search Input */}
-                            <div className="relative mb-8 mt-10 group">
+                            <div className="relative mb-4 mt-10 group">
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
                                 <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
                                     <Search size={20} className="text-slate-500 mr-4" />
@@ -2417,6 +2648,34 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     />
                                 </div>
                             </div>
+
+                            {/* Include Lessons Toggle - Only show when search query exists */}
+                            {pendingFilters.searchQuery && (
+                                <div className="flex items-center justify-between mb-8 p-3 bg-white/5 rounded-lg border border-white/10">
+                                    <div className="flex items-center gap-3">
+                                        <BookOpen size={16} className="text-brand-blue-light" />
+                                        <span className="text-sm text-slate-300">Include individual lessons in results</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setPendingFilters({
+                                            ...pendingFilters,
+                                            includeLessons: !pendingFilters.includeLessons
+                                        })}
+                                        className={`
+                                            relative w-12 h-6 rounded-full transition-colors
+                                            ${pendingFilters.includeLessons ? 'bg-brand-blue-light' : 'bg-slate-600'}
+                                        `}
+                                    >
+                                        <div className={`
+                                            absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
+                                            ${pendingFilters.includeLessons ? 'left-7' : 'left-1'}
+                                        `} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Spacer when no search query to maintain consistent spacing */}
+                            {!pendingFilters.searchQuery && <div className="mb-4" />}
 
                             {/* Filter Grid */}
                             <div className="grid grid-cols-5 gap-8 mb-8">
@@ -2724,6 +2983,15 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                 <MessageSquare size={14} /> New Conversation
                                             </button>
                                         </div>
+                                    ) : activeCollectionId === 'notes' ? (
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleCreateNote()}
+                                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                            >
+                                                <StickyNote size={14} /> New Note
+                                            </button>
+                                        </div>
                                     ) : activeCollectionId === 'prometheus' ? (
                                         /* Prometheus Actions */
                                         <div className="flex items-center gap-3">
@@ -2840,13 +3108,42 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                 </button>
                                             )}
 
+                                            {/* Quick Lesson Toggle - Show when search is active */}
+                                            {activeCollectionId === 'academy' && activeFilters.searchQuery && (
+                                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10">
+                                                    <span className="text-xs text-slate-400">
+                                                        {activeFilters.includeLessons ? 'Courses + Lessons' : 'Courses only'}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => {
+                                                            const newFilters = {
+                                                                ...activeFilters,
+                                                                includeLessons: !activeFilters.includeLessons
+                                                            };
+                                                            setActiveFilters(newFilters);
+                                                            setPendingFilters(newFilters);
+                                                        }}
+                                                        className={`
+                                                            relative w-10 h-5 rounded-full transition-colors
+                                                            ${activeFilters.includeLessons ? 'bg-brand-blue-light' : 'bg-slate-600'}
+                                                        `}
+                                                    >
+                                                        <div className={`
+                                                            absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform
+                                                            ${activeFilters.includeLessons ? 'left-5' : 'left-0.5'}
+                                                        `} />
+                                                    </button>
+                                                </div>
+                                            )}
+
                                         </>
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help */}
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes */}
                                     {!(activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'conversations' ||
+                                        activeCollectionId === 'notes' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
@@ -3167,11 +3464,12 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 })}
                                             </div>
                                         ) : (
-                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Personal, Custom)
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Notes, Personal, Custom)
                                             (activeCollectionId === 'favorites' ||
                                                 activeCollectionId === 'research' ||
                                                 activeCollectionId === 'to_learn' ||
                                                 activeCollectionId === 'conversations' ||
+                                                activeCollectionId === 'notes' ||
                                                 activeCollectionId === 'personal-context' ||
                                                 activeCollectionId === 'org-collections' ||
                                                 activeCollectionId === 'org-analytics' ||
@@ -3244,6 +3542,35 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                         />
                                                                     </div>
                                                                 </LazyCourseCard>
+                                                            );
+                                                        })}
+
+                                                        {/* Render Lesson Search Results */}
+                                                        {activeFilters.includeLessons && visibleLessons.length > 0 && visibleLessons.map((lesson, index) => {
+                                                            const delay = Math.min(visibleCourses.length + index, 30) * 50;
+                                                            return (
+                                                                <div
+                                                                    key={`lesson-${lesson.id}`}
+                                                                    style={{ transitionDelay: `${delay}ms` }}
+                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                >
+                                                                    <UniversalCard
+                                                                        type="LESSON"
+                                                                        title={lesson.title}
+                                                                        subtitle={lesson.course_author}
+                                                                        imageUrl={lesson.course_image}
+                                                                        meta={lesson.duration}
+                                                                        description={`From: ${lesson.course_title}`}
+                                                                        actionLabel="VIEW"
+                                                                        onAction={() => handleLessonClick(lesson, false)}
+                                                                        draggable={true}
+                                                                        onDragStart={() => handleDragStart({
+                                                                            type: 'LESSON',
+                                                                            id: lesson.id,
+                                                                            title: lesson.title,
+                                                                        })}
+                                                                    />
+                                                                </div>
                                                             );
                                                         })}
 
@@ -3417,6 +3744,17 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     description="This item will be removed from this collection. This action cannot be undone."
                 />
 
+                {/* Delete Note Confirmation */}
+                <DeleteConfirmationModal
+                    isOpen={deleteNoteModalOpen}
+                    onCancel={cancelDeleteNote}
+                    onConfirm={confirmDeleteNote}
+                    title="Delete Note?"
+                    itemTitle={noteToDelete?.title || 'Note'}
+                    confirmText="Delete Note"
+                    description="This note will be permanently deleted. This action cannot be undone."
+                />
+
                 {/* --- Top Context Panel --- */}
                 <TopContextPanel
                     isOpen={isContextEditorOpen}
@@ -3429,6 +3767,15 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                         setRefreshTrigger(prev => prev + 1);
                         if (onCollectionUpdate) onCollectionUpdate();
                     }}
+                />
+
+                {/* --- Note Editor Panel --- */}
+                <NoteEditorPanel
+                    isOpen={isNoteEditorOpen}
+                    onClose={handleCloseNoteEditor}
+                    noteId={editingNoteId}
+                    onSaveSuccess={handleNoteSaved}
+                    onDeleteSuccess={handleNoteDeleted}
                 />
             </div >
         </div >

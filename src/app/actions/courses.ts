@@ -3,7 +3,7 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { Course } from '@/types';
+import { Course, LessonSearchResult } from '@/types';
 
 export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?: any }> {
     // Opt out of caching for this server action
@@ -122,4 +122,66 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
             courseIds: coursesData?.map((c: any) => c.id).slice(0, 10)
         }
     };
+}
+
+/**
+ * Search lessons by title with course context.
+ * Returns lessons matching the query along with their parent course info.
+ */
+export async function searchLessonsAction(query: string): Promise<LessonSearchResult[]> {
+    noStore();
+
+    if (!query || query.trim().length < 2) {
+        return [];
+    }
+
+    const supabase = await createClient();
+
+    // Search lessons with course info via nested join through modules
+    const { data, error } = await supabase
+        .from('lessons')
+        .select(`
+            id,
+            title,
+            duration,
+            type,
+            module_id,
+            modules (
+                id,
+                course_id,
+                courses (
+                    id,
+                    title,
+                    image_url,
+                    author
+                )
+            )
+        `)
+        .ilike('title', `%${query.trim()}%`)
+        .limit(50);
+
+    if (error) {
+        console.error('[searchLessonsAction] Error searching lessons:', error);
+        return [];
+    }
+
+    if (!data || data.length === 0) {
+        return [];
+    }
+
+    // Transform the nested data structure into flat LessonSearchResult
+    // Filter out lessons that don't have valid module/course data
+    return data
+        .filter((lesson: any) => lesson.modules && lesson.modules.courses)
+        .map((lesson: any) => ({
+            id: lesson.id,
+            title: lesson.title,
+            duration: lesson.duration || '',
+            type: lesson.type || 'video',
+            module_id: lesson.module_id,
+            course_id: lesson.modules.courses.id,
+            course_title: lesson.modules.courses.title,
+            course_image: lesson.modules.courses.image_url,
+            course_author: lesson.modules.courses.author || ''
+        }));
 }

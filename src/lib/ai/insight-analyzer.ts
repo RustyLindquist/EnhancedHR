@@ -274,8 +274,8 @@ export function extractInsights(
  * @returns Clean response without insight tags
  */
 export function stripInsightTags(response: string): string {
-  // Remove enhanced format
-  let cleaned = response.replace(/<INSIGHT\s+category="\w+"\s+confidence="\w+">([\s\S]*?)<\/INSIGHT>/gi, '');
+  // Remove enhanced format with any attributes (handles category/confidence in any order)
+  let cleaned = response.replace(/<INSIGHT\s+[^>]*>([\s\S]*?)<\/INSIGHT>/gi, '');
 
   // Remove legacy format
   cleaned = cleaned.replace(/\[\[INSIGHT:\s*(.*?)\|(.*?)\]\]/g, '');

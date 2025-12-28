@@ -19,7 +19,8 @@ import {
   TrendingUp,
   DollarSign,
   BarChart2,
-  HelpCircle
+  HelpCircle,
+  StickyNote
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -731,6 +732,7 @@ export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
+  { id: 'notes', label: 'All Notes', icon: StickyNote, color: 'text-amber-400' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
   { id: 'research', label: 'Workspace', icon: Search, color: 'text-brand-orange' },
   { id: 'to_learn', label: 'Watchlist', icon: Clock, color: 'text-brand-blue-light' },
