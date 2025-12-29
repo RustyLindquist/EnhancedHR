@@ -3492,6 +3492,18 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             </button>
                                         )}
 
+                                    {/* --- EXPERTS BUTTON (Only in Academy) --- */}
+                                    {activeCollectionId === 'academy' && (
+                                        <button
+                                            onClick={() => onSelectCollection('instructors')}
+                                            className="group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border bg-black/40 text-slate-300 border-white/10 hover:bg-black/60 hover:text-white hover:border-white/20"
+                                        >
+                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            <Users size={14} className="mr-3" />
+                                            <span>Experts</span>
+                                        </button>
+                                    )}
+
                                     {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
                                     {customCollections.some(c => c.id === activeCollectionId) && (
                                         <div className="relative">

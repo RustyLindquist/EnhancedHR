@@ -159,7 +159,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -185,7 +185,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role, membership_status, author_status')
+          .select('full_name, role, membership_status, author_status, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -203,7 +203,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           initials,
           role,
           membershipStatus,
-          authorStatus
+          authorStatus,
+          avatarUrl: profile?.avatar_url
         });
 
         // Check for impersonation
@@ -580,28 +581,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         )}
       </div>
 
-
-
-      {/* Bottom Branding (Flame + Tagline) */}
-      <div className={`absolute bottom-28 w-full flex flex-col items-center justify-center pb-6 transition-opacity duration-500 pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0 hidden'} z-0`}>
-        <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
-          {/* Glow Effect */}
-          <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 opacity-0 group-hover:opacity-20"></div>
-
-          {/* Flame Image */}
-          <img
-            src="/images/logos/EnhancedHR-logo-mark-flame.png"
-            alt="Mark"
-            className="h-full w-full object-contain opacity-20 transition-all duration-700 group-hover:opacity-100"
-          />
-        </div>
-
-        {/* Tagline */}
-        <span className="text-[11px] font-black text-[#1e293b] uppercase tracking-[0.2em] drop-shadow-sm select-none transition-all duration-500 group-hover:text-white group-hover:tracking-[0.25em]">
-          World-Class Learning
-        </span>
-      </div>
-
       {/* User Profile Summary (Bottom) */}
       <div
         ref={profileRef}
@@ -869,10 +848,18 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           {/* Content */}
           <div className="relative z-10 flex items-center">
             <div className={`
-                w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300
+                w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300 overflow-hidden
                 ${isImpersonating ? 'shadow-[0_0_15px_rgba(220,38,38,0.8)] border-brand-red/50' : ''}
             `}>
-              {userProfile?.initials || '...'}
+              {userProfile?.avatarUrl ? (
+                <img
+                  src={userProfile.avatarUrl}
+                  alt={userProfile.fullName || 'Profile'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userProfile?.initials || '...'
+              )}
             </div>
             {isOpen && (
               <div className="ml-3 overflow-hidden flex-1">
