@@ -276,10 +276,10 @@ const GenericVisual = () => (
     <div className="flex justify-center gap-6 opacity-40 select-none pointer-events-none">
         {[1, 2, 3].map((i) => (
             <div key={i} className={`
-w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 bg - white / 5
-              flex flex - col p - 4 gap - 3 transform
-              ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
-`}>
+                w-48 h-64 rounded-xl border-2 border-dashed border-slate-500/50 bg-white/5
+                flex flex-col p-4 gap-3 transform
+                ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
+            `}>
                 <div className="w-full h-24 bg-slate-500/20 rounded-lg"></div>
                 <div className="w-3/4 h-2 bg-slate-500/20 rounded"></div>
                 <div className="w-1/2 h-2 bg-slate-500/20 rounded"></div>
@@ -394,11 +394,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                         <div className="pt-[100px]"></div>
 
                         <div className="max-w-2xl mx-auto space-y-4">
-                            <p className={`text - slate - 300 text - base font - light leading - relaxed ${alignmentClass} `}>
+                            <p className={`text-slate-300 text-base font-light leading-relaxed ${alignmentClass}`}>
                                 This is where you'll find your conversation history with Prometheus, your AI assistant for deeply personalized learning. Start your first conversation now!
                             </p>
 
-                            <p className={`text - slate - 500 text - sm ${alignmentClass} pb - [50px]`}>
+                            <p className={`text-slate-500 text-sm ${alignmentClass} pb-[50px]`}>
                                 Note: You can access Prometheus from several places.
                             </p>
                         </div>
@@ -477,11 +477,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     if (type === 'company') {
         return (
-            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>There are no Company Collections Yet</h2>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Company Collections</h2>
+            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>There are no Company Collections Yet</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Company Collections</h2>
 
-                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
+                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
                         This is where your organization can create custom collections. They can add courses and content to a collection, assign employees to that collection, and even designate content within that collection as required learning.
                     </p>
@@ -509,20 +509,20 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                     </div>
                 </div>
 
-                <p className={`text - slate - 400 text - lg italic border - t border - brand - blue - light / 10 pt - 6 mt - 6 ${alignmentClass} `}>
+                <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
                     Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
                 </p>
-            </div >
+            </div>
         );
     }
 
     if (type === 'instructors') {
         return (
-            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>Meet Our World-Class Experts</h2>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Our Experts</h2>
+            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Experts</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Experts</h2>
 
-                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
+                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
                         Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
                     </p>
@@ -555,10 +555,10 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     // Generic
     return (
-        <div className={`max - w - 2xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>No content has been saved to this collection.</h2>
-            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Collections</h2>
-            <div className={`text - slate - 400 space - y - 4 leading - relaxed font - light ${alignmentClass} `}>
+        <div className={`max-w-2xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>No content has been saved to this collection.</h2>
+            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Collections</h2>
+            <div className={`text-slate-400 space-y-4 leading-relaxed font-light ${alignmentClass}`}>
                 <p>Use collections to organize content from across the platform into dedicated workspaces. They can include Courses, Modules, Lessons, Activities, Files, and even AI Conversations.</p>
                 <p>On the right-side of your Collection, you'll notice the ability to ask questions from our helpful Prometheus AI assistant. Prometheus uses whatever is in your collection as context.</p>
                 <p>To add content to a collection, simply click the little <span className="inline-flex items-center justify-center w-5 h-5 bg-brand-orange rounded-full mx-1 align-middle"><Plus size={10} className="text-white" /></span> icon on any card, or drag it to the Collection Surface at the bottom of your screen.</p>

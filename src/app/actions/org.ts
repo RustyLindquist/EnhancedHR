@@ -183,13 +183,14 @@ export async function toggleOrgMemberStatus(userId: string, currentStatus: strin
 
     const { data: requesterProfile } = await supabase
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, membership_status')
       .eq('id', user.id)
       .single();
 
     // Platform admins can manage any org, org_admins can only manage their own
     const isPlatformAdmin = requesterProfile?.role === 'admin';
-    if (!isPlatformAdmin && requesterProfile?.role !== 'org_admin') {
+    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
+    if (!isPlatformAdmin && !isOrgAdmin) {
       return { success: false, error: 'Only admins can manage members' };
     }
 
@@ -232,13 +233,19 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
 
     const { data: requesterProfile } = await supabase
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, membership_status')
       .eq('id', user.id)
       .single();
 
-    // Platform admins can manage any org, org_admins need org_id
+    // Platform admins and org_admins can manage invite settings, but must have an org_id
     const isPlatformAdmin = requesterProfile?.role === 'admin';
-    if (!isPlatformAdmin && (requesterProfile?.role !== 'org_admin' || !requesterProfile?.org_id)) {
+    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
+
+    if (!requesterProfile?.org_id) {
+      return { success: false, error: 'You must be a member of an organization to manage invite settings' };
+    }
+
+    if (!isPlatformAdmin && !isOrgAdmin) {
       return { success: false, error: 'Only admins can manage invite settings' };
     }
 
@@ -273,13 +280,14 @@ export async function updateUserRole(userId: string, newRole: 'org_admin' | 'use
 
     const { data: requesterProfile } = await supabase
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, membership_status')
       .eq('id', user.id)
       .single();
 
     // Platform admins can manage any org, org_admins can only manage their own
     const isPlatformAdmin = requesterProfile?.role === 'admin';
-    if (!isPlatformAdmin && requesterProfile?.role !== 'org_admin') {
+    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
+    if (!isPlatformAdmin && !isOrgAdmin) {
       return { success: false, error: 'Only admins can manage user roles' };
     }
 
