@@ -3,9 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
 import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
 import AvatarSection from '@/components/settings/AvatarSection';
-import { Shield, Clock, User, CreditCard, Mail, Building2 } from 'lucide-react';
+import { Shield, Clock, User, CreditCard, Mail } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
-import CanvasHeader from '@/components/CanvasHeader';
 
 export default async function AccountPage() {
     const supabase = await createClient();
@@ -23,10 +22,23 @@ export default async function AccountPage() {
 
     return (
         <StandardPageLayout activeNavId="settings">
-            <CanvasHeader context="Settings" title="My Account" />
+            {/* Header - positioned absolutely with original transparency to show content scrolling underneath */}
+            <div className="absolute top-0 left-0 right-0 h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10">
+                <div>
+                    <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
+                            Settings
+                        </span>
+                    </div>
+                    <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
+                        My <span className="font-bold text-white">Account</span>
+                    </h1>
+                </div>
+            </div>
 
-            {/* Content Area */}
-            <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
+            {/* Content Area - uses flex-1 to take remaining space, scrolls under header */}
+            {/* pt-[150px] = header height (96px) + 54px spacing for visual start position */}
+            <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 pt-[150px] relative z-10 custom-scrollbar">
 
                 <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
 
