@@ -19,7 +19,9 @@ import {
     Search,
     Building,
     HelpCircle,
-    FileText
+    FileText,
+    StickyNote,
+    BookOpen
 } from 'lucide-react';
 
 /**
@@ -40,7 +42,8 @@ export type HelpTopicId =
     | 'search-filters'
     | 'settings'
     | 'organization'
-    | 'help-collection';
+    | 'help-collection'
+    | 'notes';
 
 interface HelpTopic {
     id: HelpTopicId;
@@ -123,6 +126,11 @@ const HELP_TOPICS: Record<HelpTopicId, HelpTopic> = {
         id: 'help-collection',
         title: 'Help Collection',
         content: <HelpCollectionHelpContent />
+    },
+    'notes': {
+        id: 'notes',
+        title: 'Notes in Courses',
+        content: <NotesHelpContent />
     }
 };
 
@@ -1102,6 +1110,107 @@ function HelpCollectionHelpContent() {
                         The Help Collection is designed for both exploration and reference. Come back anytime you need
                         guidance on using the platform effectively.
                     </p>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
+ * Notes Help Content
+ */
+function NotesHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-[#9A9724]/20">
+                        <StickyNote size={20} className="text-[#9A9724]" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Take Notes While You Learn</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    Notes in courses let you capture insights, ideas, and key takeaways as you watch lessons.
+                    Your notes are linked to the course, so they always appear when you return to that course.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <BookOpen size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">How Notes Work</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <p>When viewing a course, you can access notes from the AI panel on the right side:</p>
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span>Switch to the <span className="text-white font-medium">Notes</span> tab to see your course notes</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span>Click <span className="text-white font-medium">+ Note</span> to create a new note for this course</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span>Click any existing note to edit it in the panel editor</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span>Notes auto-save as you type, so you never lose your work</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Layers size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Accessing All Your Notes</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <p>You can access notes from multiple places:</p>
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span><span className="text-white font-medium">All Notes dropdown</span> in the Notes tab lets you load any note into the current course</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span><span className="text-white font-medium">All Notes collection</span> in the left navigation shows every note you've created across all courses</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Notes can be <span className="text-white font-medium">added to collections</span> just like courses and conversations</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            {/* Tip */}
+            <section className="bg-[#9A9724]/10 border border-[#9A9724]/30 rounded-xl p-5">
+                <div className="flex items-start gap-3">
+                    <Lightbulb size={20} className="text-[#9A9724] flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-medium text-white mb-1">Pro Tip</p>
+                        <p className="text-sm text-slate-400">
+                            Notes created in a course stay linked to that course. When you return to the course later,
+                            your notes will be right there waiting for you in the Notes tab.
+                        </p>
+                    </div>
                 </div>
             </section>
         </div>
