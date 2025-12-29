@@ -8,6 +8,8 @@ import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
 import HelpPanel from '@/components/help/HelpPanel';
 import { HelpTopicId } from '@/components/help/HelpContent';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
@@ -35,6 +37,14 @@ function HomeContent() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpTopicId, setHelpTopicId] = useState<HelpTopicId>('notes');
 
+  // Onboarding State
+  const {
+    showOnboarding,
+    isLoading: onboardingLoading,
+    profile: onboardingProfile,
+    completeOnboarding,
+    dismissOnboarding
+  } = useOnboarding();
 
   // Lifted State: Courses source of truth
   const [courses, setCourses] = useState<Course[]>([]);
@@ -529,6 +539,18 @@ function HomeContent() {
         onClose={() => setIsHelpOpen(false)}
         topicId={helpTopicId}
       />
+
+      {/* Onboarding Modal - Shows for new users */}
+      {!onboardingLoading && showOnboarding && user && (
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={dismissOnboarding}
+          onComplete={completeOnboarding}
+          userId={user.id}
+          userName={onboardingProfile?.full_name || undefined}
+          currentAvatarUrl={onboardingProfile?.avatar_url}
+        />
+      )}
     </div>
   );
 }

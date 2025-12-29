@@ -2,6 +2,7 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
 import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
+import AvatarSection from '@/components/settings/AvatarSection';
 import { Shield, Clock, User, CreditCard, Mail, Building2 } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
@@ -14,7 +15,7 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, org_id, organizations(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, organizations(name)')
         .eq('id', user.id)
         .single();
 
@@ -39,6 +40,9 @@ export default async function AccountPage() {
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm space-y-6">
+                            {/* Profile Photo */}
+                            <AvatarSection userId={user.id} currentAvatarUrl={profile?.avatar_url} />
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
