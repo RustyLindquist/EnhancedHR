@@ -61,6 +61,9 @@ export default function MarkdownEditorCore({ value, onChange, placeholder }: Mar
             <style jsx global>{`
                 .markdown-editor-wrapper {
                     width: 100%;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
                 }
 
                 .markdown-editor-wrapper .mdxeditor {
@@ -68,12 +71,26 @@ export default function MarkdownEditorCore({ value, onChange, placeholder }: Mar
                     border: 1px solid rgba(255, 255, 255, 0.1);
                     border-radius: 0.75rem;
                     overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+                    min-height: 0;
+                }
+
+                .markdown-editor-wrapper .mdxeditor > div:last-child {
+                    flex: 1;
+                    overflow-y: auto;
+                    min-height: 0;
                 }
 
                 .markdown-editor-wrapper .mdxeditor-toolbar {
                     background: rgba(120, 192, 240, 0.15);
                     border-bottom: 1px solid rgba(120, 192, 240, 0.2);
                     padding: 0.5rem;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.25rem;
+                    align-items: center;
                 }
 
                 .markdown-editor-wrapper .mdxeditor-toolbar button {
@@ -132,11 +149,11 @@ export default function MarkdownEditorCore({ value, onChange, placeholder }: Mar
                 }
 
                 .markdown-editor-wrapper .mdx-editor-content {
-                    min-height: 400px;
-                    padding: 1rem;
+                    min-height: 150px;
+                    padding: 0.75rem;
                     color: #cbd5e1;
-                    font-size: 1rem;
-                    line-height: 1.75;
+                    font-size: 0.875rem;
+                    line-height: 1.625;
                 }
 
                 .markdown-editor-wrapper .mdx-editor-content:focus {
