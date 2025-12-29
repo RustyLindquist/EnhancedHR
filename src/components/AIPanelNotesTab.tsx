@@ -218,9 +218,9 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
 
     // Render list view
     const renderListView = () => (
-        <div className="flex flex-col h-full">
-            {/* Notes List */}
-            <div className="flex-1 overflow-y-auto space-y-3">
+        <div className="flex flex-col h-full overflow-hidden">
+            {/* Notes List - overflow-x-hidden prevents horizontal scrollbar from scaled cards */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3 pr-1">
                 {isLoading ? (
                     <div className="flex items-center justify-center py-10">
                         <Loader2 size={24} className="animate-spin text-[#9A9724]" />
@@ -228,7 +228,7 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
                 ) : (
                     <>
                         {courseNotes.map((note) => (
-                            <div key={note.id} className="transform scale-[0.85] origin-top-left w-[118%]">
+                            <div key={note.id} className="transform scale-[0.85] origin-top-left" style={{ width: 'calc(100% / 0.85)' }}>
                                 <UniversalCard
                                     type="NOTE"
                                     title={note.title || 'Untitled Note'}
@@ -247,8 +247,8 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
                 )}
             </div>
 
-            {/* Learn More Footer - matches CollectionSurface height (h-28) */}
-            <div className="h-28 flex-shrink-0 -mx-6 border-t border-white/10 flex items-center justify-center">
+            {/* Learn More Footer - matches CollectionSurface/AIPanel footer height (h-28) */}
+            <div className="h-28 flex-shrink-0 -mx-6 -mb-6 border-t border-white/10 flex items-center justify-center bg-gradient-to-t from-black/20 to-transparent">
                 <button
                     onClick={() => onOpenHelp('notes')}
                     className="flex items-center gap-2 text-slate-400 hover:text-[#78C0F0] transition-colors text-sm"
@@ -308,9 +308,9 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
     );
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col overflow-hidden">
             {/* Header - All Notes dropdown only (list view) or Back button (editor view) */}
-            <div className="flex items-center gap-3 mb-10">
+            <div className={`flex items-center gap-3 flex-shrink-0 ${viewMode === 'editor' ? 'mb-2' : 'mb-4'}`}>
                 {viewMode === 'editor' ? (
                     // Back button when in editor mode
                     <button

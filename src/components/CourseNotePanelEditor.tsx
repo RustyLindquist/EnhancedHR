@@ -154,26 +154,26 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
     }
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Save status */}
-            <div className="h-6 flex items-center px-1 mb-2">
+        <div className="flex flex-col h-full overflow-hidden">
+            {/* Save status - compact */}
+            <div className="h-5 flex items-center mb-1 flex-shrink-0">
                 {renderSaveStatus()}
             </div>
 
             {/* Title Input */}
-            <div className="mb-4">
+            <div className="mb-3 flex-shrink-0">
                 <input
                     type="text"
                     value={title}
                     onChange={(e) => handleTitleChange(e.target.value)}
                     placeholder="Untitled Note"
                     autoFocus
-                    className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white placeholder-slate-600 focus:outline-none focus:border-[#9A9724]/50 transition-all text-base"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-[#9A9724]/50 transition-all text-sm"
                 />
             </div>
 
             {/* WYSIWYG Markdown Editor */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <MarkdownEditor
                     value={content}
                     onChange={handleContentChange}
@@ -181,17 +181,19 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
                 />
             </div>
 
-            {/* Note metadata footer */}
-            {note && (
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-3 mt-3 border-t border-white/10">
-                    <span>
-                        Updated: {new Date(note.updated_at).toLocaleDateString()}
-                    </span>
-                    <span>
-                        Created: {new Date(note.created_at).toLocaleDateString()}
-                    </span>
-                </div>
-            )}
+            {/* Note metadata footer - matches CollectionSurface/AIPanel footer height (h-28) */}
+            <div className="h-28 flex-shrink-0 -mx-6 -mb-6 border-t border-white/10 flex items-center justify-center bg-gradient-to-t from-black/20 to-transparent">
+                {note && (
+                    <div className="flex items-center gap-6 text-xs text-slate-500">
+                        <span>
+                            Updated: {new Date(note.updated_at).toLocaleDateString()}
+                        </span>
+                        <span>
+                            Created: {new Date(note.created_at).toLocaleDateString()}
+                        </span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
