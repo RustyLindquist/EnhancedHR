@@ -8,6 +8,8 @@ import { getNoteAction, updateNoteAction } from '../app/actions/notes';
 
 interface CourseNotePanelEditorProps {
     noteId: string;
+    title: string;
+    onTitleChange: (title: string) => void;
     onSaveSuccess?: () => void;
     onLoadComplete?: (note: Note) => void;
 }
@@ -16,11 +18,12 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
     noteId,
+    title,
+    onTitleChange,
     onSaveSuccess,
     onLoadComplete
 }) => {
     const [note, setNote] = useState<Note | null>(null);
-    const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +40,7 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
                 .then((loadedNote) => {
                     if (loadedNote) {
                         setNote(loadedNote);
-                        setTitle(loadedNote.title);
+                        onTitleChange(loadedNote.title);
                         setContent(loadedNote.content);
                         lastSavedRef.current = { title: loadedNote.title, content: loadedNote.content };
                         onLoadComplete?.(loadedNote);
@@ -45,7 +48,7 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
                 })
                 .finally(() => setIsLoading(false));
         }
-    }, [noteId, onLoadComplete]);
+    }, [noteId, onTitleChange, onLoadComplete]);
 
     // Cleanup timeout on unmount and trigger final save
     useEffect(() => {
@@ -55,6 +58,14 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
             }
         };
     }, []);
+
+    // Track if we've loaded the initial note (to avoid saving on mount)
+    const hasLoadedRef = useRef(false);
+    useEffect(() => {
+        if (note) {
+            hasLoadedRef.current = true;
+        }
+    }, [note]);
 
     // Auto-save with debounce
     const debouncedSave = useCallback(async (newTitle: string, newContent: string) => {
@@ -91,8 +102,27 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
         }
     }, [noteId, onSaveSuccess]);
 
+    // Watch for title prop changes and trigger save
+    useEffect(() => {
+        // Skip if we haven't loaded the note yet
+        if (!hasLoadedRef.current || isLoading) return;
+
+        // Don't trigger save if title hasn't changed from last saved
+        if (title === lastSavedRef.current.title) return;
+
+        setSaveStatus('saving');
+
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+
+        saveTimeoutRef.current = setTimeout(() => {
+            debouncedSave(title, content);
+        }, 500);
+    }, [title, content, isLoading, debouncedSave]);
+
     const handleTitleChange = (newTitle: string) => {
-        setTitle(newTitle);
+        onTitleChange(newTitle);
         setSaveStatus('saving');
 
         if (saveTimeoutRef.current) {
@@ -156,20 +186,8 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* Save status - compact */}
-            <div className="h-5 flex items-center mb-1 flex-shrink-0">
+            <div className="h-5 flex items-center mb-2 flex-shrink-0">
                 {renderSaveStatus()}
-            </div>
-
-            {/* Title Input */}
-            <div className="mb-3 flex-shrink-0">
-                <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Untitled Note"
-                    autoFocus
-                    className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-white placeholder-slate-600 focus:outline-none focus:border-[#9A9724]/50 transition-all text-sm"
-                />
             </div>
 
             {/* WYSIWYG Markdown Editor */}
