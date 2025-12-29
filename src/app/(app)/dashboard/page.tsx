@@ -281,6 +281,15 @@ function HomeContent() {
     });
   };
 
+  // Handler for adding a note to a collection from AI Panel Notes tab
+  const handleAddNoteToCollection = (item: { type: 'NOTE'; id: string; title: string }) => {
+    handleOpenModal({
+      type: 'NOTE',
+      id: item.id,
+      title: item.title
+    });
+  };
+
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
       handleOpenModal(undefined);
@@ -496,6 +505,7 @@ function HomeContent() {
             conversationId={activeConversationId}
             onConversationIdChange={setActiveConversationId}
             onAddConversationToCollection={handleAddConversationToCollection}
+            onAddNoteToCollection={handleAddNoteToCollection}
           />
         )}
       </div>

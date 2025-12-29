@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download, StickyNote } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { parseStreamResponse, stripInsightTags, StreamInsightMetadata } from '@/lib/ai/insight-stream-parser';
 import { AIResponseFooter } from '@/components/ai';
+import AIPanelNotesTab from './AIPanelNotesTab';
+
+interface NoteDragItem {
+  type: 'NOTE';
+  id: string;
+  title: string;
+}
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -17,6 +24,10 @@ interface AIPanelProps {
   conversationId?: string | null;
   onConversationIdChange?: (id: string) => void;
   onAddConversationToCollection?: (conversationId: string, title: string) => void;
+  onOpenHelp?: (topicId: string) => void;
+  // Notes tab handlers
+  onAddNoteToCollection?: (item: { type: 'NOTE'; id: string; title: string }) => void;
+  onNoteDragStart?: (item: NoteDragItem) => void;
 }
 
 import { Message } from '@/types';
@@ -29,11 +40,21 @@ const AIPanel: React.FC<AIPanelProps> = ({
   initialPrompt,
   conversationId: propConversationId,
   onConversationIdChange,
-  onAddConversationToCollection
+  onAddConversationToCollection,
+  onOpenHelp,
+  onAddNoteToCollection,
+  onNoteDragStart
 }) => {
   const [width, setWidth] = useState(384); // Default w-96
   const [isDragging, setIsDragging] = useState(false);
   const [isHandleHovered, setIsHandleHovered] = useState(false);
+
+  // Tab state for Course scope (AI Chat vs Notes)
+  const [activeTab, setActiveTab] = useState<'chat' | 'notes'>('chat');
+
+  // Trigger for note creation from header button
+  const [createNoteTrigger, setCreateNoteTrigger] = useState(0);
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
 
   // Internal Mode State (Only relevant if toggling between Assistant/Tutor in Course Scope)
   const [mode, setMode] = useState<'assistant' | 'tutor'>('assistant');
@@ -48,11 +69,26 @@ const AIPanel: React.FC<AIPanelProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const hasInitialPromptRun = useRef(false);
 
   // Insight metadata from the last AI response
   const [insightMetadata, setInsightMetadata] = useState<StreamInsightMetadata | null>(null);
+
+  // Store conversation state per mode (for Course scope - separate Assistant vs Tutor conversations)
+  interface ConversationState {
+    id: string | null;
+    messages: Message[];
+    title: string;
+    insightMetadata: StreamInsightMetadata | null;
+  }
+  const assistantConversationRef = useRef<ConversationState>({
+    id: null, messages: [], title: 'New Conversation', insightMetadata: null
+  });
+  const tutorConversationRef = useRef<ConversationState>({
+    id: null, messages: [], title: 'New Conversation', insightMetadata: null
+  });
+  const prevModeRef = useRef<'assistant' | 'tutor'>(mode);
 
   // Handle Resizing logic
   useEffect(() => {
@@ -89,13 +125,54 @@ const AIPanel: React.FC<AIPanelProps> = ({
     }
   }, [initialPrompt, isOpen]);
 
-  // Scroll to bottom
+  // Scroll to bottom - use scrollTop instead of scrollIntoView to prevent parent scroll containers from shifting
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isLoading]);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationTitle, setConversationTitle] = useState<string>('New Conversation');
+
+  // Handle mode switching (Assistant <-> Tutor) - save current conversation, load the other
+  useEffect(() => {
+    // Only relevant in Course scope
+    if (contextScope.type !== 'COURSE') return;
+
+    const prevMode = prevModeRef.current;
+    if (prevMode !== mode) {
+      // Save current conversation to the previous mode's ref
+      if (prevMode === 'assistant') {
+        assistantConversationRef.current = {
+          id: conversationId,
+          messages: [...messages],
+          title: conversationTitle,
+          insightMetadata: insightMetadata
+        };
+      } else {
+        tutorConversationRef.current = {
+          id: conversationId,
+          messages: [...messages],
+          title: conversationTitle,
+          insightMetadata: insightMetadata
+        };
+      }
+
+      // Load the new mode's conversation
+      const newConv = mode === 'assistant'
+        ? assistantConversationRef.current
+        : tutorConversationRef.current;
+
+      setConversationId(newConv.id);
+      setMessages(newConv.messages);
+      setConversationTitle(newConv.title);
+      setInsightMetadata(newConv.insightMetadata);
+
+      // Update the mode ref
+      prevModeRef.current = mode;
+    }
+  }, [mode, contextScope.type]);
 
   // Sync prop conversationId to local state and fetch messages
   useEffect(() => {
@@ -123,6 +200,38 @@ const AIPanel: React.FC<AIPanelProps> = ({
     }
   }, [propConversationId]);
 
+  // Track previous context scope to detect scope changes
+  const prevContextScopeRef = useRef<{ type: string; id?: string } | null>(null);
+
+  // Reset conversation when context scope changes (e.g., switching courses)
+  useEffect(() => {
+    const prevScope = prevContextScopeRef.current;
+    const scopeChanged = prevScope !== null && (
+      prevScope.type !== contextScope.type ||
+      prevScope.id !== contextScope.id
+    );
+
+    if (scopeChanged) {
+      // Clear the conversation when switching contexts
+      setConversationId(null);
+      setMessages([]);
+      setConversationTitle('New Conversation');
+      setInsightMetadata(null);
+      // Also reset the processed prompt to allow new initial prompts
+      lastProcessedPromptRef.current = undefined;
+
+      // Reset mode-specific conversation refs (both Assistant and Tutor start fresh)
+      assistantConversationRef.current = { id: null, messages: [], title: 'New Conversation', insightMetadata: null };
+      tutorConversationRef.current = { id: null, messages: [], title: 'New Conversation', insightMetadata: null };
+
+      // Reset mode back to assistant (default) and sync the ref
+      setMode('assistant');
+      prevModeRef.current = 'assistant';
+    }
+
+    // Update the ref for next comparison
+    prevContextScopeRef.current = { type: contextScope.type, id: contextScope.id };
+  }, [contextScope.type, contextScope.id]);
 
   const createConversation = async (title: string) => {
     try {
@@ -192,6 +301,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
         if (onConversationIdChange && activeConvId) {
           onConversationIdChange(activeConvId);
         }
+        // Notify MainCanvas to refresh conversations list and counts
+        window.dispatchEvent(new CustomEvent('collection:refresh'));
       }
     }
 
@@ -373,46 +484,121 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
         {isOpen && (
           <div className="flex items-center overflow-hidden w-full justify-between">
-            <div className="flex flex-col justify-center">
-              <span className={`font-bold text-sm tracking-widest uppercase ${agentInfo.color} drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none`}>
-                {agentInfo.name}
-              </span>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
-              </div>
-            </div>
-            {/* Action Buttons - only show when there's an active conversation with messages */}
-            {conversationId && messages.length > 0 && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Export Button */}
+            {/* Left side: Tabs (Course scope) or Agent name (other scopes) */}
+            {contextScope.type === 'COURSE' ? (
+              // AI Chat / Notes tabs in header for Course scope - fills available width
+              <div className="flex-1 bg-black/30 p-1 rounded-xl flex border border-white/10 mr-4">
                 <button
-                  onClick={() => exportConversationAsMarkdown(messages, conversationTitle, agentInfo.name)}
-                  className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
-                  title="Export conversation as Markdown"
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'chat' ? 'bg-[#5694C7] text-white shadow-[0_0_15px_rgba(86,148,199,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <Download size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                  <MessageSquare size={14} /> Chat
                 </button>
+                <button
+                  onClick={() => setActiveTab('notes')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'notes' ? 'bg-[#5694C7] text-white shadow-[0_0_15px_rgba(86,148,199,0.3)]' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <StickyNote size={14} /> Notes
+                </button>
+              </div>
+            ) : (
+              // Original agent name display for non-Course scopes
+              <div className="flex flex-col justify-center">
+                <span className={`font-bold text-sm tracking-widest uppercase ${agentInfo.color} drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none`}>
+                  {agentInfo.name}
+                </span>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
+                </div>
+              </div>
+            )}
+            {/* Action Buttons - always show in Course scope for consistent header layout */}
+            {contextScope.type === 'COURSE' ? (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {activeTab === 'chat' ? (
+                  <>
+                    {/* Export Button - disabled when no conversation */}
+                    <button
+                      onClick={() => conversationId && messages.length > 0 && exportConversationAsMarkdown(messages, conversationTitle, agentInfo.name)}
+                      disabled={!conversationId || messages.length === 0}
+                      className={`group flex items-center justify-center w-8 h-8 rounded-full border border-white/10 transition-all ${
+                        conversationId && messages.length > 0
+                          ? 'bg-white/5 hover:bg-white/10 hover:scale-105 active:scale-95 cursor-pointer'
+                          : 'bg-white/[0.02] cursor-not-allowed'
+                      }`}
+                      title={conversationId && messages.length > 0 ? "Export conversation as Markdown" : "Start a conversation to export"}
+                    >
+                      <Download size={16} className={`transition-colors ${conversationId && messages.length > 0 ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'}`} />
+                    </button>
 
-                {/* Add to Collection Button */}
-                {onAddConversationToCollection && (
-                  <button
-                    onClick={() => onAddConversationToCollection(conversationId, conversationTitle)}
-                    className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
-                    title="Save this conversation to a Collection"
-                  >
-                    <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-                  </button>
+                    {/* Add to Collection Button - disabled when no conversation */}
+                    {onAddConversationToCollection && (
+                      <button
+                        onClick={() => conversationId && messages.length > 0 && onAddConversationToCollection(conversationId, conversationTitle)}
+                        disabled={!conversationId || messages.length === 0}
+                        className={`group flex items-center justify-center w-8 h-8 rounded-full border border-white/10 transition-all ${
+                          conversationId && messages.length > 0
+                            ? 'bg-white/5 hover:bg-white/10 hover:scale-105 active:scale-95 cursor-pointer'
+                            : 'bg-white/[0.02] cursor-not-allowed'
+                        }`}
+                        title={conversationId && messages.length > 0 ? "Save this conversation to a Collection" : "Start a conversation to save"}
+                      >
+                        <Plus size={16} className={`transition-colors ${conversationId && messages.length > 0 ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'}`} />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Notes tab: Placeholder for Download button to maintain consistent spacing */}
+                    <div className="w-8 h-8" />
+
+                    {/* Add Note Button */}
+                    <button
+                      onClick={() => setCreateNoteTrigger(prev => prev + 1)}
+                      disabled={isCreatingNote}
+                      className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                      title="Create a new note"
+                    >
+                      {isCreatingNote ? (
+                        <Loader2 size={16} className="text-slate-400 animate-spin" />
+                      ) : (
+                        <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                      )}
+                    </button>
+                  </>
                 )}
               </div>
+            ) : (
+              // Non-Course scope: only show buttons when there's an active conversation
+              conversationId && messages.length > 0 && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => exportConversationAsMarkdown(messages, conversationTitle, agentInfo.name)}
+                    className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                    title="Export conversation as Markdown"
+                  >
+                    <Download size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+                  {onAddConversationToCollection && (
+                    <button
+                      onClick={() => onAddConversationToCollection(conversationId, conversationTitle)}
+                      className="group flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                      title="Save this conversation to a Collection"
+                    >
+                      <Plus size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                    </button>
+                  )}
+                </div>
+              )
             )}
           </div>
         )}
       </div>
 
-      {/* MODE TOGGLE (Only when open and in Course Scope) */}
-      {isOpen && contextScope.type === 'COURSE' && (
-        <div className="px-6 py-4 border-b border-white/5">
+      {/* Assistant/Tutor Toggle (Only when in Course Scope + Chat tab active) */}
+      {isOpen && contextScope.type === 'COURSE' && activeTab === 'chat' && (
+        <div className="px-6 py-3 border-b border-white/5">
           <div className="bg-black/30 p-1 rounded-xl flex border border-white/10">
             <button
               onClick={() => setMode('assistant')}
@@ -430,12 +616,26 @@ const AIPanel: React.FC<AIPanelProps> = ({
         </div>
       )}
 
-      {/* Chat Area */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative overflow-hidden bg-gradient-to-b from-transparent to-black/20">
         {isOpen ? (
           <>
-            {/* Messages - pb-32 prevents overlap with input area */}
-            <div className="flex-1 px-6 pt-8 pb-32 space-y-6 overflow-y-auto no-scrollbar">
+            {/* Notes Tab Content (when in Course scope and Notes tab active) */}
+            {contextScope.type === 'COURSE' && activeTab === 'notes' && contextScope.id ? (
+              <div className="flex-1 px-6 pt-4 pb-6 overflow-hidden">
+                <AIPanelNotesTab
+                  courseId={parseInt(contextScope.id, 10)}
+                  onOpenHelp={(topicId) => onOpenHelp?.(topicId)}
+                  onAddToCollection={onAddNoteToCollection}
+                  onDragStart={onNoteDragStart}
+                  onCreatingChange={setIsCreatingNote}
+                  createNoteTrigger={createNoteTrigger}
+                />
+              </div>
+            ) : (
+            <>
+            {/* Chat Messages - pb-32 prevents overlap with input area */}
+            <div ref={messagesContainerRef} className="flex-1 px-6 pt-8 pb-32 space-y-6 overflow-y-auto no-scrollbar">
 
               {messages.length === 0 ? (
                 <>
@@ -583,7 +783,6 @@ const AIPanel: React.FC<AIPanelProps> = ({
                       </div>
                     </div>
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
@@ -641,6 +840,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
                 </div>
               </div>
             </div>
+            </>
+            )}
           </>
         ) : (
           /* Collapsed State */

@@ -53,6 +53,53 @@ export async function getNotesAction(): Promise<Note[]> {
 }
 
 /**
+ * Fetch all notes for a specific course
+ */
+export async function getNotesByCourseAction(courseId: number): Promise<Note[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const admin = createAdminClient();
+
+    const { data: notes, error } = await admin
+        .from('notes')
+        .select(`
+            id,
+            user_id,
+            title,
+            content,
+            course_id,
+            created_at,
+            updated_at,
+            courses (
+                title
+            )
+        `)
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .order('updated_at', { ascending: false });
+
+    if (error) {
+        console.error('[getNotesByCourseAction] Error fetching notes:', error);
+        return [];
+    }
+
+    return (notes || []).map((note: any) => ({
+        type: 'NOTE' as const,
+        id: note.id,
+        user_id: note.user_id,
+        title: note.title,
+        content: note.content,
+        course_id: note.course_id,
+        course_title: note.courses?.title || null,
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+    }));
+}
+
+/**
  * Fetch a single note by ID
  */
 export async function getNoteAction(noteId: string): Promise<Note | null> {

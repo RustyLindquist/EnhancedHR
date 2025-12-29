@@ -1031,6 +1031,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (activeCollectionId && activeCollectionId !== 'academy' && activeCollectionId !== 'dashboard') {
                 setRefreshTrigger(prev => prev + 1);
             }
+            // Also refresh conversations list (for new conversations from AI Panel)
+            fetchConversations();
             // Notify parent (AppLayout/Dashboard) to also refresh
             if (onCollectionUpdate) {
                 onCollectionUpdate();
@@ -2476,7 +2478,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     }
                                     else if (item.itemType === 'NOTE') {
                                         // Open the note editor
-                                        setEditingNoteId(item.id as string);
+                                        handleOpenNoteEditor(item.id as string);
                                     }
                                     else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
                                         handleOpenContextEditor(item.itemType, item as any);
