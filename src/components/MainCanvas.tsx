@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -2357,15 +2357,21 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
                 if (notes.length === 0) {
                     return (
-                        <div className="text-slate-500 p-10 flex flex-col items-center">
-                            <div className="mb-6 relative w-24 h-24">
+                        <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
                                 <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
-                                <div className="relative z-10 p-5 border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm rounded-xl">
-                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1.5} />
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Edit className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
                                 </div>
                             </div>
-                            <p className="text-lg mb-2">No notes yet.</p>
-                            <p className="text-sm text-slate-400">Click "New Note" to create your first note.</p>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Capture Your Learning Insights</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                Take notes as you learn, jot down key takeaways, and build your personal knowledge base. Notes created during courses stay connected to their context, making it easy to recall and apply what you've learned.
+                            </p>
+                            <p className="text-xs text-slate-500">Click "New Note" to create your first note.</p>
                         </div>
                     );
                 }
@@ -2392,6 +2398,23 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 />
                             </div>
                         ))}
+
+                        {/* Notes Collection Description Footer */}
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Edit className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Capture Your Learning Insights</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Take notes as you learn, jot down key takeaways, and build your personal knowledge base. Notes created during courses stay connected to their context, making it easy to recall and apply what you've learned.
+                            </p>
+                        </div>
                     </div>
                 );
             }
@@ -2445,13 +2468,149 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             }
 
             if (displayItems.length === 0) {
-                return <div className="text-slate-500 p-10 flex flex-col items-center">
-                    <p className="text-lg mb-2">This collection is empty.</p>
-                    {activeCollectionId === 'personal-context'
-                        ? <p className="text-sm">Add custom context to help the AI understand you better.</p>
-                        : <p className="text-sm">Drag and drop courses, lessons, or conversations here to save them.</p>
+                // Render beautiful empty state based on collection type
+                const renderEmptyState = () => {
+                    if (activeCollectionId === 'personal-context') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Sparkles className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <FileText className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Customize Your AI Experience</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    The context you add here (Personal Profile, Documents, Key Insights) is automatically shared with your AI Tutors to give you highly personalized guidance across the entire platform.
+                                </p>
+                                <p className="text-xs text-slate-500">Add custom context to help the AI understand you better.</p>
+                            </div>
+                        );
                     }
-                </div>;
+                    if (activeCollectionId === 'favorites') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-red/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Star className="text-brand-red w-full h-full" strokeWidth={1} fill="currentColor" />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <BookOpen className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Curated Learning Journey</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Save courses, lessons, and conversations that matter most to you. Your favorites are always just one click away, making it easy to revisit key insights and continue your professional growth.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to save them.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'research') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-orange/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Target className="text-brand-orange w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Lightbulb className="text-amber-400 w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Active Learning Hub</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Organize content you're actively working with. Use this space to collect courses, modules, and resources for current projects or initiatives—perfect for deep-dive research and focused learning.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to organize them.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'to_learn') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Bookmark className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Clock className="text-slate-400 w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Queue Up Your Future Learning</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Bookmark content you want to explore later. Build a personalized pipeline of courses and lessons that match your career goals—your future self will thank you.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to save for later.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'conversations') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <MessageSquare className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Flame className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your AI Learning Dialogues</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Every conversation with your AI tutor is saved here. Revisit past discussions, continue where you left off, and watch your understanding deepen over time through personalized dialogue.
+                                </p>
+                                <p className="text-xs text-slate-500">Start a conversation to see it here.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'company') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-slate-400/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Building className="text-slate-400 w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Organization's Learning Hub</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Access content curated specifically for your organization. Required training, recommended courses, and company-specific resources—all in one place to keep your team aligned and growing together.
+                                </p>
+                                <p className="text-xs text-slate-500">No company content has been assigned yet.</p>
+                            </div>
+                        );
+                    }
+                    // Custom collections fallback
+                    return (
+                        <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Folder className="text-purple-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Layers className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Custom Collection</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                Organize your learning your way. Create themed collections for specific projects, skill tracks, or topics you're passionate about—complete flexibility to structure your professional development journey.
+                            </p>
+                            <p className="text-xs text-slate-500">Drag and drop items here to organize them.</p>
+                        </div>
+                    );
+                };
+                return renderEmptyState();
             }
 
 
@@ -2490,10 +2649,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         </div>
                     ))}
 
-                    {/* --- Personal Context Helper Footer --- */}
+                    {/* --- Collection Helper Footers --- */}
+
+                    {/* Personal Context */}
                     {activeCollectionId === 'personal-context' && (
-                        <div className="col-span-full flex flex-col items-center justify-center pt-20 pb-10 opacity-60">
-                            {/* Vector Graphic Placeholder */}
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
                             <div className="mb-6 relative w-32 h-32">
                                 <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
                                 <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
@@ -2503,10 +2663,123 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     <FileText className="text-brand-orange w-8 h-8" strokeWidth={1} />
                                 </div>
                             </div>
-
                             <h3 className="text-xl font-light text-white mb-2 tracking-wide">Customize Your AI Experience</h3>
                             <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
                                 The context you add here (Personal Profile, Documents, Key Insights) is automatically shared with your AI Tutors to give you highly personalized guidance across the entire platform.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Favorites */}
+                    {activeCollectionId === 'favorites' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-red/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Star className="text-brand-red w-full h-full" strokeWidth={1} fill="currentColor" />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <BookOpen className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Curated Learning Journey</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Save courses, lessons, and conversations that matter most to you. Your favorites are always just one click away, making it easy to revisit key insights and continue your professional growth.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Workspace (research) */}
+                    {activeCollectionId === 'research' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-orange/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Target className="text-brand-orange w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Lightbulb className="text-amber-400 w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Active Learning Hub</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Organize content you're actively working with. Use this space to collect courses, modules, and resources for current projects or initiatives—perfect for deep-dive research and focused learning.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Watchlist (to_learn) */}
+                    {activeCollectionId === 'to_learn' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Bookmark className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Clock className="text-slate-400 w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Queue Up Your Future Learning</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Bookmark content you want to explore later. Build a personalized pipeline of courses and lessons that match your career goals—your future self will thank you.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Conversations */}
+                    {activeCollectionId === 'conversations' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <MessageSquare className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Flame className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your AI Learning Dialogues</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Every conversation with your AI tutor is saved here. Revisit past discussions, continue where you left off, and watch your understanding deepen over time through personalized dialogue.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Company */}
+                    {activeCollectionId === 'company' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-slate-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Building className="text-slate-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Organization's Learning Hub</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Access content curated specifically for your organization. Required training, recommended courses, and company-specific resources—all in one place to keep your team aligned and growing together.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Custom Collections */}
+                    {customCollections.some(c => c.id === activeCollectionId) && activeCollectionId !== 'favorites' && activeCollectionId !== 'research' && activeCollectionId !== 'to_learn' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Folder className="text-purple-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Layers className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Custom Collection</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Organize your learning your way. Create themed collections for specific projects, skill tracks, or topics you're passionate about—complete flexibility to structure your professional development journey.
                             </p>
                         </div>
                     )}
