@@ -6,6 +6,8 @@ import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
+import HelpPanel from '@/components/help/HelpPanel';
+import { HelpTopicId } from '@/components/help/HelpContent';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
@@ -28,6 +30,10 @@ function HomeContent() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true); // Restore default open
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
+
+  // Help Panel State
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpTopicId, setHelpTopicId] = useState<HelpTopicId>('notes');
 
 
   // Lifted State: Courses source of truth
@@ -408,6 +414,12 @@ function HomeContent() {
     }
   }, [previousCollectionId]);
 
+  // Open help panel with specific topic
+  const handleOpenHelp = useCallback((topicId: string) => {
+    setHelpTopicId(topicId as HelpTopicId);
+    setIsHelpOpen(true);
+  }, []);
+
   useEffect(() => {
     if (courseIdParam) {
       setActiveCourseId(courseIdParam);
@@ -506,10 +518,17 @@ function HomeContent() {
             onConversationIdChange={setActiveConversationId}
             onAddConversationToCollection={handleAddConversationToCollection}
             onAddNoteToCollection={handleAddNoteToCollection}
+            onOpenHelp={handleOpenHelp}
           />
         )}
       </div>
 
+      {/* Help Panel */}
+      <HelpPanel
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        topicId={helpTopicId}
+      />
     </div>
   );
 }
