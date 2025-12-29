@@ -19,16 +19,20 @@ export default async function OrgLayout({
     // Verify Org Access
     const { data: profile } = await supabase
         .from('profiles')
-        .select('org_id, membership_status, organizations(name)')
+        .select('org_id, membership_status, role, organizations(name)')
         .eq('id', user.id)
         .single();
 
-    if (!profile?.org_id || (profile.membership_status !== 'org_admin' && profile.membership_status !== 'employee')) {
-        // If not in an org, redirect to join or home
+    // Platform admins can access org portal even without org_id
+    const isPlatformAdmin = profile?.role === 'admin';
+    const isOrgMember = profile?.org_id && (profile.membership_status === 'org_admin' || profile.membership_status === 'employee');
+
+    if (!isPlatformAdmin && !isOrgMember) {
+        // If not in an org and not a platform admin, redirect to home
         redirect('/');
     }
 
-    const orgName = (profile.organizations as any)?.name || 'Organization';
+    const orgName = (profile?.organizations as any)?.name || (isPlatformAdmin ? 'Admin View' : 'Organization');
 
     return (
         <div className="flex h-screen w-full bg-[#0A0D12] text-white font-sans selection:bg-brand-blue-light/30">
@@ -56,7 +60,7 @@ export default async function OrgLayout({
                         <Layers size={18} />
                         <span className="text-sm font-medium">Collections</span>
                     </Link>
-                    {profile.membership_status === 'org_admin' && (
+                    {(profile?.membership_status === 'org_admin' || isPlatformAdmin) && (
                         <Link href="/org/analytics" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
                             <BarChart2 size={18} />
                             <span className="text-sm font-medium">AI Analytics</span>
@@ -84,7 +88,7 @@ export default async function OrgLayout({
                     <div className="flex items-center gap-4">
                         <div className="text-right">
                             <p className="text-sm font-bold text-white">{user.user_metadata?.full_name || user.email}</p>
-                            <p className="text-xs text-slate-500 capitalize">{profile.membership_status?.replace('_', ' ')}</p>
+                            <p className="text-xs text-slate-500 capitalize">{isPlatformAdmin ? 'Platform Admin' : profile?.membership_status?.replace('_', ' ')}</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-bold text-slate-400">
                             {(user.email || 'U').substring(0, 2).toUpperCase()}

@@ -519,8 +519,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         )}
 
-        {/* My Organization (Only for Org Admins) */}
-        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin') && (
+        {/* My Organization (Only for Org Admins and Platform Admins) */}
+        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
           <div className="px-4 mb-8">
             {isOpen && (
               <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">

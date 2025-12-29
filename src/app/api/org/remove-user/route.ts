@@ -17,25 +17,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'User ID required' }, { status: 400 });
         }
 
-        // 1. Verify Requestor is Org Admin
+        // 1. Verify Requestor is Org Admin or Platform Admin
         const { data: adminProfile } = await supabase
             .from('profiles')
-            .select('org_id, membership_status')
+            .select('org_id, membership_status, role')
             .eq('id', user.id)
             .single();
 
-        if (!adminProfile?.org_id || adminProfile.membership_status !== 'org_admin') {
+        const isPlatformAdmin = adminProfile?.role === 'admin';
+        if (!isPlatformAdmin && (!adminProfile?.org_id || adminProfile.membership_status !== 'org_admin')) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // 2. Verify Target User belongs to same Org
+        // 2. Verify Target User belongs to same Org (skip for platform admins)
         const { data: targetProfile } = await supabase
             .from('profiles')
             .select('org_id')
             .eq('id', userId)
             .single();
 
-        if (targetProfile?.org_id !== adminProfile.org_id) {
+        if (!isPlatformAdmin && targetProfile?.org_id !== adminProfile?.org_id) {
             return NextResponse.json({ error: 'User not in your organization' }, { status: 404 });
         }
 
@@ -54,11 +55,12 @@ export async function POST(req: NextRequest) {
         }
 
         // 4. Decrement Stripe Subscription
-        // Fetch Org's Stripe Subscription ID
+        // Fetch Org's Stripe Subscription ID - use target user's org_id for platform admins
+        const orgIdToQuery = isPlatformAdmin ? targetProfile?.org_id : adminProfile?.org_id;
         const { data: org } = await supabase
             .from('organizations')
             .select('stripe_subscription_id')
-            .eq('id', adminProfile.org_id)
+            .eq('id', orgIdToQuery)
             .single();
 
         if (org?.stripe_subscription_id) {
