@@ -57,38 +57,41 @@ export async function POST(req: NextRequest) {
         // 4. Decrement Stripe Subscription
         // Fetch Org's Stripe Subscription ID - use target user's org_id for platform admins
         const orgIdToQuery = isPlatformAdmin ? targetProfile?.org_id : adminProfile?.org_id;
-        const { data: org } = await supabase
-            .from('organizations')
-            .select('stripe_subscription_id')
-            .eq('id', orgIdToQuery)
-            .single();
 
-        if (org?.stripe_subscription_id) {
-            try {
-                const subscription = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
-                const subscriptionItem = subscription.items.data[0]; // Assuming single item subscription
+        if (orgIdToQuery) {
+            const { data: org } = await supabase
+                .from('organizations')
+                .select('stripe_subscription_id')
+                .eq('id', orgIdToQuery)
+                .single();
 
-                if (subscriptionItem) {
-                    const currentQuantity = subscriptionItem.quantity || 1;
-                    const newQuantity = Math.max(1, currentQuantity - 1); // Don't go below 1 (Admin seat)
+            if (org?.stripe_subscription_id) {
+                try {
+                    const subscription = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
+                    const subscriptionItem = subscription.items.data[0]; // Assuming single item subscription
 
-                    if (currentQuantity > 1) {
-                        await stripe.subscriptions.update(org.stripe_subscription_id, {
-                            items: [{
-                                id: subscriptionItem.id,
-                                quantity: newQuantity,
-                            }],
-                            proration_behavior: 'always_invoice', // or 'create_prorations'
-                        });
-                        console.log(`Decremented subscription ${org.stripe_subscription_id} to ${newQuantity}`);
-                    } else {
-                        console.log('Subscription quantity is 1, not decrementing further (Admin seat).');
+                    if (subscriptionItem) {
+                        const currentQuantity = subscriptionItem.quantity || 1;
+                        const newQuantity = Math.max(1, currentQuantity - 1); // Don't go below 1 (Admin seat)
+
+                        if (currentQuantity > 1) {
+                            await stripe.subscriptions.update(org.stripe_subscription_id, {
+                                items: [{
+                                    id: subscriptionItem.id,
+                                    quantity: newQuantity,
+                                }],
+                                proration_behavior: 'always_invoice', // or 'create_prorations'
+                            });
+                            console.log(`Decremented subscription ${org.stripe_subscription_id} to ${newQuantity}`);
+                        } else {
+                            console.log('Subscription quantity is 1, not decrementing further (Admin seat).');
+                        }
                     }
+                } catch (stripeError) {
+                    console.error('Stripe update failed:', stripeError);
+                    // We don't fail the request if Stripe fails, but we log it.
+                    // In a production app, we might want to queue this or alert admin.
                 }
-            } catch (stripeError) {
-                console.error('Stripe update failed:', stripeError);
-                // We don't fail the request if Stripe fails, but we log it.
-                // In a production app, we might want to queue this or alert admin.
             }
         }
 

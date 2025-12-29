@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { User, Upload, Check, Loader2, Camera } from 'lucide-react';
 import { uploadAvatarAction } from '@/app/actions/profile';
 
@@ -40,6 +40,16 @@ export default function AvatarUpload({
     const [uploadSuccess, setUploadSuccess] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (successTimeoutRef.current) {
+                clearTimeout(successTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleFileSelect = useCallback(async (file: File) => {
         // Validate file type
@@ -69,8 +79,11 @@ export default function AvatarUpload({
                 setUploadSuccess(true);
                 onUploadComplete?.(result.url);
 
-                // Reset success state after animation
-                setTimeout(() => setUploadSuccess(false), 2000);
+                // Reset success state after animation (with cleanup)
+                if (successTimeoutRef.current) {
+                    clearTimeout(successTimeoutRef.current);
+                }
+                successTimeoutRef.current = setTimeout(() => setUploadSuccess(false), 2000);
             } else {
                 onUploadError?.(result.error || 'Upload failed');
             }
@@ -87,6 +100,8 @@ export default function AvatarUpload({
         if (file) {
             handleFileSelect(file);
         }
+        // Reset input value so same file can be re-uploaded
+        e.target.value = '';
     };
 
     const handleDragOver = (e: React.DragEvent) => {
