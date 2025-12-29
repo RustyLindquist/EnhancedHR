@@ -313,7 +313,7 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
     return (
         <div className="h-full flex flex-col overflow-hidden">
             {/* Header - All Notes dropdown only (list view) or Back button + Title (editor view) */}
-            <div className={`flex items-center gap-2 flex-shrink-0 ${viewMode === 'editor' ? 'mb-2' : 'mb-4'}`}>
+            <div className={`flex items-center gap-2 flex-shrink-0 ${viewMode === 'editor' ? 'mb-2' : 'mb-[30px]'}`}>
                 {viewMode === 'editor' ? (
                     // Back button + Title input when in editor mode
                     <>
