@@ -541,9 +541,9 @@ export async function getAnalyticsScope(): Promise<AnalyticsScope | null> {
 
   if (!profile) return null;
 
-  // Platform Admin - full access
+  // Platform Admin - full access (also gets org access if they have an org_id)
   if (profile.role === 'admin') {
-    return { accessLevel: 'platform_admin' };
+    return { accessLevel: 'platform_admin', orgId: profile.org_id || undefined };
   }
 
   // Org Admin - org-scoped access

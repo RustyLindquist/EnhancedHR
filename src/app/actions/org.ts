@@ -187,18 +187,20 @@ export async function toggleOrgMemberStatus(userId: string, currentStatus: strin
       .eq('id', user.id)
       .single();
 
-    if (requesterProfile?.role !== 'org_admin') {
+    // Platform admins can manage any org, org_admins can only manage their own
+    const isPlatformAdmin = requesterProfile?.role === 'admin';
+    if (!isPlatformAdmin && requesterProfile?.role !== 'org_admin') {
       return { success: false, error: 'Only admins can manage members' };
     }
 
-    // Verify target user is in same org
+    // Verify target user is in same org (skip for platform admins)
     const { data: targetProfile } = await supabase
       .from('profiles')
       .select('org_id')
       .eq('id', userId)
       .single();
 
-    if (targetProfile?.org_id !== requesterProfile.org_id) {
+    if (!isPlatformAdmin && targetProfile?.org_id !== requesterProfile?.org_id) {
       return { success: false, error: 'User not in your organization' };
     }
 
@@ -234,7 +236,9 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
       .eq('id', user.id)
       .single();
 
-    if (requesterProfile?.role !== 'org_admin' || !requesterProfile?.org_id) {
+    // Platform admins can manage any org, org_admins need org_id
+    const isPlatformAdmin = requesterProfile?.role === 'admin';
+    if (!isPlatformAdmin && (requesterProfile?.role !== 'org_admin' || !requesterProfile?.org_id)) {
       return { success: false, error: 'Only admins can manage invite settings' };
     }
 
@@ -273,18 +277,20 @@ export async function updateUserRole(userId: string, newRole: 'org_admin' | 'use
       .eq('id', user.id)
       .single();
 
-    if (requesterProfile?.role !== 'org_admin') {
+    // Platform admins can manage any org, org_admins can only manage their own
+    const isPlatformAdmin = requesterProfile?.role === 'admin';
+    if (!isPlatformAdmin && requesterProfile?.role !== 'org_admin') {
       return { success: false, error: 'Only admins can manage user roles' };
     }
 
-    // 2. Verify target user is in same org
+    // 2. Verify target user is in same org (skip for platform admins)
     const { data: targetProfile } = await supabase
       .from('profiles')
       .select('org_id')
       .eq('id', userId)
       .single();
 
-    if (targetProfile?.org_id !== requesterProfile.org_id) {
+    if (!isPlatformAdmin && targetProfile?.org_id !== requesterProfile?.org_id) {
         return { success: false, error: 'User not in your organization' };
     }
 
