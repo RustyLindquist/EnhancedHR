@@ -36,6 +36,7 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
     const [courseNotes, setCourseNotes] = useState<Note[]>([]);
     const [allNotes, setAllNotes] = useState<Note[]>([]);
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+    const [currentNoteTitle, setCurrentNoteTitle] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -301,6 +302,8 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
             {selectedNoteId && (
                 <CourseNotePanelEditor
                     noteId={selectedNoteId}
+                    title={currentNoteTitle}
+                    onTitleChange={setCurrentNoteTitle}
                     onSaveSuccess={handleSaveSuccess}
                 />
             )}
@@ -309,16 +312,25 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
-            {/* Header - All Notes dropdown only (list view) or Back button (editor view) */}
-            <div className={`flex items-center gap-3 flex-shrink-0 ${viewMode === 'editor' ? 'mb-2' : 'mb-4'}`}>
+            {/* Header - All Notes dropdown only (list view) or Back button + Title (editor view) */}
+            <div className={`flex items-center gap-2 flex-shrink-0 ${viewMode === 'editor' ? 'mb-2' : 'mb-4'}`}>
                 {viewMode === 'editor' ? (
-                    // Back button when in editor mode
-                    <button
-                        onClick={handleBackToList}
-                        className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                        <ArrowLeft size={16} className="text-slate-400" />
-                    </button>
+                    // Back button + Title input when in editor mode
+                    <>
+                        <button
+                            onClick={handleBackToList}
+                            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex-shrink-0"
+                        >
+                            <ArrowLeft size={16} className="text-slate-400" />
+                        </button>
+                        <input
+                            type="text"
+                            value={currentNoteTitle}
+                            onChange={(e) => setCurrentNoteTitle(e.target.value)}
+                            placeholder="Untitled Note"
+                            className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-white placeholder-slate-600 focus:outline-none focus:border-[#9A9724]/50 transition-all text-sm"
+                        />
+                    </>
                 ) : (
                     // List mode: All Notes dropdown only (+ button is in AIPanel header)
                     <div ref={dropdownRef} className="relative flex-1">

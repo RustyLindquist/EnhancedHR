@@ -247,6 +247,7 @@ export default function MarkdownEditorCore({ value, onChange, placeholder }: Mar
                     border: 1px solid rgba(255, 255, 255, 0.1) !important;
                     border-radius: 0.5rem !important;
                     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+                    z-index: 9999 !important;
                 }
 
                 .mdxeditor-popup-container input {
@@ -262,6 +263,36 @@ export default function MarkdownEditorCore({ value, onChange, placeholder }: Mar
                     color: #78C0F0 !important;
                     border-radius: 0.375rem !important;
                     padding: 0.375rem 0.75rem !important;
+                }
+
+                /* Block type select dropdown (Paragraph/Heading) - ensure z-index is high */
+                [data-radix-popper-content-wrapper] {
+                    z-index: 9999 !important;
+                }
+
+                /* Radix Select dropdown styling */
+                [role="listbox"] {
+                    background: #1e293b !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    border-radius: 0.5rem !important;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+                    z-index: 9999 !important;
+                }
+
+                [role="option"] {
+                    color: #cbd5e1 !important;
+                    padding: 0.5rem 0.75rem !important;
+                }
+
+                [role="option"]:hover,
+                [role="option"][data-highlighted] {
+                    background: rgba(120, 192, 240, 0.2) !important;
+                    color: white !important;
+                }
+
+                [role="option"][data-state="checked"] {
+                    background: rgba(120, 192, 240, 0.3) !important;
+                    color: white !important;
                 }
             `}</style>
         </div>
