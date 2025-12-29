@@ -88,11 +88,6 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
                 lastSavedRef.current = { title: newTitle, content: newContent };
                 setSaveStatus('saved');
                 onSaveSuccess?.();
-
-                // Reset to idle after 2 seconds
-                setTimeout(() => {
-                    setSaveStatus((prev) => (prev === 'saved' ? 'idle' : prev));
-                }, 2000);
             } else {
                 setSaveStatus('error');
             }
