@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import CourseEditor from '@/components/admin/CourseEditor';
 import GoogleDriveImporter from '@/components/admin/GoogleDriveImporter';
 import { HardDrive, Edit, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function NewCoursePage() {
     const router = useRouter();
-    const [mode, setMode] = useState<'select' | 'drive' | 'manual'>('select');
+    const [mode, setMode] = useState<'select' | 'drive'>('select');
 
     if (mode === 'select') {
         return (
@@ -38,9 +37,9 @@ export default function NewCoursePage() {
                         </p>
                     </button>
 
-                    {/* Option 2: Manual */}
+                    {/* Option 2: Manual - Redirects to Visual Builder */}
                     <button
-                        onClick={() => setMode('manual')}
+                        onClick={() => router.push('/admin/courses/new/builder')}
                         className="group relative p-8 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-brand-blue-light/50 transition-all text-left"
                     >
                         <div className="w-14 h-14 rounded-xl bg-white/10 text-brand-blue-light flex items-center justify-center border border-white/20 mb-6 group-hover:scale-110 transition-transform">
@@ -48,7 +47,7 @@ export default function NewCoursePage() {
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">Create Manually</h3>
                         <p className="text-sm text-slate-400 leading-relaxed">
-                            Build your course from scratch using the course editor. Manually add modules and upload videos one by one.
+                            Build your course from scratch using the visual builder. See exactly how your course will look as you create it.
                         </p>
                     </button>
                 </div>
@@ -70,5 +69,5 @@ export default function NewCoursePage() {
         );
     }
 
-    return <CourseEditor courseId="new" />;
+    return null;
 }
