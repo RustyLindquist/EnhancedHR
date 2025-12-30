@@ -13,10 +13,10 @@ export async function getExpertApplication() {
         return { error: 'Not authenticated' }
     }
 
-    // Get profile with application data
+    // Get profile with application data (credentials are now in separate table)
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select('full_name, phone_number, linkedin_url, credentials, course_proposal_title, course_proposal_description, application_status, application_submitted_at')
+        .select('full_name, expert_title, phone_number, linkedin_url, author_bio, course_proposal_title, course_proposal_description, application_status, application_submitted_at, avatar_url')
         .eq('id', user.id)
         .single()
 
@@ -27,14 +27,17 @@ export async function getExpertApplication() {
 
     return {
         data: {
+            user_id: user.id,
             full_name: profile?.full_name || user.user_metadata?.full_name || '',
+            expert_title: profile?.expert_title || '',
             phone_number: profile?.phone_number || '',
             linkedin_url: profile?.linkedin_url || '',
-            credentials: profile?.credentials || '',
+            author_bio: profile?.author_bio || '',
             course_proposal_title: profile?.course_proposal_title || '',
             course_proposal_description: profile?.course_proposal_description || '',
             application_status: profile?.application_status || 'draft',
-            submitted_at: profile?.application_submitted_at || null
+            submitted_at: profile?.application_submitted_at || null,
+            avatar_url: profile?.avatar_url || null
         }
     }
 }
@@ -49,9 +52,10 @@ export async function saveExpertApplication(formData: FormData) {
     }
 
     const fullName = formData.get('full_name') as string
+    const expertTitle = formData.get('expert_title') as string
     const phoneNumber = formData.get('phone_number') as string
     const linkedinUrl = formData.get('linkedin_url') as string
-    const credentials = formData.get('credentials') as string
+    const authorBio = formData.get('author_bio') as string
     const courseProposalTitle = formData.get('course_proposal_title') as string
     const courseProposalDescription = formData.get('course_proposal_description') as string
     const isSubmitting = formData.get('submit') === 'true'
@@ -69,12 +73,13 @@ export async function saveExpertApplication(formData: FormData) {
         }
     }
 
-    // Build update object
+    // Build update object (credentials are now stored in separate expert_credentials table)
     const updateData: Record<string, any> = {
         full_name: fullName,
+        expert_title: expertTitle,
         phone_number: phoneNumber,
         linkedin_url: linkedinUrl,
-        credentials: credentials,
+        author_bio: authorBio,
         course_proposal_title: courseProposalTitle,
         course_proposal_description: courseProposalDescription,
     }

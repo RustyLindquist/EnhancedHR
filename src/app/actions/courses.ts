@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { Course, LessonSearchResult } from '@/types';
+import { ExpertCredential } from './credentials';
 
 export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?: any }> {
     // Opt out of caching for this server action
@@ -15,10 +16,20 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    // 1. Fetch raw courses
+    // 1. Fetch raw courses with author profile data
     const { data: coursesData, error } = await supabase
         .from('courses')
-        .select('*')
+        .select(`
+            *,
+            author_profile:author_id (
+                id,
+                full_name,
+                expert_title,
+                author_bio,
+                avatar_url,
+                credentials
+            )
+        `)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -89,13 +100,22 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
 
     const mappedCourses = coursesData.map((course: any) => {
         const userCollections = getCollectionsForCourse(course.id);
-        
+        const authorProfile = course.author_profile;
+
         return {
             type: 'COURSE' as const, // Explicit cast
             id: course.id,
             title: course.title,
             author: course.author,
-            progress: 0, 
+            authorDetails: authorProfile ? {
+                id: authorProfile.id,
+                name: authorProfile.full_name || course.author,
+                title: authorProfile.expert_title,
+                bio: authorProfile.author_bio,
+                avatar: authorProfile.avatar_url,
+                credentials: authorProfile.credentials
+            } : undefined,
+            progress: 0,
             category: course.category,
             image: course.image_url,
             description: course.description,
@@ -184,4 +204,31 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
             course_image: lesson.modules.courses.image_url,
             course_author: lesson.modules.courses.author || ''
         }));
+}
+
+/**
+ * Fetch expert credentials for a specific author
+ * Used on course detail pages to display itemized credentials
+ */
+export async function getAuthorCredentialsAction(authorId: string): Promise<ExpertCredential[]> {
+    noStore();
+
+    if (!authorId) {
+        return [];
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('expert_credentials')
+        .select('*')
+        .eq('expert_id', authorId)
+        .order('display_order', { ascending: true });
+
+    if (error) {
+        console.error('[getAuthorCredentialsAction] Error:', error);
+        return [];
+    }
+
+    return data || [];
 }

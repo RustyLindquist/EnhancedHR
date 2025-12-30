@@ -29,11 +29,21 @@ import { LucideIcon } from 'lucide-react';
 
 export type CourseBadge = 'REQUIRED' | 'SHRM' | 'HRCI';
 
+export interface CourseAuthor {
+  id: string;
+  name: string;
+  title: string | null;
+  bio: string | null;
+  avatar: string | null;
+  credentials: string | null;
+}
+
 export interface Course {
   type: 'COURSE'; // Discriminator
   id: number;
   title: string;
   author: string;
+  authorDetails?: CourseAuthor; // Full author profile if available
   progress: number; // 0-100
   category: string;
   image?: string; // Featured image URL

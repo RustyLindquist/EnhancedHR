@@ -122,6 +122,53 @@ export async function skipOnboardingAction(): Promise<{ success: boolean; error?
     return { success: true };
 }
 
+// Update expert profile fields (phone, linkedin, credentials, author_bio, expert_title)
+export async function updateExpertProfileAction(data: {
+    phone_number?: string;
+    linkedin_url?: string;
+    credentials?: string;
+    author_bio?: string;
+    expert_title?: string;
+}): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    // Verify user is an expert
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('author_status')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile || (profile.author_status !== 'approved' && profile.author_status !== 'pending')) {
+        return { success: false, error: 'Only experts can update these fields' };
+    }
+
+    const admin = await createAdminClient();
+    const { error } = await admin
+        .from('profiles')
+        .update({
+            phone_number: data.phone_number,
+            linkedin_url: data.linkedin_url,
+            credentials: data.credentials,
+            author_bio: data.author_bio,
+            expert_title: data.expert_title,
+        })
+        .eq('id', user.id);
+
+    if (error) {
+        console.error('Update expert profile error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/settings/account');
+    return { success: true };
+}
+
 // Get profile for onboarding status check
 export async function getProfileForOnboardingAction(): Promise<{
     profile: {

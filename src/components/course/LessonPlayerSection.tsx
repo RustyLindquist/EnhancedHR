@@ -98,11 +98,12 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         setShowPlayOverlay(true);
     }, [lesson.id]);
 
-    // Mock instructor data
+    // Get instructor data from course authorDetails or fallback to basic info
+    const authorDetails = (course as any).authorDetails;
     const instructor = {
-        name: course.author || 'Rusty Lindquist',
-        title: 'CEO | HR Engineering',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+        name: authorDetails?.name || course.author || 'Expert',
+        credentials: authorDetails?.credentials || null,
+        avatar: authorDetails?.avatar || '/images/default-avatar.png'
     };
 
     return (
@@ -256,7 +257,9 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                             </div>
                             <div className="hidden sm:block">
                                 <p className="text-sm font-semibold text-white">{instructor.name}</p>
-                                <p className="text-[9px] text-slate-500 uppercase tracking-wider">{instructor.title}</p>
+                                {instructor.credentials && (
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-wider line-clamp-1">{instructor.credentials}</p>
+                                )}
                             </div>
                         </div>
 

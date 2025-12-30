@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
 import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
 import AvatarSection from '@/components/settings/AvatarSection';
+import ExpertProfileSection from '@/components/settings/ExpertProfileSection';
 import { Shield, Clock, User, CreditCard, Mail } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
+import { getMyCredentials, ExpertCredential } from '@/app/actions/credentials';
 
 export default async function AccountPage() {
     const supabase = await createClient();
@@ -14,9 +16,18 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, organizations(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, phone_number, linkedin_url, credentials, author_bio, expert_title, organizations(name)')
         .eq('id', user.id)
         .single();
+
+    // Check if user is an expert (approved or pending)
+    const isExpert = profile?.author_status === 'approved' || profile?.author_status === 'pending';
+
+    // Fetch itemized credentials for experts
+    let credentials: ExpertCredential[] = [];
+    if (isExpert) {
+        credentials = await getMyCredentials();
+    }
 
 
 
@@ -78,6 +89,17 @@ export default async function AccountPage() {
                             <ChangePasswordPanel />
                         </div>
                     </section>
+
+                    {/* Expert Profile Section - Only shown for experts */}
+                    {isExpert && (
+                        <ExpertProfileSection
+                            phoneNumber={profile?.phone_number || null}
+                            linkedinUrl={profile?.linkedin_url || null}
+                            credentials={credentials}
+                            authorBio={profile?.author_bio || null}
+                            expertTitle={profile?.expert_title || null}
+                        />
+                    )}
 
                     {/* Membership Logic Calculation */}
                     {(() => {
