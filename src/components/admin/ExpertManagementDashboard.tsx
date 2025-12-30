@@ -11,14 +11,8 @@ import {
     Loader2,
     Search,
     Filter,
-    BookOpen,
-    TrendingUp,
-    ChevronDown,
-    ChevronUp,
     Sparkles,
-    Percent,
-    Mail,
-    Phone
+    ChevronRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -63,8 +57,11 @@ export default function ExpertManagementDashboard({
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [processingId, setProcessingId] = useState<string | null>(null);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
     const router = useRouter();
+
+    const handleRowClick = (expertId: string) => {
+        router.push(`/admin/experts/${expertId}`);
+    };
 
     // Filter experts
     const filteredExperts = experts.filter(expert => {
@@ -234,12 +231,12 @@ export default function ExpertManagementDashboard({
                         const stats = monthlyStats[expert.id] || { watchTimeMinutes: 0, citations: 0, courseCount: 0 };
                         const totalCourses = courseCountByAuthor[expert.id] || 0;
                         const sharePercent = formatPercent(stats.watchTimeMinutes);
-                        const isExpanded = expandedId === expert.id;
 
                         return (
                             <div
                                 key={expert.id}
-                                className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all hover:border-white/20"
+                                onClick={() => handleRowClick(expert.id)}
+                                className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all hover:border-white/20 hover:bg-white/[0.07] cursor-pointer group"
                             >
                                 {/* Main Row */}
                                 <div className="p-5 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
@@ -256,7 +253,7 @@ export default function ExpertManagementDashboard({
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="text-lg font-bold text-white truncate">
+                                                <h3 className="text-lg font-bold text-white truncate group-hover:text-brand-blue-light transition-colors">
                                                     {expert.full_name || 'Unknown User'}
                                                 </h3>
                                                 {getStatusBadge(expert.author_status)}
@@ -292,7 +289,10 @@ export default function ExpertManagementDashboard({
                                         {expert.author_status === 'pending' && (
                                             <>
                                                 <button
-                                                    onClick={() => handleAction(expert.id, 'reject')}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAction(expert.id, 'reject');
+                                                    }}
                                                     disabled={!!processingId}
                                                     className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 font-bold text-sm hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center gap-1"
                                                 >
@@ -300,7 +300,10 @@ export default function ExpertManagementDashboard({
                                                     Reject
                                                 </button>
                                                 <button
-                                                    onClick={() => handleAction(expert.id, 'approve')}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAction(expert.id, 'approve');
+                                                    }}
                                                     disabled={!!processingId}
                                                     className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 font-bold text-sm hover:bg-green-500/20 disabled:opacity-50 transition-colors flex items-center gap-1"
                                                 >
@@ -309,128 +312,11 @@ export default function ExpertManagementDashboard({
                                                 </button>
                                             </>
                                         )}
-                                        <button
-                                            onClick={() => setExpandedId(isExpanded ? null : expert.id)}
-                                            className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 transition-colors"
-                                        >
-                                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                        </button>
+                                        <div className="p-2 rounded-lg bg-white/5 text-slate-400 group-hover:text-white group-hover:bg-white/10 transition-colors">
+                                            <ChevronRight size={18} />
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Expanded Details */}
-                                {isExpanded && (
-                                    <div className="px-5 pb-5 pt-2 border-t border-white/5 space-y-4">
-                                        {/* Contact Information */}
-                                        {(expert.email || expert.phone_number) && (
-                                            <div className="bg-brand-blue-light/5 border border-brand-blue-light/20 rounded-lg p-4">
-                                                <h4 className="text-xs font-bold text-brand-blue-light uppercase tracking-wider mb-3">Contact Information</h4>
-                                                <div className="flex flex-wrap gap-6">
-                                                    {expert.email && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Mail size={16} className="text-slate-400" />
-                                                            <a href={`mailto:${expert.email}`} className="text-sm text-white hover:text-brand-blue-light transition-colors">
-                                                                {expert.email}
-                                                            </a>
-                                                        </div>
-                                                    )}
-                                                    {expert.phone_number && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Phone size={16} className="text-slate-400" />
-                                                            <a href={`tel:${expert.phone_number}`} className="text-sm text-white hover:text-brand-blue-light transition-colors">
-                                                                {expert.phone_number}
-                                                            </a>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Credentials (for pending applications) */}
-                                        {expert.credentials && (
-                                            <div>
-                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Credentials & Background</h4>
-                                                <p className="text-sm text-slate-300 bg-black/20 p-3 rounded-lg border border-white/5 whitespace-pre-wrap">
-                                                    {expert.credentials}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Course Proposal (for pending applications) */}
-                                        {expert.course_proposal_title && (
-                                            <div className="bg-brand-orange/5 border border-brand-orange/20 rounded-lg p-4">
-                                                <h4 className="text-xs font-bold text-brand-orange uppercase tracking-wider mb-2">Course Proposal</h4>
-                                                <p className="text-lg font-bold text-white mb-2">{expert.course_proposal_title}</p>
-                                                {expert.course_proposal_description && (
-                                                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
-                                                        {expert.course_proposal_description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Bio (legacy field) */}
-                                        {expert.author_bio && (
-                                            <div>
-                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Professional Bio</h4>
-                                                <p className="text-sm text-slate-300 bg-black/20 p-3 rounded-lg border border-white/5">
-                                                    {expert.author_bio}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Links & Metadata */}
-                                        <div className="flex flex-wrap gap-4">
-                                            {expert.linkedin_url && (
-                                                <a
-                                                    href={expert.linkedin_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-brand-blue-light hover:underline flex items-center gap-1"
-                                                >
-                                                    LinkedIn Profile <ExternalLink size={12} />
-                                                </a>
-                                            )}
-                                            <span className="text-sm text-slate-500">
-                                                Applied: {expert.application_submitted_at
-                                                    ? new Date(expert.application_submitted_at).toLocaleDateString()
-                                                    : new Date(expert.created_at).toLocaleDateString()}
-                                            </span>
-                                        </div>
-
-                                        {/* Monthly Performance (for approved) */}
-                                        {expert.author_status === 'approved' && (
-                                            <div className="bg-gradient-to-r from-purple-500/5 to-brand-blue-light/5 border border-white/10 rounded-lg p-4">
-                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                    <TrendingUp size={14} /> {currentMonth} Performance
-                                                </h4>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div>
-                                                        <p className="text-2xl font-bold text-white">{formatMinutes(stats.watchTimeMinutes)}</p>
-                                                        <p className="text-xs text-slate-500">Total Watch Time</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-2xl font-bold text-purple-400">{stats.citations}</p>
-                                                        <p className="text-xs text-slate-500">AI Citations</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-2xl font-bold text-brand-blue-light">{sharePercent}</p>
-                                                        <p className="text-xs text-slate-500">Profit Share</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-2xl font-bold text-white">{totalCourses}</p>
-                                                        <p className="text-xs text-slate-500">Total Courses</p>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-4 pt-4 border-t border-white/10">
-                                                    <p className="text-xs text-slate-500">
-                                                        Profit share is calculated based on watch time proportion. See the Payouts page to calculate actual earnings.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         );
                     })

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getMyProposals } from '@/app/actions/proposals';
+import NewProposalForm from '@/components/author/NewProposalForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,9 @@ export default async function AuthorDashboardPage() {
     if (profile?.author_status !== 'approved') {
         redirect('/teach');
     }
+
+    // Get expert's course proposals
+    const { proposals: existingProposals } = await getMyProposals();
 
     // Get current and previous month date ranges
     const now = new Date();
@@ -252,6 +257,9 @@ export default async function AuthorDashboardPage() {
                     Here's how your content is performing. Your expertise is making a difference.
                 </p>
             </div>
+
+            {/* ========== COURSE PROPOSALS ========== */}
+            <NewProposalForm existingProposals={existingProposals} />
 
             {/* ========== PROFIT SHARE HIGHLIGHT ========== */}
             <div className="bg-gradient-to-r from-brand-blue-light/10 via-green-500/10 to-purple-500/10 border border-white/20 rounded-2xl p-6">

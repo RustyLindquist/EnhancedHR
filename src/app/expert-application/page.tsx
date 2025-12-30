@@ -13,21 +13,30 @@ import {
     CheckCircle,
     Clock,
     LogOut,
-    Save
+    Save,
+    Camera,
+    Award,
+    Briefcase
 } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
 import Link from 'next/link'
+import AvatarUpload from '@/components/onboarding/AvatarUpload'
+import CredentialsEditor from '@/components/CredentialsEditor'
+import { getMyCredentials, ExpertCredential } from '@/app/actions/credentials'
 
 interface ApplicationData {
+    user_id: string
     full_name: string
+    expert_title: string
     phone_number: string
     linkedin_url: string
-    credentials: string
+    author_bio: string
     course_proposal_title: string
     course_proposal_description: string
     application_status: 'draft' | 'submitted' | 'reviewing' | 'approved' | 'rejected'
     submitted_at: string | null
+    avatar_url: string | null
 }
 
 export default function ExpertApplicationPage() {
@@ -35,33 +44,45 @@ export default function ExpertApplicationPage() {
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+    const [credentials, setCredentials] = useState<ExpertCredential[]>([])
     const [application, setApplication] = useState<ApplicationData>({
+        user_id: '',
         full_name: '',
+        expert_title: '',
         phone_number: '',
         linkedin_url: '',
-        credentials: '',
+        author_bio: '',
         course_proposal_title: '',
         course_proposal_description: '',
         application_status: 'draft',
-        submitted_at: null
+        submitted_at: null,
+        avatar_url: null
     })
 
-    // Load existing application data
+    // Load existing application data and credentials
     useEffect(() => {
         const loadApplication = async () => {
-            const result = await getExpertApplication()
-            if (result.data) {
+            const [appResult, creds] = await Promise.all([
+                getExpertApplication(),
+                getMyCredentials()
+            ])
+
+            if (appResult.data) {
                 setApplication({
-                    full_name: result.data.full_name || '',
-                    phone_number: result.data.phone_number || '',
-                    linkedin_url: result.data.linkedin_url || '',
-                    credentials: result.data.credentials || '',
-                    course_proposal_title: result.data.course_proposal_title || '',
-                    course_proposal_description: result.data.course_proposal_description || '',
-                    application_status: result.data.application_status || 'draft',
-                    submitted_at: result.data.submitted_at || null
+                    user_id: appResult.data.user_id || '',
+                    full_name: appResult.data.full_name || '',
+                    expert_title: appResult.data.expert_title || '',
+                    phone_number: appResult.data.phone_number || '',
+                    linkedin_url: appResult.data.linkedin_url || '',
+                    author_bio: appResult.data.author_bio || '',
+                    course_proposal_title: appResult.data.course_proposal_title || '',
+                    course_proposal_description: appResult.data.course_proposal_description || '',
+                    application_status: appResult.data.application_status || 'draft',
+                    submitted_at: appResult.data.submitted_at || null,
+                    avatar_url: appResult.data.avatar_url || null
                 })
             }
+            setCredentials(creds)
             setIsLoading(false)
         }
         loadApplication()
@@ -74,9 +95,10 @@ export default function ExpertApplicationPage() {
 
         const formData = new FormData()
         formData.append('full_name', application.full_name)
+        formData.append('expert_title', application.expert_title)
         formData.append('phone_number', application.phone_number)
         formData.append('linkedin_url', application.linkedin_url)
-        formData.append('credentials', application.credentials)
+        formData.append('author_bio', application.author_bio)
         formData.append('course_proposal_title', application.course_proposal_title)
         formData.append('course_proposal_description', application.course_proposal_description)
         formData.append('submit', submit ? 'true' : 'false')
@@ -225,6 +247,33 @@ export default function ExpertApplicationPage() {
                         </div>
 
                         <div className="space-y-6">
+                            {/* Profile Photo Section */}
+                            {application.user_id && (
+                                <div className="flex flex-col items-center pb-6 border-b border-white/10">
+                                    <h3 className="text-[10px] font-bold text-brand-blue-light uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <Camera size={12} />
+                                        Profile Photo
+                                    </h3>
+                                    <AvatarUpload
+                                        userId={application.user_id}
+                                        currentAvatarUrl={application.avatar_url}
+                                        size="lg"
+                                        onUploadComplete={(url) => {
+                                            setApplication(prev => ({ ...prev, avatar_url: url }))
+                                            setSuccessMessage('Profile photo updated!')
+                                            setTimeout(() => setSuccessMessage(null), 3000)
+                                        }}
+                                        onUploadError={(err) => {
+                                            setError(err)
+                                            setTimeout(() => setError(null), 5000)
+                                        }}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-3 text-center">
+                                        Click or drag to upload your profile photo
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Personal Information Section */}
                             <div>
                                 <h3 className="text-[10px] font-bold text-brand-blue-light uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -243,6 +292,24 @@ export default function ExpertApplicationPage() {
                                                 onChange={(e) => setApplication(prev => ({ ...prev, full_name: e.target.value }))}
                                                 disabled={!isEditable}
                                                 placeholder="Dr. Jane Smith"
+                                                className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium disabled:opacity-50"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Professional Title</label>
+                                        <p className="text-[10px] text-slate-600 ml-1 -mt-1">
+                                            Your role or title (e.g., "Senior HR Consultant", "CHRO", "HR Director")
+                                        </p>
+                                        <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg flex items-center px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
+                                            <Briefcase size={16} className="text-slate-500 mr-3" />
+                                            <input
+                                                type="text"
+                                                value={application.expert_title}
+                                                onChange={(e) => setApplication(prev => ({ ...prev, expert_title: e.target.value }))}
+                                                disabled={!isEditable}
+                                                placeholder="Senior HR Consultant"
                                                 className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium disabled:opacity-50"
                                             />
                                         </div>
@@ -279,18 +346,35 @@ export default function ExpertApplicationPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                            <Award size={12} />
                                             Credentials & Background
                                         </label>
                                         <p className="text-[10px] text-slate-600 ml-1 -mt-1">
-                                            Certifications, degrees, years of experience, notable achievements
+                                            Add your certifications, degrees, years of experience, and notable achievements
+                                        </p>
+                                        <div className="bg-[#0A0D12] border border-white/10 rounded-lg p-4">
+                                            <CredentialsEditor
+                                                credentials={credentials}
+                                                onCredentialsChange={setCredentials}
+                                                readOnly={!isEditable}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                            Expert Bio
+                                        </label>
+                                        <p className="text-[10px] text-slate-600 ml-1 -mt-1">
+                                            A short bio that will be displayed on your course pages and expert profile
                                         </p>
                                         <div className="relative bg-[#0A0D12] border border-white/10 rounded-lg px-4 py-3 focus-within:border-brand-blue-light/50 transition-colors">
                                             <textarea
-                                                value={application.credentials}
-                                                onChange={(e) => setApplication(prev => ({ ...prev, credentials: e.target.value }))}
+                                                value={application.author_bio}
+                                                onChange={(e) => setApplication(prev => ({ ...prev, author_bio: e.target.value }))}
                                                 disabled={!isEditable}
-                                                placeholder="E.g., SHRM-SCP certified, 15+ years in HR leadership, Former CHRO at Fortune 500 company, Published author on talent management..."
+                                                placeholder="Write a compelling bio that introduces you to learners. Describe your expertise, experience, and what makes you passionate about teaching this subject..."
                                                 rows={4}
                                                 className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium resize-none disabled:opacity-50"
                                             />

@@ -1,11 +1,23 @@
 'use client';
 
 import React from 'react';
-import { Star, CheckCircle, ExternalLink } from 'lucide-react';
+import { Star, CheckCircle, ExternalLink, Award, GraduationCap, Briefcase, BookOpen, Trophy } from 'lucide-react';
 import { Course } from '../../types';
+import { ExpertCredential, CredentialType } from '@/app/actions/credentials';
+
+// Icon mapping for credential types
+const credentialIconMap: Record<CredentialType, React.ReactNode> = {
+    certification: <Award size={12} className="text-amber-400" />,
+    degree: <GraduationCap size={12} className="text-blue-400" />,
+    experience: <Briefcase size={12} className="text-green-400" />,
+    expertise: <Star size={12} className="text-purple-400" />,
+    publication: <BookOpen size={12} className="text-pink-400" />,
+    achievement: <Trophy size={12} className="text-orange-400" />,
+};
 
 interface CourseDescriptionSectionProps {
     course: Course;
+    authorCredentials?: ExpertCredential[];
     onStartLearning: () => void;
     onAskPrometheus: (prompt: string) => void;
     onViewExpert?: (expertId: string) => void;
@@ -21,6 +33,7 @@ const DEFAULT_SKILLS = [
 
 const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     course,
+    authorCredentials = [],
     onStartLearning,
     onAskPrometheus,
     onViewExpert
@@ -32,12 +45,15 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     const hasSHRM = course.badges?.includes('SHRM');
     const hasHRCI = course.badges?.includes('HRCI');
 
-    // Mock instructor data (would come from course in real implementation)
+    // Get instructor data from course authorDetails or fallback to basic info
+    const authorDetails = course.authorDetails;
     const instructor = {
-        id: (course as any).authorId || 'expert-1',
-        name: course.author || 'Rusty Lindquist',
-        title: 'CEO | HR Engineering',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+        id: authorDetails?.id || 'expert-1',
+        name: authorDetails?.name || course.author || 'Expert',
+        title: authorDetails?.title || null,
+        bio: authorDetails?.bio || null,
+        credentials: authorDetails?.credentials || null,
+        avatar: authorDetails?.avatar || '/images/default-avatar.png'
     };
 
     const handleAskCourse = () => {
@@ -165,33 +181,71 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
 
                 {/* Column 2: Instructor Info (30%) */}
                 <div className="lg:w-[30%] space-y-4">
-                    {/* Instructor Name & Title */}
+                    {/* Instructor Name & Avatar */}
                     <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-blue-light/30 flex-shrink-0 shadow-[0_0_20px_rgba(120,192,240,0.15)]">
-                            <img
-                                src={instructor.avatar}
-                                alt={instructor.name}
-                                className="w-full h-full object-cover"
-                            />
+                        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-blue-light/30 flex-shrink-0 shadow-[0_0_20px_rgba(120,192,240,0.15)] bg-slate-800">
+                            {instructor.avatar ? (
+                                <img
+                                    src={instructor.avatar}
+                                    alt={instructor.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-white">
+                                    {instructor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <h4 className="text-lg font-bold text-white">
                                 {instructor.name}
                             </h4>
-                            <p className="text-xs text-brand-blue-light">
-                                {instructor.title}
-                            </p>
+                            {instructor.title && (
+                                <p className="text-sm text-slate-400 mt-0.5">
+                                    {instructor.title}
+                                </p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Bio Paragraphs */}
+                    {/* Credentials - Itemized with Icons */}
+                    {authorCredentials.length > 0 ? (
+                        <div className="space-y-2">
+                            <h5 className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-500">
+                                Credentials
+                            </h5>
+                            <div className="space-y-1.5">
+                                {authorCredentials.slice(0, 4).map((credential) => (
+                                    <div
+                                        key={credential.id}
+                                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/5"
+                                    >
+                                        {credentialIconMap[credential.type]}
+                                        <span className="text-xs text-slate-300">{credential.title}</span>
+                                    </div>
+                                ))}
+                                {authorCredentials.length > 4 && (
+                                    <p className="text-[10px] text-slate-500 pl-2">
+                                        +{authorCredentials.length - 4} more
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    ) : instructor.credentials && (
+                        <p className="text-xs text-brand-blue-light line-clamp-2">
+                            {instructor.credentials}
+                        </p>
+                    )}
+
+                    {/* Bio */}
                     <div className="space-y-3 text-sm text-slate-400 leading-relaxed">
-                        <p>
-                            This is the person's about bio. Within the Expert's Account, they will enter their bio information about themselves. When viewing a Course Overview page, this section will show a preview version of what the user put in for their bio, one thing you might want to say is that the Expert page is the full bio.
-                        </p>
-                        <p className="text-slate-500 italic text-xs">
-                            The second will be a much shorter one that is used for Course descriptions, like this one.
-                        </p>
+                        {instructor.bio ? (
+                            <p className="line-clamp-6">{instructor.bio}</p>
+                        ) : (
+                            <p className="text-slate-500 italic">
+                                Expert bio not available.
+                            </p>
+                        )}
                     </div>
 
                     {/* Expert Page Button */}

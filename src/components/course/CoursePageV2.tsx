@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
+import { getAuthorCredentialsAction } from '@/app/actions/courses';
+import { ExpertCredential } from '@/app/actions/credentials';
 import CourseHeader from './CourseHeader';
 import CourseDescriptionSection from './CourseDescriptionSection';
 import LessonPlayerSection from './LessonPlayerSection';
@@ -52,12 +54,23 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     // UI state
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
 
+    // Author credentials state
+    const [authorCredentials, setAuthorCredentials] = useState<ExpertCredential[]>([]);
+
     // Expand first module by default when syllabus loads
     useEffect(() => {
         if (syllabus.length > 0 && expandedModules.length === 0) {
             setExpandedModules([syllabus[0].id]);
         }
     }, [syllabus]);
+
+    // Fetch author credentials when course has author details
+    useEffect(() => {
+        const authorId = course.authorDetails?.id;
+        if (authorId) {
+            getAuthorCredentialsAction(authorId).then(setAuthorCredentials);
+        }
+    }, [course.authorDetails?.id]);
 
     // Progress state
     const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
@@ -458,6 +471,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                     {viewMode === 'description' ? (
                         <CourseDescriptionSection
                             course={course}
+                            authorCredentials={authorCredentials}
                             onStartLearning={() => transitionToPlayer()}
                             onAskPrometheus={onAskPrometheus}
                             onViewExpert={onViewExpert}
