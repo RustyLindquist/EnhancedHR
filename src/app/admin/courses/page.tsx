@@ -35,7 +35,7 @@ export default async function AdminCoursesPage() {
                     <p className="text-slate-400">Manage your learning content and catalog.</p>
                 </div>
                 <Link
-                    href="/admin/courses/new"
+                    href="/admin/courses/new/builder"
                     className="flex items-center gap-2 px-5 py-3 rounded-full bg-brand-blue-light text-brand-black font-bold uppercase tracking-wider hover:bg-white transition-all shadow-lg hover:scale-105"
                 >
                     <Plus size={18} /> New Course
@@ -134,7 +134,7 @@ export default async function AdminCoursesPage() {
                                             <Eye size={16} />
                                         </Link>
                                         <Link
-                                            href={`/admin/courses/${course.id}`}
+                                            href={`/admin/courses/${course.id}/builder`}
                                             className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/20 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light hover:text-brand-black transition-colors"
                                         >
                                             Edit
