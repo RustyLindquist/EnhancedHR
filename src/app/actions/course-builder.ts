@@ -438,6 +438,15 @@ export async function createBlankCourse() {
 
     const admin = await createAdminClient();
 
+    // Get the user's profile to use their name as the author
+    const { data: profile } = await admin
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+    const authorName = profile?.full_name || 'Unknown Author';
+
     // Create the course
     const { data: course, error: courseError } = await admin
         .from('courses')
@@ -448,7 +457,9 @@ export async function createBlankCourse() {
             status: 'draft',
             duration: '0m',
             rating: 0,
-            badges: []
+            badges: [],
+            author: authorName,
+            author_id: user.id
         })
         .select()
         .single();

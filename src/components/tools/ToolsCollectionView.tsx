@@ -49,6 +49,7 @@ export default function ToolsCollectionView({
                             type="TOOL"
                             title={tool.title}
                             description={tool.description}
+                            iconName={tool.icon_name}
                             onAction={() => onToolSelect(tool.slug)}
                             draggable={false}
                         />
