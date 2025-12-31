@@ -152,10 +152,11 @@ export async function assignCourseExpert(courseId: number, expertId: string | nu
 export async function getApprovedExperts() {
     const supabase = await createClient();
 
+    // Include both approved experts AND platform admins
     const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, expert_title, avatar_url')
-        .eq('author_status', 'approved')
+        .select('id, full_name, expert_title, avatar_url, role')
+        .or('author_status.eq.approved,role.eq.admin')
         .order('full_name');
 
     if (error) {

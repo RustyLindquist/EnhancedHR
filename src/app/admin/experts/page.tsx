@@ -25,7 +25,7 @@ export default async function AdminExpertsPage() {
     // Use admin client to bypass RLS for fetching all experts
     const adminSupabase = await createAdminClient();
 
-    // Fetch all experts (pending, approved, rejected)
+    // Fetch all experts (pending, approved, rejected) AND platform admins
     const { data: experts, error: expertsError } = await adminSupabase
         .from('profiles')
         .select(`
@@ -41,9 +41,11 @@ export default async function AdminExpertsPage() {
             course_proposal_description,
             application_status,
             application_submitted_at,
-            phone_number
+            phone_number,
+            role,
+            expert_title
         `)
-        .in('author_status', ['pending', 'approved', 'rejected'])
+        .or('author_status.in.(pending,approved,rejected),role.eq.admin')
         .order('created_at', { ascending: false });
 
     if (expertsError) {

@@ -1,8 +1,63 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Users, Zap, Shield, Star, PlayCircle, Globe, Award, Mic, Video, DollarSign, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowRight, Zap, Star, DollarSign, TrendingUp, BookOpen } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 
-export default function InstructorsMarketingPage() {
+interface ExpertWithCourses {
+    id: string;
+    full_name: string;
+    expert_title: string | null;
+    avatar_url: string | null;
+    author_bio: string | null;
+    publishedCourseCount: number;
+}
+
+export default async function ExpertsPage() {
+    const supabase = await createClient();
+
+    // Fetch experts/admins with their published courses
+    const { data: expertsData } = await supabase
+        .from('profiles')
+        .select(`
+            id,
+            full_name,
+            expert_title,
+            avatar_url,
+            author_bio,
+            role,
+            author_status
+        `)
+        .or('author_status.eq.approved,role.eq.admin');
+
+    // Fetch published courses grouped by author
+    const { data: coursesData } = await supabase
+        .from('courses')
+        .select('author_id')
+        .eq('status', 'published')
+        .not('author_id', 'is', null);
+
+    // Count published courses per author
+    const courseCountByAuthor: Record<string, number> = {};
+    coursesData?.forEach(course => {
+        if (course.author_id) {
+            courseCountByAuthor[course.author_id] = (courseCountByAuthor[course.author_id] || 0) + 1;
+        }
+    });
+
+    // Filter to only experts with published courses
+    const expertsWithPublishedCourses: ExpertWithCourses[] = (expertsData || [])
+        .filter(expert => courseCountByAuthor[expert.id] > 0)
+        .map(expert => ({
+            id: expert.id,
+            full_name: expert.full_name || 'Expert',
+            expert_title: expert.expert_title,
+            avatar_url: expert.avatar_url,
+            author_bio: expert.author_bio,
+            publishedCourseCount: courseCountByAuthor[expert.id]
+        }))
+        .sort((a, b) => b.publishedCourseCount - a.publishedCourseCount);
+
     return (
         <div className="overflow-hidden">
 
@@ -167,6 +222,65 @@ export default function InstructorsMarketingPage() {
                     </div>
                 </div>
             </section>
+
+            {/* --- EXPERT DIRECTORY SECTION --- */}
+            {expertsWithPublishedCourses.length > 0 && (
+                <section className="py-32 bg-[#05080a] border-t border-white/10">
+                    <div className="max-w-7xl mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Meet Our Experts</h2>
+                            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                                Learn from industry leaders who are shaping the future of HR.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {expertsWithPublishedCourses.map(expert => (
+                                <Link
+                                    key={expert.id}
+                                    href={`/experts/${expert.id}`}
+                                    className="group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-blue-light/30 transition-all hover:-translate-y-1"
+                                >
+                                    {/* Avatar */}
+                                    <div className="flex justify-center mb-4">
+                                        {expert.avatar_url ? (
+                                            <Image
+                                                src={expert.avatar_url}
+                                                alt={expert.full_name}
+                                                width={80}
+                                                height={80}
+                                                className="w-20 h-20 rounded-full object-cover border-2 border-white/10 group-hover:border-brand-blue-light/50 transition-colors"
+                                            />
+                                        ) : (
+                                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-blue-light/20 to-brand-orange/20 flex items-center justify-center text-2xl font-bold text-white border-2 border-white/10">
+                                                {expert.full_name.charAt(0)}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Name & Title */}
+                                    <div className="text-center">
+                                        <h3 className="text-lg font-bold text-white group-hover:text-brand-blue-light transition-colors">
+                                            {expert.full_name}
+                                        </h3>
+                                        {expert.expert_title && (
+                                            <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+                                                {expert.expert_title}
+                                            </p>
+                                        )}
+
+                                        {/* Course Count */}
+                                        <div className="flex items-center justify-center gap-1.5 mt-4 text-xs text-slate-500">
+                                            <BookOpen size={14} />
+                                            <span>{expert.publishedCourseCount} {expert.publishedCourseCount === 1 ? 'Course' : 'Courses'}</span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* --- CTA SECTION --- */}
             <section className="py-32 bg-gradient-to-b from-[#05080a] to-[#0A0D12] border-t border-white/5">

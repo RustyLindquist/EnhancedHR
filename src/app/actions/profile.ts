@@ -137,15 +137,19 @@ export async function updateExpertProfileAction(data: {
         return { success: false, error: 'Not authenticated' };
     }
 
-    // Verify user is an expert
+    // Verify user is an expert or admin
     const { data: profile } = await supabase
         .from('profiles')
-        .select('author_status')
+        .select('author_status, role')
         .eq('id', user.id)
         .single();
 
-    if (!profile || (profile.author_status !== 'approved' && profile.author_status !== 'pending')) {
-        return { success: false, error: 'Only experts can update these fields' };
+    const isExpertOrAdmin = profile?.role === 'admin' ||
+                            profile?.author_status === 'approved' ||
+                            profile?.author_status === 'pending';
+
+    if (!profile || !isExpertOrAdmin) {
+        return { success: false, error: 'Only experts or admins can update these fields' };
     }
 
     const admin = await createAdminClient();

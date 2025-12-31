@@ -20,10 +20,12 @@ export default async function AccountPage() {
         .eq('id', user.id)
         .single();
 
-    // Check if user is an expert (approved or pending)
-    const isExpert = profile?.author_status === 'approved' || profile?.author_status === 'pending';
+    // Check if user is an expert (approved, pending, OR platform admin)
+    const isExpert = profile?.role === 'admin' ||
+                     profile?.author_status === 'approved' ||
+                     profile?.author_status === 'pending';
 
-    // Fetch itemized credentials for experts
+    // Fetch itemized credentials for experts and admins
     let credentials: ExpertCredential[] = [];
     if (isExpert) {
         credentials = await getMyCredentials();

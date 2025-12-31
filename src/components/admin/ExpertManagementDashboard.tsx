@@ -12,7 +12,8 @@ import {
     Search,
     Filter,
     Sparkles,
-    ChevronRight
+    ChevronRight,
+    Shield
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -23,7 +24,7 @@ interface Expert {
     phone_number?: string;
     author_bio: string;
     linkedin_url: string;
-    author_status: 'pending' | 'approved' | 'rejected';
+    author_status: 'pending' | 'approved' | 'rejected' | 'none';
     created_at: string;
     avatar_url?: string;
     credentials?: string;
@@ -31,6 +32,8 @@ interface Expert {
     course_proposal_description?: string;
     application_status?: string;
     application_submitted_at?: string;
+    role?: string;
+    expert_title?: string;
 }
 
 interface MonthlyStats {
@@ -46,7 +49,7 @@ interface ExpertManagementDashboardProps {
     currentMonth: string;
 }
 
-type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected';
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'admin';
 
 export default function ExpertManagementDashboard({
     experts,
@@ -63,9 +66,19 @@ export default function ExpertManagementDashboard({
         router.push(`/admin/experts/${expertId}`);
     };
 
+    // Helper to check if expert is a platform admin
+    const isAdmin = (expert: Expert) => expert.role === 'admin';
+
     // Filter experts
     const filteredExperts = experts.filter(expert => {
-        const matchesStatus = statusFilter === 'all' || expert.author_status === statusFilter;
+        let matchesStatus = false;
+        if (statusFilter === 'all') {
+            matchesStatus = true;
+        } else if (statusFilter === 'admin') {
+            matchesStatus = isAdmin(expert);
+        } else {
+            matchesStatus = expert.author_status === statusFilter && !isAdmin(expert);
+        }
         const matchesSearch =
             expert.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             expert.email?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -73,8 +86,9 @@ export default function ExpertManagementDashboard({
     });
 
     // Calculate summary stats
-    const pendingCount = experts.filter(e => e.author_status === 'pending').length;
-    const approvedCount = experts.filter(e => e.author_status === 'approved').length;
+    const pendingCount = experts.filter(e => e.author_status === 'pending' && !isAdmin(e)).length;
+    const approvedCount = experts.filter(e => e.author_status === 'approved' || isAdmin(e)).length;
+    const adminCount = experts.filter(e => isAdmin(e)).length;
 
     // Calculate total monthly watch time
     const totalWatchTime = Object.values(monthlyStats).reduce((sum, s) => sum + s.watchTimeMinutes, 0);
@@ -199,19 +213,24 @@ export default function ExpertManagementDashboard({
                 <div className="flex items-center gap-2">
                     <Filter size={16} className="text-slate-500" />
                     <div className="flex gap-1">
-                        {(['all', 'pending', 'approved', 'rejected'] as StatusFilter[]).map((status) => (
+                        {(['all', 'pending', 'approved', 'admin', 'rejected'] as StatusFilter[]).map((status) => (
                             <button
                                 key={status}
                                 onClick={() => setStatusFilter(status)}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${statusFilter === status
-                                    ? 'bg-brand-blue-light text-brand-black'
+                                    ? status === 'admin' ? 'bg-purple-500 text-white' : 'bg-brand-blue-light text-brand-black'
                                     : 'bg-white/5 text-slate-400 hover:bg-white/10'
                                     }`}
                             >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {status === 'admin' ? 'Admins' : status.charAt(0).toUpperCase() + status.slice(1)}
                                 {status === 'pending' && pendingCount > 0 && (
                                     <span className="ml-1 px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs">
                                         {pendingCount}
+                                    </span>
+                                )}
+                                {status === 'admin' && adminCount > 0 && (
+                                    <span className="ml-1 px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">
+                                        {adminCount}
                                     </span>
                                 )}
                             </button>
@@ -256,14 +275,23 @@ export default function ExpertManagementDashboard({
                                                 <h3 className="text-lg font-bold text-white truncate group-hover:text-brand-blue-light transition-colors">
                                                     {expert.full_name || 'Unknown User'}
                                                 </h3>
-                                                {getStatusBadge(expert.author_status)}
+                                                {isAdmin(expert) ? (
+                                                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-bold border border-purple-500/20">
+                                                        <Shield size={12} /> Platform Admin
+                                                    </span>
+                                                ) : (
+                                                    getStatusBadge(expert.author_status)
+                                                )}
                                             </div>
                                             <p className="text-sm text-slate-500 truncate">{expert.email}</p>
+                                            {expert.expert_title && (
+                                                <p className="text-xs text-slate-600 truncate mt-0.5">{expert.expert_title}</p>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Stats (for approved experts) */}
-                                    {expert.author_status === 'approved' && (
+                                    {/* Stats (for approved experts and admins) */}
+                                    {(expert.author_status === 'approved' || isAdmin(expert)) && (
                                         <div className="flex items-center gap-6 text-sm">
                                             <div className="text-center">
                                                 <p className="text-white font-bold">{totalCourses}</p>
