@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useTransition, useCallback } from 'react';
-import { FileText, Loader2, CheckCircle } from 'lucide-react';
+import { FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { updateCourseDetails } from '@/app/actions/course-builder';
+import { updateCourseDetails, generateCourseDescription } from '@/app/actions/course-builder';
 
 interface CourseDescriptionEditorPanelProps {
     isOpen: boolean;
@@ -54,6 +54,26 @@ export default function CourseDescriptionEditorPanel({
     });
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerateDescription = useCallback(async () => {
+        setError(null);
+        setIsGenerating(true);
+
+        try {
+            const result = await generateCourseDescription(courseId);
+
+            if (result.success && result.description) {
+                setFormData(prev => ({ ...prev, description: result.description! }));
+            } else {
+                setError(result.error || 'Failed to generate description');
+            }
+        } catch (err: any) {
+            setError(err.message || 'An error occurred while generating the description');
+        } finally {
+            setIsGenerating(false);
+        }
+    }, [courseId]);
 
     const handleSave = useCallback(() => {
         if (!formData.title.trim()) {
@@ -139,15 +159,47 @@ export default function CourseDescriptionEditorPanel({
 
                 {/* Description */}
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Description
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Description
+                        </label>
+                        <button
+                            onClick={handleGenerateDescription}
+                            disabled={isGenerating || isPending}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 size={12} className="animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={12} />
+                                    Generate from Transcript
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Generation in progress indicator */}
+                    {isGenerating && (
+                        <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm flex items-center gap-3">
+                            <Loader2 size={16} className="animate-spin" />
+                            <div>
+                                <p className="font-medium">Analyzing course content...</p>
+                                <p className="text-xs text-purple-400/70 mt-0.5">This may take a moment</p>
+                            </div>
+                        </div>
+                    )}
+
                     <textarea
                         value={formData.description}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                         placeholder="Write a compelling description that introduces the course to learners..."
                         rows={6}
-                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50"
+                        disabled={isGenerating}
+                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50"
                     />
                     <p className="text-xs text-slate-600 mt-2">
                         A good description explains what learners will gain and why this course matters.

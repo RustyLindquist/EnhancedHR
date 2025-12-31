@@ -311,6 +311,7 @@ export interface Lesson {
 export interface Module {
   id: string;
   title: string;
+  description?: string; // Optional module description
   duration: string; // Added duration
   lessons: Lesson[];
 }

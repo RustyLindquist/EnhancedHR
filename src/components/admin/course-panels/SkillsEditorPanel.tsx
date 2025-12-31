@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useTransition, useCallback } from 'react';
-import { CheckCircle, Plus, X, Loader2, GripVertical } from 'lucide-react';
+import { CheckCircle, Plus, X, Loader2, GripVertical, Sparkles } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { updateCourseSkills } from '@/app/actions/course-builder';
+import { updateCourseSkills, generateSkillsFromTranscript } from '@/app/actions/course-builder';
 
 interface SkillsEditorPanelProps {
     isOpen: boolean;
@@ -25,6 +25,7 @@ export default function SkillsEditorPanel({
     const [newSkill, setNewSkill] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     const handleAddSkill = useCallback(() => {
         const trimmed = newSkill.trim();
@@ -60,6 +61,34 @@ export default function SkillsEditorPanel({
             }
         });
     }, [courseId, skills, onSave]);
+
+    const handleGenerateSkills = useCallback(async () => {
+        setError(null);
+        setIsGenerating(true);
+
+        try {
+            const result = await generateSkillsFromTranscript(courseId);
+
+            if (result.success && result.skills) {
+                // Add generated skills, avoiding duplicates
+                setSkills(prevSkills => {
+                    const newSkills = [...prevSkills];
+                    for (const skill of result.skills!) {
+                        if (!newSkills.includes(skill)) {
+                            newSkills.push(skill);
+                        }
+                    }
+                    return newSkills;
+                });
+            } else {
+                setError(result.error || 'Failed to generate skills');
+            }
+        } catch (err: any) {
+            setError(err.message || 'An error occurred while generating skills');
+        } finally {
+            setIsGenerating(false);
+        }
+    }, [courseId]);
 
     const headerActions = (
         <div className="flex items-center gap-4">
@@ -105,6 +134,49 @@ export default function SkillsEditorPanel({
                 <p className="text-sm text-slate-400">
                     Add the key skills learners will gain from this course. These appear on the course description page.
                 </p>
+
+                {/* Generate from Transcript Button */}
+                <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+                                <Sparkles size={14} className="text-purple-400" />
+                                AI-Powered Skill Generation
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Analyze course transcripts to automatically generate relevant skills
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleGenerateSkills}
+                            disabled={isGenerating || isPending}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={14} />
+                                    Generate from Transcript
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Generation in progress indicator */}
+                    {isGenerating && (
+                        <div className="mt-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm flex items-center gap-3">
+                            <Loader2 size={16} className="animate-spin" />
+                            <div>
+                                <p className="font-medium">Analyzing course content...</p>
+                                <p className="text-xs text-purple-400/70 mt-0.5">This may take a moment</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Add New Skill */}
                 <div>
