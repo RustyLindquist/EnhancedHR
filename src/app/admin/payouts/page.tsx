@@ -53,11 +53,11 @@ export default async function AdminPayoutsPage() {
     // Default to current month
     const selectedMonth = months[0];
 
-    // Fetch approved experts
+    // Fetch approved experts AND platform admins
     const { data: experts } = await supabase
         .from('profiles')
         .select('id, full_name, email')
-        .eq('author_status', 'approved');
+        .or('author_status.eq.approved,role.eq.admin');
 
     // Fetch courses with author_id
     const { data: courses } = await supabase
