@@ -53,6 +53,51 @@ export async function getNotesAction(): Promise<Note[]> {
 }
 
 /**
+ * Fetch general notes (not associated with any course)
+ * Used for tool pages where notes are standalone
+ */
+export async function getGeneralNotesAction(): Promise<Note[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const admin = createAdminClient();
+
+    const { data: notes, error } = await admin
+        .from('notes')
+        .select(`
+            id,
+            user_id,
+            title,
+            content,
+            course_id,
+            created_at,
+            updated_at
+        `)
+        .eq('user_id', user.id)
+        .is('course_id', null)
+        .order('updated_at', { ascending: false });
+
+    if (error) {
+        console.error('[getGeneralNotesAction] Error fetching general notes:', error);
+        return [];
+    }
+
+    return (notes || []).map((note: any) => ({
+        type: 'NOTE' as const,
+        id: note.id,
+        user_id: note.user_id,
+        title: note.title,
+        content: note.content,
+        course_id: null,  // General notes have no course
+        course_title: undefined,  // No course title for general notes
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+    }));
+}
+
+/**
  * Fetch all notes for a specific course
  */
 export async function getNotesByCourseAction(courseId: number): Promise<Note[]> {

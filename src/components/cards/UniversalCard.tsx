@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION';
 
 interface UniversalCardProps {
     type: CardType;
@@ -149,6 +149,26 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             glowColor: 'rgba(154, 151, 36, 0.4)', // #9A9724 glow
             bodyColor: 'bg-[#9A9724]/70', // Slightly more opaque for better text readability
             footerTextColor: 'text-white'
+        },
+        TOOL: { // Tools Card - Teal #0D9488
+            headerColor: 'bg-[#0D9488]',
+            borderColor: 'border-teal-500/30',
+            labelColor: 'text-teal-100',
+            barColor: 'bg-[#0D9488]',
+            icon: Wrench,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(13, 148, 136, 0.6)', // Teal glow
+            bodyColor: 'bg-[#0D9488]/90'
+        },
+        TOOL_CONVERSATION: { // Tool Conversation Card - Teal #0D9488
+            headerColor: 'bg-[#0D9488]',
+            borderColor: 'border-teal-500/30',
+            labelColor: 'text-teal-100',
+            barColor: 'bg-[#0D9488]',
+            icon: MessageSquare,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(13, 148, 136, 0.6)', // Teal glow
+            bodyColor: 'bg-[#0D9488]/90'
         }
     }[type];
 
@@ -159,13 +179,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isMediaCard = ['COURSE', 'MODULE', 'LESSON'].includes(type);
 
     // Layout Tweaks:
-    // Conversation, Context, AI_Insight, Resource, Profile, Help & Note need more text space (40% top / 60% bottom)
-    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE'].includes(type);
+    // Conversation, Context, AI_Insight, Resource, Profile, Help, Note, Tool & Tool_Conversation need more text space (40% top / 60% bottom)
+    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION'].includes(type);
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, and Note cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE';
+    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, and Tool_Conversation cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -266,7 +286,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 {/* Other text-heavy cards: centered with padding for header */}
                 {/* Media cards: positioned at bottom */}
                 <div className={`absolute left-0 right-0 z-10 px-4 ${
-                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE')
+                    (type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION')
                         ? 'top-[calc(50%+20px)] -translate-y-1/2'
                         : isTextHeavy
                             ? 'top-1/2 -translate-y-1/2 pt-8'
@@ -290,7 +310,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                 </div>
                             )}
                         </div>
-                    ) : type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && subtitle ? (
+                    ) : type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && subtitle ? (
                         <p className="text-xs font-medium text-white/70 tracking-wide truncate">
                             {subtitle}
                         </p>
@@ -342,7 +362,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
-                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && meta && (
+                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && meta && (
                             <div className="flex items-center gap-1.5 truncate">
                                 <Clock size={12} className="flex-shrink-0" />
                                 <span className="text-[10px] font-bold tracking-wider uppercase truncate">{meta}</span>
@@ -397,16 +417,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </>
                     )}
 
-                    {/* Conversation, Context, AI_Insight, Profile, Help cards: Show date on right (no button) */}
-                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP') && meta && (
+                    {/* Conversation, Context, AI_Insight, Profile, Help, Tool_Conversation cards: Show date on right (no button) */}
+                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'TOOL_CONVERSATION') && meta && (
                         <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
                             <Clock size={12} />
                             <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                         </div>
                     )}
 
-                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, Profile, Help, or Note): Show action button */}
-                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && actionLabel && (
+                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, or Tool_Conversation): Show action button */}
+                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && actionLabel && (
                         <button
                             onClick={onAction}
                             className={`

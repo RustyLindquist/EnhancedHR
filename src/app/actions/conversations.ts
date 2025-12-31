@@ -2,9 +2,9 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { Conversation } from '@/types';
+import { Conversation, ToolConversation } from '@/types';
 
-export async function fetchConversationsAction(): Promise<Conversation[]> {
+export async function fetchConversationsAction(): Promise<(Conversation | ToolConversation)[]> {
     const admin = createAdminClient();
     const supabase = await createClient(); // For getting current user session securely
 
@@ -57,13 +57,13 @@ export async function fetchConversationsAction(): Promise<Conversation[]> {
         });
     }
 
-    // 4. Map DB records to UI Conversation type
+    // 4. Map DB records to UI Conversation or ToolConversation type
     const mappedConversations = conversations.map((c: any) => {
         const sortedMessages = messagesByConvId[c.id] || [];
-        
-        // No need to sort again if we ordered by created_at in query, 
+
+        // No need to sort again if we ordered by created_at in query,
         // but sorting in memory is cheap for safety.
-        sortedMessages.sort((a: any, b: any) => 
+        sortedMessages.sort((a: any, b: any) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
@@ -71,15 +71,36 @@ export async function fetchConversationsAction(): Promise<Conversation[]> {
             ? sortedMessages[sortedMessages.length - 1].content
             : '';
 
+        const collections = c.metadata?.collection_ids || [];
+        const isSaved = (c.metadata?.collection_ids?.length || 0) > 0 || c.is_saved;
+
+        // Check if this is a tool conversation
+        if (c.metadata?.is_tool_conversation) {
+            return {
+                type: 'TOOL_CONVERSATION' as const,
+                id: c.id,
+                title: c.title,
+                created_at: c.created_at,
+                updated_at: c.updated_at,
+                lastMessage: lastMsgContent,
+                messages: sortedMessages,
+                tool_id: c.metadata?.tool_id || '',
+                tool_slug: c.metadata?.tool_slug || '',
+                tool_title: c.metadata?.tool_title || '',
+                collections,
+                isSaved,
+            } as ToolConversation;
+        }
+
+        // Regular conversation
         return {
             ...c,
-            type: 'CONVERSATION',
+            type: 'CONVERSATION' as const,
             lastMessage: lastMsgContent,
             messages: sortedMessages,
-            // Only include actual collection IDs, not nav filters like 'conversations'
-            collections: c.metadata?.collection_ids || [],
-            isSaved: (c.metadata?.collection_ids?.length || 0) > 0 || c.is_saved
-        };
+            collections,
+            isSaved,
+        } as Conversation;
     });
 
     return mappedConversations;

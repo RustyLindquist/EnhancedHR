@@ -12,7 +12,7 @@ import {
     Loader2,
     ChevronRight
 } from 'lucide-react';
-import { Course, Conversation } from '@/types';
+import { Course, Conversation, ToolConversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
@@ -72,7 +72,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
     // Conversations State
-    const [recentConversations, setRecentConversations] = useState<Conversation[]>([]);
+    const [recentConversations, setRecentConversations] = useState<(Conversation | ToolConversation)[]>([]);
 
     const router = useRouter();
 
@@ -282,22 +282,33 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         </div>
 
                         <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
-                            {recentConversations.map(conversation => (
-                                <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
-                                    <UniversalCard
-                                        type="CONVERSATION"
-                                        title={conversation.title || 'Untitled Conversation'}
-                                        description={conversation.lastMessage || 'No messages yet.'}
-                                        meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
-                                        actionLabel="CHAT"
-                                        onAction={() => onResumeConversation?.(conversation)}
-                                        onRemove={() => onDeleteConversation?.(conversation.id)}
-                                        onAdd={() => onAddConversation?.(conversation)}
-                                        draggable={!!onConversationDragStart}
-                                        onDragStart={() => onConversationDragStart?.(conversation)}
-                                    />
-                                </div>
-                            ))}
+                            {recentConversations.map(conversation => {
+                                const isToolConv = conversation.type === 'TOOL_CONVERSATION';
+                                const toolConv = isToolConv ? conversation as ToolConversation : null;
+                                return (
+                                    <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
+                                        <UniversalCard
+                                            type={isToolConv ? 'TOOL_CONVERSATION' : 'CONVERSATION'}
+                                            title={conversation.title || 'Untitled Conversation'}
+                                            subtitle={isToolConv ? toolConv?.tool_title : undefined}
+                                            description={conversation.lastMessage || 'No messages yet.'}
+                                            meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
+                                            actionLabel="CHAT"
+                                            onAction={() => {
+                                                if (isToolConv && toolConv) {
+                                                    window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${conversation.id}`;
+                                                } else {
+                                                    onResumeConversation?.(conversation as Conversation);
+                                                }
+                                            }}
+                                            onRemove={() => onDeleteConversation?.(conversation.id)}
+                                            onAdd={() => onAddConversation?.(conversation as Conversation)}
+                                            draggable={!!onConversationDragStart}
+                                            onDragStart={() => onConversationDragStart?.(conversation as Conversation)}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

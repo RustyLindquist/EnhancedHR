@@ -15,7 +15,7 @@ import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, ToolConversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note, Tool } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
@@ -37,6 +37,8 @@ import PrometheusDashboardWidget from './PrometheusDashboardWidget';
 import PrometheusHelpContent from './PrometheusHelpContent';
 import HelpPanel from './help/HelpPanel';
 import { HelpTopicId } from './help/HelpContent';
+import ToolsCollectionView from './tools/ToolsCollectionView';
+import { fetchToolsAction } from '@/app/actions/tools';
 
 interface MainCanvasProps {
     courses: Course[];
@@ -59,6 +61,7 @@ interface MainCanvasProps {
     onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
     previousCollectionId?: string | null; // Previous page for back navigation
     onGoBack?: () => void; // Handler to go back to previous page
+    onExposeDragStart?: (handler: (item: DragItem) => void) => void; // Expose drag start handler to parent
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -742,7 +745,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     initialStatusFilter,
     onNavigateWithFilter,
     previousCollectionId,
-    onGoBack
+    onGoBack,
+    onExposeDragStart
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -1054,6 +1058,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
     const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId>('ai-insights');
 
+    // --- TOOLS COLLECTION STATE ---
+    const [tools, setTools] = useState<Tool[]>([]);
+    const [isLoadingTools, setIsLoadingTools] = useState(false);
+
     // --- NOTES FETCH ---
     const fetchNotes = async () => {
         try {
@@ -1293,6 +1301,25 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             };
 
             fetchHelpTopics();
+        }
+    }, [activeCollectionId]);
+
+    // Fetch tools when navigating to Tools collection
+    useEffect(() => {
+        if (activeCollectionId === 'tools') {
+            const fetchTools = async () => {
+                setIsLoadingTools(true);
+                try {
+                    const fetchedTools = await fetchToolsAction();
+                    setTools(fetchedTools);
+                } catch (err) {
+                    console.error('Error fetching tools:', err);
+                } finally {
+                    setIsLoadingTools(false);
+                }
+            };
+
+            fetchTools();
         }
     }, [activeCollectionId]);
 
@@ -1707,6 +1734,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setDraggedItem(item);
     };
 
+    // Expose drag start handler to parent for external triggers (e.g., AIPanel notes drag)
+    useEffect(() => {
+        if (onExposeDragStart) {
+            onExposeDragStart(handleDragStart);
+        }
+    }, [onExposeDragStart]);
+
     // Deprecated wrapper for CardStack which still passes ID
     const handleCourseDragStart = (courseId: number) => {
         const course = courses.find(c => c.id === courseId);
@@ -1754,7 +1788,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [prometheusConversationTitle, setPrometheusConversationTitle] = useState('New Conversation');
 
     // Initialize conversations from API
-    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [conversations, setConversations] = useState<(Conversation | ToolConversation)[]>([]);
 
     const fetchConversations = async () => {
         try {
@@ -1772,7 +1806,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         fetchConversations();
     }, []);
 
-    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const [activeConversation, setActiveConversation] = useState<Conversation | ToolConversation | null>(null);
     const [deleteConversationModalOpen, setDeleteConversationModalOpen] = useState(false);
     const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
 
@@ -2001,7 +2035,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleOpenConversation = (id: string) => {
         const conversation = conversations.find(c => c.id === id);
         if (conversation) {
-            onResumeConversation && onResumeConversation(conversation);
+            // Handle tool conversations differently
+            if (conversation.type === 'TOOL_CONVERSATION') {
+                const toolConv = conversation as ToolConversation;
+                window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${id}`;
+                return;
+            }
+            onResumeConversation && onResumeConversation(conversation as Conversation);
             if (activeCollectionId === 'conversations') {
                 // If on conversations page, maybe navigate? For now just resume.
             } else {
@@ -2070,6 +2110,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         if (activeCollectionId === 'instructors') return 'Course Experts';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
+        if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
@@ -2087,6 +2128,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'instructors') return 'Academy';
         if (activeCollectionId === 'personal-context') return 'Personal Context';
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
+        if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
         return 'My Collection';
     };
@@ -2424,7 +2466,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (activeCollectionId === 'conversations') {
                 sourceItems = conversations.map(c => ({
                     ...c,
-                    itemType: 'CONVERSATION' // Map type to itemType for UniversalCollectionCard
+                    // Use correct type for tool conversations vs regular conversations
+                    itemType: c.type === 'TOOL_CONVERSATION' ? 'TOOL_CONVERSATION' : 'CONVERSATION'
                 })) as any[];
             }
 
@@ -2634,6 +2677,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     }
                                     else if (item.itemType === 'CONVERSATION') {
                                         handleOpenConversation(item.id);
+                                    }
+                                    else if (item.itemType === 'TOOL_CONVERSATION') {
+                                        // Navigate to the tool page with the conversation loaded
+                                        const toolConv = item as any;
+                                        window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${item.id}`;
                                     }
                                     else if (item.itemType === 'NOTE') {
                                         // Open the note editor
@@ -3467,6 +3515,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         activeCollectionId === 'instructors' ||
                                         activeCollectionId === 'dashboard' ||
                                         activeCollectionId === 'prometheus' ||
+                                        activeCollectionId === 'tools' ||
                                         activeCollectionId === 'certifications' ||
                                         activeCollectionId === 'help' ||
                                         viewingGroup ||
@@ -3668,6 +3717,18 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     isOpen={isHelpPanelOpen}
                                     onClose={() => setIsHelpPanelOpen(false)}
                                     topicId={activeHelpTopicId}
+                                />
+                            </div>
+                        ) : activeCollectionId === 'tools' ? (
+                            // --- TOOLS COLLECTION VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <ToolsCollectionView
+                                    tools={tools}
+                                    isLoading={isLoadingTools}
+                                    onToolSelect={(slug) => {
+                                        // Navigate to tool page
+                                        window.location.href = `/tools/${slug}`;
+                                    }}
                                 />
                             </div>
                         ) : (
