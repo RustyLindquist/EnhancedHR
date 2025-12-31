@@ -408,22 +408,32 @@ function HomeContent() {
   }, []);
 
   // Handle Resuming Conversation from MainCanvas
+  // Navigates to the originating context so the conversation can resume with the correct RAG and agent
   const handleResumeConversation = (conversation: any) => {
     const { metadata, id } = conversation;
     const scope = metadata?.contextScope;
 
     if (scope) {
       if (scope.type === 'COURSE') {
+        // Navigate to Academy with the course loaded
         setActiveCourseId(scope.id);
         setActiveCollectionId('academy');
       } else if (scope.type === 'COLLECTION') {
+        // Navigate to the originating custom collection
         setActiveCollectionId(scope.id);
         setActiveCourseId(null);
-      } else if (scope.type === 'PLATFORM') {
+      } else if (scope.type === 'TOOL') {
+        // Redirect to the tool page - this handles edge cases where a tool conversation
+        // wasn't typed as TOOL_CONVERSATION. The tool slug is in scope.id
+        window.location.href = `/tools/${scope.id}?conversationId=${id}`;
+        return; // Exit early since we're doing a full page navigation
+      } else {
+        // PLATFORM or unknown scope type - default to Prometheus
         setActiveCollectionId('prometheus');
         setActiveCourseId(null);
       }
     } else {
+      // No scope metadata - default to Prometheus (general AI)
       setActiveCollectionId('prometheus');
     }
 

@@ -204,6 +204,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
   const prevContextScopeRef = useRef<{ type: string; id?: string } | null>(null);
 
   // Reset conversation when context scope changes (e.g., switching courses)
+  // But preserve conversation if we're resuming one (propConversationId is set)
   useEffect(() => {
     const prevScope = prevContextScopeRef.current;
     const scopeChanged = prevScope !== null && (
@@ -211,8 +212,10 @@ const AIPanel: React.FC<AIPanelProps> = ({
       prevScope.id !== contextScope.id
     );
 
-    if (scopeChanged) {
-      // Clear the conversation when switching contexts
+    // Don't clear if we're resuming a conversation from another context
+    // The propConversationId effect will handle loading that conversation
+    if (scopeChanged && !propConversationId) {
+      // Clear the conversation when switching contexts (but not when resuming)
       setConversationId(null);
       setMessages([]);
       setConversationTitle('New Conversation');
@@ -231,7 +234,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
     // Update the ref for next comparison
     prevContextScopeRef.current = { type: contextScope.type, id: contextScope.id };
-  }, [contextScope.type, contextScope.id]);
+  }, [contextScope.type, contextScope.id, propConversationId]);
 
   const createConversation = async (title: string) => {
     try {

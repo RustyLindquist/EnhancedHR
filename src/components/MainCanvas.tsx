@@ -2035,17 +2035,24 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleOpenConversation = (id: string) => {
         const conversation = conversations.find(c => c.id === id);
         if (conversation) {
-            // Handle tool conversations differently
+            // Tool conversations redirect to their originating tool page
             if (conversation.type === 'TOOL_CONVERSATION') {
                 const toolConv = conversation as ToolConversation;
                 window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${id}`;
                 return;
             }
+
+            // Regular conversations: navigate to their originating context and resume
+            // onResumeConversation handles navigation based on metadata.contextScope:
+            // - COURSE → Academy with course loaded
+            // - COLLECTION → Custom collection
+            // - TOOL → Tool page (redirect)
+            // - PLATFORM → Prometheus AI
             onResumeConversation && onResumeConversation(conversation as Conversation);
-            if (activeCollectionId === 'conversations') {
-                // If on conversations page, maybe navigate? For now just resume.
-            } else {
-                // Open drawer or AI panel?
+
+            // If not on conversations page, also trigger AI Panel open
+            // (onResumeConversation already opens it, but this ensures consistency)
+            if (activeCollectionId !== 'conversations') {
                 onOpenAIPanel();
             }
         }
