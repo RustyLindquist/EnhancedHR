@@ -1,11 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
 export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION';
+
+// Icon mapping for dynamic icon names
+const TOOL_ICON_MAP: Record<string, LucideIcon> = {
+    'Wrench': Wrench,
+    'TrendingUp': TrendingUp,
+    'Drama': Drama,
+    'MessageSquare': MessageSquare,
+    'User': User,
+    'FileText': FileText,
+};
 
 interface UniversalCardProps {
     type: CardType;
@@ -19,6 +29,7 @@ interface UniversalCardProps {
     rating?: number; // 0-5
     credits?: { shrm?: number | boolean; hrci?: number | boolean }; // Available credits
     collections?: string[]; // List of collection names for footer display
+    iconName?: string; // Dynamic icon name for TOOL cards (e.g., 'Drama', 'TrendingUp')
     onAction?: () => void;
     onRemove?: () => void;
     onAdd?: () => void;
@@ -48,12 +59,15 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     rating,
     credits,
     collections,
+    iconName,
     onAction,
     onRemove,
     onAdd,
     draggable,
     onDragStart
 }) => {
+    // Get dynamic icon for TOOL cards
+    const DynamicToolIcon = iconName && TOOL_ICON_MAP[iconName] ? TOOL_ICON_MAP[iconName] : Wrench;
 
     // Configuration based on Type
     const config = {
@@ -317,10 +331,14 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     ) : null}
                 </div>
 
-                {/* File Icon Overlay for Resource/Context */}
+                {/* File Icon Overlay for Resource/Context/Tool */}
                 {!isMediaCard && config.icon && (
                     <div className="absolute right-[-20px] bottom-[-20px] opacity-10 rotate-[-15deg] pointer-events-none">
-                        <config.icon size={160} />
+                        {type === 'TOOL' ? (
+                            <DynamicToolIcon size={160} />
+                        ) : (
+                            <config.icon size={160} />
+                        )}
                     </div>
                 )}
                 {/* Conversation Bubbles Overlay */}

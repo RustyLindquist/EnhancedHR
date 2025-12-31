@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { fetchToolBySlugAction, fetchToolConversationByIdAction } from '@/app/actions/tools';
 import ToolChatInterface from '@/components/tools/ToolChatInterface';
 import RoleDisruptionTool from '@/components/tools/RoleDisruptionTool';
+import RoleplayDojoTool from '@/components/tools/RoleplayDojoTool';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import ToolPageLayout from '@/components/ToolPageLayout';
 
@@ -34,6 +35,19 @@ export default async function ToolPage({ params, searchParams }: ToolPageProps) 
         return (
             <ToolPageLayout activeNavId="tools">
                 <RoleDisruptionTool
+                    tool={tool}
+                    conversationId={conversationId}
+                    initialMessages={initialMessages}
+                />
+            </ToolPageLayout>
+        );
+    }
+
+    // Roleplay Dojo uses enhanced layout with NotesPanel
+    if (slug === 'roleplay-dojo') {
+        return (
+            <ToolPageLayout activeNavId="tools">
+                <RoleplayDojoTool
                     tool={tool}
                     conversationId={conversationId}
                     initialMessages={initialMessages}
