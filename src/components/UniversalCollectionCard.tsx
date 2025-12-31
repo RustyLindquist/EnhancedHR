@@ -1,11 +1,12 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note, ToolConversation } from '../types';
 import UniversalCard, { CardType } from './cards/UniversalCard';
 
 // Unified type for all renderable items in a collection
 export type CollectionItemDetail =
     | (Course & { itemType: 'COURSE' })
     | (Conversation & { itemType: 'CONVERSATION' })
+    | (ToolConversation & { itemType: 'TOOL_CONVERSATION' })
     | (Module & { itemType: 'MODULE'; courseTitle?: string })
     | (Lesson & { itemType: 'LESSON'; courseTitle?: string; moduleTitle?: string })
     | (Resource & { itemType: 'RESOURCE'; courseTitle?: string })
@@ -33,6 +34,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             case 'LESSON': return 'LESSON';
             case 'RESOURCE': return 'RESOURCE';
             case 'CONVERSATION': return 'CONVERSATION';
+            case 'TOOL_CONVERSATION': return 'TOOL_CONVERSATION';
             case 'NOTE': return 'NOTE';
             case 'AI_INSIGHT':
             case 'CUSTOM_CONTEXT':
@@ -96,6 +98,18 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'CONVERSATION',
                 description: conv.lastMessage || 'No messages yet.',
                 meta: conv.updated_at ? new Date(conv.updated_at).toLocaleDateString() : 'Just now',
+                actionLabel: 'CHAT'
+            };
+            break;
+        }
+        case 'TOOL_CONVERSATION': {
+            const toolConv = item as ToolConversation;
+            cardProps = {
+                ...cardProps,
+                type: 'TOOL_CONVERSATION',
+                subtitle: toolConv.tool_title || 'Tool',
+                description: toolConv.lastMessage || 'No messages yet.',
+                meta: toolConv.updated_at ? new Date(toolConv.updated_at).toLocaleDateString() : 'Just now',
                 actionLabel: 'CHAT'
             };
             break;

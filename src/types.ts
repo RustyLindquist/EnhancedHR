@@ -226,8 +226,31 @@ export interface HelpTopic {
     collections?: string[]; // For ContextCard compatibility (help topics are not draggable)
 }
 
+// --- Tool Types ---
+
+export interface Tool {
+  type: 'TOOL';
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  agent_type: string;
+  icon_name?: string;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  collections?: string[]; // For ContextCard compatibility (tools are not draggable to collections)
+}
+
+export interface ToolConversation extends Omit<Conversation, 'type'> {
+  type: 'TOOL_CONVERSATION';
+  tool_id: string;
+  tool_slug: string;
+  tool_title: string;
+}
+
 // Drag Item Types (used for drag/drop and modal operations)
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE';
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE' | 'TOOL_CONVERSATION';
 
 export interface DragItem {
   type: DragItemType;
@@ -255,7 +278,7 @@ export interface Note {
 }
 
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | HelpTopic | DragItem;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | HelpTopic | Tool | ToolConversation | DragItem;
 
 export interface BackgroundTheme {
   id: string;

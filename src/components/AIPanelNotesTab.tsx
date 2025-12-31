@@ -220,8 +220,8 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
     // Render list view
     const renderListView = () => (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Notes List - overflow-x-hidden prevents horizontal scrollbar from scaled cards */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3 pr-1">
+            {/* Notes List - padding for hover effects, overflow-x-clip to prevent scrollbar while allowing visual overflow */}
+            <div className="flex-1 overflow-y-auto overflow-x-clip space-y-3 pl-2 pr-1 py-2">
                 {isLoading ? (
                     <div className="flex items-center justify-center py-10">
                         <Loader2 size={24} className="animate-spin text-[#9A9724]" />
@@ -229,7 +229,7 @@ const AIPanelNotesTab: React.FC<AIPanelNotesTabProps> = ({
                 ) : (
                     <>
                         {courseNotes.map((note) => (
-                            <div key={note.id} className="transform scale-[0.85] origin-top-left" style={{ width: 'calc(100% / 0.85)' }}>
+                            <div key={note.id} className="relative z-0 hover:z-10">
                                 <UniversalCard
                                     type="NOTE"
                                     title={note.title || 'Untitled Note'}

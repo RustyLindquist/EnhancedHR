@@ -20,7 +20,8 @@ import {
   DollarSign,
   BarChart2,
   HelpCircle,
-  StickyNote
+  StickyNote,
+  Wrench
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -700,6 +701,7 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
+  { id: 'tools', label: 'Tools', icon: Wrench, color: 'text-teal-400' },
   { id: 'certifications', label: 'Certifications', icon: Award },
   { id: 'personal-context', label: 'Personal Context', icon: Brain },
   { id: 'help', label: 'Help', icon: HelpCircle, color: 'text-brand-blue-light' },

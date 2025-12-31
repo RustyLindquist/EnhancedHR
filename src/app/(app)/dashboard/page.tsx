@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
@@ -11,7 +11,7 @@ import { HelpTopicId } from '@/components/help/HelpContent';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
-import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
+import { BackgroundTheme, Course, Collection, ContextCard, DragItem } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
@@ -306,6 +306,25 @@ function HomeContent() {
     });
   };
 
+  // Ref to store MainCanvas's drag handler for note dragging from AIPanel
+  const mainCanvasDragStartRef = useRef<((item: DragItem) => void) | null>(null);
+
+  // Callback to receive drag handler from MainCanvas
+  const handleExposeDragStart = useCallback((handler: (item: DragItem) => void) => {
+    mainCanvasDragStartRef.current = handler;
+  }, []);
+
+  // Handler for note drag from AIPanel - triggers MainCanvas drag
+  const handleNoteDragStart = useCallback((item: { type: 'NOTE'; id: string; title: string }) => {
+    if (mainCanvasDragStartRef.current) {
+      mainCanvasDragStartRef.current({
+        type: 'NOTE',
+        id: item.id,
+        title: item.title
+      });
+    }
+  }, []);
+
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
       handleOpenModal(undefined);
@@ -508,6 +527,7 @@ function HomeContent() {
           onNavigateWithFilter={handleNavigateWithFilter}
           previousCollectionId={previousCollectionId}
           onGoBack={handleGoBack}
+          onExposeDragStart={handleExposeDragStart}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
@@ -528,6 +548,7 @@ function HomeContent() {
             onConversationIdChange={setActiveConversationId}
             onAddConversationToCollection={handleAddConversationToCollection}
             onAddNoteToCollection={handleAddNoteToCollection}
+            onNoteDragStart={handleNoteDragStart}
             onOpenHelp={handleOpenHelp}
           />
         )}
