@@ -134,6 +134,13 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
             >
                 <div className="overflow-hidden">
                     <div className="px-5 pt-3 pb-5">
+                        {/* Module Description - shown when available */}
+                        {module.description && (
+                            <p className="text-sm text-slate-400 leading-relaxed mb-4 pb-4 border-b border-white/5">
+                                {module.description}
+                            </p>
+                        )}
+
                         {/* Lessons Grid - 4 columns on larger screens */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {module.lessons.map((lesson, lessonIndex) => (

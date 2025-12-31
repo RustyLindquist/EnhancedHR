@@ -213,6 +213,7 @@ export default function AdminCourseBuilderClient({
                 courseId={initialCourse.id}
                 moduleId={editingModuleId}
                 moduleTitle={editingModule?.title || ''}
+                moduleDescription={editingModule?.description || ''}
                 moduleOrder={editingModule ? initialSyllabus.indexOf(editingModule) : 0}
                 isNewModule={!editingModuleId}
                 onSave={handlePanelSave}

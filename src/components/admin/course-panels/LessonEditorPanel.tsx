@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useTransition, useCallback } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { updateLesson, deleteLesson, createLesson } from '@/app/actions/course-builder';
+import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 
 type LessonType = 'video' | 'quiz' | 'article';
@@ -54,6 +54,9 @@ export default function LessonEditorPanel({
     const [videoSource, setVideoSource] = useState<VideoSourceType>('url');
     const [isUploading, setIsUploading] = useState(false);
 
+    // Transcript generation
+    const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
+
     // Reset form when panel opens
     React.useEffect(() => {
         if (isOpen) {
@@ -65,8 +68,33 @@ export default function LessonEditorPanel({
             setError(null);
             setShowDeleteConfirm(false);
             setIsUploading(false);
+            setIsGeneratingTranscript(false);
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration]);
+
+    const handleGenerateTranscript = useCallback(async () => {
+        if (!videoUrl) {
+            setError('Please add a video URL first');
+            return;
+        }
+
+        setError(null);
+        setIsGeneratingTranscript(true);
+
+        try {
+            const result = await generateTranscriptFromVideo(videoUrl);
+
+            if (result.success && result.transcript) {
+                setContent(result.transcript);
+            } else {
+                setError(result.error || 'Failed to generate transcript');
+            }
+        } catch (err: any) {
+            setError(err.message || 'An error occurred while generating the transcript');
+        } finally {
+            setIsGeneratingTranscript(false);
+        }
+    }, [videoUrl]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -316,9 +344,44 @@ export default function LessonEditorPanel({
 
                 {/* Transcript / Content */}
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        {type === 'video' ? 'Transcript / Script' : type === 'article' ? 'Article Content' : 'Quiz Description'}
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            {type === 'video' ? 'Transcript / Script' : type === 'article' ? 'Article Content' : 'Quiz Description'}
+                        </label>
+
+                        {/* Generate from Video button - only show for video type with a video URL */}
+                        {type === 'video' && videoUrl && (
+                            <button
+                                onClick={handleGenerateTranscript}
+                                disabled={isGeneratingTranscript || isPending}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isGeneratingTranscript ? (
+                                    <>
+                                        <Loader2 size={12} className="animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles size={12} />
+                                        Generate from Video
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Generation in progress indicator */}
+                    {isGeneratingTranscript && (
+                        <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm flex items-center gap-3">
+                            <Loader2 size={16} className="animate-spin" />
+                            <div>
+                                <p className="font-medium">Analyzing video and generating transcript...</p>
+                                <p className="text-xs text-purple-400/70 mt-0.5">This may take a minute depending on video length</p>
+                            </div>
+                        </div>
+                    )}
+
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
@@ -330,7 +393,8 @@ export default function LessonEditorPanel({
                                 : 'Describe what this quiz covers...'
                         }
                         rows={6}
-                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50"
+                        disabled={isGeneratingTranscript}
+                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50"
                     />
                     {type === 'video' && (
                         <p className="text-xs text-slate-600 mt-2">

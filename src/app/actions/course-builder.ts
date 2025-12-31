@@ -209,6 +209,7 @@ export async function updateModule(moduleId: string, data: {
     title?: string;
     order?: number;
     duration?: string;
+    description?: string;
 }) {
     const admin = await createAdminClient();
 
@@ -583,4 +584,654 @@ export async function getCourseForBuilder(courseId: number) {
         syllabus: mappedModules,
         resources: mappedResources
     };
+}
+
+// ============================================
+// AI Transcript Generation
+// ============================================
+
+export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    // Check if this is a Mux playback ID (short alphanumeric string)
+    const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+
+    let processableUrl = videoUrl;
+    if (isMuxId) {
+        // For Mux videos, use the MP4 rendition URL
+        // Mux provides static MP4 renditions at this URL pattern
+        processableUrl = `https://stream.mux.com/${videoUrl}/high.mp4`;
+    }
+
+    try {
+        // Fetch the prompt and model from ai_prompt_library
+        const { data: promptConfig } = await supabase
+            .from('ai_prompt_library')
+            .select('prompt_text, model')
+            .eq('key', 'generate_transcript')
+            .single();
+
+        const prompt = promptConfig?.prompt_text || `You are a professional transcription assistant. Watch this video carefully and produce a detailed, accurate transcript.
+
+Guidelines:
+- Transcribe all spoken words exactly as said
+- Include speaker labels if there are multiple speakers (e.g., "Speaker 1:", "Speaker 2:")
+- Note any significant non-verbal sounds in brackets [applause], [music], [silence]
+- Break the transcript into logical paragraphs
+- Use proper punctuation and formatting
+- If there are slides or on-screen text that's important, note them in brackets
+- Maintain the natural flow and timing of speech
+
+Produce the full transcript now:`;
+
+        const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
+
+        // Use OpenRouter to call the model with video content
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+        if (!OPENROUTER_API_KEY) {
+            return { success: false, error: 'OpenRouter API key not configured' };
+        }
+
+        // For video processing, we'll use the model's multimodal capabilities
+        // OpenRouter supports passing video URLs to compatible models
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                'X-Title': 'EnhancedHR'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: prompt
+                            },
+                            {
+                                type: 'video_url',
+                                video_url: {
+                                    url: processableUrl
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 8000
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('OpenRouter API error:', errorData);
+
+            // If video_url isn't supported, try with just text and URL reference
+            const fallbackResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                    'X-Title': 'EnhancedHR'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `${prompt}\n\nVideo URL: ${processableUrl}\n\nNote: Please analyze this video and provide a transcript. If you cannot access the video directly, please indicate that and I will provide an alternative method.`
+                        }
+                    ],
+                    max_tokens: 8000
+                })
+            });
+
+            if (!fallbackResponse.ok) {
+                return { success: false, error: 'Failed to process video with AI' };
+            }
+
+            const fallbackData = await fallbackResponse.json();
+            const transcript = fallbackData.choices?.[0]?.message?.content || '';
+
+            // If the model says it can't access the video, return helpful error
+            if (transcript.toLowerCase().includes("cannot access") ||
+                transcript.toLowerCase().includes("unable to access") ||
+                transcript.toLowerCase().includes("don't have access")) {
+                return {
+                    success: false,
+                    error: 'The AI model cannot directly access video content. Please ensure the video URL is publicly accessible or try uploading to a supported video host.'
+                };
+            }
+
+            return { success: true, transcript };
+        }
+
+        const data = await response.json();
+        const transcript = data.choices?.[0]?.message?.content || '';
+
+        // Log the AI usage
+        const admin = await createAdminClient();
+        await admin.from('ai_logs').insert({
+            user_id: user.id,
+            agent_type: 'generate_transcript',
+            page_context: 'course_builder',
+            prompt: prompt.substring(0, 500),
+            response: transcript.substring(0, 1000),
+            metadata: {
+                video_url: videoUrl,
+                model: model
+            }
+        });
+
+        return { success: true, transcript };
+
+    } catch (error: any) {
+        console.error('Error generating transcript:', error);
+        return { success: false, error: error.message || 'Failed to generate transcript' };
+    }
+}
+
+// ============================================
+// AI Skills Generation from Transcripts
+// ============================================
+
+export async function generateSkillsFromTranscript(courseId: number): Promise<{
+    success: boolean;
+    skills?: string[];
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+        // Fetch course title
+        const { data: course } = await supabase
+            .from('courses')
+            .select('title')
+            .eq('id', courseId)
+            .single();
+
+        if (!course) {
+            return { success: false, error: 'Course not found' };
+        }
+
+        // Fetch all modules for this course
+        const { data: modules } = await supabase
+            .from('modules')
+            .select('id, title')
+            .eq('course_id', courseId)
+            .order('order');
+
+        if (!modules || modules.length === 0) {
+            return { success: false, error: 'No modules found for this course' };
+        }
+
+        // Fetch all lessons with content
+        const { data: lessons } = await supabase
+            .from('lessons')
+            .select('id, title, content, module_id')
+            .in('module_id', modules.map(m => m.id))
+            .order('order');
+
+        // Compile transcripts
+        const transcriptsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
+
+        if (transcriptsWithContent.length === 0) {
+            return { success: false, error: 'No lesson transcripts found. Please add transcripts to lessons first.' };
+        }
+
+        // Build the transcript compilation
+        const transcriptText = transcriptsWithContent.map(lesson => {
+            const module = modules.find(m => m.id === lesson.module_id);
+            return `## ${module?.title || 'Module'} - ${lesson.title}\n\n${lesson.content}`;
+        }).join('\n\n---\n\n');
+
+        // Fetch the prompt and model from ai_prompt_library
+        const { data: promptConfig } = await supabase
+            .from('ai_prompt_library')
+            .select('prompt_text, model')
+            .eq('key', 'generate_skills')
+            .single();
+
+        const defaultPrompt = `You are an expert instructional designer specializing in HR professional development. Your task is to analyze course content and extract the key skills learners will gain.
+
+Analyze the provided course transcript(s) and generate a list of 4-8 specific, actionable skills.
+
+Guidelines for generating skills:
+1. Use action verbs that indicate measurable outcomes (Apply, Analyze, Create, Evaluate, Implement, Design, Develop, etc.)
+2. Be specific and concrete - avoid vague skills like "understand HR better" or "learn about compliance"
+3. Focus on practical, workplace-applicable skills that professionals can immediately use
+4. Each skill should be completable in one clear sentence (10-20 words ideal)
+5. Skills should directly relate to content covered in the transcripts
+6. Consider both technical/hard skills and strategic/soft skills where applicable
+7. Frame skills from the learner's perspective using active voice
+8. Ensure skills are differentiated - each should cover a distinct competency
+
+Format your response as a JSON array of strings only, with no additional text or explanation.
+
+Example format:
+["Apply data-driven approaches to measure employee engagement effectiveness", "Design compensation structures that balance internal equity with market competitiveness", "Analyze turnover patterns to identify root causes and develop retention strategies"]
+
+Course Title: {course_title}
+
+Transcripts:
+{transcripts}
+
+Generate the skills list now (JSON array only):`;
+
+        let prompt = promptConfig?.prompt_text || defaultPrompt;
+
+        // Interpolate variables
+        prompt = prompt.replace(/\{course_title\}/g, course.title);
+        prompt = prompt.replace(/\{transcripts\}/g, transcriptText);
+
+        const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
+
+        // Use OpenRouter to call the model
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+        if (!OPENROUTER_API_KEY) {
+            return { success: false, error: 'OpenRouter API key not configured' };
+        }
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                'X-Title': 'EnhancedHR'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                max_tokens: 2000
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('OpenRouter API error:', errorData);
+            return { success: false, error: 'Failed to generate skills with AI' };
+        }
+
+        const data = await response.json();
+        const responseText = data.choices?.[0]?.message?.content || '';
+
+        // Parse the JSON array from the response
+        let skills: string[] = [];
+        try {
+            // Try to extract JSON array from the response
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                skills = JSON.parse(jsonMatch[0]);
+            } else {
+                // Fallback: try parsing the whole response
+                skills = JSON.parse(responseText);
+            }
+
+            // Validate it's an array of strings
+            if (!Array.isArray(skills) || !skills.every(s => typeof s === 'string')) {
+                throw new Error('Invalid response format');
+            }
+        } catch (parseError) {
+            console.error('Error parsing skills response:', parseError, responseText);
+            return { success: false, error: 'AI generated an invalid response format. Please try again.' };
+        }
+
+        // Log the AI usage
+        const admin = await createAdminClient();
+        await admin.from('ai_logs').insert({
+            user_id: user.id,
+            agent_type: 'generate_skills',
+            page_context: 'course_builder',
+            prompt: prompt.substring(0, 500),
+            response: responseText.substring(0, 1000),
+            metadata: {
+                course_id: courseId,
+                model: model,
+                skills_count: skills.length
+            }
+        });
+
+        return { success: true, skills };
+
+    } catch (error: any) {
+        console.error('Error generating skills:', error);
+        return { success: false, error: error.message || 'Failed to generate skills' };
+    }
+}
+
+// ============================================
+// AI Course Description Generation
+// ============================================
+
+export async function generateCourseDescription(courseId: number): Promise<{
+    success: boolean;
+    description?: string;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+        // Fetch course title
+        const { data: course } = await supabase
+            .from('courses')
+            .select('title')
+            .eq('id', courseId)
+            .single();
+
+        if (!course) {
+            return { success: false, error: 'Course not found' };
+        }
+
+        // Fetch all modules for this course
+        const { data: modules } = await supabase
+            .from('modules')
+            .select('id, title')
+            .eq('course_id', courseId)
+            .order('order');
+
+        if (!modules || modules.length === 0) {
+            return { success: false, error: 'No modules found for this course' };
+        }
+
+        // Fetch all lessons with content
+        const { data: lessons } = await supabase
+            .from('lessons')
+            .select('id, title, content, module_id')
+            .in('module_id', modules.map(m => m.id))
+            .order('order');
+
+        // Compile transcripts
+        const transcriptsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
+
+        if (transcriptsWithContent.length === 0) {
+            return { success: false, error: 'No lesson transcripts found. Please add transcripts to lessons first.' };
+        }
+
+        // Build the transcript compilation
+        const transcriptText = transcriptsWithContent.map(lesson => {
+            const module = modules.find(m => m.id === lesson.module_id);
+            return `## ${module?.title || 'Module'} - ${lesson.title}\n\n${lesson.content}`;
+        }).join('\n\n---\n\n');
+
+        // Fetch the prompt and model from ai_prompt_library
+        const { data: promptConfig } = await supabase
+            .from('ai_prompt_library')
+            .select('prompt_text, model')
+            .eq('key', 'generate_course_description')
+            .single();
+
+        const defaultPrompt = `You are an expert course marketing copywriter specializing in professional development and HR education. Your task is to write a compelling course description that will attract and inform potential learners.
+
+Analyze the provided course transcript(s) and generate an engaging course description.
+
+Guidelines:
+1. Start with a strong hook that captures attention and highlights the value proposition
+2. Clearly explain what learners will gain from this course
+3. Highlight the practical, real-world applications of the content
+4. Use professional but accessible language appropriate for HR professionals
+5. Keep the description between 150-250 words - concise but comprehensive
+6. Structure with a brief intro paragraph, key takeaways, and who should take this course
+7. Avoid generic phrases like "this comprehensive course" - be specific about the content
+8. End with a motivating call-to-action or benefit statement
+
+Format: Return ONLY the description text, no JSON formatting or additional commentary.
+
+Course Title: {course_title}
+
+Course Content (transcripts from all lessons):
+{transcripts}
+
+Write the course description now:`;
+
+        let prompt = promptConfig?.prompt_text || defaultPrompt;
+
+        // Interpolate variables
+        prompt = prompt.replace(/\{course_title\}/g, course.title);
+        prompt = prompt.replace(/\{transcripts\}/g, transcriptText.substring(0, 30000)); // Limit transcript length
+
+        const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
+
+        // Use OpenRouter to call the model
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+        if (!OPENROUTER_API_KEY) {
+            return { success: false, error: 'OpenRouter API key not configured' };
+        }
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                'X-Title': 'EnhancedHR'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                max_tokens: 1000
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('OpenRouter API error:', errorData);
+            return { success: false, error: 'Failed to generate description with AI' };
+        }
+
+        const data = await response.json();
+        const description = data.choices?.[0]?.message?.content?.trim() || '';
+
+        // Log the AI usage
+        const admin = await createAdminClient();
+        await admin.from('ai_logs').insert({
+            user_id: user.id,
+            agent_type: 'generate_course_description',
+            page_context: 'course_builder',
+            prompt: prompt.substring(0, 500),
+            response: description.substring(0, 1000),
+            metadata: {
+                course_id: courseId,
+                model: model
+            }
+        });
+
+        return { success: true, description };
+
+    } catch (error: any) {
+        console.error('Error generating course description:', error);
+        return { success: false, error: error.message || 'Failed to generate description' };
+    }
+}
+
+// ============================================
+// Module Description Actions
+// ============================================
+
+export async function updateModuleDescription(moduleId: string, description: string) {
+    const admin = await createAdminClient();
+
+    const { error } = await admin
+        .from('modules')
+        .update({ description })
+        .eq('id', moduleId);
+
+    if (error) {
+        console.error('Error updating module description:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+export async function generateModuleDescription(moduleId: string): Promise<{
+    success: boolean;
+    description?: string;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+        // Fetch module details
+        const { data: module } = await supabase
+            .from('modules')
+            .select('id, title, course_id')
+            .eq('id', moduleId)
+            .single();
+
+        if (!module) {
+            return { success: false, error: 'Module not found' };
+        }
+
+        // Fetch all lessons in this module with content
+        const { data: lessons } = await supabase
+            .from('lessons')
+            .select('id, title, content')
+            .eq('module_id', moduleId)
+            .order('order');
+
+        const lessonsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
+
+        if (lessonsWithContent.length === 0) {
+            return { success: false, error: 'No lesson transcripts found in this module. Please add transcripts to lessons first.' };
+        }
+
+        // Build the transcript compilation
+        const transcriptText = lessonsWithContent.map(lesson => {
+            return `### ${lesson.title}\n\n${lesson.content}`;
+        }).join('\n\n---\n\n');
+
+        // Fetch the prompt and model from ai_prompt_library
+        const { data: promptConfig } = await supabase
+            .from('ai_prompt_library')
+            .select('prompt_text, model')
+            .eq('key', 'generate_module_description')
+            .single();
+
+        const defaultPrompt = `You are an expert instructional designer creating module summaries for professional development courses.
+
+Analyze the lesson transcripts from this module and generate a concise, informative module description.
+
+Guidelines:
+1. Summarize the key topics and concepts covered in this module
+2. Keep it brief - 2-4 sentences, approximately 50-100 words
+3. Focus on what learners will learn and be able to do after completing this module
+4. Use clear, professional language
+5. Make it scannable - learners should quickly understand what this module covers
+6. Avoid repeating the module title - add new information
+
+Format: Return ONLY the description text, no JSON formatting or additional commentary.
+
+Module Title: {module_title}
+
+Lesson Transcripts:
+{transcripts}
+
+Write the module description now:`;
+
+        let prompt = promptConfig?.prompt_text || defaultPrompt;
+
+        // Interpolate variables
+        prompt = prompt.replace(/\{module_title\}/g, module.title);
+        prompt = prompt.replace(/\{transcripts\}/g, transcriptText.substring(0, 15000)); // Limit transcript length
+
+        const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
+
+        // Use OpenRouter to call the model
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+        if (!OPENROUTER_API_KEY) {
+            return { success: false, error: 'OpenRouter API key not configured' };
+        }
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                'X-Title': 'EnhancedHR'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('OpenRouter API error:', errorData);
+            return { success: false, error: 'Failed to generate description with AI' };
+        }
+
+        const data = await response.json();
+        const description = data.choices?.[0]?.message?.content?.trim() || '';
+
+        // Log the AI usage
+        const admin = await createAdminClient();
+        await admin.from('ai_logs').insert({
+            user_id: user.id,
+            agent_type: 'generate_module_description',
+            page_context: 'course_builder',
+            prompt: prompt.substring(0, 500),
+            response: description.substring(0, 500),
+            metadata: {
+                module_id: moduleId,
+                model: model
+            }
+        });
+
+        return { success: true, description };
+
+    } catch (error: any) {
+        console.error('Error generating module description:', error);
+        return { success: false, error: error.message || 'Failed to generate description' };
+    }
 }
