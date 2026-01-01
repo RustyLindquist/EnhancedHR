@@ -67,20 +67,15 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
     // Given the prompt asked to "connect to database", let's assume the 'courses' prop in UserDashboard 
     // is already the full list. We just need to know WHICH ones are in progress.
     
-    // 4. Streak - Record activity and get current streak
-    // This calls the database function that tracks daily logins
+    // 4. Streak - Get current streak
+    // Activity is recorded on app mount in MainCanvas, this just retrieves the streak value
     let streak = 0;
     try {
-        // Record today's activity and get the updated streak
         const { data: streakData, error: streakError } = await supabase
-            .rpc('record_user_activity', { p_user_id: userId });
+            .rpc('get_user_streak', { p_user_id: userId });
 
         if (streakError) {
-            console.error('Error recording streak:', streakError);
-            // Fallback: try to get existing streak
-            const { data: fallbackStreak } = await supabase
-                .rpc('get_user_streak', { p_user_id: userId });
-            streak = fallbackStreak || 0;
+            console.error('Error getting streak:', streakError);
         } else {
             streak = streakData || 0;
         }

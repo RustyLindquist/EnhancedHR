@@ -1161,6 +1161,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (user) {
                 setUser(user);
 
+                // --- RECORD DAILY ACTIVITY FOR STREAK TRACKING ---
+                // This records the user's access today for streak calculation
+                try {
+                    await supabase.rpc('record_user_activity', { p_user_id: user.id });
+                } catch (e) {
+                    console.error('Failed to record user activity:', e);
+                }
+
                 // --- AUTO MIGRATION LOGIC (Client-Side) ---
                 // 1. Instantiate Profile Card
                 // 1. Instantiate Profile Card (and simplify/dedupe)

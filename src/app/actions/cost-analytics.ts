@@ -535,7 +535,7 @@ export async function getAnalyticsScope(): Promise<AnalyticsScope | null> {
   // Get user profile with org and role info
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, membership_status, org_id')
+    .select('role, membership_status, org_id, author_status')
     .eq('id', user.id)
     .single();
 
@@ -551,16 +551,18 @@ export async function getAnalyticsScope(): Promise<AnalyticsScope | null> {
     return { accessLevel: 'org_admin', orgId: profile.org_id };
   }
 
-  // Expert - check if they have authored courses
-  const { data: courses } = await supabase
-    .from('courses')
-    .select('id')
-    .eq('author_id', user.id);
+  // Expert - check if they are an approved expert (author_status = 'approved')
+  // They may or may not have authored courses yet
+  if (profile.author_status === 'approved') {
+    // Get their authored courses (if any) for personal view filtering
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('author_id', user.id);
 
-  if (courses && courses.length > 0) {
     return {
       accessLevel: 'expert',
-      courseIds: courses.map(c => c.id)
+      courseIds: courses?.map(c => c.id) || []
     };
   }
 
