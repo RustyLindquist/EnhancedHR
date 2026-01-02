@@ -303,3 +303,196 @@ export async function getEmbeddingStats(
 
     return stats;
 }
+
+// ============================================
+// Course Resource Embeddings
+// ============================================
+
+/**
+ * Embed a course resource for RAG retrieval
+ * Creates embeddings linked to the course (not a user) for Course Assistant/Tutor access
+ *
+ * For file resources (PDF, DOC): Attempts to fetch and parse content
+ * For links/images: Embeds title and URL as searchable context
+ */
+export async function embedCourseResource(
+    resourceId: string,
+    courseId: number,
+    title: string,
+    resourceType: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK',
+    url: string,
+    fileContent?: string // Optional: pre-parsed content for file resources
+): Promise<{ success: boolean; embeddingCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        let contentToEmbed = '';
+
+        // If file content is provided (e.g., from parsing), use it
+        if (fileContent && fileContent.trim().length > 0) {
+            contentToEmbed = `Course Resource: ${title}\n\n${fileContent}`;
+        } else {
+            // Create a descriptive context for the resource
+            // This ensures the resource is findable even without parsed content
+            const typeDescriptions: Record<string, string> = {
+                'PDF': 'PDF document',
+                'DOC': 'Word document',
+                'XLS': 'Excel spreadsheet',
+                'IMG': 'Image file',
+                'LINK': 'External link or web resource'
+            };
+
+            contentToEmbed = `Course Resource: ${title}\nType: ${typeDescriptions[resourceType] || resourceType}\nURL: ${url}`;
+        }
+
+        // Chunk if content is long (mainly for parsed file content)
+        const chunks = contentToEmbed.length > 1200
+            ? chunkText(contentToEmbed, 1000, 200)
+            : [contentToEmbed];
+
+        let embeddingCount = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = await generateFileEmbedding(chunk);
+
+            if (!embedding || embedding.length === 0) {
+                console.warn(`[embedCourseResource] Failed to generate embedding for chunk ${i + 1}/${chunks.length}`);
+                continue;
+            }
+
+            const { error } = await admin
+                .from('unified_embeddings')
+                .insert({
+                    user_id: null, // Course resources are not user-specific
+                    course_id: courseId,
+                    collection_id: null,
+                    source_type: 'resource',
+                    source_id: resourceId,
+                    content: chunk,
+                    embedding: embedding,
+                    metadata: {
+                        resource_title: title,
+                        resource_type: resourceType,
+                        resource_url: url,
+                        chunk_index: i,
+                        total_chunks: chunks.length,
+                        has_parsed_content: !!fileContent
+                    }
+                });
+
+            if (error) {
+                console.error(`[embedCourseResource] Error inserting embedding:`, error);
+            } else {
+                embeddingCount++;
+            }
+        }
+
+        console.log(`[embedCourseResource] Created ${embeddingCount} embeddings for resource "${title}" (${resourceId})`);
+        return { success: true, embeddingCount };
+
+    } catch (error) {
+        console.error('[embedCourseResource] Error:', error);
+        return {
+            success: false,
+            embeddingCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
+ * Delete all embeddings for a course resource
+ */
+export async function deleteCourseResourceEmbeddings(
+    resourceId: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        const { data, error } = await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', resourceId)
+            .eq('source_type', 'resource')
+            .select('id');
+
+        if (error) {
+            console.error('[deleteCourseResourceEmbeddings] Error:', error);
+            return { success: false, deletedCount: 0, error: error.message };
+        }
+
+        console.log(`[deleteCourseResourceEmbeddings] Deleted ${data?.length || 0} embeddings for resource ${resourceId}`);
+        return { success: true, deletedCount: data?.length || 0 };
+
+    } catch (error) {
+        console.error('[deleteCourseResourceEmbeddings] Error:', error);
+        return {
+            success: false,
+            deletedCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
+ * Embed all resources for a course
+ * Useful for batch processing or re-indexing
+ */
+export async function embedAllCourseResources(
+    courseId: number
+): Promise<{ success: boolean; resourceCount: number; embeddingCount: number; errors: string[] }> {
+    const admin = createAdminClient();
+    const errors: string[] = [];
+    let totalEmbeddings = 0;
+
+    try {
+        // Fetch all resources for the course
+        const { data: resources, error } = await admin
+            .from('course_resources')
+            .select('id, title, type, url')
+            .eq('course_id', courseId);
+
+        if (error) {
+            return { success: false, resourceCount: 0, embeddingCount: 0, errors: [error.message] };
+        }
+
+        if (!resources || resources.length === 0) {
+            return { success: true, resourceCount: 0, embeddingCount: 0, errors: [] };
+        }
+
+        // Process each resource
+        for (const resource of resources) {
+            const result = await embedCourseResource(
+                resource.id,
+                courseId,
+                resource.title,
+                resource.type as 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK',
+                resource.url
+            );
+
+            if (result.success) {
+                totalEmbeddings += result.embeddingCount;
+            } else if (result.error) {
+                errors.push(`Resource "${resource.title}": ${result.error}`);
+            }
+        }
+
+        console.log(`[embedAllCourseResources] Processed ${resources.length} resources, created ${totalEmbeddings} embeddings`);
+        return {
+            success: errors.length === 0,
+            resourceCount: resources.length,
+            embeddingCount: totalEmbeddings,
+            errors
+        };
+
+    } catch (error) {
+        console.error('[embedAllCourseResources] Error:', error);
+        return {
+            success: false,
+            resourceCount: 0,
+            embeddingCount: 0,
+            errors: [error instanceof Error ? error.message : 'Unknown error']
+        };
+    }
+}
