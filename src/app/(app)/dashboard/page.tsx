@@ -332,6 +332,11 @@ function HomeContent() {
       // Track previous collection for back navigation (only if actually changing)
       if (id !== activeCollectionId) {
         setPreviousCollectionId(activeCollectionId);
+
+        // Clear active conversation when navigating to a different collection
+        // This ensures the AI panel starts fresh with the new context/agent/RAG
+        // Note: handleResumeConversation explicitly sets activeConversationId for resuming
+        setActiveConversationId(null);
       }
 
       // Always clear the active course when selecting a collection
@@ -398,7 +403,15 @@ function HomeContent() {
   // Memoized to prevent useEffect re-runs in MainCanvas
   const handleCourseSelect = useCallback((courseId: string | null) => {
     // Only update if value actually changed to prevent loops
-    setActiveCourseId(prev => prev === courseId ? prev : courseId);
+    setActiveCourseId(prev => {
+      if (prev !== courseId) {
+        // Clear active conversation when course context changes
+        // This ensures AI panel starts fresh with the correct agent and RAG
+        setActiveConversationId(null);
+        return courseId;
+      }
+      return prev;
+    });
   }, []);
 
   // Navigate to a collection with a pre-set status filter
