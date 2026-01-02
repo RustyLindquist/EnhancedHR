@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
 
 // ============================================
 // Course Metadata Actions
@@ -403,12 +404,35 @@ export async function addCourseResource(courseId: number, data: {
         return { success: false, error: error.message };
     }
 
+    // Generate embeddings for the resource (for RAG)
+    // This runs async but we don't block on it
+    embedCourseResource(
+        resource.id,
+        courseId,
+        data.title,
+        data.type,
+        data.url
+    ).then(result => {
+        if (result.success) {
+            console.log(`[addCourseResource] Created ${result.embeddingCount} embeddings for resource "${data.title}"`);
+        } else {
+            console.error(`[addCourseResource] Failed to embed resource: ${result.error}`);
+        }
+    }).catch(err => {
+        console.error('[addCourseResource] Embedding error:', err);
+    });
+
     revalidatePath(`/admin/courses/${courseId}/builder`);
     return { success: true, resource };
 }
 
 export async function deleteCourseResource(resourceId: string, courseId: number) {
     const admin = await createAdminClient();
+
+    // Delete embeddings first (before the resource record)
+    deleteCourseResourceEmbeddings(resourceId).catch(err => {
+        console.error('[deleteCourseResource] Failed to delete embeddings:', err);
+    });
 
     const { error } = await admin
         .from('course_resources')

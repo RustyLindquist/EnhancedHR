@@ -59,9 +59,20 @@ function formatContextForPrompt(items: any[]): string {
         }
     }
 
+    // Course resources (PDFs, documents, links attached to courses)
+    if (grouped['resource']) {
+        sections.push('\n=== COURSE RESOURCES ===');
+        grouped['resource'].forEach(item => {
+            const resourceTitle = item.metadata?.resource_title || 'Resource';
+            const resourceType = item.metadata?.resource_type || '';
+            const prefix = resourceType ? `${resourceTitle} (${resourceType})` : resourceTitle;
+            sections.push(`[${prefix}]\n${item.content}`);
+        });
+    }
+
     // Any other content
     const otherTypes = Object.keys(grouped).filter(t =>
-        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course'].includes(t)
+        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course', 'resource'].includes(t)
     );
     otherTypes.forEach(type => {
         if (grouped[type].length > 0) {
