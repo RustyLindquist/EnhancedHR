@@ -2,7 +2,10 @@
 
 import React from 'react';
 import {
+    Bot,
     Brain,
+    Compass,
+    CreditCard,
     Sparkles,
     Settings,
     FolderHeart,
@@ -10,30 +13,40 @@ import {
     Flame,
     Folder,
     GraduationCap,
+    Library,
     LayoutDashboard,
     Users,
     Award,
     MessageSquare,
     Layers,
+    Monitor,
     TrendingUp,
     Search,
     Building,
     HelpCircle,
     FileText,
     StickyNote,
-    BookOpen
+    BookOpen,
+    User,
+    Wrench
 } from 'lucide-react';
 
 /**
  * Help content registry - all help topics for the platform
  */
 export type HelpTopicId =
+    | 'getting-started'
     | 'ai-insights'
     | 'personal-context'
     | 'prometheus-ai'
+    | 'course-experience'
+    | 'course-ai'
     | 'collections'
     | 'academy'
     | 'dashboard'
+    | 'prompt-library'
+    | 'tools'
+    | 'account-membership'
     | 'experts'
     | 'certifications'
     | 'conversations'
@@ -52,6 +65,11 @@ interface HelpTopic {
 }
 
 const HELP_TOPICS: Record<HelpTopicId, HelpTopic> = {
+    'getting-started': {
+        id: 'getting-started',
+        title: 'Getting Started',
+        content: <GettingStartedHelpContent />
+    },
     'ai-insights': {
         id: 'ai-insights',
         title: 'AI Insights',
@@ -67,6 +85,16 @@ const HELP_TOPICS: Record<HelpTopicId, HelpTopic> = {
         title: 'Prometheus AI Assistant',
         content: <PrometheusAIHelpContent />
     },
+    'course-experience': {
+        id: 'course-experience',
+        title: 'Course Experience',
+        content: <CourseExperienceHelpContent />
+    },
+    'course-ai': {
+        id: 'course-ai',
+        title: 'AI in Courses (Assistant & Tutor)',
+        content: <CourseAIHelpContent />
+    },
     'collections': {
         id: 'collections',
         title: 'Collections',
@@ -81,6 +109,21 @@ const HELP_TOPICS: Record<HelpTopicId, HelpTopic> = {
         id: 'dashboard',
         title: 'Dashboard',
         content: <DashboardHelpContent />
+    },
+    'prompt-library': {
+        id: 'prompt-library',
+        title: 'Prompt Library',
+        content: <PromptLibraryHelpContent />
+    },
+    'tools': {
+        id: 'tools',
+        title: 'Tools',
+        content: <ToolsHelpContent />
+    },
+    'account-membership': {
+        id: 'account-membership',
+        title: 'Account & Membership',
+        content: <AccountMembershipHelpContent />
     },
     'experts': {
         id: 'experts',
@@ -142,6 +185,109 @@ export function getHelpTopic(id: HelpTopicId): HelpTopic | undefined {
 // HELP CONTENT COMPONENTS
 // Each follows the three-tier structure: Value/Purpose -> How It Works -> Instructions
 // ============================================================================
+
+/**
+ * Getting Started Help Content
+ */
+function GettingStartedHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <Compass size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Welcome to EnhancedHR</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    EnhancedHR is an AI-enhanced learning platform built for HR professionals and leaders. You can take expert-led
+                    courses, use Prometheus to apply what you learn to real work situations, and track progress and certification
+                    eligibility along the way.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <Sparkles size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">How the Platform is Organized</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <ul className="text-sm space-y-2 text-slate-400">
+                            <li className="flex items-start gap-2">
+                                <span className="text-brand-blue-light mt-1">•</span>
+                                <span><span className="text-white font-medium">Dashboard</span>: your home base (continue learning, quick prompts, recent activity)</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-brand-blue-light mt-1">•</span>
+                                <span><span className="text-white font-medium">Academy</span>: browse the course catalog and start learning</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-brand-blue-light mt-1">•</span>
+                                <span><span className="text-white font-medium">Prometheus AI</span>: full-screen chat for HR questions and coaching</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-brand-blue-light mt-1">•</span>
+                                <span><span className="text-white font-medium">Collections</span>: organize courses, conversations, and notes</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <p className="text-sm text-slate-400">
+                        Most screens also include a right-side AI panel. When you're inside a course, it becomes course-aware and can tutor you.
+                    </p>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Lightbulb size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Your First 5 Minutes</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span>Go to <span className="text-white font-medium">Academy</span> and pick a course that matches your current challenge</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span>Open the course and start a lesson — your progress tracks automatically</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Use the AI panel to ask: <span className="text-white font-medium">“How should I apply this at work?”</span></span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">4</span>
+                            </div>
+                            <span>Save anything useful to <span className="text-white font-medium">Favorites</span> or your <span className="text-white font-medium">Workspace</span> for later</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">5</span>
+                            </div>
+                            <span>Come back to <span className="text-white font-medium">Help</span> anytime, or ask the Collection Assistant for quick guidance</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    );
+}
 
 /**
  * AI Insights Help Content
@@ -465,6 +611,179 @@ function PrometheusAIHelpContent() {
 }
 
 /**
+ * Course Experience Help Content
+ */
+function CourseExperienceHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <Monitor size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Learn by Doing (Not Just Watching)</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    Courses in EnhancedHR are designed to help you build practical, job-ready skills. You can move through modules and
+                    lessons, take notes as you learn, and use AI to turn course concepts into real-world plans and conversations.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <GraduationCap size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">What You’ll See in a Course</h3>
+                </div>
+                <div className="space-y-3">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-sm font-medium text-white mb-1">Course Page</p>
+                        <p className="text-xs text-slate-400">Overview, syllabus, resources, and course-level actions like rating and certificates</p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-sm font-medium text-white mb-1">Lesson Player</p>
+                        <p className="text-xs text-slate-400">Watch lessons, complete quizzes (when available), and move next/previous</p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-sm font-medium text-white mb-1">Notes + AI Panel</p>
+                        <p className="text-xs text-slate-400">Ask questions, get tutoring, and capture takeaways while you learn</p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <BookOpen size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">How to Take a Course</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span>From <span className="text-white font-medium">Academy</span>, click a course card to open it</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span>Click <span className="text-white font-medium">Start Course</span> (or <span className="text-white font-medium">Resume Learning</span>) to begin</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Use the right-side AI panel to ask for summaries, examples, or coaching as you go</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">4</span>
+                            </div>
+                            <span>Take notes in the <span className="text-white font-medium">Notes</span> tab so your learning stays organized</span>
+                        </li>
+                    </ul>
+                    <p className="text-sm text-slate-400">
+                        Tip: If a course is certification-eligible, you’ll see SHRM/HRCI badges on the course card and course page.
+                    </p>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
+ * Course AI Help Content
+ */
+function CourseAIHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <Bot size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Course-Aware AI (Assistant + Tutor)</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    When you're inside a course, the AI panel becomes course-aware. You can use it as a quick Assistant for answers,
+                    or switch to Tutor mode for a more guided, Socratic learning experience.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <Sparkles size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Assistant vs Tutor</h3>
+                </div>
+                <div className="space-y-3">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <p className="text-sm font-medium text-white mb-1">Course Assistant</p>
+                        <p className="text-sm text-slate-400">
+                            Best for quick questions and clarity: “What did they mean by…?”, “Summarize this lesson”, “Give me an example”.
+                        </p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <p className="text-sm font-medium text-white mb-1">Course Tutor</p>
+                        <p className="text-sm text-slate-400">
+                            Best for learning and application: the Tutor asks questions, checks understanding, and helps you build a plan for your role.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <MessageSquare size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">How to Use Course AI</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span>Open any course and expand the <span className="text-white font-medium">AI panel</span> on the right</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span>Switch between <span className="text-white font-medium">Assistant</span> and <span className="text-white font-medium">Tutor</span> modes based on what you need</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Ask for something concrete, like a script, checklist, or role-play outline</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">4</span>
+                            </div>
+                            <span>Save key takeaways as <span className="text-white font-medium">Notes</span> and store relevant items in a Collection</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
  * Collections Help Content
  */
 function CollectionsHelpContent() {
@@ -505,6 +824,36 @@ function CollectionsHelpContent() {
                         <p className="text-sm font-medium text-brand-blue-light mb-1">Watchlist</p>
                         <p className="text-xs text-slate-400">Courses you want to take later</p>
                     </div>
+                </div>
+            </section>
+
+            {/* Custom Collections */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <Folder size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Create Your Own Collections</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <p>
+                        In addition to built-in collections, you can create custom collections for projects and goals (for example:
+                        “Onboarding Revamp”, “Manager Toolkit”, or “Performance Conversations”).
+                    </p>
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Click <span className="text-white font-medium">New Collection</span> in the left navigation</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Choose a name and color to make it easy to recognize</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Add courses, lessons, conversations, and notes to keep everything in one place</span>
+                        </li>
+                    </ul>
                 </div>
             </section>
 
@@ -609,7 +958,18 @@ function AcademyHelpContent() {
                             <span className="text-brand-blue-light mt-1">•</span>
                             <span>Click any course to see the full course page with syllabus and resources</span>
                         </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use <span className="text-white font-medium">Add</span> or drag-and-drop to save courses to Favorites, Watchlist, or a custom collection</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Browse <span className="text-white font-medium">Experts</span> to learn about instructors and explore their courses</span>
+                        </li>
                     </ul>
+                    <p className="text-sm text-slate-400">
+                        Look for SHRM/HRCI badges on course cards if you’re focused on certification-eligible learning.
+                    </p>
                 </div>
             </section>
         </div>
@@ -657,6 +1017,271 @@ function DashboardHelpContent() {
                         <p className="text-sm font-medium text-white mb-1">Quick Prompts</p>
                         <p className="text-xs text-slate-400">Instant access to common Prometheus conversations</p>
                     </div>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Lightbulb size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Best Ways to Use the Dashboard</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use <span className="text-white font-medium">Continue Learning</span> to jump back into your next lesson</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Start a conversation with a <span className="text-white font-medium">Quick Prompt</span> and refine it to your situation</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use the right-side AI panel to ask for help finding the right course or applying a concept</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
+ * Prompt Library Help Content
+ */
+function PromptLibraryHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <Library size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Get Started Faster with Prompts</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    The Prompt Library gives you high-quality starting points for common HR needs. Instead of wondering “what should I ask?”,
+                    you can choose a prompt, tweak it to your situation, and get a strong first draft from Prometheus.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <Sparkles size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Where You’ll See Prompts</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Dashboard quick prompts (fast entry into common conversations)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>The Prompt Library panel (a bigger curated list)</span>
+                        </li>
+                    </ul>
+                    <p className="text-sm text-slate-400">
+                        Prompts are designed to be edited. The best results happen when you add your role, company context, and the situation you’re facing.
+                    </p>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <MessageSquare size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Using a Prompt</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span>Open the Prompt Library and click a prompt that matches your situation</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span>Customize it: include your goals, constraints, and any sensitive details you can generalize</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Ask for a specific output (script, outline, checklist, email draft, coaching plan)</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
+ * Tools Help Content
+ */
+function ToolsHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-teal-500/20">
+                        <Wrench size={20} className="text-teal-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Specialized AI Workflows</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    Tools are purpose-built AI experiences for specific HR tasks. Each tool uses a specialized AI agent and interface so you can
+                    get better results than a generic chat prompt.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <Bot size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">How Tools Work</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-teal-400 mt-1">•</span>
+                            <span>Pick a tool from the <span className="text-white font-medium">Tools</span> section in the left navigation</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-teal-400 mt-1">•</span>
+                            <span>Start a new session (some tools begin with a structured form)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-teal-400 mt-1">•</span>
+                            <span>Tool sessions are saved as conversations so you can return later</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Lightbulb size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Tips for Better Results</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Be specific about the context (industry, size, constraints, timeline)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Ask for outputs you can use immediately (talk track, email, checklist, plan)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Save helpful tool sessions to a Collection for later reference</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
+ * Account & Membership Help Content
+ */
+function AccountMembershipHelpContent() {
+    return (
+        <div className="space-y-8">
+            {/* Value/Purpose */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-orange/20">
+                        <CreditCard size={20} className="text-brand-orange" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Manage Access, Billing, and Your Profile</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                    Your account settings control your membership access, billing, and basic profile information. This is where you can
+                    upgrade, manage your subscription, and keep your profile up to date.
+                </p>
+            </section>
+
+            {/* How It Works */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-brand-blue-light/20">
+                        <User size={20} className="text-brand-blue-light" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Where to Find Account Pages</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span><span className="text-white font-medium">Settings</span>: AI preferences (like AI Insights)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span><span className="text-white font-medium">My Account</span>: profile photo, password, membership status</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span><span className="text-white font-medium">Billing &amp; Membership</span>: upgrade, manage subscription, billing portal</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Lightbulb size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Common Tasks</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-3">
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">1</span>
+                            </div>
+                            <span>Update your avatar in <span className="text-white font-medium">My Account</span> to personalize your profile</span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">2</span>
+                            </div>
+                            <span>Upgrade or manage billing in <span className="text-white font-medium">Billing &amp; Membership</span></span>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-brand-blue-light">3</span>
+                            </div>
+                            <span>Adjust AI behavior (AI Insights) from <span className="text-white font-medium">Settings</span></span>
+                        </li>
+                    </ul>
+                    <p className="text-sm text-slate-400">
+                        Trial access (if enabled for your account) is time-based while watching lessons. If your trial ends, you’ll be prompted to upgrade to continue.
+                    </p>
                 </div>
             </section>
         </div>
@@ -756,6 +1381,39 @@ function CertificationsHelpContent() {
                     </p>
                 </div>
             </section>
+
+            {/* Claiming Credits */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Award size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Claiming Credits & Certificates</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <p>
+                        After you complete a course, you can claim any available credits directly from the course page.
+                        If a certificate is available, you’ll also see a Certificate button you can open and share.
+                    </p>
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Open the course and finish the lessons (some credit claims require a minimum completion threshold)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Click <span className="text-white font-medium">Claim Credits</span> on the course page</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use the <span className="text-white font-medium">Certificate</span> button (if shown) to open the verification page</span>
+                        </li>
+                    </ul>
+                    <p className="text-sm text-slate-400">
+                        Tip: Credits are calculated based on time watched and course eligibility. If you don’t see credits for a course, it may not be credit-eligible.
+                    </p>
+                </div>
+            </section>
         </div>
     );
 }
@@ -802,7 +1460,14 @@ function ConversationsHelpContent() {
                             <span className="text-brand-blue-light mt-1">•</span>
                             <span>Start a new conversation anytime from the header button</span>
                         </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Export conversations when you want to reuse the output (for example: policies, talk tracks, or checklists)</span>
+                        </li>
                     </ul>
+                    <p className="text-sm text-slate-400">
+                        Some Tools create “tool conversations” that you can resume from the Tools section or from your collections.
+                    </p>
                 </div>
             </section>
         </div>
@@ -956,17 +1621,59 @@ function SearchFiltersHelpContent() {
                         <span className="text-slate-400">Filter by course category</span>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
-                        <span className="text-white">Certification</span>
-                        <span className="text-slate-400">SHRM or HRCI credits</span>
+                        <span className="text-white">Credits</span>
+                        <span className="text-slate-400">SHRM / HRCI eligible</span>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
-                        <span className="text-white">Completion</span>
-                        <span className="text-slate-400">Not started, in-progress, completed</span>
+                        <span className="text-white">Designation</span>
+                        <span className="text-slate-400">Required / Recommended</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
+                        <span className="text-white">Status</span>
+                        <span className="text-slate-400">Not started / In progress / Completed</span>
                     </div>
                     <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
                         <span className="text-white">Rating</span>
                         <span className="text-slate-400">Minimum star rating</span>
                     </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
+                        <span className="text-white">Date</span>
+                        <span className="text-slate-400">Filter by when added / timeframe</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 flex justify-between">
+                        <span className="text-white">Include Lessons</span>
+                        <span className="text-slate-400">Search lesson titles/content too</span>
+                    </div>
+                </div>
+            </section>
+
+            {/* Instructions */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-emerald-500/20">
+                        <Lightbulb size={20} className="text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Using Filters Effectively</h3>
+                </div>
+                <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Start with a keyword search, then narrow down with 1–2 filters</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use <span className="text-white font-medium">Status</span> to find what to continue next</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Use <span className="text-white font-medium">Credits</span> when you need SHRM/HRCI-eligible courses</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span>Reset or clear filters if results look too narrow</span>
+                        </li>
+                    </ul>
                 </div>
             </section>
         </div>
@@ -1010,6 +1717,31 @@ function SettingsHelpContent() {
                         <p className="text-sm font-medium text-white mb-1">Auto-Save AI Insights</p>
                         <p className="text-xs text-slate-400">Automatically save insights without prompting for approval</p>
                     </div>
+                </div>
+            </section>
+
+            {/* Account & Billing */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                        <User size={20} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Account & Billing</h3>
+                </div>
+                <div className="space-y-3 text-slate-300 leading-relaxed">
+                    <p className="text-sm text-slate-400">
+                        In addition to the Settings page, there are dedicated pages for account and billing management.
+                    </p>
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span><span className="text-white font-medium">My Account</span>: profile photo, password, membership status</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-brand-blue-light mt-1">•</span>
+                            <span><span className="text-white font-medium">Billing &amp; Membership</span>: upgrade, manage subscription, billing portal</span>
+                        </li>
+                    </ul>
                 </div>
             </section>
         </div>
