@@ -1,4 +1,5 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton, OrgSubscriptionButton } from '@/components/settings/BillingButtons';
 import SeatManager from '@/components/settings/SeatManager';
@@ -11,7 +12,7 @@ export default async function BillingPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return <div>Please log in.</div>;
+    if (!user) redirect('/login');
 
     const { data: profile } = await supabase
         .from('profiles')
