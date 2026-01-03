@@ -66,6 +66,14 @@ Documentation is **feature-scoped**, not file-scoped. Layers exist so agents can
 
 Each feature doc lives at: `docs/features/<feature-slug>.md`
 
+### Doc stability classification (required)
+
+Each feature doc must declare a `stability` classification in front-matter so agents can calibrate how much to trust the doc vs verify behavior directly in code:
+
+- `core`: mature and widely depended on. Preserve invariants; changes require extra caution and workflow testing.
+- `evolving`: actively changing. Expect frequent iteration; review recent commits and re-validate assumptions.
+- `experimental`: volatile or prototyped. Docs may lag; verify behavior in code and in the running app.
+
 ### Front-matter (required)
 
 Use YAML front-matter at the top of each feature doc:
@@ -75,6 +83,7 @@ Use YAML front-matter at the top of each feature doc:
 id: <feature-slug>
 owner: <team|person>
 status: draft|active|deprecated
+stability: core|evolving|experimental
 last_updated: YYYY-MM-DD
 surfaces:
   routes:
@@ -183,6 +192,13 @@ Before writing code:
 
 Then revise the plan if the docs reveal constraints you didn’t account for.
 
+#### Required Gate 2 output (structured diff)
+
+Documentation review must explicitly produce:
+- **Confirmed invariants** (things you verified must remain true)
+- **New invariants discovered** (things not previously documented or not obvious)
+- **Docs to update after execution** (feature/workflow/foundation docs that must be revised before push)
+
 ### Gate 3: Revised plan approval (prior to execution)
 
 Before implementation begins:
@@ -220,6 +236,13 @@ Before pushing:
 - Ensure DB changes have both:
   - a migration under `supabase/migrations/`,
   - a production-safe SQL script under `supabase/` (or `/scripts/`), if production is not auto-migrated.
+
+### Doc drift signal (manual for now)
+
+Any change that touches files listed in **two or more feature docs** should trigger a **drift review** (manual today, automatable later):
+- Re-check the impacted feature boundaries and coupling notes.
+- Update feature docs (and `docs/features/FEATURE_INDEX.md`) if ownership/responsibility has shifted.
+- Add or revise workflow tests if the blast radius increased.
 
 ### Workspace archival (handoff)
 
@@ -360,4 +383,3 @@ This is the minimal set of docs to create next so agents can work safely. **Do n
 
 - **Doc templates:** copy/paste templates for feature/workflow/foundation docs to minimize friction.
 - **Automation hooks:** a CI check that ensures touched feature areas include doc updates (initially manual mapping).
-

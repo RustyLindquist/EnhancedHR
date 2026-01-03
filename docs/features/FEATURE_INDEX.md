@@ -1,13 +1,13 @@
 # Feature Index
 
-This file is the **primary discovery and routing index** for the EnhancedHR.ai application. Agents and developers should consult it **before planning or coding** to identify the primary feature they’re touching, the secondary features likely to be impacted, and the docs that should be consulted/updated. This is **not** a substitute for feature docs—it is an index that keeps feature boundaries and risk visible. Keep it updated whenever a new doc is added under `docs/features/`.
+This file is the **primary discovery and routing index** for the EnhancedHR.ai application. Agents and developers should consult it **before planning or coding** to identify the primary feature they’re touching, the secondary features likely to be impacted, and the docs that should be consulted/updated. This is **not** a substitute for feature docs—it is an index that keeps feature boundaries and risk visible. Risk Level reflects blast radius and regression cost, not implementation complexity. Keep it updated whenever a new doc is added under `docs/features/`.
 
 ## Feature Index
 
 | Feature Name | Feature ID / Slug | Primary Surfaces | Core Responsibility | Risk Level | Coupling Notes | Doc Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| App Shell & Navigation | app-shell-navigation | In-app left navigation + main canvas (collection views); global dropdown panels | Owns the “single app” experience: navigation, view switching, and global panels | High | Touches nearly every feature; small UI/state changes can break multiple flows | Missing |
-| User Accounts & Authentication | user-accounts-auth | `/login`; `/auth/callback`; `/auth/join-org`; account settings | Owns login/signup, session establishment, and account-level settings entry points | High | Coupled to roles/RLS, org membership, and admin gating | Missing |
+| App Shell & Navigation | app-shell | In-app left navigation + main canvas (collection views); global dropdown panels | Owns the “single app” experience: navigation, view switching, and global panels | High | Touches nearly every feature; small UI/state changes can break multiple flows | Missing |
+| User Accounts & Authentication | auth-accounts | `/login`; `/auth/callback`; `/auth/join-org`; account settings | Owns login/signup, session establishment, and account-level settings entry points | High | Coupled to roles/RLS, org membership, and admin gating | Missing |
 | Dashboard (Learning Hub) | dashboard | `/dashboard`; in-app Dashboard collection views (user/employee/org-admin variants) | Owns the user’s home base: next steps, stats, and jump points into learning | Medium | Coupled to progress/credits, courses, conversations, and AI quick starts | Missing |
 | Academy (Course Catalog) | academy | In-app Academy collection view; `/features` (marketing) references | Owns course discovery: browse/search/filter and course entry points | Medium | Coupled to course detail/player and enrollment/progress | Missing |
 | Courses & Lesson Player (Progress) | course-player-and-progress | Course detail & lesson player UI; dynamic content routes; progress indicators | Owns course consumption and progress tracking while learning | High | Coupled to Mux tracking, credits/certificates, notes, and course AI | Planned (P0) |
