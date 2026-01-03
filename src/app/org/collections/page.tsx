@@ -2,25 +2,21 @@ import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Plus, Layers, MoreHorizontal } from 'lucide-react';
+import { getOrgContext } from '@/lib/org-context';
 
 export default async function OrgCollectionsPage() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    // Get Org ID
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user?.id)
-        .single();
+    // Get org context (handles platform admin org selection automatically)
+    const orgContext = await getOrgContext();
 
-    if (!profile?.org_id) return <div>Access Denied</div>;
+    if (!orgContext) return <div>Access Denied</div>;
 
-    // Fetch Org Collections
+    // Fetch Org Collections using the effective org ID
     const { data: collections } = await supabase
         .from('user_collections')
         .select('*, collection_items(count)')
-        .eq('org_id', profile.org_id)
+        .eq('org_id', orgContext.orgId)
         .order('created_at', { ascending: false });
 
     return (

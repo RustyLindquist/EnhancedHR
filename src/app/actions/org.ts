@@ -2,6 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+import { getOrgContext } from '@/lib/org-context';
+
+const PLATFORM_ADMIN_ORG_COOKIE = 'platform_admin_selected_org';
 
 export interface OrgMember {
   id: string;
@@ -26,6 +30,136 @@ export interface InviteInfo {
     orgSlug: string;
 }
 
+/**
+ * Creates a personal organization for a platform admin who doesn't have one.
+ * This ensures platform admins can always test org functionality.
+ */
+export async function ensurePlatformAdminOrg(): Promise<{ success: boolean; orgId?: string; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Get user's profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, org_id, full_name')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      return { success: false, error: 'Only platform admins can use this function' };
+    }
+
+    // If they already have an org, just return it
+    if (profile.org_id) {
+      return { success: true, orgId: profile.org_id };
+    }
+
+    // Create a personal organization for this platform admin
+    const baseName = profile.full_name || user.email?.split('@')[0] || 'Admin';
+    const orgName = `${baseName}'s Organization`;
+    const slug = baseName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+    const inviteHash = Math.random().toString(36).substring(2, 18);
+
+    const { data: newOrg, error: orgError } = await supabase
+      .from('organizations')
+      .insert({
+        name: orgName,
+        slug: uniqueSlug,
+        invite_hash: inviteHash,
+      })
+      .select()
+      .single();
+
+    if (orgError) {
+      console.error('Error creating organization:', orgError);
+      return { success: false, error: 'Failed to create organization' };
+    }
+
+    // Update profile with the new org_id
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ org_id: newOrg.id, membership_status: 'org_admin' })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Error linking profile to organization:', updateError);
+      return { success: false, error: 'Failed to link profile to organization' };
+    }
+
+    console.log(`Created personal org for platform admin: ${newOrg.name}`);
+
+    revalidatePath('/dashboard');
+    revalidatePath('/org');
+
+    return { success: true, orgId: newOrg.id };
+
+  } catch (error: any) {
+    console.error('ensurePlatformAdminOrg error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Platform admin action to switch the organization they're viewing/managing.
+ * This sets a cookie that persists the selection across page loads.
+ */
+export async function switchPlatformAdminOrg(orgId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Verify user is a platform admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      return { success: false, error: 'Only platform admins can switch organizations' };
+    }
+
+    // Verify the org exists
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', orgId)
+      .single();
+
+    if (!org) {
+      return { success: false, error: 'Organization not found' };
+    }
+
+    // Set the cookie
+    const cookieStore = await cookies();
+    cookieStore.set(PLATFORM_ADMIN_ORG_COOKIE, orgId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+
+    revalidatePath('/org');
+    revalidatePath('/dashboard');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('switchPlatformAdminOrg error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInfo: InviteInfo | null, error?: string }> {
   try {
     const supabase = await createClient();
@@ -35,23 +169,22 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
         return { members: [], inviteInfo: null, error: 'Unauthorized' };
     }
 
-    // 1. Get User's Org ID and Organization Details (to find owner)
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id, role, organizations(*)')
-        .eq('id', user.id)
-        .single();
+    // Use org context to get the effective org ID (handles platform admin org selection)
+    const orgContext = await getOrgContext();
 
-    if (!profile?.org_id) {
+    if (!orgContext) {
         return { members: [], inviteInfo: null, error: 'No Organization Found' };
     }
 
-    // Safely access owner_id from the joined organization data
-    // The type returned by 'organizations(*)' might be an array or object depending on generated types, 
-    // but typically explicit join via 'org_id' is 1:1. Supabase JS returns single object if relationship is 1:1, else array.
-    // We treat it safely.
-    // @ts-ignore - Supabase type inference can be tricky with complex joins without strict schema generation
-    const orgData = Array.isArray(profile.organizations) ? profile.organizations[0] : profile.organizations;
+    const effectiveOrgId = orgContext.orgId;
+
+    // Get organization details
+    const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', effectiveOrgId)
+        .single();
+
     const ownerId = orgData?.owner_id;
 
 
@@ -59,7 +192,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     const { data: members, error: membersError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('org_id', profile.org_id)
+        .eq('org_id', effectiveOrgId)
         .order('created_at', { ascending: false });
 
     if (membersError) {
@@ -131,13 +264,12 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
 
     // 5. Prepare Invite Info
-    const org = profile.organizations as any;
     let inviteInfo: InviteInfo | null = null;
-    
-    if (org && org.slug && org.invite_hash) {
+
+    if (orgData && orgData.slug && orgData.invite_hash) {
         inviteInfo = {
-            inviteUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${org.slug}/${org.invite_hash}`,
-            orgSlug: org.slug
+            inviteUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${orgData.slug}/${orgData.invite_hash}`,
+            orgSlug: orgData.slug
         };
     }
 
@@ -177,32 +309,29 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 export async function toggleOrgMemberStatus(userId: string, currentStatus: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
-    // Verify requester is org admin
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const { data: requesterProfile } = await supabase
-      .from('profiles')
-      .select('org_id, role, membership_status')
-      .eq('id', user.id)
-      .single();
+    // Use org context to get the effective org ID (handles platform admin org selection)
+    const orgContext = await getOrgContext();
 
-    // Platform admins can manage any org, org_admins can only manage their own
-    const isPlatformAdmin = requesterProfile?.role === 'admin';
-    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
-    if (!isPlatformAdmin && !isOrgAdmin) {
+    if (!orgContext) {
+      return { success: false, error: 'You must be a member of an organization' };
+    }
+
+    if (!orgContext.isPlatformAdmin && !orgContext.isOrgAdmin) {
       return { success: false, error: 'Only admins can manage members' };
     }
 
-    // Verify target user is in same org (skip for platform admins)
+    // Verify target user is in the selected org
     const { data: targetProfile } = await supabase
       .from('profiles')
       .select('org_id')
       .eq('id', userId)
       .single();
 
-    if (!isPlatformAdmin && targetProfile?.org_id !== requesterProfile?.org_id) {
-      return { success: false, error: 'User not in your organization' };
+    if (targetProfile?.org_id !== orgContext.orgId) {
+      return { success: false, error: 'User not in this organization' };
     }
 
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
@@ -226,26 +355,19 @@ export async function toggleOrgMemberStatus(userId: string, currentStatus: strin
 export async function updateOrgInviteHash(newHash: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
-    
+
     // 1. Auth & Admin Check
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const { data: requesterProfile } = await supabase
-      .from('profiles')
-      .select('org_id, role, membership_status')
-      .eq('id', user.id)
-      .single();
+    // Use org context to get the effective org ID (handles platform admin org selection)
+    const orgContext = await getOrgContext();
 
-    // Platform admins and org_admins can manage invite settings, but must have an org_id
-    const isPlatformAdmin = requesterProfile?.role === 'admin';
-    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
-
-    if (!requesterProfile?.org_id) {
+    if (!orgContext) {
       return { success: false, error: 'You must be a member of an organization to manage invite settings' };
     }
 
-    if (!isPlatformAdmin && !isOrgAdmin) {
+    if (!orgContext.isPlatformAdmin && !orgContext.isOrgAdmin) {
       return { success: false, error: 'Only admins can manage invite settings' };
     }
 
@@ -258,7 +380,7 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
     const { error } = await supabase
       .from('organizations')
       .update({ invite_hash: newHash })
-      .eq('id', requesterProfile.org_id);
+      .eq('id', orgContext.orgId);
 
     if (error) throw error;
 
@@ -270,42 +392,116 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
   }
 }
 
-export async function updateUserRole(userId: string, newRole: 'org_admin' | 'user'): Promise<{ success: boolean; error?: string }> {
+/**
+ * Gets org context and all organizations for the org selector UI.
+ * Returns data needed for platform admins to switch between orgs.
+ */
+export async function getOrgSelectorData(): Promise<{
+  isPlatformAdmin: boolean;
+  currentOrgId: string | null;
+  currentOrgName: string | null;
+  organizations: { id: string; name: string; slug: string; memberCount: number }[];
+}> {
   try {
     const supabase = await createClient();
-    
-    // 1. Auth & Admin Check
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
 
-    const { data: requesterProfile } = await supabase
+    if (!user) {
+      return { isPlatformAdmin: false, currentOrgId: null, currentOrgName: null, organizations: [] };
+    }
+
+    // Get user's profile to check if they're a platform admin
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('org_id, role, membership_status')
+      .select('role')
       .eq('id', user.id)
       .single();
 
-    // Platform admins can manage any org, org_admins can only manage their own
-    const isPlatformAdmin = requesterProfile?.role === 'admin';
-    const isOrgAdmin = requesterProfile?.role === 'org_admin' || requesterProfile?.membership_status === 'org_admin';
-    if (!isPlatformAdmin && !isOrgAdmin) {
+    const isPlatformAdmin = profile?.role === 'admin';
+
+    if (!isPlatformAdmin) {
+      return { isPlatformAdmin: false, currentOrgId: null, currentOrgName: null, organizations: [] };
+    }
+
+    // Get org context for current selection
+    const orgContext = await getOrgContext();
+
+    // Get all organizations for the selector
+    const { data: orgs } = await supabase
+      .from('organizations')
+      .select('id, name, slug')
+      .order('name', { ascending: true });
+
+    if (!orgs) {
+      return {
+        isPlatformAdmin: true,
+        currentOrgId: orgContext?.orgId || null,
+        currentOrgName: orgContext?.orgName || null,
+        organizations: []
+      };
+    }
+
+    // Get member counts for each org
+    const orgsWithCounts = await Promise.all(
+      orgs.map(async (org) => {
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('org_id', org.id);
+
+        return {
+          ...org,
+          memberCount: count || 0,
+        };
+      })
+    );
+
+    return {
+      isPlatformAdmin: true,
+      currentOrgId: orgContext?.orgId || null,
+      currentOrgName: orgContext?.orgName || null,
+      organizations: orgsWithCounts
+    };
+
+  } catch (error: any) {
+    console.error('getOrgSelectorData error:', error);
+    return { isPlatformAdmin: false, currentOrgId: null, currentOrgName: null, organizations: [] };
+  }
+}
+
+export async function updateUserRole(userId: string, newRole: 'org_admin' | 'user'): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Use org context to get the effective org ID (handles platform admin org selection)
+    const orgContext = await getOrgContext();
+
+    if (!orgContext) {
+      return { success: false, error: 'You must be a member of an organization' };
+    }
+
+    if (!orgContext.isPlatformAdmin && !orgContext.isOrgAdmin) {
       return { success: false, error: 'Only admins can manage user roles' };
     }
 
-    // 2. Verify target user is in same org (skip for platform admins)
+    // Verify target user is in the selected org
     const { data: targetProfile } = await supabase
       .from('profiles')
       .select('org_id')
       .eq('id', userId)
       .single();
 
-    if (!isPlatformAdmin && targetProfile?.org_id !== requesterProfile?.org_id) {
-        return { success: false, error: 'User not in your organization' };
+    if (targetProfile?.org_id !== orgContext.orgId) {
+      return { success: false, error: 'User not in this organization' };
     }
 
-    // 3. Update Role
+    // Update Role - for org_admin, we update membership_status, not role
+    // (role field is for platform-wide roles like 'admin', membership_status is for org roles)
     const { error } = await supabase
       .from('profiles')
-      .update({ role: newRole })
+      .update({ membership_status: newRole })
       .eq('id', userId);
 
     if (error) throw error;

@@ -2,26 +2,21 @@ import React from 'react';
 import { Users, BookOpen, Clock, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import ROIChart from '@/components/ROIChart';
+import { getOrgContext } from '@/lib/org-context';
 
 export default async function OrgDashboardPage() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    // Get Org ID
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user?.id)
-        .single();
+    // Get org context (handles platform admin org selection automatically)
+    const orgContext = await getOrgContext();
 
-    if (!profile?.org_id) return <div>Access Denied</div>;
+    if (!orgContext) return <div>Access Denied</div>;
 
-    // Fetch Stats (Mocked for now, but structure is ready)
-    // In real implementation, we'd do a count on profiles where org_id = profile.org_id
+    // Fetch Stats using the effective org ID
     const { count: memberCount } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('org_id', profile.org_id);
+        .eq('org_id', orgContext.orgId);
 
     const stats = [
         { label: 'Total Members', value: memberCount || 1, icon: Users, color: 'text-brand-blue-light' },
