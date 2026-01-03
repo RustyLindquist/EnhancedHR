@@ -1059,6 +1059,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId | string>('ai-insights');
     const [activeHelpTopicFallback, setActiveHelpTopicFallback] = useState<{ title: string; contentText?: string } | null>(null);
 
+    const openHelpTopic = useCallback((topic: HelpTopic) => {
+        const nextTopicId = topic.slug || 'help-collection';
+        setActiveHelpTopicId(nextTopicId);
+        setActiveHelpTopicFallback({
+            title: topic.title,
+            contentText: topic.contentText
+        });
+        setIsHelpPanelOpen(true);
+    }, []);
+
     // --- TOOLS COLLECTION STATE ---
     const [tools, setTools] = useState<Tool[]>([]);
     const [isLoadingTools, setIsLoadingTools] = useState(false);
@@ -3693,23 +3703,23 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             {helpTopics.map((topic, index) => (
                                                 <div
                                                     key={topic.id}
-                                                    className="animate-fade-in-up"
+                                                    className="animate-fade-in-up cursor-pointer"
                                                     style={{ animationDelay: `${index * 50}ms` }}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => openHelpTopic(topic)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                            event.preventDefault();
+                                                            openHelpTopic(topic);
+                                                        }
+                                                    }}
                                                 >
                                                     <UniversalCard
                                                         type="HELP"
                                                         title={topic.title}
                                                         description={topic.summary}
                                                         meta={topic.category || 'Platform'}
-                                                        onAction={() => {
-                                                            const nextTopicId = topic.slug || 'help-collection';
-                                                            setActiveHelpTopicId(nextTopicId);
-                                                            setActiveHelpTopicFallback({
-                                                                title: topic.title,
-                                                                contentText: topic.contentText
-                                                            });
-                                                            setIsHelpPanelOpen(true);
-                                                        }}
                                                         draggable={false}
                                                     />
                                                 </div>
