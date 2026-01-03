@@ -37,13 +37,20 @@ export async function POST(req: NextRequest) {
         const adminSupabase = await createAdminClient();
 
         // Update Profile
+        const updateData: Record<string, string> = {
+            author_status: newAuthorStatus,
+            application_status: newApplicationStatus,
+            role: newRole
+        };
+
+        // Set approved_at timestamp when approving
+        if (action === 'approve') {
+            updateData.approved_at = new Date().toISOString();
+        }
+
         const { error } = await adminSupabase
             .from('profiles')
-            .update({
-                author_status: newAuthorStatus,
-                application_status: newApplicationStatus,
-                role: newRole
-            })
+            .update(updateData)
             .eq('id', userId);
 
         if (error) {

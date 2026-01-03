@@ -36,6 +36,10 @@ export default function ExpertDetailsDashboard({
     const [editedBio, setEditedBio] = useState(expert.author_bio || '');
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(expert.expert_title || '');
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionNotes, setRejectionNotes] = useState('');
+    const [showProposalRejectModal, setShowProposalRejectModal] = useState<string | null>(null);
+    const [proposalRejectionNotes, setProposalRejectionNotes] = useState('');
 
     const handleBack = () => {
         router.push('/admin/experts');
@@ -57,11 +61,17 @@ export default function ExpertDetailsDashboard({
 
     const handleReject = async () => {
         if (isPending) return;
-        if (!confirm('Are you sure you want to reject this expert?')) return;
+        setShowRejectModal(true);
+    };
+
+    const handleConfirmReject = async () => {
+        if (isPending) return;
 
         startTransition(async () => {
-            const result = await updateExpertStatus(expert.id, 'reject');
+            const result = await updateExpertStatus(expert.id, 'reject', rejectionNotes || undefined);
             if (result.success) {
+                setShowRejectModal(false);
+                setRejectionNotes('');
                 router.refresh();
             } else {
                 alert(result.error || 'Failed to reject expert');
@@ -83,19 +93,32 @@ export default function ExpertDetailsDashboard({
         });
     };
 
-    const handleUpdateProposalStatus = async (proposalId: string, status: 'approved' | 'rejected') => {
+    const handleUpdateProposalStatus = async (proposalId: string, status: 'approved' | 'rejected', notes?: string) => {
         if (isPending) return;
 
         startTransition(async () => {
-            const result = await updateProposalStatus(proposalId, status);
+            const result = await updateProposalStatus(proposalId, status, notes);
             if (result.success) {
                 setLocalProposals(prev =>
-                    prev.map(p => p.id === proposalId ? { ...p, status } : p)
+                    prev.map(p => p.id === proposalId ? { ...p, status, admin_notes: notes || p.admin_notes } : p)
                 );
+                if (status === 'rejected') {
+                    setShowProposalRejectModal(null);
+                    setProposalRejectionNotes('');
+                }
             } else {
                 alert(result.error || 'Failed to update proposal status');
             }
         });
+    };
+
+    const handleRejectProposal = (proposalId: string) => {
+        setShowProposalRejectModal(proposalId);
+    };
+
+    const handleConfirmProposalReject = async () => {
+        if (!showProposalRejectModal) return;
+        await handleUpdateProposalStatus(showProposalRejectModal, 'rejected', proposalRejectionNotes || undefined);
     };
 
     const handleSaveBio = async () => {
@@ -490,7 +513,7 @@ export default function ExpertDetailsDashboard({
                                                                     Approve Proposal
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleUpdateProposalStatus(proposal.id, 'rejected')}
+                                                                    onClick={() => handleRejectProposal(proposal.id)}
                                                                     disabled={isPending}
                                                                     className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
                                                                 >
@@ -651,6 +674,88 @@ export default function ExpertDetailsDashboard({
                         </div>
                     </div>
                 </div>
+
+            {/* Rejection Modal */}
+            {showRejectModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                            <XCircle className="text-red-400" size={20} />
+                            Reject Expert Application
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-4">
+                            Provide feedback to help the expert understand why their application was rejected and what they can improve.
+                        </p>
+                        <textarea
+                            value={rejectionNotes}
+                            onChange={(e) => setRejectionNotes(e.target.value)}
+                            placeholder="Enter rejection reason and feedback for the expert..."
+                            rows={4}
+                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-red-500/50 transition-colors text-sm"
+                        />
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                onClick={() => {
+                                    setShowRejectModal(false);
+                                    setRejectionNotes('');
+                                }}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmReject}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-bold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {isPending ? 'Rejecting...' : 'Confirm Rejection'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Proposal Rejection Modal */}
+            {showProposalRejectModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                            <XCircle className="text-red-400" size={20} />
+                            Reject Course Proposal
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-4">
+                            Provide feedback to help the expert understand why their proposal was rejected.
+                        </p>
+                        <textarea
+                            value={proposalRejectionNotes}
+                            onChange={(e) => setProposalRejectionNotes(e.target.value)}
+                            placeholder="Enter rejection reason and feedback..."
+                            rows={4}
+                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-red-500/50 transition-colors text-sm"
+                        />
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                onClick={() => {
+                                    setShowProposalRejectModal(null);
+                                    setProposalRejectionNotes('');
+                                }}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmProposalReject}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-bold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {isPending ? 'Rejecting...' : 'Confirm Rejection'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

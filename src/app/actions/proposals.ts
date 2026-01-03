@@ -16,6 +16,69 @@ export interface CourseProposal {
     reviewed_by: string | null;
 }
 
+// Interface for proposal with expert info
+export interface ProposalWithExpert extends CourseProposal {
+    expert: {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+    };
+}
+
+// Get all proposals across all experts (admin use)
+export async function getAllProposals(filters?: {
+    status?: 'pending' | 'approved' | 'rejected' | 'converted';
+}): Promise<{
+    proposals: ProposalWithExpert[];
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { proposals: [], error: 'Not authenticated' };
+    }
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    if (profile?.role !== 'admin') {
+        return { proposals: [], error: 'Unauthorized' };
+    }
+
+    const admin = await createAdminClient();
+
+    let query = admin
+        .from('course_proposals')
+        .select(`
+            *,
+            expert:profiles!course_proposals_expert_id_fkey(id, full_name, email, avatar_url)
+        `)
+        .order('created_at', { ascending: false });
+
+    if (filters?.status) {
+        query = query.eq('status', filters.status);
+    }
+
+    const { data: proposals, error } = await query;
+
+    if (error) {
+        if (error.message?.includes('course_proposals') || error.code === 'PGRST205') {
+            console.log('Note: course_proposals table not found.');
+            return { proposals: [] };
+        }
+        console.error('Error fetching all proposals:', error);
+        return { proposals: [], error: error.message };
+    }
+
+    return { proposals: proposals || [] };
+}
+
 // Get all proposals for an expert (admin use)
 export async function getExpertProposals(expertId: string): Promise<{
     proposals: CourseProposal[];

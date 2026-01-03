@@ -373,7 +373,8 @@ export async function getExpertPerformance(expertId: string): Promise<{
 // Approve or reject expert (wrapper around existing API)
 export async function updateExpertStatus(
     expertId: string,
-    action: 'approve' | 'reject'
+    action: 'approve' | 'reject',
+    rejectionNotes?: string
 ): Promise<{
     success: boolean;
     error?: string;
@@ -406,6 +407,9 @@ export async function updateExpertStatus(
 
     if (action === 'approve') {
         updateData.approved_at = new Date().toISOString();
+        updateData.rejection_notes = null; // Clear any previous rejection notes
+    } else if (action === 'reject' && rejectionNotes) {
+        updateData.rejection_notes = rejectionNotes;
     }
 
     const { error: profileError } = await admin
@@ -429,6 +433,15 @@ export async function updateExpertStatus(
             // Don't fail the operation, profile is already updated
         }
     }
+
+    // Log the admin action
+    await admin.from('admin_audit_log').insert({
+        admin_id: user.id,
+        action: action === 'approve' ? 'expert_approved' : 'expert_rejected',
+        target_type: 'expert',
+        target_id: expertId,
+        details: action === 'reject' && rejectionNotes ? { rejection_notes: rejectionNotes } : null
+    });
 
     revalidatePath('/admin/experts');
     revalidatePath(`/admin/experts/${expertId}`);
