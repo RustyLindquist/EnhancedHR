@@ -1056,7 +1056,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [helpTopics, setHelpTopics] = useState<HelpTopic[]>([]);
     const [isLoadingHelpTopics, setIsLoadingHelpTopics] = useState(false);
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
-    const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId>('ai-insights');
+    const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId | string>('ai-insights');
+    const [activeHelpTopicFallback, setActiveHelpTopicFallback] = useState<{ title: string; contentText?: string } | null>(null);
 
     // --- TOOLS COLLECTION STATE ---
     const [tools, setTools] = useState<Tool[]>([]);
@@ -1277,7 +1278,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     const supabase = createClient();
                     const { data, error } = await supabase
                         .from('help_topics')
-                        .select('id, slug, title, summary, category, icon_name, display_order, is_active, created_at')
+                        .select('id, slug, title, summary, category, content_text, icon_name, display_order, is_active, created_at')
                         .eq('is_active', true)
                         .order('display_order', { ascending: true });
 
@@ -1294,6 +1295,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         title: row.title,
                         summary: row.summary,
                         category: row.category,
+                        contentText: (row as any).content_text ?? undefined,
                         iconName: row.icon_name,
                         displayOrder: row.display_order,
                         isActive: row.is_active,
@@ -3700,7 +3702,12 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                         description={topic.summary}
                                                         meta={topic.category || 'Platform'}
                                                         onAction={() => {
-                                                            setActiveHelpTopicId(topic.slug as HelpTopicId);
+                                                            const nextTopicId = topic.slug || 'help-collection';
+                                                            setActiveHelpTopicId(nextTopicId);
+                                                            setActiveHelpTopicFallback({
+                                                                title: topic.title,
+                                                                contentText: topic.contentText
+                                                            });
                                                             setIsHelpPanelOpen(true);
                                                         }}
                                                         draggable={false}
@@ -3732,6 +3739,8 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     isOpen={isHelpPanelOpen}
                                     onClose={() => setIsHelpPanelOpen(false)}
                                     topicId={activeHelpTopicId}
+                                    fallbackTitle={activeHelpTopicFallback?.title}
+                                    fallbackContentText={activeHelpTopicFallback?.contentText}
                                 />
                             </div>
                         ) : activeCollectionId === 'tools' ? (

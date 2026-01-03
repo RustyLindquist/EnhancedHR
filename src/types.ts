@@ -219,6 +219,7 @@ export interface HelpTopic {
     title: string;
     summary: string;
     category?: string;
+    contentText?: string;
     iconName?: string;
     displayOrder: number;
     isActive?: boolean;
@@ -366,4 +367,3 @@ export interface Resource {
   url: string;
   size?: string;
 }
-

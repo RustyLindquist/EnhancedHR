@@ -181,6 +181,10 @@ export function getHelpTopic(id: HelpTopicId): HelpTopic | undefined {
     return HELP_TOPICS[id];
 }
 
+export function isHelpTopicId(value: unknown): value is HelpTopicId {
+    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(HELP_TOPICS, value);
+}
+
 // ============================================================================
 // HELP CONTENT COMPONENTS
 // Each follows the three-tier structure: Value/Purpose -> How It Works -> Instructions
