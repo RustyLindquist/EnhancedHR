@@ -144,8 +144,26 @@ When reading the PRDs, apply these logic levels:
 
 ## IMPORTANT
 
-Within these instructions and PRD’s, there will be references to other PRD files. Sometimes, in the reference these file names have spaces, which have been replaced with an underscore (”_”) in the actual file name.
+Within these instructions and PRD's, there will be references to other PRD files. Sometimes, in the reference these file names have spaces, which have been replaced with an underscore ("_") in the actual file name.
 
-For instance, a reference to “User Dashboard.md” the actual file may be “User_Dashboard.md”.
+For instance, a reference to "User Dashboard.md" the actual file may be "User_Dashboard.md".
 
-All of the PRD’s are stored as .md files in /docs.
+All of the PRD's are stored as .md files in /docs.
+
+## Documentation Structure
+
+The project uses two types of documentation:
+
+### PRD Documents (`/docs/*.md`)
+High-level product requirements describing **what to build**. Use these to understand features and business logic.
+
+### Architecture Documents (`/docs/architecture/*.md`)
+Technical implementation documentation describing **how things work** at a code level. Use these when:
+- Making changes to existing systems
+- Debugging issues
+- Understanding code structure and data flow
+
+**Key Architecture Docs:**
+- `Expert_Workflow.md` - Expert signup, application, approval, proposals
+
+See `/docs/architecture/README.md` for the full index.

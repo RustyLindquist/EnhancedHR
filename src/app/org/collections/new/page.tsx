@@ -1,18 +1,12 @@
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
 import OrgCollectionEditor from '@/components/org/OrgCollectionEditor';
+import { getOrgContext } from '@/lib/org-context';
 
 export default async function NewOrgCollectionPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get org context (handles platform admin org selection automatically)
+    const orgContext = await getOrgContext();
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user?.id)
-        .single();
+    if (!orgContext) return <div>Access Denied</div>;
 
-    if (!profile?.org_id) return <div>Access Denied</div>;
-
-    return <OrgCollectionEditor collectionId="new" orgId={profile.org_id} />;
+    return <OrgCollectionEditor collectionId="new" orgId={orgContext.orgId} />;
 }
