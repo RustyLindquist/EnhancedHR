@@ -16,7 +16,7 @@ export async function getExpertApplication() {
     // Get profile with application data (credentials are now in separate table)
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select('full_name, expert_title, phone_number, linkedin_url, author_bio, course_proposal_title, course_proposal_description, application_status, application_submitted_at, avatar_url')
+        .select('full_name, expert_title, phone_number, linkedin_url, author_bio, course_proposal_title, course_proposal_description, application_status, application_submitted_at, avatar_url, rejection_notes')
         .eq('id', user.id)
         .single()
 
@@ -37,7 +37,8 @@ export async function getExpertApplication() {
             course_proposal_description: profile?.course_proposal_description || '',
             application_status: profile?.application_status || 'draft',
             submitted_at: profile?.application_submitted_at || null,
-            avatar_url: profile?.avatar_url || null
+            avatar_url: profile?.avatar_url || null,
+            rejection_notes: profile?.rejection_notes || null
         }
     }
 }
@@ -99,6 +100,34 @@ export async function saveExpertApplication(formData: FormData) {
     if (error) {
         console.error('Error saving application:', error)
         return { error: 'Failed to save application. Please try again.' }
+    }
+
+    // Also sync initial proposal to course_proposals table when submitting
+    if (isSubmitting && courseProposalTitle?.trim() && courseProposalDescription?.trim()) {
+        // Check if an initial proposal already exists for this expert
+        const { data: existingProposal } = await supabase
+            .from('course_proposals')
+            .select('id')
+            .eq('expert_id', user.id)
+            .eq('title', courseProposalTitle.trim())
+            .single()
+
+        if (!existingProposal) {
+            // Create new proposal entry
+            const { error: proposalError } = await supabase
+                .from('course_proposals')
+                .insert({
+                    expert_id: user.id,
+                    title: courseProposalTitle.trim(),
+                    description: courseProposalDescription.trim(),
+                    status: 'pending'
+                })
+
+            if (proposalError) {
+                console.error('Error creating course proposal:', proposalError)
+                // Don't fail the main operation, just log the error
+            }
+        }
     }
 
     // Also update auth metadata for full_name

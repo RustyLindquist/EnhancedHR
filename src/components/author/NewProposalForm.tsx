@@ -186,9 +186,7 @@ export default function NewProposalForm({ existingProposals }: NewProposalFormPr
                                     ? 'bg-green-500/10 text-green-400'
                                     : proposal.status === 'rejected'
                                         ? 'bg-red-500/10 text-red-400'
-                                        : proposal.status === 'converted'
-                                            ? 'bg-brand-blue-light/10 text-brand-blue-light'
-                                            : 'bg-yellow-500/10 text-yellow-400'
+                                        : 'bg-yellow-500/10 text-yellow-400'
                             }`}>
                                 {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
                             </span>
