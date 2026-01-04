@@ -1,169 +1,214 @@
-# GEMINI.md
+# AGENTS.md — Agent Protocol (EnhancedHR.ai)
 
-# PROJECT CONTEXT: [EnhancedHR.ai](http://enhancedhr.ai/)
+This repository uses **documentation as infrastructure**: a shared cognitive substrate that enables heterogeneous agents (across models/tools/IDEs) to safely understand, modify, test, and evolve the codebase without regressions.
 
-## Primary Objective
+Authoritative engine + feature docs live in:
+- `docs/engine/DOCUMENTATION_ENGINE.md`
+- `docs/features/FEATURE_INDEX.md`
+- `docs/features/*.md`
 
-An AI-enhanced learning platform that enables HR professionals to acquire knowledge, learn critical skills and easily earn and track recertification credits for SHRM and HRCI certifications.
+---
 
-The core of this experience are online courses, built by expert authors we have recruited. We want to provide a simple course experience (with the basic online learning features).
+## 0) Project Context (fast orientation)
 
-We want to further enrich those courses with AI assistants who can provide added value by converting standard course content into an interactive, highly tailored experience, and by providing an alternative learning experience for those who don’t just want to sit and watch a video.
+### Product
+EnhancedHR.ai is an AI-enhanced learning platform for HR professionals and leaders, with:
+- courses and course player
+- AI course assistants + tutors
+- certifications/credits tracking (SHRM/HRCI)
+- org membership + seat billing
+- dashboards/ROI reporting
 
-## Overview
+### Technical Stack (strict)
+- Frontend: Next.js (App Router) + React
+- Styling: Tailwind CSS
+- Backend: Supabase (Auth, DB, Vector, Edge Functions)
+- Video: Mux (watch-time tracking)
+- Email: Resend
+- Payments: Stripe (per-seat / org billing)
 
-We are building an online academy called EnhancedHR.ai. 
+### UX & Tone
+- Modern, clean, high-end consumer-tech feel
+- Avoid stale corporate LMS vibes
+- Favor clarity over jargon
 
-The primary audience are HR professionals, and the secondary audience is for leaders and managers.
+---
 
-The Basic objectives of the platform are:
+## 1) Authority Order (avoid confusion)
 
-- Provide a growing inventory of high-quality courses, authored by experts and delivered in a traditional online learning interface.
-- Enrich the course experience with an AI Course Assistant, trained on the content of the course, providing the learner with a conversational interface to ask questions, learn course material, and apply that knowledge to their jobs.
-- Enrich the course experience with an AI Tutor, trained on the course materials, who tutors the learner for a more individualized, AI-driven learning experience.
-- Simplify their recertification process by making it easy to find certification-qualifying courses, take those courses, and access their recertification credits (SHRM professional development credits and HRCI recertification credits).
-- Provide individual-level purchasing and access.
-- Provide organizational-level purchasing, with the ability to grant employee access, billed on a per-employee-per-month basis.
-- Allow organizations to easily track usage and see the ROI on their investment.
+When sources conflict, use this order:
 
-## Founder's Vision (The "Why")
+1) **Code + runtime behavior** (source of truth)
+2) **DB schema / migrations / RLS policies** (binding constraints)
+3) **Feature docs** (`docs/features/*`) (canonical description of behavior)
+4) **Engine docs** (`docs/engine/*`) (protocol and schema)
+5) **PRDs** (`/docs/*.md`) (intent/history only; not authoritative for current behavior)
+6) **Legacy docs** (secondary reference only)
 
-We are building [EnhancedHR.ai](http://enhancedhr.ai/) because we believe "HR" needs to evolve into "Human Relevance."
+If PRDs differ from code, document current behavior and alert the user to determine resolution strategy,
 
-HR professionals and leaders have to prioritize continuous learning to stay relevant themselves. Most are also required to take a earn a certain amount of professional development or rectification credits to maintain their certifications. On top of these already pressing needs, most are dealing with a high degree of career uncertainty. They see the potential of AI to massively disrupt their jobs, and the jobs of their people. Our mission is to provide expert-quality content to help them learn, adapt, and do their best work in a modern-looking, refreshingly easy-to use, AI-enriched online learning platform. 
+---
 
-## **The Core Experience:**
+## 2) Non-Negotiable Safety Rules
 
-We are differentiating by blending traditional courses (which they need for SHRM/HRCI credits) with a radically new AI experience.
+### 2.1 No autonomous GitHub submissions (HARD RULE)
+Agents MUST NOT:
+- push commits
+- open pull requests
+- merge branches
+- tag releases
+- change GitHub settings
 
-1. **The Assistant:** They can chat with any course. "Hey, what did the instructor say about conflict resolution?"
-2. **The Tutor:** This is the magic. The AI shouldn't just answer; it should teach. It should know who the user is (their role, their company culture) and guide them socratic-style.
+Agents MAY:
+- create local commits
+- prepare branch names
+- draft PR titles/descriptions
+- provide exact commands for the human to run
 
-## The User (Who we serve)
+If the user asks for a push/PR/merge, the agent must:
+1) proceed
+2) summarize the exact GitHub action(s) it performed
+3) notify the user of any issues, and recommend resolutions
 
-Our users are the "little guys"—HR professionals and leaders in SMB (100-2,000 employees). They can't afford big enterprise tools. They are practical. They don't want academic theory; they want to know "How do I handle this termination meeting tomorrow?" or "How do I use ChatGPT to write this policy?"
 
-- **Treat them with:** Respect, empathy, and clarity.
-- **Avoid:** Jargon, condescension, or overly complex "tech" interfaces.
+### 2.2 High-risk change discipline (HARD RULE)
+Any change touching ANY of the following must use the full 3-gate flow (Section 3):
+- Supabase schema / migrations
+- RLS policies or permission logic
+- auth/session handling
+- `createAdminClient()` or service-role access paths
+- Stripe billing or entitlements/credits
+- AI context assembly / embeddings / prompt orchestration
 
-## Technical Stack (Strict Rules)
+### 2.3 No guessing
+If something is unclear:
+- inspect the code paths and call sites
+- prefer “unknown until verified” over speculation
+- do not invent features or flows
+- consult with the user
 
-- **Frontend:** Next.js 16 (App Router) + React.
-- **Styling:** Tailwind CSS (Modern, Clean).
-- **Backend:** Supabase (Auth, DB, Vector, Edge Functions).
-- **Video Streaming:** Mux (for precise watch-time tracking).
-- **Email:** Resend (Transactional emails).
-- **Payments:** Stripe (Per-seat billing).
+---
 
-## Product Identity & Mission
+## 3) Mandatory 3-Gate Flow (Plan → Doc Review → Execute)
 
-- **Product Name:** [EnhancedHR.ai](http://enhancedhr.ai/)
-- **Primary Tagline:** World-Class Learning
-- Secondary Tagline: Powerful Courses For Leaders and HR, Created and Delivered by Humans in an AI-Powered Platform”.
-- **Core Philosophy:** "Human Relevance." AI should augment, not replace. Humans + AI = Maximum Value.
-- **Target Audience:**
-    - **Primary:** HR Professionals (SMB focus, 100-2,000 employees).
-    - **Secondary:** Organizational Leaders/Managers.
-    - **User Persona:** Seeking actionable skills to remain relevant and guide their workforce through transformation.
-- **Differentiation:**
-    - **VS. Traditional (Udemy/LinkedIn):** Higher quality, curated, niche-specific.
-    - **VS. Industry (SHRM/HRCI):** Modern UI, AI-native (not just AI-wrapper), forward-thinking philosophy.
-    - **VS. Competitors (Galileo/Bersin):** Accessible pricing for SMBs, practical/tactical focus rather than academic/enterprise.
+This repo enforces a strict preflight protocol for non-trivial work.
 
-## The Solution: AI-Enhanced Learning Platform
+### Gate 1 — Plan (before coding)
+The Orchestrator MUST produce a plan including:
+- Primary feature (from `FEATURE_INDEX.md`)
+- Impacted features (from coupling notes + analysis)
+- User-facing change summary
+- Files/surfaces to touch (routes/components/actions)
+- Data impact (tables/columns/RLS/migrations)
+- Invariants to preserve (at least 3 bullets)
+- Test plan: local checks + one workflow smoke test
 
-A dual-layer platform providing (1) Standard Certification Courses and (2) Deep AI Interactivity.
+### Gate 2 — Documentation Review (before execution)
+A Documentation Agent (or doc-review skill) MUST:
+- load the relevant feature docs
+- validate assumptions vs invariants
+- add missing dependencies/impact zones
+- annotate the plan with constraints and doc-update scope
 
-### A. The "Human Relevance" Engine (The Why)
+### Gate 3 — Revised Plan (before coding begins)
+The Orchestrator MUST:
+- incorporate doc-review annotations
+- restate invariants + test scope
+- proceed only when the plan is coherent
 
-- The platform (and the AI Assistants) acts as a thought leader, arming HR with the language and arguments to defend and elevate human value in the boardroom.
-- Content focuses on: Leadership, Communication, People Management, and AI Up-skilling.
+Definition of Done:
+- code updated
+- docs updated (if behavior changed)
+- tests executed per docs
+- no GitHub submission unless explicitly confirmed
 
-### B. Core Learning Features (The What)
+---
 
-- **Recertification Engine:** Streamlined discovery and tracking of SHRM/HRCI credits (critical value hook).
-- **Expert Authors:** Content is sourced from external experts (Pluralsight model).
-- **Author Compensation:** Hybrid model. Paid based on time-viewed + attribution when their content is referenced by RAG agents.
+## 4) Documentation Lifecycle Hooks (Autonomy)
 
-## The AI Architecture (The "Secret Sauce")
+Agents MUST consult docs BEFORE changing:
+- server actions / API routes
+- AI context/prompting/embedding paths
+- auth/RLS/admin-client patterns
+- course progress/watch-time logic
+- billing/entitlements/credits
 
-The platform differentiates through three distinct AI Agent interactions:
+Agents MUST update docs AFTER changing:
+- any user-facing workflow/surface
+- any read/write path for a table
+- any AI scope, retrieval behavior, or prompts
+- any security/permission behavior
+- any integration point (Mux/Resend/Stripe)
 
-### I. The AI Course Assistant (Course-Specific)
+Agents MUST write a handoff note at end of a work session:
+- `.context/handoff.md` with:
+  - summary, files changed, docs updated, how to verify, what remains
 
-- **Scope:** The primary context is the course material (a full video transcript plus additionally uploaded course material), but the Agent can access General AI knowledge to help the user synthesize and apply the content of the course.
-- **Function:** Reactive Q&A.
-- **User Actions:** Ask for summaries, query specific topics, "where did they mention X?", retrieve highlights, direct the user to key points in the course for more.
+---
 
-### II. The AI Course Tutor (User-Specific)
+## 5) Modify vs Create Docs (feature overlap rules)
 
-- **Scope:** The same as the Course Assistant + User Profile.
-- **Function:** Proactive & Socratic.
-- **Behavior:**
-    - Assesses user knowledge gap.
-    - Learns user context (Role, Company Culture, Experience Level).
-    - Constructs custom learning paths within the course.
-    - **Memory:** Writes user insights to the Global User Profile to reduce repetition in future courses.
+### Modify an existing feature doc when:
+- the capability already exists and you are changing its behavior, surfaces, data paths, invariants, permissions, or tests.
 
-### III. The Platform Agent (Global Context)
+### Create a new feature doc only when:
+- a genuinely new end-to-end capability exists with distinct invariants/data interactions,
+- and documenting it inside an existing feature doc would be confusing.
 
-- **Scope:** Global (All Courses + User Profile + General AI Knowledge).
-- **Function:** Just-in-Time Knowledge & Personal Tutor.
-- **Behavior:**
-    - "Don't make me search." User asks a broad question; Agent synthesizes answers from *any* course.
-    - Main objective is to determine the user’s need, and draw first on platform material, augmented with general training data to help them accomplish this.
-    - References courses and proactively directs the user to the right place in those courses for more information.
+### If new code overlaps another feature substantially:
+- do NOT create a new doc just because code is new.
+- document the overlap via:
+  - `Integration Points` in the relevant feature docs
+  - updated coupling notes in `FEATURE_INDEX.md`
+- only split into a new feature if invariants meaningfully differ.
 
-## Design & User Experience Guidelines
+---
 
-Note: Details, definitions and requirements for the user interface and user experience can be found in User_Interface.md.
+## 6) ASCII Diagram Policy (when to include)
 
-- **Aesthetic:** "Modern, Beautiful, Innovative, High-Tech."
-- **Anti-Pattern:** Avoid the "stale, corporate LMS" look (e.g., Moodle/Blackboard vibes).
-- **Vibe:** High-end consumer tech (clean, spacious, sophisticated typography) meets professional warmth.
-- **UX Priority:** Frictionless certification tracking. The AI should feel like a companion, not a pop-up bot.
+ASCII diagrams are optional. Include one only if it reduces regression risk.
 
-## Constraint Levels (Instruction to Agent)
+Include a small ASCII diagram (10–25 lines max) when:
+- a workflow crosses 3+ tables AND 2+ write paths, OR
+- a state machine exists (approval/billing/credits), OR
+- scope resolution is non-trivial (AI context scopes, org scoping, entitlements).
 
-When reading the PRDs, apply these logic levels:
+Do NOT include diagrams for:
+- purely presentational UI
+- trivial single-table CRUD.
 
-- **[CONSTRAINT: STRICT]:** Follow the logic exactly. Do not deviate. (Used for: Billing, Credits, Certification Math, Data Schema).
-- **[CONSTRAINT: FLEXIBLE]:** The goal is the priority, but the implementation is open to your creativity. (Used for: UI components, Layouts, Animations).
+Prefer data/write flows over component trees.
 
-## Brand & Design Guidelines
+---
 
-- **Aesthetic:** "Modern, Innovative, high-tech."
-- Powerful use of subtle background gradients and animation effects to make the site feel more “alive”.
-- **Colors**
-    - 78C0F0
-    - 054C74
-    - 052333
-    - 0A0D12
-    - FF9300
-    - FF2600
+## 7) Slash Commands & Skills (platform-independent)
 
-## IMPORTANT
+Standard command vocabulary:
+- See `docs/engine/SLASH_COMMANDS.md`
 
-Within these instructions and PRD's, there will be references to other PRD files. Sometimes, in the reference these file names have spaces, which have been replaced with an underscore ("_") in the actual file name.
+Standard agent playbooks (“skills”):
+- See `docs/engine/SKILLS.md`
 
-For instance, a reference to "User Dashboard.md" the actual file may be "User_Dashboard.md".
+Minimum expected usage:
+- `/docs:find` → `/plan:draft` → `/plan:review` → `/plan:final`
+- then execute
+- then `/docs:update` → `/test:smoke` → `/handoff:write`
 
-All of the PRD's are stored as .md files in /docs.
+---
 
-## Documentation Structure
+## 8) PRDs & Legacy Architecture Docs (how to use safely)
 
-The project uses two types of documentation:
+- PRDs (`/docs/*.md`) are **intent/history**; do not treat them as truth.
+- Legacy architecture docs (`/docs/architecture/*`) are **secondary reference**:
+  - may contain pitfalls and invariants not obvious in code
+  - never override code behavior
+- If you find mismatches, document current behavior and consider adding an ADR later.
 
-### PRD Documents (`/docs/*.md`)
-High-level product requirements describing **what to build**. Use these to understand features and business logic.
+---
 
-### Architecture Documents (`/docs/architecture/*.md`)
-Technical implementation documentation describing **how things work** at a code level. Use these when:
-- Making changes to existing systems
-- Debugging issues
-- Understanding code structure and data flow
+## 9) Style/Quality Defaults (practical)
 
-**Key Architecture Docs:**
-- `Expert_Workflow.md` - Expert signup, application, approval, proposals
-
-See `/docs/architecture/README.md` for the full index.
+- Prefer small, safe changes over sweeping refactors.
+- Keep code paths explicit in high-risk areas (auth/RLS/billing/AI).
+- When uncertain, add tests/checklists before optimizing.
+- Optimize for clarity, maintainability, and predictable behavior.
