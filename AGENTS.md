@@ -95,7 +95,7 @@ If something is unclear:
 
 ## 3) Multi-Agent Architecture
 
-This repo supports multi-agent coordination with specialized agents.
+This repo supports multi-agent coordination with specialized agents. The system is designed for **continuous self-improvement** — agents not only complete tasks but also identify opportunities to improve the system itself.
 
 ### Agent Types
 
@@ -104,6 +104,8 @@ This repo supports multi-agent coordination with specialized agents.
 | **Main Agent** | Orchestrator — receives requests, plans, coordinates | Always |
 | **Doc Agent** | Living Canon — authoritative doc source, validates plans | Spawned for complex tasks |
 | **Frontend Agent** | Design System Guardian — owns all UI implementation | Spawned for frontend work |
+| **Test Agent** | Validation Specialist — systematic testing and verification | Spawned for comprehensive testing |
+| **Ops Agent** | System Optimizer — reviews and implements system improvements | Spawned for optimization |
 | **Sub-Agents** | Implementation — execute specific coding tasks | Spawned as needed |
 
 ### Documentation Agent (Living Canon)
@@ -150,6 +152,12 @@ The Doc Agent serves as a persistent, queryable knowledge source:
 | Task touches auth/RLS/permissions | Security-critical |
 | Task touches billing/payments | Business-critical |
 | Uncertain about scope | Doc Agent can clarify |
+| **New agent, skill, or command created** | System architecture must be documented |
+| **Process or protocol changes** | Workflow changes need documentation |
+| **AGENTS.md or agent prompts modified** | Meta-system changes need tracking |
+| **Task affects user-facing workflows** | Workflow impact analysis needed |
+| **New feature that affects how users accomplish tasks** | Workflow documentation needed |
+| **UI/UX changes to existing flows** | Must verify workflow steps still accurate |
 
 **Skip if ALL of these are true:**
 
@@ -216,6 +224,118 @@ The Frontend Agent owns all UI implementation work, ensuring visual consistency:
 - Documents as it goes — knowledge persists via docs
 
 **Full specification:** `.claude/agents/frontend-agent.md`
+
+### Ops Agent (System Optimizer)
+
+The Ops Agent is a meta-agent that operates on the agent system itself:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         OPS AGENT                                    │
+│                                                                      │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    REVIEWS                                   │   │
+│   │  .context/optimizations/pending.yaml                         │   │
+│   │  (opportunities captured by other agents)                    │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│                              ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    ACTIONS                                   │   │
+│   │  ├─► Assess impact and prioritize                           │   │
+│   │  ├─► Propose improvements to user                           │   │
+│   │  ├─► Implement approved changes                              │   │
+│   │  └─► Track effectiveness                                    │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│                              ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    OUTPUTS                                   │   │
+│   │  New skills, updated agent prompts, protocol changes,       │   │
+│   │  documentation updates, process improvements                │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key behaviors:**
+- Reviews optimization opportunities captured by other agents
+- Assesses impact, feasibility, and priority
+- Proposes high-value improvements with rationale
+- Implements approved changes across the system
+- Does NOT do task work — only system improvement work
+
+**Full specification:** `.claude/agents/ops-agent.md`
+
+### When to Spawn the Ops Agent
+
+**Spawn Triggers:**
+- End of significant work session (user requests system review)
+- `pending.yaml` has 5+ unreviewed items
+- User explicitly asks for system optimization
+- Major friction observed affecting multiple agents
+
+**Spawn Command:** `/spawn-ops-agent`
+
+### Test Agent (Validation Specialist)
+
+The Test Agent handles comprehensive validation and testing:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         TEST AGENT                                   │
+│                                                                      │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    INPUTS                                    │   │
+│   │  - What changed (files, features)                           │   │
+│   │  - Workflow impact (from Doc Agent)                         │   │
+│   │  - Risk level assessment                                    │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│                              ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    SKILLS                                    │   │
+│   │  ├─► Test Skill (.claude/commands/test.md)                  │   │
+│   │  └─► Browser Use Skill (.claude/commands/browser-use.md)    │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+│                              │                                       │
+│                              ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────┐   │
+│   │                    OUTPUTS                                   │   │
+│   │  Test report with:                                          │   │
+│   │  - Static analysis results                                  │   │
+│   │  - Feature verification                                     │   │
+│   │  - Workflow validation                                      │   │
+│   │  - Screenshots & evidence                                   │   │
+│   └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key behaviors:**
+- Analyzes changes to determine appropriate test scope
+- Consults Doc Agent for workflow/feature impact
+- Creates systematic test plans based on risk
+- Uses browser control (Chrome Extension) for UI verification
+- Reports results with evidence (screenshots, console logs)
+- Does NOT fix issues — reports them for implementing agent
+
+**Full specification:** `.claude/agents/test-agent.md`
+
+### When to Spawn the Test Agent
+
+**Spawn Triggers:**
+- Multi-feature changes require verification
+- Workflow-impacting changes need validation
+- High-risk areas touched (auth/billing/AI/schema)
+- Pre-PR comprehensive validation requested
+- User explicitly asks for thorough testing
+- Complex bug fix with regression risk
+
+**Skip when:**
+- Single feature, low risk change
+- No workflow impact (styling only)
+- Simple verification any agent can do inline
+
+**Spawn Command:** `/spawn-test-agent`
 
 ### When to Spawn the Frontend Agent
 
@@ -427,3 +547,161 @@ Prefer data/write flows over component trees.
 - Keep code paths explicit in high-risk areas (auth/RLS/billing/AI).
 - When uncertain, add tests/checklists before optimizing.
 - Optimize for clarity, maintainability, and predictable behavior.
+
+---
+
+## 11) Meta-Cognitive Architecture (Self-Optimization)
+
+This agent system is designed to **continuously improve itself**. All agents participate in identifying and capturing optimization opportunities.
+
+### The Optimization Loop
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         TASK EXECUTION                               │
+│                                                                      │
+│  User Request → Main Agent → Sub-Agents → Work Complete              │
+│                                                │                     │
+│                                                ▼                     │
+│                                    Agents capture optimization       │
+│                                    signals during work               │
+│                                                │                     │
+│                                                ▼                     │
+│                               .context/optimizations/pending.yaml    │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      OPTIMIZATION CYCLE                              │
+│                                                                      │
+│  Ops Agent reviews → prioritizes → proposes → implements            │
+│                                                │                     │
+│                                                ▼                     │
+│         Agent prompts, skills, docs, protocols are improved         │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                      System is now better for next task
+```
+
+### What Agents Watch For
+
+| Agent | Optimization Focus |
+|-------|-------------------|
+| **Main Agent** | Workflow patterns, coordination friction, missing agents |
+| **Doc Agent** | Documentation gaps, undocumented invariants, coupling patterns |
+| **Frontend Agent** | Design system gaps, repeated UI patterns, missing components |
+| **Ops Agent** | System-wide patterns, optimization effectiveness, process health |
+
+### User Statement Detection
+
+All agents actively watch for user statements that imply rules:
+
+**Trigger phrases:**
+- "we always..." / "we never..."
+- "the rule is..." / "the pattern is..."
+- "from now on..." / "going forward..."
+- Any correction that implies a broader principle
+
+**Agent response:**
+1. Complete the immediate task
+2. Capture the optimization in `.context/optimizations/pending.yaml`
+3. Continue work (don't ask for permission to capture)
+
+### Optimization Types
+
+| Type | What Changes | Examples |
+|------|-------------|----------|
+| `skill` | New command file | Modal builder, API pattern |
+| `rule` | Doc update | Style guide rule, anti-pattern |
+| `doc` | Documentation | Component doc, feature doc |
+| `protocol` | Agent coordination | Spawn criteria, workflow |
+| `agent` | Agent modification | New agent, prompt update |
+| `process` | Tooling/workflow | Validation step, handoff |
+
+### Optimization Capture Format
+
+All opportunities are captured in `.context/optimizations/pending.yaml`:
+
+```yaml
+- id: "OPT-YYYY-MM-DD-NNN"
+  type: skill | rule | doc | protocol | agent | process
+  source_agent: frontend-agent | doc-agent | main-agent | ops-agent
+  timestamp: "ISO-8601"
+  trigger: "What prompted this"
+  observation: "What was noticed"
+  proposal: "What should change"
+  impact: "Why it matters"
+  frequency: one-time | occasional | frequent | constant
+  effort: trivial | small | medium | large
+  priority: null  # Set by Ops Agent
+  status: pending
+```
+
+### The Goal
+
+Each task should:
+1. Complete the user's request
+2. Leave the system slightly better than before
+
+The more we work together, the better the system gets. This is **emergent optimization** — intelligence that grows from accumulated experience.
+
+**Full protocol:** `.claude/agents/AGENT_PROTOCOL.md` (Meta-Cognitive Layer section)
+
+---
+
+## 12) Workflow Documentation
+
+This system maintains **workflow documentation** alongside feature documentation to ensure user journeys are preserved when features change.
+
+### Feature vs Workflow Documentation
+
+| Doc Type | Answers | Location |
+|----------|---------|----------|
+| Feature docs | "What does this feature do?" | `docs/features/*.md` |
+| Workflow docs | "How do users accomplish tasks?" | `docs/workflows/*.md` |
+
+A feature change can be technically "correct" but still break a user's workflow. Workflow docs ensure we preserve the user experience.
+
+### User Roles with Workflow Docs
+
+| Role | Workflow Doc |
+|------|--------------|
+| Platform Administrator | `docs/workflows/platform-admin-workflows.md` |
+| Organization Admin | `docs/workflows/org-admin-workflows.md` |
+| Employee | `docs/workflows/employee-workflows.md` |
+| Individual User | `docs/workflows/individual-user-workflows.md` |
+| Expert/Author | `docs/workflows/expert-author-workflows.md` |
+
+### When to Check Workflow Docs
+
+**Always check workflow docs when:**
+- A task affects user-facing features
+- Multiple features are involved in a change
+- New features are being added
+- UI/UX changes are proposed
+
+**Query the Doc Agent:**
+```
+@doc-agent: What workflows does this plan affect?
+[plan description]
+```
+
+### Workflow Gap Detection (Meta-Cognition)
+
+All agents watch for workflow gaps during task execution:
+
+| Signal | Action |
+|--------|--------|
+| Task affects user flow not in workflow docs | Document workflow before proceeding |
+| User describes how they use a feature | Capture as workflow documentation |
+| Feature change may break user's task path | Verify workflow impact, update if needed |
+| Bug report reveals undocumented workflow | Document as part of the fix |
+
+### Workflow Index
+
+The master index is at `docs/workflows/WORKFLOW_INDEX.md`. This includes:
+- All user roles and their workflow docs
+- Workflow documentation schema
+- How agents use workflow docs
+- Gap detection protocol

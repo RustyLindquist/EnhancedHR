@@ -26,9 +26,17 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Platform Admin Portal | admin-portal | `/admin/*` (users, courses, payouts, system, AI logs) | Owns platform operations: user/course management and administrative tools | High | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |
 | Membership & Billing | membership-billing | `/settings/billing`; Stripe checkout/portal flows | Owns subscription/access gating and billing lifecycle | High | Coupled to org membership, roles, and access across the app | Exists |
 
+## Meta / Development Infrastructure
+
+These are not user-facing features. They define how the system is built and maintained.
+
+| Feature Name | Feature ID / Slug | Primary Surfaces | Core Responsibility | Risk Level | Coupling Notes | Doc Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Agent Architecture | agent-architecture | AGENTS.md; .claude/agents/*; .claude/commands/*; .context/optimizations/* | Owns multi-agent coordination, skills, and self-optimization system | Medium | Meta-system; changes affect development workflow, not application behavior | Exists |
+
 ## Cross‑Cutting / Foundation Features
 
-These are not “single screens.” They affect many features and require extra discipline when changed.
+These are not "single screens." They affect many features and require extra discipline when changed.
 
 - **Auth / Roles / RLS**
   - Why cross-cutting: roles and permissions shape what users can read/write and which UI surfaces unlock.
@@ -51,9 +59,21 @@ These are not “single screens.” They affect many features and require extra 
 
 ## How to Use This Index (Agent Instructions)
 
-1) **Identify the primary feature** you’re changing (the row that best matches the user-facing behavior you intend to modify).  
-2) Read the **Coupling Notes** for that row to list likely **secondary/impacted features**.  
+1) **Identify the primary feature** you're changing (the row that best matches the user-facing behavior you intend to modify).
+2) Read the **Coupling Notes** for that row to list likely **secondary/impacted features**.
 3) For each impacted feature:
    - If the feature doc exists, consult it before planning changes.
-   - If it’s missing, create a stub doc using the schema in `docs/engine/DOCUMENTATION_ENGINE.md` and mark this index row as updated.  
+   - If it's missing, create a stub doc using the schema in `docs/engine/DOCUMENTATION_ENGINE.md` and mark this index row as updated.
 4) If your change touches anything in **Cross‑Cutting / Foundation Features**, consult the relevant foundation/workflow docs (or create stubs) and expand your test plan accordingly.
+5) **Check workflow impact**: Consult `docs/workflows/WORKFLOW_INDEX.md` to identify which user workflows may be affected by your change.
+
+## Related Documentation
+
+| Doc Type | Purpose | Location |
+|----------|---------|----------|
+| Feature docs | What features do | `docs/features/*.md` |
+| Workflow docs | How users accomplish tasks | `docs/workflows/*.md` |
+| Engine docs | Documentation system protocol | `docs/engine/*.md` |
+| Agent docs | Agent architecture and coordination | `AGENTS.md`, `.claude/agents/*.md` |
+
+Feature docs and workflow docs work together: features are building blocks, workflows are the user experience. Always check both when planning changes.
