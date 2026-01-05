@@ -270,7 +270,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     let inviteInfo: InviteInfo | null = null;
 
     if (orgData && orgData.slug && orgData.invite_hash) {
-        const baseUrl = getBaseUrl();
+        const baseUrl = await getBaseUrl();
         inviteInfo = {
             inviteUrl: `${baseUrl}/${orgData.slug}/${orgData.invite_hash}`,
             orgSlug: orgData.slug

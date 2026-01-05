@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
  * Works in server components and server actions by reading request headers.
  * Falls back to NEXT_PUBLIC_BASE_URL env var, then localhost.
  */
-export function getBaseUrl(): string {
+export async function getBaseUrl(): Promise<string> {
     // First check environment variable
     if (process.env.NEXT_PUBLIC_BASE_URL) {
         return process.env.NEXT_PUBLIC_BASE_URL;
@@ -13,7 +13,7 @@ export function getBaseUrl(): string {
 
     // Try to get from request headers (works in server components/actions)
     try {
-        const headersList = headers();
+        const headersList = await headers();
         const host = headersList.get('host');
         const protocol = headersList.get('x-forwarded-proto') || 'https';
 
