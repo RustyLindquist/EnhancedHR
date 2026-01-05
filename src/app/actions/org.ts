@@ -1,9 +1,11 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getOrgContext } from '@/lib/org-context';
+import { getBaseUrl } from '@/lib/url';
 
 const PLATFORM_ADMIN_ORG_COOKIE = 'platform_admin_selected_org';
 
@@ -187,9 +189,10 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
     const ownerId = orgData?.owner_id;
 
-
-    // 2. Fetch Members
-    const { data: members, error: membersError } = await supabase
+    // 2. Fetch Members (use admin client to bypass RLS - profiles table only allows users to see their own profile)
+    // Auth is already verified above via getOrgContext which checks isPlatformAdmin or isOrgAdmin
+    const adminClient = createAdminClient();
+    const { data: members, error: membersError } = await adminClient
         .from('profiles')
         .select('*')
         .eq('org_id', effectiveOrgId)
@@ -200,25 +203,25 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
         return { members: [], inviteInfo: null, error: 'Failed to fetch members' };
     }
 
-    // 3. Fetch Metrics for these members
+    // 3. Fetch Metrics for these members (use admin client to bypass RLS for org-wide analytics)
     const memberIds = members.map(m => m.id);
 
     // 3a. User Progress (Time Spent & Completed)
     // Note: This is an approximation. Ideally we'd group by user_id in SQL, but for now we fetch raw or use RPC.
     // Fetching raw for small orgs is fine.
-    const { data: progressData } = await supabase
+    const { data: progressData } = await adminClient
         .from('user_progress')
         .select('user_id, view_time_seconds, is_completed, last_accessed')
         .in('user_id', memberIds);
 
     // 3b. Conversations Count
-    const { data: conversationData } = await supabase
+    const { data: conversationData } = await adminClient
         .from('conversations')
         .select('user_id')
         .in('user_id', memberIds);
 
     // 3c. Credits Ledger
-    const { data: creditsData } = await supabase
+    const { data: creditsData } = await adminClient
         .from('user_credits_ledger')
         .select('user_id, amount')
         .in('user_id', memberIds);
@@ -267,8 +270,9 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     let inviteInfo: InviteInfo | null = null;
 
     if (orgData && orgData.slug && orgData.invite_hash) {
+        const baseUrl = getBaseUrl();
         inviteInfo = {
-            inviteUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${orgData.slug}/${orgData.invite_hash}`,
+            inviteUrl: `${baseUrl}/${orgData.slug}/${orgData.invite_hash}`,
             orgSlug: orgData.slug
         };
     }
@@ -376,8 +380,9 @@ export async function updateOrgInviteHash(newHash: string): Promise<{ success: b
         return { success: false, error: 'Invalid link code. Use letters, numbers, hyphens, or underscores.' };
     }
 
-    // 3. Update Organization
-    const { error } = await supabase
+    // 3. Update Organization (use admin client to bypass RLS - auth already verified above)
+    const adminClient = createAdminClient();
+    const { error } = await adminClient
       .from('organizations')
       .update({ invite_hash: newHash })
       .eq('id', orgContext.orgId);

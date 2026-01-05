@@ -57,7 +57,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden dropdown-scrollbar">
                     <div className="w-full h-full px-10 md:pl-[300px] md:pr-[400px] pb-[50px]">
                         {children}
                     </div>

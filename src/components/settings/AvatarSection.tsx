@@ -16,6 +16,10 @@ export default function AvatarSection({ userId, currentAvatarUrl }: AvatarSectio
         setSuccess(true);
         setError(null);
         setTimeout(() => setSuccess(false), 3000);
+        // Dispatch event so NavigationPanel can update avatar immediately
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: { url } }));
+        }
     };
 
     const handleUploadError = (errorMessage: string) => {

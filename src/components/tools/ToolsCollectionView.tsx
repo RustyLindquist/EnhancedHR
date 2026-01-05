@@ -38,7 +38,7 @@ export default function ToolsCollectionView({
     return (
         <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
             {/* Tools Grid */}
-            <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+            <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                 {tools.map((tool, index) => (
                     <div
                         key={tool.id}

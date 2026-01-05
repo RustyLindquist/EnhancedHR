@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Shield } from 'lucide-react';
 import RemoveUserButton from '@/components/org/RemoveUserButton';
 import { getOrgContext } from '@/lib/org-context';
+import { getBaseUrl } from '@/lib/url';
 
 export default async function OrgTeamPage() {
     const supabase = await createClient();
@@ -20,7 +21,7 @@ export default async function OrgTeamPage() {
         .single();
 
     const inviteUrl = org
-        ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${org.slug}/${org.invite_hash}`
+        ? `${getBaseUrl()}/${org.slug}/${org.invite_hash}`
         : '';
 
     // Fetch Members using the effective org ID

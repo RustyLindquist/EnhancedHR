@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
@@ -7,26 +8,30 @@ const PLATFORM_ADMIN_ORG_COOKIE = 'platform_admin_selected_org';
 /**
  * Creates a personal organization for a platform admin who doesn't have one.
  * This is called automatically by getOrgContext when needed.
+ * Uses admin client to bypass RLS since organizations table has no INSERT policy.
  */
 async function createPlatformAdminOrg(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   fullName: string | null,
   email: string | null
 ): Promise<{ orgId: string; orgName: string } | null> {
   try {
+    // Use admin client to bypass RLS (organizations table has no INSERT policy for regular users)
+    const adminClient = createAdminClient();
+
     const baseName = fullName || email?.split('@')[0] || 'Admin';
     const orgName = `${baseName}'s Organization`;
     const slug = baseName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
     const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
     const inviteHash = Math.random().toString(36).substring(2, 18);
 
-    const { data: newOrg, error: orgError } = await supabase
+    const { data: newOrg, error: orgError } = await adminClient
       .from('organizations')
       .insert({
         name: orgName,
         slug: uniqueSlug,
         invite_hash: inviteHash,
+        owner_id: userId,
       })
       .select()
       .single();
@@ -37,7 +42,7 @@ async function createPlatformAdminOrg(
     }
 
     // Update profile with the new org_id
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminClient
       .from('profiles')
       .update({ org_id: newOrg.id, membership_status: 'org_admin' })
       .eq('id', userId);
@@ -160,7 +165,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
     } else {
       // Platform admin has no org_id - auto-create a personal organization
       console.log('[getOrgContext] Platform admin has no org, auto-creating personal organization...');
-      const newOrg = await createPlatformAdminOrg(supabase, user.id, profile.full_name, user.email || null);
+      const newOrg = await createPlatformAdminOrg(user.id, profile.full_name, user.email || null);
 
       if (newOrg) {
         effectiveOrgId = newOrg.orgId;

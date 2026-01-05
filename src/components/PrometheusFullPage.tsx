@@ -607,7 +607,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                         transition-all duration-500 ease-in-out origin-bottom
                         ${isPromptPanelOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'}
                     `}>
-                        <div className="bg-[#0f172a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <div className="bg-[#0f172a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto dropdown-scrollbar">
                             {SUGGESTION_PANEL_PROMPTS.map(p => (
                                 <button
                                     key={p.id}

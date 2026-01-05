@@ -374,7 +374,7 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                     </div>
 
                     {isMaterialsOpen && (
-                        <div className="grid gap-x-6 gap-y-8 pt-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                        <div className="grid gap-x-6 gap-y-8 pt-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                             {resources.map(resource => (
                                 <ResourceCard
                                     key={resource.id}

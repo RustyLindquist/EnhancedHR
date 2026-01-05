@@ -439,7 +439,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                                     </button>
 
                                     {dropdownOpen && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto dropdown-scrollbar">
                                             {allNotes.length === 0 ? (
                                                 <div className="px-3 py-2 text-slate-500 text-sm">No notes yet</div>
                                             ) : (

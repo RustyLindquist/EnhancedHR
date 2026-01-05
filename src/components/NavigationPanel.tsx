@@ -224,7 +224,17 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     fetchUserAndGroups();
   }, []);
 
+  // Listen for avatar updates from onboarding or settings
+  useEffect(() => {
+    const handleAvatarUpdate = (event: CustomEvent<{ url: string }>) => {
+      setUserProfile(prev => prev ? { ...prev, avatarUrl: event.detail.url } : prev);
+    };
 
+    window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

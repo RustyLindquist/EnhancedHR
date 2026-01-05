@@ -73,7 +73,7 @@ export default function OrgSelector({ organizations, currentOrgId, currentOrgNam
                     />
 
                     {/* Dropdown Panel */}
-                    <div className="absolute left-0 right-0 top-full z-50 bg-[#0f172a] border border-white/10 shadow-2xl max-h-80 overflow-y-auto">
+                    <div className="absolute left-0 right-0 top-full z-50 bg-[#0f172a] border border-white/10 shadow-2xl max-h-80 overflow-y-auto dropdown-scrollbar">
                         <div className="p-2">
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">
                                 Switch Organization
