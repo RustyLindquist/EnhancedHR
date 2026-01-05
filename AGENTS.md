@@ -1,15 +1,4 @@
-# AGENTS.md — Agent Protocol (EnhancedHR.ai)
-
-This repository uses **documentation as infrastructure**: a shared cognitive substrate that enables heterogeneous agents (across models/tools/IDEs) to safely understand, modify, test, and evolve the codebase without regressions.
-
-Authoritative engine + feature docs live in:
-- `docs/engine/DOCUMENTATION_ENGINE.md`
-- `docs/features/FEATURE_INDEX.md`
-- `docs/features/*.md`
-
-Agent definitions and protocols live in:
-- `.claude/agents/` (agent prompts)
-- `.claude/commands/` (skill commands)
+# AGENTS.md — Critical Instructions for AI Agents
 
 ---
 
@@ -30,6 +19,7 @@ EnhancedHR.ai is an AI-enhanced learning platform for HR professionals and leade
 - Video: Mux (watch-time tracking)
 - Email: Resend
 - Payments: Stripe (per-seat / org billing)
+- Local: Supabase CLI (use this to autonomously modify the local database, and provide the user with SQL statements to run on Prod)
 
 ### UX & Tone
 - Modern, clean, high-end consumer-tech feel
@@ -53,9 +43,17 @@ If PRDs differ from code, document current behavior and alert the user to determ
 
 ---
 
+
 ## 2) Non-Negotiable Safety Rules
 
-### 2.1 No autonomous GitHub submissions (HARD RULE)
+### 2.1 ABSOLUTELY FORBIDDEN (without express user permission):
+- supabase db reset
+- supabase db push (with destructive changes)
+- docker volume rm (for supabase volumes)
+- DROP TABLE / DROP DATABASE / TRUNCATE
+- Any command that wipes, resets, or destroys database data
+
+### 2.2 No autonomous GitHub submissions (HARD RULE)
 Agents MUST NOT:
 - push commits
 - open pull requests
@@ -69,13 +67,9 @@ Agents MAY:
 - draft PR titles/descriptions
 - provide exact commands for the human to run
 
-If the user asks for a push/PR/merge, the agent must:
-1) proceed
-2) summarize the exact GitHub action(s) it performed
-3) notify the user of any issues, and recommend resolutions
+If the user asks for a push/PR/merge, the agent can proceed autonomously
 
-
-### 2.2 High-risk change discipline (HARD RULE)
+### 2.3 High-risk change discipline (HARD RULE)
 Any change touching ANY of the following must use the full 2-gate flow (Section 4) WITH a Doc Agent:
 - Supabase schema / migrations
 - RLS policies or permission logic
@@ -84,51 +78,19 @@ Any change touching ANY of the following must use the full 2-gate flow (Section 
 - Stripe billing or entitlements/credits
 - AI context assembly / embeddings / prompt orchestration
 
-### 2.3 DATABASE DESTRUCTION FORBIDDEN (CRITICAL - HARD RULE)
-
-**AGENTS MUST NEVER EXECUTE ANY OF THE FOLLOWING COMMANDS WITHOUT EXPLICIT USER APPROVAL:**
-
-```
-FORBIDDEN COMMANDS (require explicit user approval + justification):
-- supabase db reset
-- supabase db push (with destructive changes)
-- docker volume rm (for supabase volumes)
-- DROP TABLE / DROP DATABASE / TRUNCATE
-- Any command that deletes or resets database data
-- supabase stop && supabase start (if data persistence is uncertain)
-```
-
-**Why this rule exists:** On 2026-01-05, an agent destroyed the entire production-like local database while attempting to fix a simple RLS policy issue. All user data, groups, courses, and configurations were permanently lost. The fix required only a single SQL statement or a code change to use the admin client.
-
-**Before considering ANY database-affecting command:**
-1. ASK YOURSELF: Can this be solved with a targeted SQL statement instead?
-2. ASK YOURSELF: Can this be solved with a code change instead?
-3. ASK YOURSELF: Will this command destroy data?
-4. If the answer to #3 is "yes" or "maybe": STOP and ask the user for explicit approval
-
-**The correct approach for RLS/permission fixes:**
-- Option A: Execute targeted SQL via `docker exec supabase_db_* psql -U postgres -d postgres -c "SQL HERE"`
-- Option B: Modify server action code to use `createAdminClient()` with proper authorization checks
-- Option C: Create a new migration file and apply it with `supabase migration up`
-- NEVER Option D: Reset the entire database
-
-**If you are even THINKING about running a reset command, STOP and tell the user:**
-> "I was about to run [command] which would destroy all database data. Instead, I recommend [alternative approach]. Do you want me to proceed with the safe alternative, or do you have a specific reason to reset the database?"
-
-### 2.4 No guessing
-If something is unclear:
-- inspect the code paths and call sites
-- prefer "unknown until verified" over speculation
-- do not invent features or flows
-- consult with the user
-
 ---
 
 ## 3) Multi-Agent Architecture
 
 This repo supports multi-agent coordination with specialized agents. The system is designed for **continuous self-improvement** — agents not only complete tasks but also identify opportunities to improve the system itself.
 
-### Agent Types
+IMPORTANT - Maximize context window and performance by actively leveraging and orchestrating subagents, following the Agent Protocol ('/.claude/agents/AGENT_PROTOCOL.md')
+
+Agent definitions and protocols live in:
+- `.claude/agents/` (agent prompts)
+- `.claude/commands/` (skill commands)
+
+### Agent Roles
 
 | Agent | Role | When Active |
 |-------|------|-------------|
@@ -140,6 +102,13 @@ This repo supports multi-agent coordination with specialized agents. The system 
 | **Sub-Agents** | Implementation — execute specific coding tasks | Spawned as needed |
 
 ### Documentation Agent (Living Canon)
+
+This repository uses **documentation as infrastructure**: a shared cognitive substrate that enables heterogeneous agents (across models/tools/IDEs) to safely understand, modify, test, and evolve the codebase without regressions.
+
+Authoritative engine + feature docs live in:
+- `docs/engine/DOCUMENTATION_ENGINE.md`
+- `docs/features/FEATURE_INDEX.md`
+- `docs/features/*.md`
 
 The Doc Agent serves as a persistent, queryable knowledge source:
 
@@ -582,6 +551,8 @@ Prefer data/write flows over component trees.
 ---
 
 ## 11) Meta-Cognitive Architecture (Self-Optimization)
+
+IMPORTANT - USE METACOGNITION TO ACTIVELY AND AUTONOMOUSLY IDENTIFY AND PROPOSE UPDATES TO AGENTS, PROCESSES, DOCUMENTATION, SKILLS, COMMANDS, ETC.
 
 This agent system is designed to **continuously improve itself**. All agents participate in identifying and capturing optimization opportunities.
 
