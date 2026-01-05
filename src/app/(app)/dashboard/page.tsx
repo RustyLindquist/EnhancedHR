@@ -6,6 +6,7 @@ import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
+import NewOrgCollectionModal from '@/components/NewOrgCollectionModal';
 import HelpPanel from '@/components/help/HelpPanel';
 import { HelpTopicId } from '@/components/help/HelpContent';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
@@ -65,7 +66,9 @@ function HomeContent() {
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
   const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
   const [orgMemberCount, setOrgMemberCount] = useState<number>(0);
+  const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
   const [user, setUser] = useState<any>(null); // Track user for DB ops
+  const [isOrgAdmin, setIsOrgAdmin] = useState<boolean>(false); // Track if user is org admin
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -121,9 +124,17 @@ function HomeContent() {
         await refreshCountsForUser(user.id);
 
         // 3. Fetch org member count for navigation badge
-        const { getOrgMemberCount } = await import('@/app/actions/org');
+        const { getOrgMemberCount, getOrgCollections, checkIsOrgAdmin } = await import('@/app/actions/org');
         const memberCount = await getOrgMemberCount();
         setOrgMemberCount(memberCount);
+
+        // 4. Fetch org collections
+        const orgColls = await getOrgCollections();
+        setOrgCollections(orgColls);
+
+        // 5. Get org admin status
+        const isAdmin = await checkIsOrgAdmin();
+        setIsOrgAdmin(isAdmin);
       }
     }
     initUserAndCollections();
@@ -331,9 +342,14 @@ function HomeContent() {
     }
   }, []);
 
+  // State for new org collection modal
+  const [isNewOrgCollectionModalOpen, setIsNewOrgCollectionModalOpen] = useState(false);
+
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
       handleOpenModal(undefined);
+    } else if (id === 'new-org-collection') {
+      setIsNewOrgCollectionModalOpen(true);
     } else {
       // Track previous collection for back navigation (only if actually changing)
       if (id !== activeCollectionId) {
@@ -509,6 +525,8 @@ function HomeContent() {
         <AddCollectionModal
           item={modalItem}
           availableCollections={customCollections}
+          orgCollections={orgCollections}
+          isOrgAdmin={isOrgAdmin}
           onClose={() => {
             setIsAddModalOpen(false);
             setModalItem(null);
@@ -516,6 +534,17 @@ function HomeContent() {
           onSave={handleSaveToCollection}
         />
       )}
+
+      {/* New Org Collection Modal */}
+      <NewOrgCollectionModal
+        isOpen={isNewOrgCollectionModalOpen}
+        onClose={() => setIsNewOrgCollectionModalOpen(false)}
+        onSuccess={async () => {
+          const { getOrgCollections } = await import('@/app/actions/org');
+          const updated = await getOrgCollections();
+          setOrgCollections(updated);
+        }}
+      />
 
       {/* Main Application Layer */}
       <div className="flex w-full h-full relative z-10">
@@ -531,6 +560,7 @@ function HomeContent() {
           collectionCounts={collectionCounts}
           customCollections={customCollections}
           orgMemberCount={orgMemberCount}
+          orgCollections={orgCollections}
         />
 
         {/* Center Content - Using Dashboard V3 */}
@@ -558,6 +588,13 @@ function HomeContent() {
           previousCollectionId={previousCollectionId}
           onGoBack={handleGoBack}
           onExposeDragStart={handleExposeDragStart}
+          orgCollections={orgCollections}
+          isOrgAdmin={isOrgAdmin}
+          onOrgCollectionsUpdate={async () => {
+            const { getOrgCollections } = await import('@/app/actions/org');
+            const updated = await getOrgCollections();
+            setOrgCollections(updated);
+          }}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}

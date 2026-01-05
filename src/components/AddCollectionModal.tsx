@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { X, Plus, Check, FolderPlus, Layers } from 'lucide-react';
+import { X, Plus, Check, FolderPlus, Layers, Building } from 'lucide-react';
 import { Collection, ContextCard } from '../types';
+
+// Org Collection type
+interface OrgCollectionInfo {
+  id: string;
+  label: string;
+  color: string;
+  item_count: number;
+}
 
 interface AddCollectionModalProps {
   item?: ContextCard | null;
   availableCollections: Collection[];
+  orgCollections?: OrgCollectionInfo[]; // Organization collections (only shown to org admins)
+  isOrgAdmin?: boolean; // Whether user is org admin (can add to org collections)
   onClose: () => void;
   onSave: (selectedCollectionIds: string[], newCollection?: { label: string; color: string }) => void;
 }
@@ -20,6 +30,8 @@ const COLORS = [
 const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
   item,
   availableCollections,
+  orgCollections = [],
+  isOrgAdmin = false,
   onClose,
   onSave
 }) => {
@@ -100,6 +112,46 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
                             w-5 h-5 rounded-full border flex items-center justify-center transition-all
                             ${selectedIds.includes(col.id)
                       ? 'bg-brand-blue-light border-brand-blue-light text-brand-black'
+                      : 'border-slate-600'}
+                        `}>
+                    {selectedIds.includes(col.id) && <Check size={12} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Company Collections - Only for Org Admins */}
+          {item && isOrgAdmin && orgCollections.length > 0 && (
+            <div className="space-y-3 mb-6">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Building size={12} />
+                Company Collections
+              </h3>
+              {orgCollections.map(col => (
+                <div
+                  key={col.id}
+                  onClick={() => toggleCollection(col.id)}
+                  className={`
+                          flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300
+                          ${selectedIds.includes(col.id)
+                      ? 'bg-white/10 border-slate-400/50 shadow-[0_0_15px_rgba(100,116,139,0.1)]'
+                      : 'bg-transparent border-white/5 hover:border-white/20 hover:bg-white/5'}
+                      `}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-3 rounded-full shadow-[0_0_8px_currentColor]"
+                      style={{ backgroundColor: col.color, color: col.color }}
+                    ></div>
+                    <span className={`text-sm font-medium ${selectedIds.includes(col.id) ? 'text-white' : 'text-slate-400'}`}>
+                      {col.label}
+                    </span>
+                  </div>
+                  <div className={`
+                            w-5 h-5 rounded-full border flex items-center justify-center transition-all
+                            ${selectedIds.includes(col.id)
+                      ? 'bg-slate-400 border-slate-400 text-brand-black'
                       : 'border-slate-600'}
                         `}>
                     {selectedIds.includes(col.id) && <Check size={12} />}
