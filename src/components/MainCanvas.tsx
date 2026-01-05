@@ -41,6 +41,14 @@ import { HelpTopicId } from './help/HelpContent';
 import ToolsCollectionView from './tools/ToolsCollectionView';
 import { fetchToolsAction } from '@/app/actions/tools';
 
+// Org Collection type for display
+interface OrgCollectionInfo {
+    id: string;
+    label: string;
+    color: string;
+    item_count: number;
+}
+
 interface MainCanvasProps {
     courses: Course[];
     activeCollectionId: string;
@@ -63,6 +71,9 @@ interface MainCanvasProps {
     previousCollectionId?: string | null; // Previous page for back navigation
     onGoBack?: () => void; // Handler to go back to previous page
     onExposeDragStart?: (handler: (item: DragItem) => void) => void; // Expose drag start handler to parent
+    orgCollections?: OrgCollectionInfo[]; // Organization collections
+    isOrgAdmin?: boolean; // Whether user can edit org collections
+    onOrgCollectionsUpdate?: () => void; // Callback when org collections change
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -747,7 +758,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onNavigateWithFilter,
     previousCollectionId,
     onGoBack,
-    onExposeDragStart
+    onExposeDragStart,
+    orgCollections = [],
+    isOrgAdmin = false,
+    onOrgCollectionsUpdate
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -761,6 +775,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
 
+    // Org collection viewing state
+    const [viewingOrgCollection, setViewingOrgCollection] = useState<{
+        id: string;
+        name: string;
+        items: any[];
+        isOrgAdmin: boolean;
+    } | null>(null);
+
     // Effect to load group details when activeCollectionId changes to group-*
     useEffect(() => {
         if (activeCollectionId.startsWith('group-')) {
@@ -772,6 +794,27 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             });
         } else {
             setViewingGroup(null);
+        }
+    }, [activeCollectionId]);
+
+    // Effect to load org collection when activeCollectionId changes to org-collection-*
+    useEffect(() => {
+        if (activeCollectionId.startsWith('org-collection-')) {
+            const collectionId = activeCollectionId.replace('org-collection-', '');
+            setIsLoadingCollection(true);
+            import('@/app/actions/org').then(async (mod) => {
+                const result = await mod.getOrgCollectionItems(collectionId);
+                setViewingOrgCollection({
+                    id: collectionId,
+                    name: result.collectionName,
+                    items: result.items,
+                    isOrgAdmin: result.isOrgAdmin
+                });
+                setCollectionItems(result.items as CollectionItemDetail[]);
+                setIsLoadingCollection(false);
+            });
+        } else {
+            setViewingOrgCollection(null);
         }
     }, [activeCollectionId]);
 
@@ -2140,6 +2183,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
+        if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
+
+        // Org collections
+        if (viewingOrgCollection) return viewingOrgCollection.name;
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
         if (predefined) return predefined.label;
@@ -2158,6 +2206,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
         if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
+        if (activeCollectionId === 'new-org-collection') return 'Create Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
+        if (viewingOrgCollection) return 'Org Collection';
         return 'My Collection';
     };
 
@@ -2265,6 +2316,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const renderCollectionVisual = () => {
         if (activeCollectionId === 'conversations') return <ConversationVisual />;
         if (activeCollectionId === 'company') return <CompanyVisual />;
+        if (viewingOrgCollection) return <CompanyVisual />;
         if (activeCollectionId === 'instructors') return <InstructorVisual />;
         if (activeCollectionId === 'help') return <HelpVisual />;
         return <GenericVisual />;
@@ -2641,7 +2693,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             </div>
                         );
                     }
-                    if (activeCollectionId === 'company') {
+                    if (viewingOrgCollection) {
                         return (
                             <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
                                 <div className="mb-6 relative w-32 h-32">
@@ -2653,11 +2705,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
                                     </div>
                                 </div>
-                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Organization's Learning Hub</h3>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">{viewingOrgCollection.name}</h3>
                                 <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
-                                    Access content curated specifically for your organization. Required training, recommended courses, and company-specific resources—all in one place to keep your team aligned and growing together.
+                                    {viewingOrgCollection.isOrgAdmin
+                                        ? 'Add content to this company collection to share it with your entire organization. Drag courses here or use the + buttons above.'
+                                        : 'Access content curated specifically for your organization. Save items to your personal collections to keep learning.'}
                                 </p>
-                                <p className="text-xs text-slate-500">No company content has been assigned yet.</p>
+                                <p className="text-xs text-slate-500">This collection is currently empty.</p>
                             </div>
                         );
                     }
@@ -2823,7 +2877,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     )}
 
                     {/* Company */}
-                    {activeCollectionId === 'company' && (
+                    {viewingOrgCollection && (
                         <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
                             <div className="mb-6 relative w-32 h-32">
                                 <div className="absolute inset-0 bg-slate-400/20 blur-2xl rounded-full"></div>
@@ -2834,9 +2888,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
                                 </div>
                             </div>
-                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Organization's Learning Hub</h3>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">{viewingOrgCollection.name}</h3>
                             <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
-                                Access content curated specifically for your organization. Required training, recommended courses, and company-specific resources—all in one place to keep your team aligned and growing together.
+                                {viewingOrgCollection.isOrgAdmin
+                                    ? 'Add more content using the + buttons above or drag courses from the Academy.'
+                                    : 'Save items to your personal collections to continue your learning journey.'}
                             </p>
                         </div>
                     )}
@@ -3337,16 +3393,17 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 </button>
                             ) : (
                                 <>
-                                    {/* Expanded to include Personal Context, Favorites, Workspace (research), Watchlist (to_learn), Company, and Custom Collections */}
+                                    {/* Expanded to include Personal Context, Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                                    {/* Note: Org collections (org-collection-*) only show these buttons if user is org admin */}
                                     {(activeCollectionId === 'personal-context' ||
                                         activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
-                                        activeCollectionId === 'company' ||
-                                        customCollections.some(c => c.id === activeCollectionId)) && (
+                                        customCollections.some(c => c.id === activeCollectionId) ||
+                                        (viewingOrgCollection && viewingOrgCollection.isOrgAdmin)) && (
                                             <div className="flex items-center gap-2 mr-4">
                                                 <button
-                                                    onClick={() => handleCreateNote(activeCollectionId)}
+                                                    onClick={() => handleCreateNote(viewingOrgCollection ? viewingOrgCollection.id : activeCollectionId)}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
                                                     <Plus size={14} /> Note
@@ -3532,14 +3589,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes */}
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes, Org Collections */}
                                     {!(activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'conversations' ||
                                         activeCollectionId === 'notes' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
-                                        activeCollectionId === 'company' ||
+                                        viewingOrgCollection ||
                                         activeCollectionId === 'instructors' ||
                                         activeCollectionId === 'dashboard' ||
                                         activeCollectionId === 'prometheus' ||
@@ -3594,7 +3651,8 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
 
                                     {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
-                                    {customCollections.some(c => c.id === activeCollectionId) && (
+                                    {(customCollections.some(c => c.id === activeCollectionId) ||
+                                      (viewingOrgCollection && viewingOrgCollection.isOrgAdmin)) && (
                                         <div className="relative">
                                             <button
                                                 onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
@@ -3611,12 +3669,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     >
                                                         <Edit size={14} /> Rename
                                                     </button>
+                                                    {!viewingOrgCollection && (
                                                     <button
                                                         onClick={handleDeleteCollectionSpy}
                                                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
                                                     >
                                                         <Trash size={14} /> Delete
                                                     </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

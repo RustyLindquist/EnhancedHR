@@ -741,7 +741,6 @@ export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
   { id: 'research', label: 'Workspace', icon: Search, color: 'text-brand-orange' },
   { id: 'to_learn', label: 'Watchlist', icon: Clock, color: 'text-brand-blue-light' },
-  { id: 'company', label: 'Company', icon: Building, color: 'text-slate-400' },
   { id: 'new', label: 'New Collection', icon: Plus, color: 'text-brand-blue-light' },
 ];
 

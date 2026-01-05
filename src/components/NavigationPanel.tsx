@@ -21,7 +21,9 @@ import {
   Check,
   Upload,
   Brain,
-  Layers // Added Layers icon for custom collections
+  Layers, // Added Layers icon for custom collections
+  Building,
+  Plus
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
@@ -64,6 +66,14 @@ const AnimatedCountBadge: React.FC<{
   );
 };
 
+// Org Collection type for nav display
+interface OrgCollectionNav {
+  id: string;
+  label: string;
+  color: string;
+  item_count: number;
+}
+
 interface NavigationPanelProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -77,6 +87,7 @@ interface NavigationPanelProps {
   collectionCounts?: Record<string, number>; // New prop for total counts
   customCollections?: Collection[]; // Added custom collections prop
   orgMemberCount?: number; // Count of org members for "Manage Users" badge
+  orgCollections?: OrgCollectionNav[]; // Organization collections
 }
 
 const NavItem: React.FC<{
@@ -156,7 +167,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   className,
   collectionCounts,
   customCollections = [], // Default to empty array
-  orgMemberCount
+  orgMemberCount,
+  orgCollections = [] // Default to empty array
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -496,9 +508,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             <div className="space-y-1">
               <div className="space-y-1">
                 {(() => {
-                  // Split collections for correct ordering: Default (minus Company/New) -> Company -> Custom -> New
-                  const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new' && i.id !== 'company');
-                  const companyCollection = COLLECTION_NAV_ITEMS.find(i => i.id === 'company');
+                  // Split collections for correct ordering: Default (minus New) -> Custom -> New
+                  const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new');
                   const newCollectionAction = COLLECTION_NAV_ITEMS.find(i => i.id === 'new');
 
                   // Sort custom collections alphabetically
@@ -509,17 +520,11 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       id: c.id,
                       label: c.label,
                       icon: Layers, // Default icon for custom
-                      color: c.color ? `text-[${c.color}]` : 'text-slate-400' // Dynamic color class - tricky with Tailwind JIT if not safe-listed, but let's try inline style in NavItem if needed. NavItem uses className.
-                      // Actually NavItem uses `item.color` as a class string. `text-[hex]` might work if configured or we can rely on style prop if we modify NavItem. 
-                      // For now let's reuse a standard color or rely on the prop passing through.
-                      // Actually, NavItem implementation:
-                      // ${isActive ? '...' : (item.color || 'text-slate-400')}
-                      // If we pass a hex color like '#ABC', `text-[#ABC]` is valid Tailwind arbitrary value.
+                      color: c.color ? `text-[${c.color}]` : 'text-slate-400'
                     } as NavItemConfig));
 
                   const finalItems = [
                     ...staticCollections,
-                    ...(companyCollection ? [companyCollection] : []),
                     ...sortedCustom,
                     ...(newCollectionAction ? [newCollectionAction] : [])
                   ];
@@ -533,7 +538,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       <NavItem
                         item={item}
                         isOpen={isOpen}
-                        count={item.id !== 'new' && item.id !== 'company' && !item.id.startsWith('custom-') ? getCollectionCount(item.id) : (item.id.startsWith('custom-') ? getCollectionCount(item.id) : undefined)}
+                        count={item.id !== 'new' ? getCollectionCount(item.id) : undefined}
                         isActive={activeCollectionId === item.id}
                         onClick={() => onSelectCollection(item.id)}
                       />
@@ -546,7 +551,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         )}
 
         {/* My Organization (For employees, org admins, and platform admins) */}
-        {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
+        {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee' || userProfile?.role === 'admin') && (
           <div className="px-4 mb-8">
             {isOpen && (
               <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
@@ -554,22 +559,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               </h4>
             )}
             <div className="space-y-1">
-              {/* Assigned Learning - show for employees and org admins */}
-              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin') && EMPLOYEE_NAV_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={item}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === item.id}
-                    onClick={() => onSelectCollection(item.id)}
-                  />
-                </div>
-              ))}
-              {/* Org Admin items - Analytics, All Users */}
+              {/* Org Admin items - Analytics, All Users (org admin only) */}
               {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
                 <div
                   key={item.id}
@@ -585,7 +575,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   />
                 </div>
               ))}
-              {/* Employee Groups - listed immediately after All Users (only for admins) */}
+
+              {/* User Groups - listed after All Users (only for admins) */}
               {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && employeeGroups.map((group) => (
                 <div
                   key={`group-${group.id}`}
@@ -598,6 +589,75 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                     isActive={activeCollectionId === `group-${group.id}`}
                     count={group.member_count}
                     onClick={() => onSelectCollection(`group-${group.id}`)}
+                  />
+                </div>
+              ))}
+
+              {/* Default Org Collection - show for all org members */}
+              <div
+                onMouseEnter={(e) => handleItemHover({ id: 'company', label: 'Org Collection', icon: Building }, e, () => onSelectCollection('company'))}
+                onMouseLeave={handleItemLeave}
+              >
+                <NavItem
+                  item={{ id: 'company', label: 'Org Collection', icon: Building, color: 'text-slate-400' }}
+                  isOpen={isOpen}
+                  isActive={activeCollectionId === 'company'}
+                  onClick={() => onSelectCollection('company')}
+                />
+              </div>
+
+              {/* Custom Org Collections - show for all org members */}
+              {orgCollections.map((collection) => {
+                const navItem: NavItemConfig = {
+                  id: `org-collection-${collection.id}`,
+                  label: collection.label,
+                  icon: Building,
+                  color: 'text-slate-400'
+                };
+                return (
+                  <div
+                    key={`org-collection-${collection.id}`}
+                    onMouseEnter={(e) => handleItemHover(navItem, e, () => onSelectCollection(`org-collection-${collection.id}`))}
+                    onMouseLeave={handleItemLeave}
+                  >
+                    <NavItem
+                      item={navItem}
+                      isOpen={isOpen}
+                      isActive={activeCollectionId === `org-collection-${collection.id}`}
+                      count={collection.item_count}
+                      onClick={() => onSelectCollection(`org-collection-${collection.id}`)}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* New Org Collection - only for org admins */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
+                <div
+                  onMouseEnter={(e) => handleItemHover({ id: 'new-org-collection', label: 'New Org Collection', icon: Plus }, e, () => onSelectCollection('new-org-collection'))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={{ id: 'new-org-collection', label: 'New Org Collection', icon: Plus, color: 'text-brand-blue-light' }}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === 'new-org-collection'}
+                    onClick={() => onSelectCollection('new-org-collection')}
+                  />
+                </div>
+              )}
+
+              {/* Assigned Learning - show for employees and org admins (at the end) */}
+              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
                   />
                 </div>
               ))}

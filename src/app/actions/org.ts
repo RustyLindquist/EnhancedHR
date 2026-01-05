@@ -475,6 +475,21 @@ export async function getOrgSelectorData(): Promise<{
 }
 
 /**
+ * Check if the current user is an org admin or platform admin.
+ * Used for determining UI permissions.
+ */
+export async function checkIsOrgAdmin(): Promise<boolean> {
+  'use server';
+  try {
+    const orgContext = await getOrgContext();
+    return orgContext?.isOrgAdmin || orgContext?.isPlatformAdmin || false;
+  } catch (error) {
+    console.error('checkIsOrgAdmin error:', error);
+    return false;
+  }
+}
+
+/**
  * Gets the count of members in the current user's organization.
  * Used for displaying the count badge in the navigation panel.
  */
@@ -501,6 +516,303 @@ export async function getOrgMemberCount(): Promise<number> {
   } catch (error) {
     console.error('getOrgMemberCount exception:', error);
     return 0;
+  }
+}
+
+/**
+ * Fetch org collections for the current user's organization.
+ * Returns collections visible to the user based on their role:
+ * - Org admins can see all org collections
+ * - Employees can see org collections they're assigned to or that are public
+ */
+export interface OrgCollection {
+  id: string;
+  label: string;
+  color: string;
+  is_required: boolean;
+  due_date: string | null;
+  item_count: number;
+}
+
+export async function getOrgCollections(): Promise<OrgCollection[]> {
+  try {
+    console.log('[getOrgCollections] Starting');
+    const orgContext = await getOrgContext();
+    console.log('[getOrgCollections] orgContext:', orgContext);
+
+    if (!orgContext?.orgId) {
+      console.log('[getOrgCollections] No orgId, returning empty');
+      return [];
+    }
+
+    const adminClient = createAdminClient();
+
+    // Fetch org collections with item counts
+    console.log('[getOrgCollections] Querying for org:', orgContext.orgId);
+    const { data: collections, error } = await adminClient
+      .from('user_collections')
+      .select(`
+        id,
+        label,
+        color,
+        collection_items(count)
+      `)
+      .eq('org_id', orgContext.orgId)
+      .eq('is_org_collection', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[getOrgCollections] Query error:', error);
+      return [];
+    }
+
+    console.log('[getOrgCollections] Found collections:', collections);
+
+    return (collections || []).map(col => ({
+      id: col.id,
+      label: col.label,
+      color: col.color || '#64748B',
+      is_required: false,
+      due_date: null,
+      item_count: (col.collection_items as any)?.[0]?.count || 0
+    }));
+  } catch (error) {
+    console.error('[getOrgCollections] Exception:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch items in an org collection.
+ * Returns the collection items that can be displayed in the UI.
+ */
+export async function getOrgCollectionItems(collectionId: string): Promise<{
+  items: any[];
+  collectionName: string;
+  isOrgAdmin: boolean;
+}> {
+  try {
+    const orgContext = await getOrgContext();
+
+    if (!orgContext?.orgId) {
+      return { items: [], collectionName: '', isOrgAdmin: false };
+    }
+
+    const adminClient = createAdminClient();
+
+    // First verify this collection belongs to the user's org
+    const { data: collection, error: colError } = await adminClient
+      .from('user_collections')
+      .select('id, label, org_id, is_org_collection')
+      .eq('id', collectionId)
+      .eq('org_id', orgContext.orgId)
+      .eq('is_org_collection', true)
+      .single();
+
+    if (colError || !collection) {
+      console.error('Collection not found or not in org:', colError);
+      return { items: [], collectionName: '', isOrgAdmin: false };
+    }
+
+    // Fetch collection items (courses)
+    const { data: courseItems, error: courseError } = await adminClient
+      .from('collection_items')
+      .select(`
+        id,
+        collection_id,
+        course_id,
+        item_id,
+        item_type,
+        created_at
+      `)
+      .eq('collection_id', collectionId);
+
+    if (courseError) {
+      console.error('Error fetching collection items:', courseError);
+      return { items: [], collectionName: collection.label, isOrgAdmin: orgContext.isOrgAdmin || false };
+    }
+
+    // Fetch course details for items
+    const courseIds = (courseItems || [])
+      .filter(item => item.course_id)
+      .map(item => item.course_id);
+
+    let courses: any[] = [];
+    if (courseIds.length > 0) {
+      const { data: courseData } = await adminClient
+        .from('courses')
+        .select('*')
+        .in('id', courseIds);
+      courses = courseData || [];
+    }
+
+    // Fetch context items if any
+    const contextItemIds = (courseItems || [])
+      .filter(item => item.item_type && item.item_id && !item.course_id)
+      .map(item => item.item_id);
+
+    let contextItems: any[] = [];
+    if (contextItemIds.length > 0) {
+      const { data: contextData } = await adminClient
+        .from('user_context_items')
+        .select('*')
+        .in('id', contextItemIds);
+      contextItems = contextData || [];
+    }
+
+    // Map to display format
+    const mappedItems = (courseItems || []).map(item => {
+      if (item.course_id) {
+        const course = courses.find(c => c.id === item.course_id);
+        if (course) {
+          return {
+            id: course.id,
+            itemType: 'COURSE',
+            title: course.title,
+            description: course.description,
+            image: course.image,
+            author: course.author,
+            duration: course.duration,
+            rating: course.rating,
+            category: course.category,
+            badges: course.badges,
+            ...course
+          };
+        }
+      } else if (item.item_type && item.item_id) {
+        const contextItem = contextItems.find(c => c.id === item.item_id);
+        if (contextItem) {
+          return {
+            id: contextItem.id,
+            itemType: contextItem.type,
+            title: contextItem.title,
+            content: contextItem.content,
+            ...contextItem
+          };
+        }
+      }
+      return null;
+    }).filter(Boolean);
+
+    return {
+      items: mappedItems,
+      collectionName: collection.label,
+      isOrgAdmin: orgContext.isOrgAdmin || orgContext.isPlatformAdmin || false
+    };
+  } catch (error) {
+    console.error('getOrgCollectionItems exception:', error);
+    return { items: [], collectionName: '', isOrgAdmin: false };
+  }
+}
+
+/**
+ * Create a new org collection.
+ * Only org admins can create org collections.
+ */
+export async function createOrgCollection(name: string, color: string): Promise<{ success: boolean; collectionId?: string; error?: string }> {
+  try {
+    console.log('[createOrgCollection] Starting with name:', name, 'color:', color);
+    const orgContext = await getOrgContext();
+    console.log('[createOrgCollection] orgContext:', orgContext);
+
+    if (!orgContext?.orgId) {
+      console.log('[createOrgCollection] No orgId found');
+      return { success: false, error: 'You must be part of an organization' };
+    }
+
+    if (!orgContext.isOrgAdmin && !orgContext.isPlatformAdmin) {
+      console.log('[createOrgCollection] User is not org admin');
+      return { success: false, error: 'Only org admins can create company collections' };
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.log('[createOrgCollection] No user found');
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    console.log('[createOrgCollection] Creating collection for user:', user.id, 'org:', orgContext.orgId);
+
+    // Create the org collection
+    const adminClient = createAdminClient();
+    const { data, error } = await adminClient
+      .from('user_collections')
+      .insert({
+        user_id: user.id, // Creator (for tracking)
+        org_id: orgContext.orgId,
+        label: name,
+        color: color,
+        is_custom: true,
+        is_org_collection: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[createOrgCollection] Insert error:', error);
+      return { success: false, error: 'Failed to create collection' };
+    }
+
+    console.log('[createOrgCollection] Created collection:', data);
+    revalidatePath('/dashboard');
+    return { success: true, collectionId: data.id };
+  } catch (error: any) {
+    console.error('[createOrgCollection] Exception:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Rename an org collection.
+ * Only org admins can rename org collections.
+ */
+export async function renameOrgCollection(collectionId: string, newName: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const orgContext = await getOrgContext();
+
+    if (!orgContext?.orgId) {
+      return { success: false, error: 'You must be part of an organization' };
+    }
+
+    if (!orgContext.isOrgAdmin && !orgContext.isPlatformAdmin) {
+      return { success: false, error: 'Only org admins can rename company collections' };
+    }
+
+    const adminClient = createAdminClient();
+
+    // Verify the collection belongs to this org
+    const { data: collection, error: fetchError } = await adminClient
+      .from('user_collections')
+      .select('id, org_id, is_org_collection')
+      .eq('id', collectionId)
+      .single();
+
+    if (fetchError || !collection) {
+      return { success: false, error: 'Collection not found' };
+    }
+
+    if (collection.org_id !== orgContext.orgId || !collection.is_org_collection) {
+      return { success: false, error: 'Cannot rename this collection' };
+    }
+
+    // Update the name
+    const { error: updateError } = await adminClient
+      .from('user_collections')
+      .update({ label: newName })
+      .eq('id', collectionId);
+
+    if (updateError) {
+      console.error('renameOrgCollection error:', updateError);
+      return { success: false, error: 'Failed to rename collection' };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    console.error('renameOrgCollection exception:', error);
+    return { success: false, error: error.message };
   }
 }
 
