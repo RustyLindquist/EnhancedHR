@@ -39,23 +39,29 @@ export default function UserCard({ member, onClick, onAddToGroup }: UserCardProp
             {/* Content Container */}
             <div className="absolute inset-0 p-6 pb-[30px] flex flex-col justify-end">
 
-                {/* Top Right Actions */}
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                    {/* Add to Group Button */}
-                    {onAddToGroup && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onAddToGroup(); }}
-                            className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                            <Plus size={16} />
-                        </button>
-                    )}
-                    {/* Admin Badge */}
-                    {isAdmin && (
-                        <div className="bg-brand-orange/20 backdrop-blur-md border border-brand-orange/30 text-brand-orange px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg">
-                            <Shield size={12} fill="currentColor" /> Admin
+                {/* Top Bar with Dark Overlay */}
+                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 via-black/40 to-transparent pt-3 pb-6 px-4">
+                    <div className="flex items-center justify-between">
+                        {/* Admin Badge - Left side */}
+                        <div className="flex items-center">
+                            {isAdmin && (
+                                <div className="bg-brand-orange/30 backdrop-blur-md border border-brand-orange/40 text-brand-orange px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg">
+                                    <Shield size={12} fill="currentColor" /> Admin
+                                </div>
+                            )}
                         </div>
-                    )}
+                        {/* Add to Group Button - Right side, always in same position */}
+                        <div className="flex items-center">
+                            {onAddToGroup && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onAddToGroup(); }}
+                                    className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 hover:border-white/60 transition-all shadow-lg"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Info */}

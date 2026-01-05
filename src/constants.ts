@@ -21,7 +21,8 @@ import {
   BarChart2,
   HelpCircle,
   StickyNote,
-  Wrench
+  Wrench,
+  ClipboardList
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -702,7 +703,6 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'tools', label: 'Tools', icon: Wrench, color: 'text-teal-400' },
-  { id: 'certifications', label: 'Certifications', icon: Award },
   { id: 'personal-context', label: 'Personal Context', icon: Brain },
   { id: 'help', label: 'Help', icon: HelpCircle, color: 'text-brand-blue-light' },
 ];
@@ -720,8 +720,12 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const ORG_NAV_ITEMS: NavItemConfig[] = [
-    { id: 'org-team', label: 'Manage Users', icon: Users, color: 'text-brand-blue-light' },
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
+    { id: 'org-team', label: 'All Users', icon: Users, color: 'text-brand-blue-light' },
+];
+
+export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'assigned-learning', label: 'Assigned Learning', icon: ClipboardList, color: 'text-emerald-400' },
 ];
 
 export const EXPERT_NAV_ITEMS: NavItemConfig[] = [

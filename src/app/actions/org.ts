@@ -474,6 +474,36 @@ export async function getOrgSelectorData(): Promise<{
   }
 }
 
+/**
+ * Gets the count of members in the current user's organization.
+ * Used for displaying the count badge in the navigation panel.
+ */
+export async function getOrgMemberCount(): Promise<number> {
+  try {
+    const orgContext = await getOrgContext();
+
+    if (!orgContext?.orgId) {
+      return 0;
+    }
+
+    const adminClient = createAdminClient();
+    const { count, error } = await adminClient
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgContext.orgId);
+
+    if (error) {
+      console.error('getOrgMemberCount error:', error);
+      return 0;
+    }
+
+    return count || 0;
+  } catch (error) {
+    console.error('getOrgMemberCount exception:', error);
+    return 0;
+  }
+}
+
 export async function updateUserRole(userId: string, newRole: 'org_admin' | 'user'): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();

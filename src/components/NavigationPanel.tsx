@@ -23,7 +23,7 @@ import {
   Brain,
   Layers // Added Layers icon for custom collections
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 
 // Animated Count Badge with warm glow effect on count change
@@ -76,6 +76,7 @@ interface NavigationPanelProps {
   className?: string;
   collectionCounts?: Record<string, number>; // New prop for total counts
   customCollections?: Collection[]; // Added custom collections prop
+  orgMemberCount?: number; // Count of org members for "Manage Users" badge
 }
 
 const NavItem: React.FC<{
@@ -154,7 +155,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   customNavItems,
   className,
   collectionCounts,
-  customCollections = [] // Default to empty array
+  customCollections = [], // Default to empty array
+  orgMemberCount
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -233,6 +235,20 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
     return () => {
       window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for group updates (when groups are created/updated/deleted)
+  useEffect(() => {
+    const handleGroupsUpdated = async () => {
+      const { getOrgGroups } = await import('@/app/actions/groups');
+      const groups = await getOrgGroups();
+      setEmployeeGroups(groups);
+    };
+
+    window.addEventListener('groupsUpdated', handleGroupsUpdated);
+    return () => {
+      window.removeEventListener('groupsUpdated', handleGroupsUpdated);
     };
   }, []);
 
@@ -529,8 +545,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         )}
 
-        {/* My Organization (Only for Org Admins and Platform Admins) */}
-        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
+        {/* My Organization (For employees, org admins, and platform admins) */}
+        {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
           <div className="px-4 mb-8">
             {isOpen && (
               <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
@@ -538,7 +554,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               </h4>
             )}
             <div className="space-y-1">
-              {ORG_NAV_ITEMS.map((item) => (
+              {/* Assigned Learning - show for employees and org admins */}
+              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin') && EMPLOYEE_NAV_ITEMS.map((item) => (
                 <div
                   key={item.id}
                   onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
@@ -552,23 +569,24 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   />
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Employee Groups (Only for Org Admins) */}
-        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
-          <div className="px-4 mb-8">
-            {isOpen && (
-              <div className="flex items-center justify-between mb-2 pl-2">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest drop-shadow-sm">
-                  Employee Groups
-                </h4>
-              </div>
-            )}
-            <div className="space-y-1">
-              {/* Groups List */}
-              {employeeGroups.map((group) => (
+              {/* Org Admin items - Analytics, All Users */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    count={item.id === 'org-team' ? orgMemberCount : undefined}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
+                  />
+                </div>
+              ))}
+              {/* Employee Groups - listed immediately after All Users (only for admins) */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && employeeGroups.map((group) => (
                 <div
                   key={`group-${group.id}`}
                   onMouseEnter={(e) => handleItemHover({ id: `group-${group.id}`, label: group.name, icon: Users }, e, () => onSelectCollection(`group-${group.id}`))}
@@ -583,9 +601,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   />
                 </div>
               ))}
-              {employeeGroups.length === 0 && isOpen && (
-                <div className="text-xs text-slate-600 pl-3 italic">No groups yet</div>
-              )}
             </div>
           </div>
         )}
