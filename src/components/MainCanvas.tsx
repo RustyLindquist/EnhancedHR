@@ -2446,7 +2446,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 }
 
                 return (
-                    <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                    <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                         {notes.map((note, index) => (
                             <div key={note.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                                 <UniversalCard
@@ -2687,7 +2687,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
             return (
-                <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                     {displayItems.map((item, index) => (
                         <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}>
@@ -3699,7 +3699,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             <p className="text-lg mb-2">No help topics available.</p>
                                         </div>
                                     ) : (
-                                        <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+                                        <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                                             {helpTopics.map((topic, index) => (
                                                 <div
                                                     key={topic.id}
@@ -3916,7 +3916,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 </div>
                                             ) : (
                                                 <div className="pb-20">
-                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                                                         {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
                                                         {collectionItems.map((item) => (
                                                             <div key={item.id} className="animate-fade-in">

@@ -84,7 +84,38 @@ Any change touching ANY of the following must use the full 2-gate flow (Section 
 - Stripe billing or entitlements/credits
 - AI context assembly / embeddings / prompt orchestration
 
-### 2.3 No guessing
+### 2.3 DATABASE DESTRUCTION FORBIDDEN (CRITICAL - HARD RULE)
+
+**AGENTS MUST NEVER EXECUTE ANY OF THE FOLLOWING COMMANDS WITHOUT EXPLICIT USER APPROVAL:**
+
+```
+FORBIDDEN COMMANDS (require explicit user approval + justification):
+- supabase db reset
+- supabase db push (with destructive changes)
+- docker volume rm (for supabase volumes)
+- DROP TABLE / DROP DATABASE / TRUNCATE
+- Any command that deletes or resets database data
+- supabase stop && supabase start (if data persistence is uncertain)
+```
+
+**Why this rule exists:** On 2026-01-05, an agent destroyed the entire production-like local database while attempting to fix a simple RLS policy issue. All user data, groups, courses, and configurations were permanently lost. The fix required only a single SQL statement or a code change to use the admin client.
+
+**Before considering ANY database-affecting command:**
+1. ASK YOURSELF: Can this be solved with a targeted SQL statement instead?
+2. ASK YOURSELF: Can this be solved with a code change instead?
+3. ASK YOURSELF: Will this command destroy data?
+4. If the answer to #3 is "yes" or "maybe": STOP and ask the user for explicit approval
+
+**The correct approach for RLS/permission fixes:**
+- Option A: Execute targeted SQL via `docker exec supabase_db_* psql -U postgres -d postgres -c "SQL HERE"`
+- Option B: Modify server action code to use `createAdminClient()` with proper authorization checks
+- Option C: Create a new migration file and apply it with `supabase migration up`
+- NEVER Option D: Reset the entire database
+
+**If you are even THINKING about running a reset command, STOP and tell the user:**
+> "I was about to run [command] which would destroy all database data. Instead, I recommend [alternative approach]. Do you want me to proceed with the safe alternative, or do you have a specific reason to reset the database?"
+
+### 2.4 No guessing
 If something is unclear:
 - inspect the code paths and call sites
 - prefer "unknown until verified" over speculation

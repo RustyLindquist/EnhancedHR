@@ -70,7 +70,7 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="px-6 pt-6 pb-0 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div className="px-6 pt-6 pb-0 max-h-[60vh] overflow-y-auto dropdown-scrollbar">
 
           {/* Existing Collections List - Only show if we have an item or we are not in create-only mode */}
           {item && (

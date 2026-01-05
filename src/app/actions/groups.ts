@@ -31,11 +31,12 @@ export async function createGroup(name: string, memberIds: string[]) {
   // Get User's Org ID
   const { data: profile } = await supabase
     .from('profiles')
-    .select('org_id, role')
+    .select('org_id, role, membership_status')
     .eq('id', user.id)
     .single();
 
-  if (!profile || !profile.org_id || (profile.role !== 'admin' && profile.role !== 'org_admin')) {
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+  if (!profile || !profile.org_id || !isAdmin) {
       return { success: false, error: 'Permission denied' };
   }
 
@@ -89,8 +90,9 @@ export async function updateGroup(groupId: string, name: string, memberIds: stri
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Verify Org Admin
-     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-     if (profile?.role !== 'admin' && profile?.role !== 'org_admin') return { success: false, error: 'Permission denied' };
+    const { data: profile } = await supabase.from('profiles').select('role, membership_status').eq('id', user.id).single();
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return { success: false, error: 'Permission denied' };
 
     // 1. Update Name
     const { error: updateError } = await supabaseAdmin
@@ -134,8 +136,9 @@ export async function deleteGroup(groupId: string) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Check Role
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin' && profile?.role !== 'org_admin') return { success: false, error: 'Permission denied' };
+    const { data: profile } = await supabase.from('profiles').select('role, membership_status').eq('id', user.id).single();
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return { success: false, error: 'Permission denied' };
 
     const supabaseAdmin = await createAdminClient();
     const { error } = await supabaseAdmin.from('employee_groups').delete().eq('id', groupId);
@@ -151,10 +154,17 @@ export async function getOrgGroups() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('org_id, role, membership_status').eq('id', user.id).single();
     if (!profile?.org_id) return [];
 
-    const { data: groups, error } = await supabase
+    // Check if user is admin
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return [];
+
+    // Use admin client to bypass RLS since the RLS policies may not include membership_status
+    const supabaseAdmin = await createAdminClient();
+
+    const { data: groups, error } = await supabaseAdmin
         .from('employee_groups')
         .select(`
             *,
@@ -177,8 +187,23 @@ export async function getOrgGroups() {
 
 export async function getGroupDetails(groupId: string) {
     const supabase = await createClient();
-    
-    const { data: group, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Verify the user is an admin (role or membership_status)
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !isAdmin) return null;
+
+    // Use admin client to bypass RLS since the RLS policies may not include membership_status
+    const supabaseAdmin = await createAdminClient();
+
+    const { data: group, error } = await supabaseAdmin
         .from('employee_groups')
         .select(`
             *,
@@ -189,10 +214,11 @@ export async function getGroupDetails(groupId: string) {
 
     if (error || !group) return null;
 
-    if (error || !group) return null;
+    // Verify the group belongs to the user's org
+    if (group.org_id !== profile.org_id) return null;
 
-    // Fetch members with profiles
-    const { data: members } = await supabase
+    // Fetch members with profiles using admin client
+    const { data: members } = await supabaseAdmin
         .from('employee_group_members')
         .select(`
             user_id,
@@ -213,4 +239,108 @@ export async function getGroupDetails(groupId: string) {
         members: formattedMembers,
         member_count: formattedMembers.length
     };
+}
+
+/**
+ * Get which groups a specific member belongs to
+ */
+export async function getMemberGroups(memberId: string): Promise<string[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: memberships } = await supabase
+        .from('employee_group_members')
+        .select('group_id')
+        .eq('user_id', memberId);
+
+    return memberships?.map(m => m.group_id) || [];
+}
+
+/**
+ * Update which groups a member belongs to
+ */
+export async function updateMemberGroups(
+    memberId: string,
+    groupIds: string[],
+    newGroup?: { name: string }
+): Promise<{ success: boolean; error?: string; newGroupId?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Verify admin
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !profile.org_id || !isAdmin) {
+        return { success: false, error: 'Permission denied' };
+    }
+
+    const supabaseAdmin = await createAdminClient();
+    let newGroupId: string | undefined;
+
+    // Create new group if requested
+    if (newGroup?.name) {
+        const { data: createdGroup, error: createError } = await supabaseAdmin
+            .from('employee_groups')
+            .insert({ org_id: profile.org_id, name: newGroup.name })
+            .select()
+            .single();
+
+        if (createError) {
+            console.error('Error creating group:', createError);
+            return { success: false, error: createError.message };
+        }
+        newGroupId = createdGroup.id;
+        groupIds = [...groupIds, createdGroup.id];
+    }
+
+    // Get current memberships for this member
+    const { data: currentMemberships } = await supabaseAdmin
+        .from('employee_group_members')
+        .select('group_id')
+        .eq('user_id', memberId);
+
+    const currentGroupIds = new Set(currentMemberships?.map(m => m.group_id) || []);
+    const targetGroupIds = new Set(groupIds);
+
+    // Groups to add
+    const toAdd = groupIds.filter(id => !currentGroupIds.has(id));
+    // Groups to remove
+    const toRemove = [...currentGroupIds].filter(id => !targetGroupIds.has(id));
+
+    // Remove from groups
+    if (toRemove.length > 0) {
+        const { error: removeError } = await supabaseAdmin
+            .from('employee_group_members')
+            .delete()
+            .eq('user_id', memberId)
+            .in('group_id', toRemove);
+
+        if (removeError) {
+            console.error('Error removing from groups:', removeError);
+            return { success: false, error: removeError.message };
+        }
+    }
+
+    // Add to groups
+    if (toAdd.length > 0) {
+        const { error: addError } = await supabaseAdmin
+            .from('employee_group_members')
+            .insert(toAdd.map(gid => ({ user_id: memberId, group_id: gid })));
+
+        if (addError) {
+            console.error('Error adding to groups:', addError);
+            return { success: false, error: addError.message };
+        }
+    }
+
+    revalidatePath('/org/team');
+    revalidatePath('/org/users');
+    return { success: true, newGroupId };
 }

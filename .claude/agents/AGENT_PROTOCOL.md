@@ -209,6 +209,50 @@ Good: "What are the invariants for the collections-and-context feature?"
 
 ---
 
+## CRITICAL: Database Protection Rules
+
+**THIS SECTION IS NON-NEGOTIABLE. VIOLATION RESULTS IN DATA LOSS.**
+
+### Forbidden Commands (require explicit user approval)
+
+```
+NEVER RUN WITHOUT USER APPROVAL:
+- supabase db reset
+- supabase db push (with destructive changes)
+- docker volume rm (for supabase volumes)
+- DROP TABLE / DROP DATABASE / TRUNCATE
+- Any command that wipes, resets, or destroys database data
+```
+
+### Why This Rule Exists
+
+On 2026-01-05, an agent ran `supabase db reset` while attempting to fix an RLS policy issue. This destroyed the entire database including all users, groups, courses, and configurations. The actual fix required only a single SQL statement.
+
+### Safe Alternatives for Database Issues
+
+| Problem | WRONG Approach | RIGHT Approach |
+|---------|---------------|----------------|
+| RLS policy blocking access | `supabase db reset` | Execute targeted SQL via `docker exec` |
+| Permission denied errors | Reset database | Use `createAdminClient()` in code |
+| Need to apply migration | Reset and restart | `supabase migration up` or direct SQL |
+| Schema out of sync | Delete volumes | Create incremental migration |
+
+### Before Running ANY Database Command
+
+Ask yourself these questions:
+1. Will this command delete or reset any data? → If yes, STOP
+2. Can this be solved with a single SQL statement? → If yes, do that instead
+3. Can this be solved with a code change? → If yes, do that instead
+4. Is there ANY alternative that preserves data? → If yes, use it
+
+### If Tempted to Reset
+
+**STOP. Tell the user:**
+
+> "I was considering running [command] which would destroy all database data. The safer approach is [alternative]. Should I proceed with the safe alternative?"
+
+---
+
 ## When to Spawn the Frontend Agent
 
 The Main Agent should spawn the Frontend Agent for ANY frontend work.

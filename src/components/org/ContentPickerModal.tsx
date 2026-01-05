@@ -85,7 +85,7 @@ const ContentPickerModal: React.FC<ContentPickerModalProps> = ({ isOpen, onClose
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2">
+                <div className="flex-1 overflow-y-auto p-2 dropdown-scrollbar">
                     {loading ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="animate-spin text-slate-500" />

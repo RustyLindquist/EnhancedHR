@@ -3,6 +3,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { getOrgMembers, OrgMember, InviteInfo, getOrgSelectorData, switchPlatformAdminOrg } from '@/app/actions/org';
 import InviteMemberPanel from './InviteMemberPanel';
 import GroupManagement from './GroupManagement';
+import AddToGroupModal from './AddToGroupModal';
 import UserCard from './UserCard';
 import UserDetailDashboard from './UserDetailDashboard';
 import { Layers, UserPlus, Users, ChevronDown, Check, Shield, Building2 } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function TeamManagement() {
     const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
     const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
+    const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
 
     // Platform admin org selector state
     const [orgSelectorData, setOrgSelectorData] = useState<OrgSelectorData | null>(null);
@@ -49,6 +51,15 @@ export default function TeamManagement() {
     useEffect(() => {
         fetchMembers();
         fetchOrgSelectorData();
+    }, []);
+
+    // Listen for avatar updates to refresh member data
+    useEffect(() => {
+        const handleAvatarUpdate = () => {
+            fetchMembers();
+        };
+        window.addEventListener('avatarUpdated', handleAvatarUpdate);
+        return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate);
     }, []);
 
     const handleSelectOrg = (orgId: string) => {
@@ -140,7 +151,7 @@ export default function TeamManagement() {
                                             className="fixed inset-0 z-40"
                                             onClick={() => setIsOrgSelectorOpen(false)}
                                         />
-                                        <div className="absolute right-0 top-full mt-2 z-50 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl min-w-[280px] max-h-80 overflow-y-auto">
+                                        <div className="absolute right-0 top-full mt-2 z-50 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl min-w-[280px] max-h-80 overflow-y-auto dropdown-scrollbar">
                                             <div className="p-2">
                                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">
                                                     Switch Organization
@@ -231,6 +242,7 @@ export default function TeamManagement() {
                                 key={member.id}
                                 member={member}
                                 onClick={() => setSelectedMember(member)}
+                                onAddToGroup={() => setAddToGroupMember(member)}
                             />
                         ))}
                     </div>
@@ -254,6 +266,18 @@ export default function TeamManagement() {
                     window.location.reload(); // Hard refresh to update nav for now
                 }}
             />
+
+            {/* Add to Group Modal */}
+            {addToGroupMember && (
+                <AddToGroupModal
+                    memberId={addToGroupMember.id}
+                    memberName={addToGroupMember.full_name}
+                    onClose={() => setAddToGroupMember(null)}
+                    onSuccess={() => {
+                        // Optionally refresh data or show success toast
+                    }}
+                />
+            )}
         </div>
     );
 }

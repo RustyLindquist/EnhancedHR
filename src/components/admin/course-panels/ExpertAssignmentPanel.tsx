@@ -181,7 +181,7 @@ export default function ExpertAssignmentPanel({
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                         Approved Experts ({filteredExperts.length})
                     </label>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto dropdown-scrollbar">
                         {loading ? (
                             <div className="flex items-center justify-center py-8 text-slate-500">
                                 <Loader2 size={24} className="animate-spin" />

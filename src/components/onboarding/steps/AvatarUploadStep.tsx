@@ -23,6 +23,10 @@ export default function AvatarUploadStep({
     const handleUploadComplete = (url: string) => {
         setHasUploaded(true);
         setError(null);
+        // Dispatch event so NavigationPanel can update avatar immediately
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: { url } }));
+        }
     };
 
     const handleUploadError = (errorMessage: string) => {
