@@ -2,6 +2,14 @@
 
 Skills are short playbooks. Agents invoke them explicitly to ensure consistent behavior.
 
+**Claude Code Integration:** These skills are available as slash commands in `.claude/commands/`:
+- `/doc-discovery` - Load relevant docs before planning
+- `/plan-lint` - Validate plan against doc constraints
+- `/doc-update` - Update docs after code changes
+- `/drift-check` - Detect doc/code mismatches
+- `/test-from-docs` - Generate test plan from feature docs
+- `/handoff` - Write handoff note for session end
+
 ## SKILL: Doc Discovery
 Goal: Load only the necessary docs with minimal context bloat.
 Steps:

@@ -2,36 +2,41 @@
 
 These commands are text conventions that work across tools (Conductor, Claude Code, IDE agents, CLI).
 
-## Planning
-- `/plan:draft`  
-  Produce Gate 1 plan (primary feature, impacted features, invariants, tests).
+**Claude Code:** Skills are available as executable commands in `.claude/commands/`. Use them directly (e.g., `/doc-discovery`).
 
-- `/plan:review`  
-  Documentation Agent runs Gate 2 doc review and returns plan annotations.
+## Planning (2-Gate Flow)
 
-- `/plan:final`  
-  Orchestrator produces Gate 3 revised plan and waits for approval to execute.
+The 2-gate flow integrates doc review into planning:
+
+- `/doc-discovery`
+  Load relevant docs before planning (FEATURE_INDEX → feature docs → foundation docs).
+
+- `/plan-lint`
+  Validate plan against doc constraints (features, invariants, tests, high-risk awareness).
 
 ## Documentation
-- `/docs:find <feature|keyword>`  
-  Locate relevant docs (Feature Index → feature docs → workflows/foundation).
-
-- `/docs:update`  
+- `/doc-update`
   Update docs after code changes (feature doc + any affected workflow/foundation docs).
 
-- `/docs:new <feature-slug>`  
+- `/drift-check`
+  Compare modified files to docs; flag mismatches and stale paths.
+
+- `/docs:find <feature|keyword>`
+  Locate relevant docs (Feature Index → feature docs → workflows/foundation).
+
+- `/docs:new <feature-slug>`
   Create a new feature doc only if a new end-to-end capability exists.
 
-- `/drift:check`  
-  Compare planned changes + modified files to docs; flag mismatches.
-
 ## Testing
-- `/test:scope`  
-  Convert feature/workflow docs into a runnable test checklist.
-
-- `/test:smoke`  
-  Provide the single workflow smoke test to run before any GitHub action.
+- `/test-from-docs`
+  Convert feature/workflow docs into a runnable test checklist with smoke test.
 
 ## Handoff
-- `/handoff:write`  
+- `/handoff`
   Write `.context/handoff.md`: what changed, what remains, how to verify.
+
+## Minimum Expected Workflow
+
+```
+/doc-discovery → Plan → /plan-lint → Execute → /doc-update → /test-from-docs → /handoff
+```

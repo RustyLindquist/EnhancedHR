@@ -1,8 +1,19 @@
-# Documentation Engine (EnhancedHR.ai / bamako)
+# Documentation Engine (EnhancedHR.ai)
 
 This repository is intended to be a **foundation app**: it must support rapid parallel feature development (often by agents), safe merging back into `main`, and future downstream apps that may fork and merge improvements back.
 
 This document instantiates a **documentation engine** for this codebase. It is the source of truth for *how* documentation is structured, *when* it must be consulted/updated, and *how* it is used to reduce regressions.
+
+## Multi-Agent Integration
+
+This documentation engine is designed to work with the **Documentation Agent (Living Canon)** — a specialized agent that serves as a persistent, queryable knowledge source for the codebase. The Doc Agent:
+
+- Loads documentation lazily as queries require
+- Answers questions about features, invariants, and constraints
+- Validates plans before execution
+- Can be queried by the Main Agent and any Sub-Agents
+
+See `.claude/agents/doc-agent.md` for the full specification and `AGENTS.md` Section 3 for the multi-agent architecture.
 
 ## A. Purpose & Scope
 
@@ -160,19 +171,37 @@ Narrative is allowed only where it helps preserve invariants and reasoning:
 
 Avoid prose that is not actionable for changes and testing.
 
-## D. The Agent Protocol (3‑Gate Flow)
+## D. The Agent Protocol (2‑Gate Flow)
 
-This repo uses a 3‑gate flow for any non-trivial change. It is mandatory for agents and strongly recommended for humans.
+This repo uses a streamlined 2‑gate flow where documentation review is integrated into planning. It is mandatory for agents and strongly recommended for humans.
 
-### Gate 1: Plan creation (before coding)
+### Gate 1: Doc-Informed Plan (before coding)
 
+Documentation review happens DURING planning, not after. This ensures plans are grounded in documented constraints from the start.
+
+**Step 1: Doc Discovery**
+- Open `docs/features/FEATURE_INDEX.md` to identify primary feature
+- Check coupling notes for impacted features
+- Open relevant feature docs and foundation docs
+- Use `/doc-discovery` command if available
+
+**Step 2: Plan Creation**
 The plan must include:
-- **Change intent:** what user-facing behavior changes.
-- **Impacted features:** which feature docs will be consulted/updated.
-- **Files & surfaces:** which routes/components/actions are touched.
-- **Data impact:** tables/columns/permissions affected; whether Supabase migrations are required.
-- **Risk & invariants:** top 3 things that must not break.
-- **Test plan:** local steps + at least one workflow smoke test.
+- **Primary feature:** from FEATURE_INDEX.md
+- **Impacted features:** from coupling notes + analysis
+- **Change intent:** what user-facing behavior changes
+- **Files & surfaces:** which routes/components/actions are touched
+- **Data impact:** tables/columns/permissions affected; whether Supabase migrations are required
+- **Invariants to preserve:** extracted from feature docs (at least 3 bullets)
+- **Test plan:** local steps + at least one workflow smoke test
+- **Docs to update after execution:** which feature/workflow/foundation docs will need changes
+
+**Step 3: Plan Validation**
+Use `/plan-lint` to verify:
+- All impacted features are identified
+- Invariants are correctly listed from docs
+- Test plan is complete
+- High-risk systems have appropriate safeguards
 
 #### Plan size guidance
 
@@ -180,34 +209,21 @@ The plan must include:
 - **Medium change (2–6 files, one feature):** include invariants + rollback note.
 - **Large change (multi-feature / schema changes):** include staged rollout and backfill strategy.
 
-### Gate 2: Documentation review (before execution)
+### Gate 2: Execute with Doc Updates
 
-Before writing code:
-- Open the relevant **feature doc(s)** (or create a stub in `/docs/features` if missing).
-- Open the relevant **foundation docs** (Auth/RLS, AI engine, billing, video) as needed.
-- Confirm and record:
-  - the invariants you will preserve,
-  - any implicit dependencies you discovered,
-  - the specific tests you will run.
-
-Then revise the plan if the docs reveal constraints you didn’t account for.
-
-#### Required Gate 2 output (structured diff)
-
-Documentation review must explicitly produce:
-- **Confirmed invariants** (things you verified must remain true)
-- **New invariants discovered** (things not previously documented or not obvious)
-- **Docs to update after execution** (feature/workflow/foundation docs that must be revised before push)
-
-### Gate 3: Revised plan approval (prior to execution)
-
-Before implementation begins:
-- Confirm the revised plan includes doc updates and tests.
-- Confirm production sync steps are covered if schema changes exist.
+Once the plan is approved:
+1. Implement the changes
+2. Run tests per the plan's test checklist
+3. Update documentation (use `/doc-update`)
+4. Run `/drift-check` if changes touched multiple features
+5. Write handoff note (use `/handoff`)
 
 **Definition of done**
-- Code change shipped + **documentation updated** + **tests executed**.
-- If schema changes exist: a Supabase migration plus a **production-safe SQL script** to keep prod in sync.
+- Code change complete
+- Documentation updated (feature docs, FEATURE_INDEX if needed)
+- Tests executed per plan
+- If schema changes: migration + production-safe SQL script
+- Handoff note in `.context/handoff.md`
 
 ## E. Documentation Triggers
 
