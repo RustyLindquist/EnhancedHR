@@ -261,9 +261,9 @@ export default function TeamManagement() {
             <GroupManagement
                 isOpen={isGroupPanelOpen}
                 onClose={() => setIsGroupPanelOpen(false)}
-                onSuccess={() => { // Group created, maybe refresh active groups in nav?
-                    // For now just close. In future, global context or event can refresh Nav.
-                    window.location.reload(); // Hard refresh to update nav for now
+                onSuccess={() => {
+                    // Dispatch event for NavigationPanel to refresh groups
+                    window.dispatchEvent(new CustomEvent('groupsUpdated'));
                 }}
             />
 

@@ -64,6 +64,7 @@ function HomeContent() {
   // Navigation & Collection State
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
   const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
+  const [orgMemberCount, setOrgMemberCount] = useState<number>(0);
   const [user, setUser] = useState<any>(null); // Track user for DB ops
 
   // Global Modal State
@@ -114,10 +115,15 @@ function HomeContent() {
         // We can call the new function here, but need to be careful with closure/dependency interaction
         // Since refreshCollectionCounts depends on 'user' state which might not be set in closure yet if we just set it.
         // Actually, we define refreshCollectionCounts to use 'user' state, but inside this useEffect 'user' variable is local.
-        // So let's duplicate the logic slightly or pass user to the function? 
+        // So let's duplicate the logic slightly or pass user to the function?
         // Better: pass user ID to function to avoid state dependency issues.
 
         await refreshCountsForUser(user.id);
+
+        // 3. Fetch org member count for navigation badge
+        const { getOrgMemberCount } = await import('@/app/actions/org');
+        const memberCount = await getOrgMemberCount();
+        setOrgMemberCount(memberCount);
       }
     }
     initUserAndCollections();
@@ -524,6 +530,7 @@ function HomeContent() {
           onSelectCollection={handleSelectCollection}
           collectionCounts={collectionCounts}
           customCollections={customCollections}
+          orgMemberCount={orgMemberCount}
         />
 
         {/* Center Content - Using Dashboard V3 */}
