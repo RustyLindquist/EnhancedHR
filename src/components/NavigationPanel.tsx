@@ -559,8 +559,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               </h4>
             )}
             <div className="space-y-1">
-              {/* Assigned Learning - show for employees and org admins */}
-              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
+              {/* Org Admin items - Analytics, All Users (org admin only) */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
                 <div
                   key={item.id}
                   onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
@@ -569,13 +569,44 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   <NavItem
                     item={item}
                     isOpen={isOpen}
+                    count={item.id === 'org-team' ? orgMemberCount : undefined}
                     isActive={activeCollectionId === item.id}
                     onClick={() => onSelectCollection(item.id)}
                   />
                 </div>
               ))}
 
-              {/* Company Collections - show for all org members */}
+              {/* User Groups - listed after All Users (only for admins) */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && employeeGroups.map((group) => (
+                <div
+                  key={`group-${group.id}`}
+                  onMouseEnter={(e) => handleItemHover({ id: `group-${group.id}`, label: group.name, icon: Users }, e, () => onSelectCollection(`group-${group.id}`))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={{ id: `group-${group.id}`, label: group.name, icon: Users }}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === `group-${group.id}`}
+                    count={group.member_count}
+                    onClick={() => onSelectCollection(`group-${group.id}`)}
+                  />
+                </div>
+              ))}
+
+              {/* Default Org Collection - show for all org members */}
+              <div
+                onMouseEnter={(e) => handleItemHover({ id: 'company', label: 'Org Collection', icon: Building }, e, () => onSelectCollection('company'))}
+                onMouseLeave={handleItemLeave}
+              >
+                <NavItem
+                  item={{ id: 'company', label: 'Org Collection', icon: Building, color: 'text-slate-400' }}
+                  isOpen={isOpen}
+                  isActive={activeCollectionId === 'company'}
+                  onClick={() => onSelectCollection('company')}
+                />
+              </div>
+
+              {/* Custom Org Collections - show for all org members */}
               {orgCollections.map((collection) => {
                 const navItem: NavItemConfig = {
                   id: `org-collection-${collection.id}`,
@@ -600,14 +631,14 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 );
               })}
 
-              {/* New Company Collection - only for org admins */}
+              {/* New Org Collection - only for org admins */}
               {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
                 <div
-                  onMouseEnter={(e) => handleItemHover({ id: 'new-org-collection', label: 'New Company Collection', icon: Plus }, e, () => onSelectCollection('new-org-collection'))}
+                  onMouseEnter={(e) => handleItemHover({ id: 'new-org-collection', label: 'New Org Collection', icon: Plus }, e, () => onSelectCollection('new-org-collection'))}
                   onMouseLeave={handleItemLeave}
                 >
                   <NavItem
-                    item={{ id: 'new-org-collection', label: 'New Company Collection', icon: Plus, color: 'text-brand-blue-light' }}
+                    item={{ id: 'new-org-collection', label: 'New Org Collection', icon: Plus, color: 'text-brand-blue-light' }}
                     isOpen={isOpen}
                     isActive={activeCollectionId === 'new-org-collection'}
                     onClick={() => onSelectCollection('new-org-collection')}
@@ -615,8 +646,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 </div>
               )}
 
-              {/* Org Admin items - Analytics, All Users */}
-              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
+              {/* Assigned Learning - show for employees and org admins (at the end) */}
+              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
                 <div
                   key={item.id}
                   onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
@@ -625,25 +656,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   <NavItem
                     item={item}
                     isOpen={isOpen}
-                    count={item.id === 'org-team' ? orgMemberCount : undefined}
                     isActive={activeCollectionId === item.id}
                     onClick={() => onSelectCollection(item.id)}
-                  />
-                </div>
-              ))}
-              {/* Employee Groups - listed immediately after All Users (only for admins) */}
-              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && employeeGroups.map((group) => (
-                <div
-                  key={`group-${group.id}`}
-                  onMouseEnter={(e) => handleItemHover({ id: `group-${group.id}`, label: group.name, icon: Users }, e, () => onSelectCollection(`group-${group.id}`))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={{ id: `group-${group.id}`, label: group.name, icon: Users }}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === `group-${group.id}`}
-                    count={group.member_count}
-                    onClick={() => onSelectCollection(`group-${group.id}`)}
                   />
                 </div>
               ))}

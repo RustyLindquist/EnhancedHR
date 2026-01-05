@@ -121,12 +121,12 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
             </div>
           )}
 
-          {/* Company Collections - Only for Org Admins */}
+          {/* Org Collections - Only for Org Admins */}
           {item && isOrgAdmin && orgCollections.length > 0 && (
             <div className="space-y-3 mb-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Building size={12} />
-                Company Collections
+                Org Collections
               </h3>
               {orgCollections.map(col => (
                 <div

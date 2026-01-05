@@ -2183,7 +2183,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
-        if (activeCollectionId === 'new-org-collection') return 'New Company Collection';
+        if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
 
         // Org collections
         if (viewingOrgCollection) return viewingOrgCollection.name;
@@ -2206,7 +2207,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
         if (activeCollectionId === 'new-org-collection') return 'Create Collection';
-        if (viewingOrgCollection) return 'Company Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
+        if (viewingOrgCollection) return 'Org Collection';
         return 'My Collection';
     };
 
@@ -2313,6 +2315,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // Render Visual Helpers
     const renderCollectionVisual = () => {
         if (activeCollectionId === 'conversations') return <ConversationVisual />;
+        if (activeCollectionId === 'company') return <CompanyVisual />;
         if (viewingOrgCollection) return <CompanyVisual />;
         if (activeCollectionId === 'instructors') return <InstructorVisual />;
         if (activeCollectionId === 'help') return <HelpVisual />;

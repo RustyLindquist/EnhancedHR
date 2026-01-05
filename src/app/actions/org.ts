@@ -536,23 +536,25 @@ export interface OrgCollection {
 
 export async function getOrgCollections(): Promise<OrgCollection[]> {
   try {
+    console.log('[getOrgCollections] Starting');
     const orgContext = await getOrgContext();
+    console.log('[getOrgCollections] orgContext:', orgContext);
 
     if (!orgContext?.orgId) {
+      console.log('[getOrgCollections] No orgId, returning empty');
       return [];
     }
 
     const adminClient = createAdminClient();
 
     // Fetch org collections with item counts
+    console.log('[getOrgCollections] Querying for org:', orgContext.orgId);
     const { data: collections, error } = await adminClient
       .from('user_collections')
       .select(`
         id,
         label,
         color,
-        is_required,
-        due_date,
         collection_items(count)
       `)
       .eq('org_id', orgContext.orgId)
@@ -560,20 +562,22 @@ export async function getOrgCollections(): Promise<OrgCollection[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('getOrgCollections error:', error);
+      console.error('[getOrgCollections] Query error:', error);
       return [];
     }
+
+    console.log('[getOrgCollections] Found collections:', collections);
 
     return (collections || []).map(col => ({
       id: col.id,
       label: col.label,
       color: col.color || '#64748B',
-      is_required: col.is_required || false,
-      due_date: col.due_date,
+      is_required: false,
+      due_date: null,
       item_count: (col.collection_items as any)?.[0]?.count || 0
     }));
   } catch (error) {
-    console.error('getOrgCollections exception:', error);
+    console.error('[getOrgCollections] Exception:', error);
     return [];
   }
 }
@@ -707,13 +711,17 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
  */
 export async function createOrgCollection(name: string, color: string): Promise<{ success: boolean; collectionId?: string; error?: string }> {
   try {
+    console.log('[createOrgCollection] Starting with name:', name, 'color:', color);
     const orgContext = await getOrgContext();
+    console.log('[createOrgCollection] orgContext:', orgContext);
 
     if (!orgContext?.orgId) {
+      console.log('[createOrgCollection] No orgId found');
       return { success: false, error: 'You must be part of an organization' };
     }
 
     if (!orgContext.isOrgAdmin && !orgContext.isPlatformAdmin) {
+      console.log('[createOrgCollection] User is not org admin');
       return { success: false, error: 'Only org admins can create company collections' };
     }
 
@@ -721,8 +729,11 @@ export async function createOrgCollection(name: string, color: string): Promise<
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log('[createOrgCollection] No user found');
       return { success: false, error: 'Unauthorized' };
     }
+
+    console.log('[createOrgCollection] Creating collection for user:', user.id, 'org:', orgContext.orgId);
 
     // Create the org collection
     const adminClient = createAdminClient();
@@ -740,14 +751,15 @@ export async function createOrgCollection(name: string, color: string): Promise<
       .single();
 
     if (error) {
-      console.error('createOrgCollection error:', error);
+      console.error('[createOrgCollection] Insert error:', error);
       return { success: false, error: 'Failed to create collection' };
     }
 
+    console.log('[createOrgCollection] Created collection:', data);
     revalidatePath('/dashboard');
     return { success: true, collectionId: data.id };
   } catch (error: any) {
-    console.error('createOrgCollection exception:', error);
+    console.error('[createOrgCollection] Exception:', error);
     return { success: false, error: error.message };
   }
 }

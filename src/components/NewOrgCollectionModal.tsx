@@ -70,7 +70,7 @@ export default function NewOrgCollectionModal({ isOpen, onClose, onSuccess }: Ne
                         <div className="p-2 rounded-lg bg-slate-500/10">
                             <Building size={20} className="text-slate-400" />
                         </div>
-                        <h2 className="text-xl font-bold text-white">New Company Collection</h2>
+                        <h2 className="text-xl font-bold text-white">New Org Collection</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -126,7 +126,7 @@ export default function NewOrgCollectionModal({ isOpen, onClose, onSuccess }: Ne
                             <Layers size={18} className="text-brand-blue-light mt-0.5" />
                             <div>
                                 <p className="text-sm text-slate-300">
-                                    Company collections are visible to all members of your organization.
+                                    Org collections are visible to all members of your organization.
                                 </p>
                                 <p className="text-xs text-slate-500 mt-1">
                                     Only org admins can add or remove content.
