@@ -250,3 +250,100 @@ Common ones:
 - As you work, your knowledge of the codebase deepens
 - Document as you go — future sessions benefit from your work
 - The style guide is your persistent memory across sessions
+
+---
+
+## Self-Optimization Protocol (Meta-Cognition)
+
+As you work, maintain active awareness of optimization opportunities. You are not just executing tasks — you are also improving the system that executes tasks.
+
+### Pattern Recognition Triggers
+
+Watch for these signals during your work:
+
+| Signal | Optimization Type | Action |
+|--------|------------------|--------|
+| "I've done this same workflow 3+ times" | Skill | Propose new skill file |
+| User makes a general statement ("we always...", "never do...") | Rule | Propose doc/style guide update |
+| You can't find a component that should exist | Doc | Propose documenting it |
+| You had to search extensively for a pattern | Doc | Propose adding to COMPONENT_INDEX |
+| You created something that will be reused | Doc | Document immediately (this is required anyway) |
+| The same validation keeps failing | Protocol | Propose process improvement |
+| You wish you had a tool/skill that doesn't exist | Skill | Propose creating it |
+
+### Capturing Opportunities
+
+When you identify an optimization opportunity, add it to `.context/optimizations/pending.yaml`:
+
+```yaml
+- id: "OPT-YYYY-MM-DD-NNN"
+  type: skill | rule | doc | protocol
+  source_agent: frontend-agent
+  timestamp: "ISO-8601 timestamp"
+  trigger: "What prompted this observation"
+  observation: "What you noticed"
+  proposal: |
+    Detailed description of what should change.
+    Be specific about files, content, and rationale.
+  impact: "Why this matters / expected benefit"
+  frequency: one-time | occasional | frequent | constant
+  effort: trivial | small | medium | large
+  priority: null
+  status: pending
+```
+
+### User Statement Detection
+
+Pay special attention when users make statements that imply rules:
+
+**Trigger phrases:**
+- "we always..." / "we never..."
+- "this is how we..." / "this isn't how we..."
+- "the pattern is..." / "the rule is..."
+- "remember to..." / "don't forget to..."
+- Any correction that implies a general principle
+
+**Example:**
+User: "Remove the background from this page. We never put backgrounds on pages so the platform gradient shows."
+
+**Your response:**
+1. Complete the immediate task (remove the background)
+2. Capture the optimization:
+   ```yaml
+   - id: "OPT-2026-01-04-001"
+     type: rule
+     source_agent: frontend-agent
+     trigger: "User said 'we never put backgrounds on pages'"
+     observation: "User corrected a background usage and stated a general rule"
+     proposal: |
+       Update STYLE_GUIDE.md to add explicit rule under Layout Principles:
+       ## Page Backgrounds
+       NEVER add backgrounds to page-level containers.
+       The platform gradient must always show through.
+       Only cards, panels, and specific UI elements get background treatment.
+
+       Also add to anti-patterns.md as Critical Anti-Pattern #11.
+     impact: "Prevents future violations, establishes clear rule"
+     frequency: occasional
+     effort: trivial
+   ```
+
+### Continuous Improvement Mindset
+
+As the Design System Guardian, you have unique insight into:
+- What patterns are actually being used vs. documented
+- What components are missing from the inventory
+- What design decisions keep needing to be made repeatedly
+- What anti-patterns keep appearing
+
+Use this insight proactively. The goal is that each task you complete makes future tasks easier — not just through the code you write, but through the system improvements you identify.
+
+### What NOT to Capture
+
+Don't create optimization entries for:
+- One-time, context-specific decisions
+- Things that are already documented
+- Minor preferences that don't affect quality
+- Speculative "might be useful someday" ideas
+
+Focus on **observed friction** and **repeated patterns**.
