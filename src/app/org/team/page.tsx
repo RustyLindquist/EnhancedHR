@@ -20,8 +20,9 @@ export default async function OrgTeamPage() {
         .eq('id', orgContext.orgId)
         .single();
 
+    const baseUrl = await getBaseUrl();
     const inviteUrl = org
-        ? `${getBaseUrl()}/${org.slug}/${org.invite_hash}`
+        ? `${baseUrl}/${org.slug}/${org.invite_hash}`
         : '';
 
     // Fetch Members using the effective org ID
