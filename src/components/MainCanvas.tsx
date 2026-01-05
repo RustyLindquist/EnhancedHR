@@ -2185,6 +2185,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'help') return 'Platform Features';
         if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
         if (activeCollectionId === 'company') return 'Org Collection';
+        if (activeCollectionId === 'assigned-learning') return 'Assigned Learning';
 
         // Org collections
         if (viewingOrgCollection) return viewingOrgCollection.name;
@@ -2208,6 +2209,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'help') return 'Help Collection';
         if (activeCollectionId === 'new-org-collection') return 'Create Collection';
         if (activeCollectionId === 'company') return 'Org Collection';
+        if (activeCollectionId === 'assigned-learning') return 'My Learning';
         if (viewingOrgCollection) return 'Org Collection';
         return 'My Collection';
     };

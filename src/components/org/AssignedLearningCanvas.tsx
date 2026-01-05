@@ -5,7 +5,6 @@ import { getUserAggregateAssignments, ContentAssignment } from '@/app/actions/as
 import { createClient } from '@/lib/supabase/client';
 import { BookOpen, AlertCircle, Loader2, ClipboardList } from 'lucide-react';
 import UniversalCard from '@/components/cards/UniversalCard';
-import CanvasHeader from '../CanvasHeader';
 
 const AssignedLearningCanvas: React.FC = () => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
@@ -63,28 +62,11 @@ const AssignedLearningCanvas: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col w-full relative">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-50">
-                <CanvasHeader
-                    context="My Learning"
-                    title="Assigned Learning"
-                >
-                    <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 text-brand-blue-light mr-4">
-                            <div className="w-2 h-2 rounded-full bg-brand-blue-light animate-pulse"></div>
-                            <span className="text-sm font-bold uppercase tracking-widest">
-                                {assignments.length} {assignments.length === 1 ? 'Item' : 'Items'}
-                            </span>
-                        </div>
-                    </div>
-                </CanvasHeader>
-            </div>
-
+        <div className="flex flex-col w-full relative pt-8">
             {/* Scrollable Content */}
-            <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pt-8 pl-20 custom-scrollbar">
+            <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pl-20 custom-scrollbar">
                 {assignments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-[#131b2c] border border-white/5 rounded-2xl">
+                    <div className="flex flex-col items-center justify-center py-20">
                         <ClipboardList size={48} className="text-slate-600 mb-4" />
                         <h3 className="text-xl font-bold text-white mb-2">No Assigned Learning</h3>
                         <p className="text-slate-400 max-w-sm text-center">
