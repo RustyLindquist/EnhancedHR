@@ -1,39 +1,45 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 import {
   Loader2, TrendingUp, TrendingDown, Users, BookOpen, Brain,
   Award, Target, Clock, BarChart3, MessageSquare, Zap,
-  Sparkles, Send, X, Calendar
+  Sparkles, Send, X
 } from 'lucide-react';
 import { getOrgDashboardMetrics, getGroupsForFilter, DashboardMetrics, GroupFilterOption } from '@/app/actions/org-dashboard';
 import DateRangePicker from '@/components/org/DateRangePicker';
 import DashboardFilterDropdown from '@/components/org/DashboardFilterDropdown';
 import LearningTrendChart from '@/components/org/charts/LearningTrendChart';
-import EngagementChart from '@/components/org/charts/EngagementChart';
+import EngagementTrendsChart from '@/components/org/charts/EngagementTrendsChart';
 import SkillsChart from '@/components/org/charts/SkillsChart';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import CanvasHeader from '@/components/CanvasHeader';
 import { getAnalyticsContextString } from '@/app/actions/cost-analytics';
 
 // Loading Skeleton Components
 const DashboardSkeleton = () => (
-  <div className="space-y-6 pb-20 animate-pulse">
-    {/* Header skeleton */}
-    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-      <div>
-        <div className="h-8 bg-white/10 rounded w-48 mb-2"></div>
-        <div className="h-4 bg-white/10 rounded w-64"></div>
+  <div className="space-y-6 pb-20 animate-pulse px-8 pt-8 pl-20">
+    {/* Settings For Analysis skeleton */}
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+      <div className="h-4 bg-white/10 rounded w-40 mb-4"></div>
+      <div className="flex flex-col sm:flex-row items-stretch gap-0">
+        <div className="flex-shrink-0 min-w-[200px] max-w-sm pr-6">
+          <div className="h-10 bg-white/10 rounded-xl w-full"></div>
+        </div>
+        <div className="hidden sm:block w-px bg-white/10 mx-2"></div>
+        <div className="flex-1 pl-6 pt-4 sm:pt-0">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-7 bg-white/10 rounded-full w-14"></div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-9 bg-white/10 rounded-xl w-32"></div>
+            <div className="h-4 bg-white/10 rounded w-6"></div>
+            <div className="h-9 bg-white/10 rounded-xl w-32"></div>
+          </div>
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="h-10 bg-white/10 rounded-xl w-64"></div>
-        <div className="h-10 bg-white/10 rounded-xl w-32"></div>
-      </div>
-    </div>
-
-    {/* Group Filter skeleton */}
-    <div className="max-w-sm">
-      <div className="h-10 bg-white/10 rounded-xl w-full"></div>
     </div>
 
     {/* Engagement Metrics skeleton */}
@@ -63,40 +69,6 @@ const DashboardSkeleton = () => (
             <div className="h-8 bg-white/10 rounded w-16"></div>
           </div>
         ))}
-      </div>
-      <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-        <div className="h-4 bg-white/10 rounded w-32 mb-4"></div>
-        <div className="h-48 lg:h-64 bg-white/10 rounded"></div>
-      </div>
-    </div>
-
-    {/* AI Usage skeleton */}
-    <div className="space-y-4">
-      <div className="h-6 bg-white/10 rounded w-48"></div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/10">
-            <div className="h-4 bg-white/10 rounded w-24 mb-2"></div>
-            <div className="h-8 bg-white/10 rounded w-16"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Certifications skeleton */}
-    <div className="space-y-4">
-      <div className="h-6 bg-white/10 rounded w-48"></div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2].map(i => (
-          <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/10">
-            <div className="h-4 bg-white/10 rounded w-24 mb-2"></div>
-            <div className="h-8 bg-white/10 rounded w-16"></div>
-          </div>
-        ))}
-        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-          <div className="h-4 bg-white/10 rounded w-24 mb-4"></div>
-          <div className="h-64 bg-white/10 rounded"></div>
-        </div>
       </div>
     </div>
   </div>
@@ -140,9 +112,11 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, subtext, icon, color 
   </div>
 );
 
-export default function OrgDashboardPage() {
-  const searchParams = useSearchParams();
+interface OrgAnalyticsCanvasProps {
+  initialGroupId?: string;
+}
 
+export default function OrgAnalyticsCanvas({ initialGroupId }: OrgAnalyticsCanvasProps) {
   // Calculate default date range (30 days ago to today)
   const getDefaultDates = () => {
     const end = new Date();
@@ -156,7 +130,7 @@ export default function OrgDashboardPage() {
   // State
   const [startDate, setStartDate] = useState<Date>(defaultStart);
   const [endDate, setEndDate] = useState<Date>(defaultEnd);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(initialGroupId || null);
   const [groups, setGroups] = useState<GroupFilterOption[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,19 +141,6 @@ export default function OrgDashboardPage() {
   const [analyticsInput, setAnalyticsInput] = useState('');
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
   const analyticsMessagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Check for groupId in URL params
-  const [isDeepLinked, setIsDeepLinked] = useState(false);
-
-  useEffect(() => {
-    const groupIdParam = searchParams.get('groupId');
-    if (groupIdParam) {
-      setSelectedGroupId(groupIdParam);
-      setIsDeepLinked(true);
-      // Clear the deep link indicator after 5 seconds
-      setTimeout(() => setIsDeepLinked(false), 5000);
-    }
-  }, [searchParams]);
 
   // Fetch groups on mount
   useEffect(() => {
@@ -313,228 +274,233 @@ export default function OrgDashboardPage() {
 
   const formatAvgSessions = (totalUsers: number) => {
     if (!metrics || totalUsers === 0) return '0';
-    // Rough estimate: active users as proxy for sessions
     return (metrics.activeUsers / totalUsers).toFixed(1);
   };
 
   // Show skeleton during initial load
   if (isLoading && !metrics) {
-    return <DashboardSkeleton />;
+    return (
+      <div className="flex flex-col w-full relative">
+        <div className="sticky top-0 z-50">
+          <CanvasHeader
+            context="organization"
+            title="Analytics"
+          >
+            <div className="h-10 bg-white/10 rounded-xl w-32 animate-pulse"></div>
+          </CanvasHeader>
+        </div>
+        <DashboardSkeleton />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Org Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Insights into your organization's learning journey
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onDateChange={handleDateChange}
-          />
+    <div className="flex flex-col w-full relative">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50">
+        <CanvasHeader
+          context="organization"
+          title="Analytics"
+        >
           <button
             onClick={() => setIsAnalyticsPanelOpen(true)}
-            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:from-purple-600 hover:to-purple-700 transition-all whitespace-nowrap"
+            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium flex items-center gap-2 hover:from-purple-600 hover:to-purple-700 transition-all whitespace-nowrap text-sm"
           >
             <Sparkles size={16} />
             AI Insights
           </button>
-        </div>
+        </CanvasHeader>
       </div>
 
-      {/* Deep Link Notice (when navigating from Group page) */}
-      {isDeepLinked && selectedGroupId && (
-        <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-3 flex items-center gap-3 animate-fade-in">
-          <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-            <TrendingUp size={16} className="text-purple-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-purple-300">
-              Viewing: {groups.find(g => g.id === selectedGroupId)?.name || 'Group'}
-            </p>
-            <p className="text-xs text-purple-400/70">
-              Full analytics for this group
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Group Filter */}
-      <div className="max-w-sm">
-        <DashboardFilterDropdown
-          selectedGroupId={selectedGroupId}
-          groups={groups}
-          onGroupChange={handleGroupChange}
-        />
-      </div>
-
-      {/* Engagement Metrics Row */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <Users size={20} className="text-brand-blue-light" />
-          Engagement Metrics
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Active Users"
-            value={metrics?.activeUsers.toLocaleString() || '0'}
-            subtext={`of ${metrics?.totalUsers || 0} total`}
-            icon={<Users size={16} className="text-brand-blue-light" />}
-            color="text-brand-blue-light"
-          />
-          <StatCard
-            label="Engagement Rate"
-            value={`${metrics?.engagementRate || 0}%`}
-            icon={<Target size={16} className="text-emerald-400" />}
-            color="text-emerald-400"
-          />
-          <StatCard
-            label="Total Members"
-            value={metrics?.totalUsers.toLocaleString() || '0'}
-            icon={<Users size={16} className="text-slate-400" />}
-          />
-          <StatCard
-            label="Avg Sessions/User"
-            value={formatAvgSessions(metrics?.totalUsers || 0)}
-            icon={<BarChart3 size={16} className="text-purple-400" />}
-            color="text-purple-400"
-          />
-        </div>
-        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-          <h3 className="text-sm font-bold text-slate-300 mb-4">Daily Active Users</h3>
-          {metrics?.dailyEngagement && metrics.dailyEngagement.length > 0 ? (
-            <div className="h-48 lg:h-64">
-              <EngagementChart data={metrics.dailyEngagement} />
+      {/* Scrollable Content */}
+      <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pt-8 pl-20 space-y-6">
+        {/* Settings For Analysis Container */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Settings For Analysis</h3>
+          <div className="flex flex-col sm:flex-row items-stretch gap-0">
+            {/* Group Selector (Left) */}
+            <div className="flex-shrink-0 min-w-[200px] max-w-sm pr-6">
+              <DashboardFilterDropdown
+                selectedGroupId={selectedGroupId}
+                groups={groups}
+                onGroupChange={handleGroupChange}
+              />
             </div>
-          ) : (
-            <EmptyState
-              icon={Users}
-              title="No Engagement Data Yet"
-              message="Engagement data will appear as team members start exploring courses and content."
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Learning Metrics Row */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <BookOpen size={20} className="text-purple-400" />
-          Learning Metrics
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Learning Time"
-            value={formatMinutes(metrics?.totalLearningMinutes || 0)}
-            icon={<Clock size={16} className="text-purple-400" />}
-            color="text-purple-400"
-          />
-          <StatCard
-            label="Avg Per User"
-            value={formatMinutes(metrics?.avgLearningMinutes || 0)}
-            icon={<Clock size={16} className="text-cyan-400" />}
-            color="text-cyan-400"
-          />
-          <StatCard
-            label="Courses Completed"
-            value={metrics?.coursesCompleted.toLocaleString() || '0'}
-            icon={<BookOpen size={16} className="text-emerald-400" />}
-            color="text-emerald-400"
-          />
-          <StatCard
-            label="Lessons Completed"
-            value={metrics?.lessonsCompleted.toLocaleString() || '0'}
-            icon={<Target size={16} className="text-amber-400" />}
-            color="text-amber-400"
-          />
-        </div>
-        <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-          <h3 className="text-sm font-bold text-slate-300 mb-4">Learning Trend (Minutes)</h3>
-          {metrics?.dailyLearning && metrics.dailyLearning.length > 0 ? (
-            <div className="h-48 lg:h-64">
-              <LearningTrendChart data={metrics.dailyLearning} />
+            {/* Vertical Separator */}
+            <div className="hidden sm:block w-px bg-white/10 mx-2" />
+            {/* Date Range Picker (Right) */}
+            <div className="flex-1 pl-6 pt-4 sm:pt-0">
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                onDateChange={handleDateChange}
+              />
             </div>
-          ) : (
-            <EmptyState
-              icon={BookOpen}
-              title="No Learning Activity Yet"
-              message="Learning trends will appear as team members complete lessons and courses. Encourage your team to start exploring!"
+          </div>
+        </div>
+
+        {/* Engagement Metrics Row */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Users size={20} className="text-brand-blue-light" />
+            Engagement Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Active Users"
+              value={metrics?.activeUsers.toLocaleString() || '0'}
+              subtext={`of ${metrics?.totalUsers || 0} total`}
+              icon={<Users size={16} className="text-brand-blue-light" />}
+              color="text-brand-blue-light"
             />
-          )}
-        </div>
-      </div>
-
-      {/* AI Usage Metrics Row */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <Brain size={20} className="text-purple-400" />
-          AI Usage Metrics
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Conversations"
-            value={metrics?.totalConversations.toLocaleString() || '0'}
-            icon={<MessageSquare size={16} className="text-purple-400" />}
-            color="text-purple-400"
-          />
-          <StatCard
-            label="Total Interactions"
-            value={metrics?.totalInteractions.toLocaleString() || '0'}
-            icon={<Zap size={16} className="text-amber-400" />}
-            color="text-amber-400"
-          />
-          <StatCard
-            label="Avg Per User"
-            value={metrics?.avgConversationsPerUser.toFixed(1) || '0'}
-            icon={<BarChart3 size={16} className="text-cyan-400" />}
-            color="text-cyan-400"
-          />
-          <StatCard
-            label="Insights Generated"
-            value={Math.round((metrics?.totalInteractions || 0) * 0.7).toLocaleString()}
-            subtext="Estimated from interactions"
-            icon={<Sparkles size={16} className="text-purple-400" />}
-            color="text-purple-400"
-          />
-        </div>
-      </div>
-
-      {/* Certifications & Skills Row */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <Award size={20} className="text-amber-400" />
-          Certifications & Skills
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            label="SHRM Credits"
-            value={metrics?.shrmiCredits.toFixed(1) || '0'}
-            icon={<Award size={16} className="text-amber-400" />}
-            color="text-amber-400"
-          />
-          <StatCard
-            label="HRCI Credits"
-            value={metrics?.hrciCredits.toFixed(1) || '0'}
-            icon={<Award size={16} className="text-emerald-400" />}
-            color="text-emerald-400"
-          />
-          <div className="md:col-span-1 bg-white/5 p-6 rounded-xl border border-white/10">
-            <h3 className="text-sm font-bold text-slate-300 mb-4">Top Skills</h3>
-            {metrics?.topSkills && metrics.topSkills.length > 0 ? (
-              <SkillsChart data={metrics.topSkills} />
+            <StatCard
+              label="Engagement Rate"
+              value={`${metrics?.engagementRate || 0}%`}
+              icon={<Target size={16} className="text-emerald-400" />}
+              color="text-emerald-400"
+            />
+            <StatCard
+              label="Total Members"
+              value={metrics?.totalUsers.toLocaleString() || '0'}
+              icon={<Users size={16} className="text-slate-400" />}
+            />
+            <StatCard
+              label="Avg Sessions/User"
+              value={formatAvgSessions(metrics?.totalUsers || 0)}
+              icon={<BarChart3 size={16} className="text-purple-400" />}
+              color="text-purple-400"
+            />
+          </div>
+          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+            <h3 className="text-sm font-bold text-slate-300 mb-4">Engagement Trends</h3>
+            {metrics?.dailyEngagementTrends && metrics.dailyEngagementTrends.length > 0 ? (
+              <div className="h-56 lg:h-72">
+                <EngagementTrendsChart data={metrics.dailyEngagementTrends} />
+              </div>
             ) : (
               <EmptyState
-                icon={Target}
-                title="No Skills Data Yet"
-                message="Skills data will appear as team members complete courses and earn certifications."
+                icon={Users}
+                title="No Engagement Data Yet"
+                message="Engagement data will appear as team members start exploring courses and content."
               />
             )}
+          </div>
+        </div>
+
+        {/* Learning Metrics Row */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <BookOpen size={20} className="text-purple-400" />
+            Learning Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total Learning Time"
+              value={formatMinutes(metrics?.totalLearningMinutes || 0)}
+              icon={<Clock size={16} className="text-purple-400" />}
+              color="text-purple-400"
+            />
+            <StatCard
+              label="Avg Per User"
+              value={formatMinutes(metrics?.avgLearningMinutes || 0)}
+              icon={<Clock size={16} className="text-cyan-400" />}
+              color="text-cyan-400"
+            />
+            <StatCard
+              label="Courses Completed"
+              value={metrics?.coursesCompleted.toLocaleString() || '0'}
+              icon={<BookOpen size={16} className="text-emerald-400" />}
+              color="text-emerald-400"
+            />
+            <StatCard
+              label="Lessons Completed"
+              value={metrics?.lessonsCompleted.toLocaleString() || '0'}
+              icon={<Target size={16} className="text-amber-400" />}
+              color="text-amber-400"
+            />
+          </div>
+          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+            <h3 className="text-sm font-bold text-slate-300 mb-4">Learning Trend (Minutes)</h3>
+            {metrics?.dailyLearning && metrics.dailyLearning.length > 0 ? (
+              <div className="h-48 lg:h-64">
+                <LearningTrendChart data={metrics.dailyLearning} />
+              </div>
+            ) : (
+              <EmptyState
+                icon={BookOpen}
+                title="No Learning Activity Yet"
+                message="Learning trends will appear as team members complete lessons and courses. Encourage your team to start exploring!"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* AI Usage Metrics Row */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Brain size={20} className="text-purple-400" />
+            AI Usage Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total Conversations"
+              value={metrics?.totalConversations.toLocaleString() || '0'}
+              icon={<MessageSquare size={16} className="text-purple-400" />}
+              color="text-purple-400"
+            />
+            <StatCard
+              label="Total Interactions"
+              value={metrics?.totalInteractions.toLocaleString() || '0'}
+              icon={<Zap size={16} className="text-amber-400" />}
+              color="text-amber-400"
+            />
+            <StatCard
+              label="Avg Per User"
+              value={metrics?.avgConversationsPerUser.toFixed(1) || '0'}
+              icon={<BarChart3 size={16} className="text-cyan-400" />}
+              color="text-cyan-400"
+            />
+            <StatCard
+              label="Insights Generated"
+              value={Math.round((metrics?.totalInteractions || 0) * 0.7).toLocaleString()}
+              subtext="Estimated from interactions"
+              icon={<Sparkles size={16} className="text-purple-400" />}
+              color="text-purple-400"
+            />
+          </div>
+        </div>
+
+        {/* Certifications & Skills Row */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Award size={20} className="text-amber-400" />
+            Certifications & Skills
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatCard
+              label="SHRM Credits"
+              value={metrics?.shrmiCredits.toFixed(1) || '0'}
+              icon={<Award size={16} className="text-amber-400" />}
+              color="text-amber-400"
+            />
+            <StatCard
+              label="HRCI Credits"
+              value={metrics?.hrciCredits.toFixed(1) || '0'}
+              icon={<Award size={16} className="text-emerald-400" />}
+              color="text-emerald-400"
+            />
+            <div className="md:col-span-1 bg-white/5 p-6 rounded-xl border border-white/10">
+              <h3 className="text-sm font-bold text-slate-300 mb-4">Top Skills</h3>
+              {metrics?.topSkills && metrics.topSkills.length > 0 ? (
+                <SkillsChart data={metrics.topSkills} />
+              ) : (
+                <EmptyState
+                  icon={Target}
+                  title="No Skills Data Yet"
+                  message="Skills data will appear as team members complete courses and earn certifications."
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -579,8 +545,8 @@ export default function OrgDashboardPage() {
                       <Sparkles size={14} className="text-purple-400" />
                     </div>
                     <div className="bg-white/5 border border-white/10 p-3 rounded-xl rounded-tl-none text-sm text-slate-300">
-                      <p>I can analyze your organization's AI conversations to identify learning needs, skill gaps, and training opportunities.</p>
-                      <p className="mt-2 text-slate-500 text-xs">Your team's privacy is protected - I only see aggregated patterns.</p>
+                      <p>I can analyze your organization&apos;s AI conversations to identify learning needs, skill gaps, and training opportunities.</p>
+                      <p className="mt-2 text-slate-500 text-xs">Your team&apos;s privacy is protected - I only see aggregated patterns.</p>
                     </div>
                   </div>
 
@@ -619,7 +585,7 @@ export default function OrgDashboardPage() {
                     <div className="flex justify-start">
                       <div className="bg-white/5 border border-white/10 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-400 text-sm">
                         <Loader2 size={14} className="animate-spin" />
-                        Analyzing your organization's data...
+                        Analyzing your organization&apos;s data...
                       </div>
                     </div>
                   )}

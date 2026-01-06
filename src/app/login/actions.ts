@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
+import { trackLoginEvent } from '@/app/actions/org-dashboard'
 
 export async function signInWithOAuth(provider: 'google' | 'apple') {
     const supabase = await createClient()
@@ -46,6 +47,10 @@ export async function login(formData: FormData) {
     if (error) {
         return { error: error.message }
     }
+
+    // Track login event for analytics
+    const headersList = await headers()
+    await trackLoginEvent(headersList.get('user-agent') || undefined)
 
     revalidatePath('/', 'layout')
     redirect('/dashboard')

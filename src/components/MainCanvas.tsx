@@ -9,6 +9,7 @@ import UsersAndGroupsCanvas from '@/components/org/UsersAndGroupsCanvas';
 import AssignedLearningCanvas from '@/components/org/AssignedLearningCanvas';
 import GroupManagement from '@/components/org/GroupManagement';
 import DynamicGroupCriteriaPanel from '@/components/org/DynamicGroupCriteriaPanel';
+import OrgAnalyticsCanvas from '@/components/org/OrgAnalyticsCanvas';
 import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page (legacy)
 import CoursePlayer from './CoursePlayer'; // (legacy)
@@ -3351,7 +3352,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
 
                 {/* --- Header --- */}
                 {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
-                {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && !viewingGroupMember && (
+                {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && activeCollectionId !== 'org-analytics' && !viewingGroupMember && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div className="flex items-center gap-4">
                             {/* Back Button - appears when there's a previous page to navigate to */}
@@ -3836,6 +3837,10 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
                                 <AssignedLearningCanvas />
                             </div>
+                        ) : activeCollectionId === 'org-analytics' ? (
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <OrgAnalyticsCanvas />
+                            </div>
                         ) : activeCollectionId === 'help' ? (
                             // --- HELP COLLECTION VIEW ---
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
@@ -4043,7 +4048,6 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 activeCollectionId === 'notes' ||
                                                 activeCollectionId === 'personal-context' ||
                                                 activeCollectionId === 'org-collections' ||
-                                                activeCollectionId === 'org-analytics' ||
                                                 customCollections.some(c => c.id === activeCollectionId)) ? (
                                                 <div className="relative z-10 w-full mx-auto px-4 pb-32">
                                                     {activeCollectionId === 'org-collections' ? (
@@ -4051,12 +4055,6 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             <Layers size={48} className="mb-4 opacity-20" />
                                                             <h2 className="text-xl font-bold text-white mb-2">Learning Collections</h2>
                                                             <p>Feature coming soon. Curate learning paths for your team.</p>
-                                                        </div>
-                                                    ) : activeCollectionId === 'org-analytics' ? (
-                                                        <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-500">
-                                                            <TrendingUp size={48} className="mb-4 opacity-20" />
-                                                            <h2 className="text-xl font-bold text-white mb-2">Organization Analytics</h2>
-                                                            <p>Feature coming soon. Track your team's progress and ROI.</p>
                                                         </div>
                                                     ) : (
                                                         renderCollectionContent()
