@@ -720,8 +720,8 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const ORG_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'users-groups', label: 'Users and Groups', icon: Users, color: 'text-brand-blue-light' },
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
-    { id: 'org-team', label: 'All Users', icon: Users, color: 'text-brand-blue-light' },
 ];
 
 export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [

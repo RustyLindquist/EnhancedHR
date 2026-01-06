@@ -190,10 +190,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     { id: 'user', label: 'Individual User', email: 'demo.user@enhancedhr.ai', icon: User, color: 'text-slate-400' },
   ];
 
-  const [employeeGroups, setEmployeeGroups] = useState<any[]>([]);
-
   useEffect(() => {
-    const fetchUserAndGroups = async () => {
+    const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Get profile data
@@ -226,16 +224,9 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         if (backupSession) {
           setIsImpersonating(true);
         }
-
-        // Fetch Groups if admin
-        if (role === 'org_admin' || role === 'admin' || membershipStatus === 'org_admin') {
-          const { getOrgGroups } = await import('@/app/actions/groups');
-          const groups = await getOrgGroups();
-          setEmployeeGroups(groups);
-        }
       }
     };
-    fetchUserAndGroups();
+    fetchUser();
   }, []);
 
   // Listen for avatar updates from onboarding or settings
@@ -250,19 +241,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     };
   }, []);
 
-  // Listen for group updates (when groups are created/updated/deleted)
-  useEffect(() => {
-    const handleGroupsUpdated = async () => {
-      const { getOrgGroups } = await import('@/app/actions/groups');
-      const groups = await getOrgGroups();
-      setEmployeeGroups(groups);
-    };
-
-    window.addEventListener('groupsUpdated', handleGroupsUpdated);
-    return () => {
-      window.removeEventListener('groupsUpdated', handleGroupsUpdated);
-    };
-  }, []);
+  // Groups are now managed through the Users and Groups collection, not the nav panel
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -576,22 +555,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                 </div>
               ))}
 
-              {/* User Groups - listed after All Users (only for admins) */}
-              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && employeeGroups.map((group) => (
-                <div
-                  key={`group-${group.id}`}
-                  onMouseEnter={(e) => handleItemHover({ id: `group-${group.id}`, label: group.name, icon: Users }, e, () => onSelectCollection(`group-${group.id}`))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={{ id: `group-${group.id}`, label: group.name, icon: Users }}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === `group-${group.id}`}
-                    count={group.member_count}
-                    onClick={() => onSelectCollection(`group-${group.id}`)}
-                  />
-                </div>
-              ))}
+              {/* User Groups are now accessed through the Users and Groups collection */}
 
               {/* Default Org Collection - show for all org members */}
               <div
@@ -664,6 +628,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             </div>
           </div>
         )}
+
+        {/* Employee Groups section removed - groups are now accessed through Users and Groups collection */}
       </div>
 
       {/* User Profile Summary (Bottom) */}
