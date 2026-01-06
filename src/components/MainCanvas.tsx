@@ -3435,7 +3435,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                             </div>
                         </div>
 
-                        <div className="flex space-x-4 items-center">
+                        <div className="flex space-x-2 items-center">
                             {viewingGroup && !viewingGroupMember ? (
                                 <button
                                     onClick={() => {
@@ -3608,10 +3608,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             {activeCollectionId === 'academy' && activeFilterCount > 0 && (
                                                 <button
                                                     onClick={handleResetFilters}
-                                                    className="
-                                     px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
-                                     bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white
-                                 "
+                                                    className="px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white"
                                                 >
                                                     Clear Filters
                                                 </button>
@@ -3668,21 +3665,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     ) && (
                                             <button
                                                 onClick={handleOpenDrawer}
-                                                className={`
-                                group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border
-                                ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-black/40 text-brand-blue-light border-brand-blue-light/30 hover:bg-black/60'}
-`}
+                                                className={`px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20 hover:text-white'}`}
                                             >
-                                                {!isDrawerOpen && <div className="absolute inset-0 bg-brand-blue-light/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-
-                                                <SlidersHorizontal size={14} className="mr-3" />
-                                                <span>Search & Filter</span>
-                                                {activeFilterCount > 0 && !isDrawerOpen && (
-                                                    <div className="ml-3 bg-brand-orange text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                                                        {activeFilterCount}
-                                                    </div>
-                                                )}
-                                                {isDrawerOpen && <ChevronDown size={14} className="ml-3" />}
+                                                Search & Filter
                                             </button>
                                         )}
 
@@ -3690,11 +3675,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     {activeCollectionId === 'academy' && (
                                         <button
                                             onClick={() => onSelectCollection('instructors')}
-                                            className="group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border bg-black/40 text-slate-300 border-white/10 hover:bg-black/60 hover:text-white hover:border-white/20"
+                                            className="px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white"
                                         >
-                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                            <Users size={14} className="mr-3" />
-                                            <span>Experts</span>
+                                            Experts
                                         </button>
                                     )}
 
@@ -3702,11 +3685,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     {activeCollectionId === 'academy' && (
                                         <button
                                             onClick={() => onSelectCollection('certifications')}
-                                            className="group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border bg-black/40 text-slate-300 border-white/10 hover:bg-black/60 hover:text-white hover:border-white/20"
+                                            className="px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white"
                                         >
-                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                            <Award size={14} className="mr-3" />
-                                            <span>Certifications</span>
+                                            Certifications
                                         </button>
                                     )}
 
