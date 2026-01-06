@@ -55,12 +55,12 @@ export async function getRecommendedCourses(userId: string): Promise<Course[]> {
     `;
 
     try {
-        // Use a fast model for recommendations, or the override if specified
+        // Use the model from database, or fallback to a reliable default
         const response = await generateOpenRouterResponse(
-            overrideModel || 'google/gemma-2-27b-it:free',
+            overrideModel || 'google/gemini-2.0-flash-001',
             finalPrompt,
             [],
-            { agentType: 'backend_ai', userId }
+            { agentType: 'generate_recommendations', userId }
         );
 
         // Clean response (remove markdown code blocks if present)

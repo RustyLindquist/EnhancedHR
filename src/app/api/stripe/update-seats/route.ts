@@ -17,14 +17,15 @@ export async function POST(req: Request) {
             return new NextResponse('Org ID Required', { status: 400 })
         }
 
-        // 1. Verify Org Admin
+        // 1. Verify Org Admin or Platform Admin
         const { data: profile } = await supabase
             .from('profiles')
-            .select('org_id, membership_status')
+            .select('org_id, membership_status, role')
             .eq('id', user.id)
             .single()
 
-        if (profile?.org_id !== orgId || profile?.membership_status !== 'org_admin') {
+        const isPlatformAdmin = profile?.role === 'admin';
+        if (!isPlatformAdmin && (profile?.org_id !== orgId || profile?.membership_status !== 'org_admin')) {
             return new NextResponse('Unauthorized: Admin only', { status: 403 })
         }
 

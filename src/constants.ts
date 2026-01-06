@@ -16,7 +16,13 @@ import {
   Users,
   Bot,
   Brain,
-  TrendingUp
+  TrendingUp,
+  DollarSign,
+  BarChart2,
+  HelpCircle,
+  StickyNote,
+  Wrench,
+  ClipboardList
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -695,22 +701,22 @@ export const MOCK_COURSES: Course[] = [
 export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
-  { id: 'instructors', label: 'Experts', icon: Users },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
-  { id: 'certifications', label: 'Certifications', icon: Award },
+  { id: 'tools', label: 'Tools', icon: Wrench, color: 'text-teal-400' },
   { id: 'personal-context', label: 'Personal Context', icon: Brain },
+  { id: 'help', label: 'Help', icon: HelpCircle, color: 'text-brand-blue-light' },
 ];
 
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin/courses', label: 'Courses', icon: BookOpen },
-    { id: 'admin/authors', label: 'Experts', icon: GraduationCap },
+    { id: 'admin/experts', label: 'Experts', icon: GraduationCap },
+    { id: 'admin/payouts', label: 'Payouts', icon: DollarSign },
     { id: 'admin/prompts', label: 'AI Agents', icon: MessageSquare },
     { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
     { id: 'admin/system', label: 'System Tools', icon: Layers },
-    { id: 'admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export const ORG_NAV_ITEMS: NavItemConfig[] = [
@@ -718,12 +724,23 @@ export const ORG_NAV_ITEMS: NavItemConfig[] = [
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
 ];
 
+export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'assigned-learning', label: 'Assigned Learning', icon: ClipboardList, color: 'text-emerald-400' },
+];
+
+export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'author', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'author/courses', label: 'My Courses', icon: BookOpen },
+    { id: 'author/analytics', label: 'AI Analytics', icon: BarChart2 },
+    { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
+];
+
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
+  { id: 'notes', label: 'All Notes', icon: StickyNote, color: 'text-amber-400' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
   { id: 'research', label: 'Workspace', icon: Search, color: 'text-brand-orange' },
   { id: 'to_learn', label: 'Watchlist', icon: Clock, color: 'text-brand-blue-light' },
-  { id: 'company', label: 'Company', icon: Building, color: 'text-slate-400' },
   { id: 'new', label: 'New Collection', icon: Plus, color: 'text-brand-blue-light' },
 ];
 
@@ -770,5 +787,23 @@ export const BACKGROUND_THEMES: BackgroundTheme[] = [
     label: 'Ocean Depths',
     type: 'preset',
     value: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-[#054C74]/40 via-[#0A0D12] to-black'
+  },
+  {
+    id: 'morning-mist',
+    label: 'Morning Mist (Animated)',
+    type: 'preset',
+    value: 'bg-[#f8fafc]'
+  },
+  {
+    id: 'clean-slate',
+    label: 'Clean Slate',
+    type: 'preset',
+    value: 'bg-[#f1f5f9]'
+  },
+  {
+    id: 'soft-linen',
+    label: 'Soft Linen',
+    type: 'preset',
+    value: 'bg-[#faf8f5]'
   }
 ];

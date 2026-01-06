@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@mdxeditor/editor": "^3.52.3",
     "@mux/mux-node": "^12.8.0",
     "@mux/mux-player-react": "^3.9.1",
     "@mux/mux-uploader-react": "^1.4.0",
@@ -19,9 +20,12 @@
     "@supabase/supabase-js": "^2.86.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "google-auth-library": "^10.5.0",
     "googleapis": "^168.0.0",
     "lucide-react": "^0.555.0",
-    "next": "16.0.7",
+    "mammoth": "^1.11.0",
+    "next": "^16.1.1",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -32,13 +36,15 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.7",
+    "eslint-config-next": "^16.1.1",
     "supabase": "^2.63.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@10.26.2+sha512.0e308ff2005fc7410366f154f625f6631ab2b16b1d2e70238444dd6ae9d630a8482d92a451144debc492416896ed16f7b114a86ec68b8404b2443869e68ffda6"
 }

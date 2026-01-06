@@ -26,8 +26,33 @@
   --animate-neon-float-2: neon-float 9s ease-in-out infinite;
   --animate-neon-float-3: neon-float 12s ease-in-out infinite;
   --animate-shine: shine 1s;
+  --animate-count-glow: count-glow 1000ms ease-out forwards;
+  --animate-mist-drift-1: mist-drift 20s ease-in-out infinite;
+  --animate-mist-drift-2: mist-drift 25s ease-in-out infinite reverse;
 
   /* Keyframes */
+  @keyframes count-glow {
+    0% {
+      opacity: 0;
+      box-shadow: 0 0 0px 0px rgba(251, 191, 36, 0);
+      background-color: rgba(251, 191, 36, 0);
+    }
+    15% {
+      opacity: 1;
+      box-shadow: 0 0 20px 8px rgba(251, 191, 36, 0.8);
+      background-color: rgba(251, 191, 36, 0.3);
+    }
+    40% {
+      opacity: 1;
+      box-shadow: 0 0 16px 6px rgba(251, 191, 36, 0.6);
+      background-color: rgba(251, 191, 36, 0.2);
+    }
+    100% {
+      opacity: 0;
+      box-shadow: 0 0 0px 0px rgba(251, 191, 36, 0);
+      background-color: rgba(251, 191, 36, 0);
+    }
+  }
   @keyframes float {
 
     0%,
@@ -124,6 +149,29 @@
       left: 125%;
     }
   }
+
+  @keyframes mist-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.6;
+    }
+
+    25% {
+      transform: translate(5%, 3%) scale(1.05);
+      opacity: 0.7;
+    }
+
+    50% {
+      transform: translate(-3%, 5%) scale(1.1);
+      opacity: 0.5;
+    }
+
+    75% {
+      transform: translate(-5%, -3%) scale(1.03);
+      opacity: 0.65;
+    }
+  }
 }
 
 /* Custom Utilities */
@@ -160,6 +208,31 @@
   box-shadow: 0 0 15px rgba(120, 192, 240, 0.5);
 }
 
+/* Dropdown panel scrollbar - bold styled scrollbar for dropdown menus */
+.dropdown-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: #054C74 #000000;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar {
+  width: 25px;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-track {
+  background: #000000;
+  border-radius: 0;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #054C74;
+  border-radius: 12px;
+  border: 4px solid #000000;
+}
+
+.dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #0a6a9e;
+}
+
 .glass-panel {
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(12px);
@@ -180,4 +253,190 @@ body {
   background-color: var(--color-brand-black);
   color: #e2e8f0;
   font-family: var(--font-sans);
+}
+
+/* =====================================================
+   Course Page View Transitions
+   ===================================================== */
+
+/* Fade in animation for general content */
+.animate-fade-in {
+  animation: fadeIn 400ms ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View transition animations for course page */
+/* Slide left (for going forward: description->player, current->next lesson) */
+.course-slide-out-left {
+  animation: slideOutLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.course-slide-in-right {
+  animation: slideInRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Slide right (for going backward: player->description, current->previous lesson) */
+.course-slide-out-right {
+  animation: slideOutRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.course-slide-in-left {
+  animation: slideInLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Default state (no animation) */
+.course-view-stable {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Legacy fallback */
+.course-view-exit {
+  animation: slideOutLeft 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.course-view-enter {
+  animation: slideInRight 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Module expand/collapse animation */
+.module-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 300ms ease, opacity 300ms ease;
+}
+
+.module-content.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.module-content > div {
+  overflow: hidden;
+}
+
+/* Lesson card hover actions */
+.lesson-card-actions {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.lesson-card:hover .lesson-card-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* NOW PLAYING badge pulse animation */
+.now-playing-badge {
+  animation: nowPlayingPulse 2s ease-in-out infinite;
+}
+
+@keyframes nowPlayingPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+/* Video player glow effect */
+.video-container-glow {
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5),
+              0 0 30px rgba(120, 192, 240, 0.1);
+}
+
+/* Progress bar animation */
+.progress-bar-animated {
+  transition: width 500ms ease-out;
+}
+
+/* Button hover glow effects */
+.btn-glow-orange:hover {
+  box-shadow: 0 0 30px rgba(255, 147, 0, 0.3);
+}
+
+.btn-glow-blue:hover {
+  box-shadow: 0 0 20px rgba(120, 192, 240, 0.3);
+}
+
+.btn-glow-green:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Active lesson card glow */
+.lesson-card-active {
+  box-shadow: 0 0 20px rgba(120, 192, 240, 0.3);
+  border-color: rgba(120, 192, 240, 0.5);
+}
+
+/* Chevron rotation for module toggle */
+.chevron-rotate {
+  transition: transform 300ms ease;
+}
+
+.chevron-rotate.expanded {
+  transform: rotate(0deg);
+}
+
+.chevron-rotate.collapsed {
+  transform: rotate(-90deg);
 }

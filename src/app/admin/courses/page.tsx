@@ -7,10 +7,24 @@ export default async function AdminCoursesPage() {
     const supabase = await createClient();
 
     // Fetch courses with minimal fields for list view
-    const { data: courses, error } = await supabase
+    // Try with author_id first, fallback without it if column doesn't exist
+    let courses: any[] | null = null;
+
+    const result = await supabase
         .from('courses')
-        .select('id, title, author, category, status, created_at, image_url')
+        .select('id, title, author, author_id, category, status, created_at, image_url')
         .order('created_at', { ascending: false });
+
+    if (result.error?.message?.includes('author_id')) {
+        // Fallback query without author_id
+        const fallbackResult = await supabase
+            .from('courses')
+            .select('id, title, author, category, status, created_at, image_url')
+            .order('created_at', { ascending: false });
+        courses = fallbackResult.data?.map(c => ({ ...c, author_id: null })) || [];
+    } else {
+        courses = result.data;
+    }
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -82,12 +96,25 @@ export default async function AdminCoursesPage() {
                                     </div>
                                 </td>
                                 <td className="p-5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-                                            {course.author.charAt(0)}
+                                    {course.author_id ? (
+                                        <Link
+                                            href={`/admin/experts/${course.author_id}`}
+                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                                                {course.author?.charAt(0) || '?'}
+                                            </div>
+                                            <span className="text-sm text-brand-blue-light hover:underline">{course.author || 'Unknown'}</span>
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                                                {course.author?.charAt(0) || '?'}
+                                            </div>
+                                            <span className="text-sm text-slate-300">{course.author || 'Unknown'}</span>
                                         </div>
-                                        <span className="text-sm text-slate-300">{course.author}</span>
-                                    </div>
+                                    )}
                                 </td>
                                 <td className="p-5">
                                     <span className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -107,7 +134,7 @@ export default async function AdminCoursesPage() {
                                             <Eye size={16} />
                                         </Link>
                                         <Link
-                                            href={`/admin/courses/${course.id}`}
+                                            href={`/admin/courses/${course.id}/builder`}
                                             className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/20 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light hover:text-brand-black transition-colors"
                                         >
                                             Edit

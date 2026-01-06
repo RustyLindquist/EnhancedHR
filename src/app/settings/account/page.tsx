@@ -1,30 +1,58 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
-import { Shield, Clock, User, CreditCard, Key, Mail, Building2 } from 'lucide-react';
+import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
+import AvatarSection from '@/components/settings/AvatarSection';
+import ExpertProfileSection from '@/components/settings/ExpertProfileSection';
+import { Shield, Clock, User, CreditCard, Mail } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
-import CanvasHeader from '@/components/CanvasHeader';
+import { getMyCredentials, ExpertCredential } from '@/app/actions/credentials';
 
 export default async function AccountPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return <div>Please log in.</div>;
+    if (!user) redirect('/login');
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, org_id, organizations(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, phone_number, linkedin_url, credentials, author_bio, expert_title, organizations(name)')
         .eq('id', user.id)
         .single();
+
+    // Check if user is an expert (approved, pending, OR platform admin)
+    const isExpert = profile?.role === 'admin' ||
+                     profile?.author_status === 'approved' ||
+                     profile?.author_status === 'pending';
+
+    // Fetch itemized credentials for experts and admins
+    let credentials: ExpertCredential[] = [];
+    if (isExpert) {
+        credentials = await getMyCredentials();
+    }
 
 
 
     return (
         <StandardPageLayout activeNavId="settings">
-            <CanvasHeader context="Settings" title="My Account" />
+            {/* Header - positioned absolutely with original transparency to show content scrolling underneath */}
+            <div className="absolute top-0 left-0 right-0 h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10">
+                <div>
+                    <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]">
+                            Settings
+                        </span>
+                    </div>
+                    <h1 className="text-3xl font-light text-white tracking-tight drop-shadow-lg">
+                        My <span className="font-bold text-white">Account</span>
+                    </h1>
+                </div>
+            </div>
 
-            {/* Content Area */}
-            <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
+            {/* Content Area - uses flex-1 to take remaining space, scrolls under header */}
+            {/* pt-[150px] = header height (96px) + 54px spacing for visual start position */}
+            <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 pt-[150px] relative z-10 custom-scrollbar">
 
                 <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
 
@@ -38,6 +66,9 @@ export default async function AccountPage() {
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm space-y-6">
+                            {/* Profile Photo */}
+                            <AvatarSection userId={user.id} currentAvatarUrl={profile?.avatar_url} />
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
@@ -58,14 +89,20 @@ export default async function AccountPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-white/10">
-                                <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white transition-colors">
-                                    <Key size={16} />
-                                    Reset Password
-                                </button>
-                            </div>
+                            <ChangePasswordPanel />
                         </div>
                     </section>
+
+                    {/* Expert Profile Section - Only shown for experts */}
+                    {isExpert && (
+                        <ExpertProfileSection
+                            phoneNumber={profile?.phone_number || null}
+                            linkedinUrl={profile?.linkedin_url || null}
+                            credentials={credentials}
+                            authorBio={profile?.author_bio || null}
+                            expertTitle={profile?.expert_title || null}
+                        />
+                    )}
 
                     {/* Membership Logic Calculation */}
                     {(() => {
@@ -161,7 +198,7 @@ export default async function AccountPage() {
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
                                                 <h3 className="text-3xl font-bold text-white mb-2">{membershipTitle}</h3>
 
-                                                {mStatus === 'trial' && (
+                                                {mStatus === 'trial' && role !== 'admin' && aStatus !== 'approved' && aStatus !== 'pending' && (
                                                     <p className="text-slate-400 flex items-center gap-2">
                                                         <Clock size={16} className="text-brand-orange" />
                                                         {60 - (profile?.trial_minutes_used || 0)} minutes remaining

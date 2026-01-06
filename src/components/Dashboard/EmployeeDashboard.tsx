@@ -254,7 +254,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                     </div>
 
                     {assignedCourses.length > 0 ? (
-                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
+                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                             {assignedCourses.map(course => (
                                 <UniversalCard
                                     key={course.id}
@@ -290,13 +290,14 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
+                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                             {inProgressCourses.map(course => (
                                 <UniversalCard
                                     key={course.id}
                                     type="COURSE"
                                     title={course.title}
                                     subtitle={course.author}
+                                    description={course.description}
                                     imageUrl={course.image}
                                     meta={`${course.progress}% Complete`}
                                     categories={["IN PROGRESS"]}

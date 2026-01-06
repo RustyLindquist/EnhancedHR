@@ -4,12 +4,40 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { ContextItemType } from '@/types';
+import {
+    embedContextItem,
+    embedProfileDetails,
+    updateContextEmbeddings,
+    deleteContextEmbeddings,
+    embedFileChunks
+} from '@/lib/context-embeddings';
+import { parseFileContent, chunkText, uploadFileToStorage } from '@/lib/file-parser';
 
 interface CreateContextItemDTO {
     collection_id?: string | null; // null for Global
     type: ContextItemType;
     title: string;
     content: any;
+}
+
+/**
+ * Extract text content from different item types for embedding
+ */
+function extractTextForEmbedding(type: ContextItemType, content: any, title: string): string {
+    switch (type) {
+        case 'CUSTOM_CONTEXT':
+            return `${title}\n\n${content?.text || ''}`;
+        case 'AI_INSIGHT':
+            return `Insight: ${title}\n${content?.insight || content?.text || ''}`;
+        case 'PROFILE':
+            // Profile is handled separately by embedProfileDetails
+            return '';
+        case 'FILE':
+            // Files are embedded separately after parsing
+            return '';
+        default:
+            return typeof content === 'string' ? content : JSON.stringify(content);
+    }
 }
 
 export async function createContextItem(data: CreateContextItemDTO) {
@@ -22,7 +50,7 @@ export async function createContextItem(data: CreateContextItemDTO) {
     }
 
     const resolvedCollectionId = await resolveCollectionId(supabase, data.collection_id, user.id);
-    
+
     console.log('[createContextItem] Request:', {
         userId: user.id,
         inputCollectionId: data.collection_id,
@@ -50,9 +78,121 @@ export async function createContextItem(data: CreateContextItemDTO) {
 
     console.log('[createContextItem] Success! Inserted:', inserted);
 
+    // Generate embeddings for RAG
+    try {
+        if (data.type === 'PROFILE') {
+            // Profile gets special handling
+            await embedProfileDetails(
+                user.id,
+                inserted.id,
+                data.content,
+                resolvedCollectionId
+            );
+            console.log('[createContextItem] Profile embeddings created');
+        } else if (data.type !== 'FILE') {
+            // Custom context and AI insights get embedded
+            const textToEmbed = extractTextForEmbedding(data.type, data.content, data.title);
+            if (textToEmbed) {
+                const result = await embedContextItem(
+                    user.id,
+                    inserted.id,
+                    data.type,
+                    textToEmbed,
+                    resolvedCollectionId,
+                    { title: data.title }
+                );
+                console.log('[createContextItem] Embeddings created:', result.embeddingCount);
+            }
+        }
+        // FILE type embeddings are handled by createFileContextItem
+    } catch (embeddingError) {
+        // Log but don't fail the creation - embeddings can be regenerated
+        console.error('[createContextItem] Embedding generation failed:', embeddingError);
+    }
+
     revalidatePath('/dashboard');
-    revalidatePath('/academy'); 
-    return { success: true };
+    revalidatePath('/academy');
+    return { success: true, id: inserted.id };
+}
+
+/**
+ * Create a file context item with full parsing and embedding
+ */
+export async function createFileContextItem(
+    collectionId: string | null,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
+    }
+
+    const resolvedCollectionId = await resolveCollectionId(supabase, collectionId, user.id);
+
+    try {
+        // 1. Parse file content
+        const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
+        const textContent = parseResult.success ? parseResult.text : '';
+
+        // 2. Upload to storage
+        const file = new File([fileBuffer], fileName, { type: fileType });
+        const upload = await uploadFileToStorage(file, user.id, resolvedCollectionId || undefined);
+
+        // 3. Create the context item record
+        const { data: inserted, error } = await supabase
+            .from('user_context_items')
+            .insert({
+                user_id: user.id,
+                collection_id: resolvedCollectionId,
+                type: 'FILE',
+                title: fileName,
+                content: {
+                    fileName,
+                    fileType,
+                    fileSize: fileBuffer.byteLength,
+                    url: upload.success ? upload.url : null,
+                    storagePath: upload.success ? upload.path : null,
+                    parsedTextLength: textContent.length,
+                    parseError: parseResult.success ? null : parseResult.error
+                }
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[createFileContextItem] DB Error:', error);
+            return { success: false, error: error.message };
+        }
+
+        // 4. Generate embeddings from parsed content
+        if (textContent && textContent.length > 0) {
+            const chunks = chunkText(textContent, 1000, 200);
+            const embeddingResult = await embedFileChunks(
+                user.id,
+                inserted.id,
+                chunks,
+                resolvedCollectionId,
+                { fileName, fileType }
+            );
+            console.log(`[createFileContextItem] Created ${embeddingResult.embeddingCount} embeddings for file`);
+        }
+
+        revalidatePath('/dashboard');
+        revalidatePath('/academy');
+
+        return { success: true, id: inserted.id };
+
+    } catch (error) {
+        console.error('[createFileContextItem] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'File processing failed'
+        };
+    }
 }
 
 export async function updateContextItem(id: string, updates: { title?: string; content?: any }) {
@@ -62,6 +202,14 @@ export async function updateContextItem(id: string, updates: { title?: string; c
     if (!user) {
         return { success: false, error: 'Unauthorized' };
     }
+
+    // First fetch the existing item to know its type
+    const { data: existing } = await supabase
+        .from('user_context_items')
+        .select('type, collection_id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
 
     const { error } = await supabase
         .from('user_context_items')
@@ -74,6 +222,31 @@ export async function updateContextItem(id: string, updates: { title?: string; c
         return { success: false, error: `Failed to update: ${error.message}` };
     }
 
+    // Re-generate embeddings if content was updated
+    if (updates.content && existing) {
+        try {
+            const newText = extractTextForEmbedding(
+                existing.type,
+                updates.content,
+                updates.title || ''
+            );
+
+            if (newText) {
+                await updateContextEmbeddings(
+                    user.id,
+                    id,
+                    existing.type,
+                    newText,
+                    existing.collection_id,
+                    { title: updates.title }
+                );
+                console.log('[updateContextItem] Embeddings updated');
+            }
+        } catch (embeddingError) {
+            console.error('[updateContextItem] Embedding update failed:', embeddingError);
+        }
+    }
+
     revalidatePath('/dashboard');
     return { success: true };
 }
@@ -84,6 +257,14 @@ export async function deleteContextItem(id: string) {
 
     if (!user) {
         return { success: false, error: 'Unauthorized' };
+    }
+
+    // Delete associated embeddings first
+    try {
+        await deleteContextEmbeddings(id);
+        console.log('[deleteContextItem] Embeddings deleted');
+    } catch (embeddingError) {
+        console.error('[deleteContextItem] Error deleting embeddings:', embeddingError);
     }
 
     const { error } = await supabase
@@ -219,6 +400,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         modules: string[];
         lessons: string[];
         conversations: string[];
+        notes: string[];
         itemsWithoutType: any[];
     }
 
@@ -233,6 +415,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         modules: [],
         lessons: [],
         conversations: [],
+        notes: [],
         itemsWithoutType: []
     };
 
@@ -246,6 +429,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             grouped.lessons.push(item.item_id);
         } else if (item.item_type === 'CONVERSATION') {
             grouped.conversations.push(item.item_id);
+        } else if (item.item_type === 'NOTE') {
+            grouped.notes.push(item.item_id);
         } else {
             grouped.itemsWithoutType.push(item);
         }
@@ -302,8 +487,11 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .select(`
                     *,
                     modules (
+                        id,
                         title,
+                        course_id,
                         courses (
+                            id,
                             title,
                             image_url,
                             author
@@ -316,7 +504,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                     itemType: 'LESSON',
                     moduleTitle: l.modules?.title,
                     courseTitle: l.modules?.courses?.title,
-                    image: l.modules?.courses?.image_url, // Use Course Image
+                    course_id: l.modules?.course_id,
+                    image: l.modules?.courses?.image_url,
                     author: l.modules?.courses?.author
                 })) || [])
         );
@@ -335,22 +524,56 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                     itemType: 'CONVERSATION',
                     title: cov.title || 'Untitled Conversation',
                     // Map last message or similar if needed for card
-                    lastMessage: cov.last_message || cov.preview || '' 
+                    lastMessage: cov.last_message || cov.preview || ''
                 })) || [])
         );
     } else {
         promises.push(Promise.resolve([]));
     }
 
-    // E. Context Items (Already fetched but logic should be here or separate? 
+    // E. Notes
+    if (grouped.notes.length > 0) {
+        promises.push(
+            admin.from('notes')
+                .select(`
+                    id,
+                    user_id,
+                    title,
+                    content,
+                    course_id,
+                    created_at,
+                    updated_at,
+                    courses (
+                        title
+                    )
+                `)
+                .in('id', grouped.notes)
+                .then(({ data }) => data?.map((note: any) => ({
+                    id: note.id,
+                    user_id: note.user_id,
+                    title: note.title || 'Untitled Note',
+                    content: note.content,
+                    course_id: note.course_id,
+                    course_title: note.courses?.title || null,
+                    created_at: note.created_at,
+                    updated_at: note.updated_at,
+                    itemType: 'NOTE',
+                    type: 'NOTE'
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // F. Context Items (Already fetched but logic should be here or separate?
     // The original code fetched them separately. We can keep that or merge.
     // Let's keep fetching them separately as they are in a different table 'user_context_items'
     // BUT we need to return them in the 'contextItems' prop or merge into 'courses' (which is actually 'items').
     // The frontend hook `useCollections` merges them: `items: [...courses, ...mappedContext]`.
     // So distinct is fine.
-    
+
     // Execute fetches
-    const [courses, modules, lessons, conversations] = await Promise.all(promises);
+    const [courses, modules, lessons, conversations, notes] = await Promise.all(promises);
 
     // 3. Fetch Context Items (Same as before)
     const { data: contextItems } = await admin
@@ -360,24 +583,26 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         .order('created_at', { ascending: false });
 
     // Combine "Courses" (which is actually 'Standard Items') and strictly typed ContextItems
-    // The frontend expects 'courses' to be the array of standard items (Courses, Modules, Lessons, Convos)
+    // The frontend expects 'courses' to be the array of standard items (Courses, Modules, Lessons, Convos, Notes)
     // and 'contextItems' to be the user_context_items table rows.
-    
+
     const allStandardItems = [
         ...courses,
         ...modules,
         ...lessons,
-        ...conversations
+        ...conversations,
+        ...notes
     ];
 
     return {
-        courses: allStandardItems, // Naming legacy: 'courses' prop carries all DB-backed entity items
+        courses: allStandardItems,
         contextItems: contextItems || [],
         debug: { resolvedId, groupedCounts: {
             courses: grouped.courses.length,
             modules: grouped.modules.length,
             lessons: grouped.lessons.length,
-            conversations: grouped.conversations.length
+            conversations: grouped.conversations.length,
+            notes: grouped.notes.length
         }}
     };
 }

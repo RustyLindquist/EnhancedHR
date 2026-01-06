@@ -3,6 +3,34 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+
+export async function signInWithOAuth(provider: 'google' | 'apple') {
+    const supabase = await createClient()
+    const headersList = await headers()
+    const origin = headersList.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo: `${origin}/auth/callback`,
+            queryParams: provider === 'google' ? {
+                access_type: 'offline',
+                prompt: 'consent',
+            } : undefined,
+        },
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+
+    return { error: 'Failed to initiate OAuth flow' }
+}
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
@@ -41,6 +69,8 @@ export async function signup(formData: FormData) {
                 full_name: fullName,
                 // Pass metadata to trigger triggers if needed, or update profile manually after
                 account_type: accountType,
+                // Store org name in metadata so we can create org after email verification
+                org_name: accountType === 'org' ? orgName : undefined,
             },
         },
     })
@@ -49,6 +79,15 @@ export async function signup(formData: FormData) {
         return { error: error.message }
     }
 
+    // Check if user needs email confirmation (no session means confirmation required)
+    // Supabase returns session only if email confirmations are disabled
+    if (data?.user && !data?.session) {
+        // Email confirmation is required - show verify view
+        return { success: true, message: 'Please check your email for a verification code.', view: 'verify', email }
+    }
+
+    // If we have both user and session, email confirmations are disabled in Supabase
+    // This shouldn't happen in production but handle it gracefully
     if (data?.user && data?.session) {
         // If Org Account, create the Organization and Link User
         if (accountType === 'org' && orgName) {
@@ -58,32 +97,28 @@ export async function signup(formData: FormData) {
                 .insert({ name: orgName })
                 .select()
                 .single();
-            
+
             if (orgError) {
                 console.error("Failed to create org:", orgError);
-                // Fallback? or Error? For now logging.
             } else if (org) {
                 // 2. Update User Profile with Org ID and Admin Status
                 await supabase
                     .from('profiles')
-                    .update({ 
+                    .update({
                         org_id: org.id,
                         membership_status: 'org_admin',
-                        role: 'admin' // Explicitly set role if needed by RLS
+                        role: 'admin'
                     })
                     .eq('id', data.user.id);
             }
-        } else {
-             // Ensure individual default is correct? Default is usually free/trial from schema defaults.
-             // If Pro was selected we need to handle that, but for now we let them in as free/trial 
-             // and they can upgrade in dashboard.
         }
 
-        // User is signed in immediately (email confirmation disabled)
+        // Redirect to dashboard after signup
         revalidatePath('/', 'layout')
-        redirect('/')
+        redirect('/dashboard')
     }
 
+    // Fallback: return verify view
     return { success: true, message: 'Please check your email to confirm your account.', view: 'verify', email }
 }
 
@@ -93,7 +128,7 @@ export async function verifyEmail(formData: FormData) {
     const email = formData.get('email') as string
     const token = formData.get('code') as string
 
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
         type: 'signup',
@@ -101,6 +136,35 @@ export async function verifyEmail(formData: FormData) {
 
     if (error) {
         return { error: error.message }
+    }
+
+    // After successful verification, check if this is an org account that needs setup
+    if (data?.user) {
+        const accountType = data.user.user_metadata?.account_type
+        const orgName = data.user.user_metadata?.org_name
+
+        if (accountType === 'org' && orgName) {
+            // Create Organization
+            const { data: org, error: orgError } = await supabase
+                .from('organizations')
+                .insert({ name: orgName })
+                .select()
+                .single();
+
+            if (orgError) {
+                console.error("Failed to create org:", orgError);
+            } else if (org) {
+                // Update User Profile with Org ID and Admin Status
+                await supabase
+                    .from('profiles')
+                    .update({
+                        org_id: org.id,
+                        membership_status: 'org_admin',
+                        role: 'admin'
+                    })
+                    .eq('id', data.user.id);
+            }
+        }
     }
 
     revalidatePath('/', 'layout')
@@ -138,4 +202,35 @@ export async function resetPassword(formData: FormData) {
     }
 
     return { success: true, message: 'Check your email for the password reset link.' }
+}
+
+export async function changePassword(formData: FormData) {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'You must be logged in to change your password.' }
+    }
+
+    const newPassword = formData.get('newPassword') as string
+    const confirmPassword = formData.get('confirmPassword') as string
+
+    if (!newPassword || newPassword.length < 6) {
+        return { error: 'Password must be at least 6 characters.' }
+    }
+
+    if (newPassword !== confirmPassword) {
+        return { error: 'Passwords do not match.' }
+    }
+
+    const { error } = await supabase.auth.updateUser({
+        password: newPassword
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true, message: 'Password changed successfully.' }
 }

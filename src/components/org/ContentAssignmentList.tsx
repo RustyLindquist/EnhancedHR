@@ -34,7 +34,7 @@ const ContentAssignmentList: React.FC<ContentAssignmentListProps> = ({ assignmen
     }
 
     return (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(370px, 1fr))' }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
             {assignments.map((assignment) => {
                 // Map Type
                 let cardType: CardType = 'RESOURCE';

@@ -1,0 +1,8 @@
+export { default as CourseImageEditorPanel } from './CourseImageEditorPanel';
+export { default as CourseDescriptionEditorPanel } from './CourseDescriptionEditorPanel';
+export { default as SkillsEditorPanel } from './SkillsEditorPanel';
+export { default as CreditsEditorPanel } from './CreditsEditorPanel';
+export { default as ExpertAssignmentPanel } from './ExpertAssignmentPanel';
+export { default as ModuleEditorPanel } from './ModuleEditorPanel';
+export { default as LessonEditorPanel } from './LessonEditorPanel';
+export { default as ResourcesEditorPanel } from './ResourcesEditorPanel';

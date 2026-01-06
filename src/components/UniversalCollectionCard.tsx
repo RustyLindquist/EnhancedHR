@@ -1,33 +1,73 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note, ToolConversation } from '../types';
 import UniversalCard, { CardType } from './cards/UniversalCard';
 
 // Unified type for all renderable items in a collection
 export type CollectionItemDetail =
     | (Course & { itemType: 'COURSE' })
     | (Conversation & { itemType: 'CONVERSATION' })
+    | (ToolConversation & { itemType: 'TOOL_CONVERSATION' })
     | (Module & { itemType: 'MODULE'; courseTitle?: string })
     | (Lesson & { itemType: 'LESSON'; courseTitle?: string; moduleTitle?: string })
     | (Resource & { itemType: 'RESOURCE'; courseTitle?: string })
     | (AIInsight & { itemType: 'AI_INSIGHT' })
     | (CustomContext & { itemType: 'CUSTOM_CONTEXT' })
     | (ContextFile & { itemType: 'FILE' })
-    | (ProfileDetails & { itemType: 'PROFILE' });
+    | (ProfileDetails & { itemType: 'PROFILE' })
+    | (Note & { itemType: 'NOTE' });
 
 interface UniversalCollectionCardProps {
     item: CollectionItemDetail;
     onRemove: (id: string, type: string) => void;
     onClick: (item: CollectionItemDetail) => void;
     onAdd?: (item: CollectionItemDetail) => void;
+    onDragStart?: (item: DragItem) => void;
 }
 
-const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick, onAdd }) => {
+const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item, onRemove, onClick, onAdd, onDragStart }) => {
+
+    // Map itemType to DragItemType
+    const getDragItemType = (itemType: string): DragItemType => {
+        switch (itemType) {
+            case 'COURSE': return 'COURSE';
+            case 'MODULE': return 'MODULE';
+            case 'LESSON': return 'LESSON';
+            case 'RESOURCE': return 'RESOURCE';
+            case 'CONVERSATION': return 'CONVERSATION';
+            case 'TOOL_CONVERSATION': return 'TOOL_CONVERSATION';
+            case 'NOTE': return 'NOTE';
+            case 'AI_INSIGHT':
+            case 'CUSTOM_CONTEXT':
+            case 'FILE': return 'CONTEXT';
+            case 'PROFILE': return 'PROFILE';
+            default: return 'CONTEXT';
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent) => {
+        const dragItem: DragItem = {
+            type: getDragItemType(item.itemType),
+            id: item.id,
+            title: item.title || 'Untitled',
+            subtitle: (item as any).author || (item as any).courseTitle || undefined,
+            image: (item as any).image || undefined,
+            meta: (item as any).duration || (item as any).meta || undefined,
+        };
+        e.dataTransfer.setData('application/json', JSON.stringify(dragItem));
+        // Hide native drag preview since we use CustomDragLayer
+        const emptyImg = new Image();
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+        onDragStart?.(dragItem);
+    };
 
     let cardProps: any = {
         title: item.title || 'Untitled',
         onAction: () => onClick(item),
         onRemove: () => onRemove(String(item.id), item.itemType),
-        onAdd: onAdd ? () => onAdd(item) : undefined
+        onAdd: onAdd ? () => onAdd(item) : undefined,
+        draggable: !!onDragStart,
+        onDragStart: onDragStart ? handleDragStart : undefined
     };
 
     // Mapping Logic
@@ -62,13 +102,26 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             };
             break;
         }
+        case 'TOOL_CONVERSATION': {
+            const toolConv = item as ToolConversation;
+            cardProps = {
+                ...cardProps,
+                type: 'TOOL_CONVERSATION',
+                subtitle: toolConv.tool_title || 'Tool',
+                description: toolConv.lastMessage || 'No messages yet.',
+                meta: toolConv.updated_at ? new Date(toolConv.updated_at).toLocaleDateString() : 'Just now',
+                actionLabel: 'CHAT'
+            };
+            break;
+        }
         case 'AI_INSIGHT': {
             const insight = item as any;
             cardProps = {
                 ...cardProps,
-                type: 'CONTEXT',
-                subtitle: 'AI Insight',
-                description: insight.content?.insight,
+                type: 'AI_INSIGHT',
+                title: 'AI Insight',
+                description: insight.content?.insight || insight.content?.text || insight.title,
+                meta: insight.created_at ? new Date(insight.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'VIEW'
             };
             break;
@@ -79,6 +132,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 ...cardProps,
                 type: 'CONTEXT',
                 description: context.content?.text,
+                meta: context.created_at ? new Date(context.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT'
             };
             break;
@@ -90,6 +144,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'PROFILE',
                 title: 'My Profile Details',
                 description: profile.content?.objectives || profile.content?.measuresOfSuccess || 'No details added.',
+                meta: profile.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT',
                 onRemove: undefined
             };
@@ -102,6 +157,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 type: 'RESOURCE',
                 subtitle: 'Uploaded Document',
                 description: file.content?.fileType || 'File',
+                meta: file.created_at ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'PREVIEW'
             };
             break;
@@ -142,6 +198,21 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 subtitle: content.subtitle || 'Resource',
                 description: content.description || 'Reference Material',
                 actionLabel: 'OPEN'
+            };
+            break;
+        }
+        case 'NOTE': {
+            const note = item as Note;
+            // Strip markdown and truncate for preview
+            const plainContent = (note.content || '').replace(/[#*_`~\[\]]/g, '').trim();
+            const preview = plainContent.length > 150 ? plainContent.slice(0, 150) + '...' : plainContent;
+            cardProps = {
+                ...cardProps,
+                type: 'NOTE',
+                title: note.title || 'Untitled Note',
+                description: preview || 'No content',
+                meta: note.updated_at ? new Date(note.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
+                actionLabel: 'EDIT'
             };
             break;
         }

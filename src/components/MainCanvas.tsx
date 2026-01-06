@@ -1,24 +1,30 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp } from 'lucide-react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark } from 'lucide-react';
+import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
 import CollectionSurface from './CollectionSurface';
 import TeamManagement from '@/components/org/TeamManagement';
 import UsersAndGroupsCanvas from '@/components/org/UsersAndGroupsCanvas';
+import AssignedLearningCanvas from '@/components/org/AssignedLearningCanvas';
 import AlertBox from './AlertBox';
-import CourseHomePage from './CourseHomePage'; // Import Course Page
-import CoursePlayer from './CoursePlayer';
+import CourseHomePage from './CourseHomePage'; // Import Course Page (legacy)
+import CoursePlayer from './CoursePlayer'; // (legacy)
+import { CoursePageV2 } from './course'; // New unified course page
 import UserDashboardV3 from './Dashboard/UserDashboardV3';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
 import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
 import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
-import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, UserContextItem, ContextItemType } from '../types';
+import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, ToolConversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note, Tool } from '../types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
 import { deleteCollection, renameCollection } from '@/app/actions/collections';
+import { searchLessonsAction } from '@/app/actions/courses';
+import { getNotesAction, createNoteAction, addNoteToCollectionAction } from '@/app/actions/notes';
+import NoteEditorPanel from './NoteEditorPanel';
 import PrometheusFullPage from './PrometheusFullPage';
 import ConversationCard from './ConversationCard';
 import DeleteConfirmationModal from './DeleteConfirmationModal'; // Updated import
@@ -31,6 +37,18 @@ import TopContextPanel from './TopContextPanel';
 import GlobalTopPanel from './GlobalTopPanel';
 import PrometheusDashboardWidget from './PrometheusDashboardWidget';
 import PrometheusHelpContent from './PrometheusHelpContent';
+import HelpPanel from './help/HelpPanel';
+import { HelpTopicId } from './help/HelpContent';
+import ToolsCollectionView from './tools/ToolsCollectionView';
+import { fetchToolsAction } from '@/app/actions/tools';
+
+// Org Collection type for display
+interface OrgCollectionInfo {
+    id: string;
+    label: string;
+    color: string;
+    item_count: number;
+}
 
 interface MainCanvasProps {
     courses: Course[];
@@ -45,8 +63,18 @@ interface MainCanvasProps {
     initialCourseId?: number | null;
     onResumeConversation?: (conversation: Conversation) => void;
     activeConversationId?: string | null;
+    onClearConversation?: () => void;
     useDashboardV3?: boolean;
     onCollectionUpdate?: () => void;
+    academyResetKey?: number; // Triggers filter reset when Academy is clicked
+    initialStatusFilter?: string[]; // Pre-apply status filter when navigating to Academy
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
+    previousCollectionId?: string | null; // Previous page for back navigation
+    onGoBack?: () => void; // Handler to go back to previous page
+    onExposeDragStart?: (handler: (item: DragItem) => void) => void; // Expose drag start handler to parent
+    orgCollections?: OrgCollectionInfo[]; // Organization collections
+    isOrgAdmin?: boolean; // Whether user can edit org collections
+    onOrgCollectionsUpdate?: () => void; // Callback when org collections change
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -66,6 +94,7 @@ interface FilterState {
     ratingFilter: RatingFilterType;
     dateFilterType: DateFilterType;
     customDays: string; // Stored as string to handle empty input easily
+    includeLessons: boolean; // Include individual lessons in search results
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -76,7 +105,8 @@ const INITIAL_FILTERS: FilterState = {
     status: [],
     ratingFilter: 'ALL',
     dateFilterType: 'ALL',
-    customDays: '30'
+    customDays: '30',
+    includeLessons: false // Default to courses only
 };
 
 // --- VISUAL COMPONENTS ---
@@ -262,10 +292,10 @@ const GenericVisual = () => (
     <div className="flex justify-center gap-6 opacity-40 select-none pointer-events-none">
         {[1, 2, 3].map((i) => (
             <div key={i} className={`
-w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 bg - white / 5 
-              flex flex - col p - 4 gap - 3 transform
-              ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
-`}>
+                w-48 h-64 rounded-xl border-2 border-dashed border-slate-500/50 bg-white/5
+                flex flex-col p-4 gap-3 transform
+                ${i === 1 ? '-rotate-6 translate-y-4' : i === 2 ? 'translate-y-0 z-10 scale-105' : 'rotate-6 translate-y-4'}
+            `}>
                 <div className="w-full h-24 bg-slate-500/20 rounded-lg"></div>
                 <div className="w-3/4 h-2 bg-slate-500/20 rounded"></div>
                 <div className="w-1/2 h-2 bg-slate-500/20 rounded"></div>
@@ -275,6 +305,69 @@ w - 48 h - 64 rounded - xl border - 2 border - dashed border - slate - 500 / 50 
                 </div>
             </div>
         ))}
+    </div>
+);
+
+const HelpVisual = () => (
+    <div className="flex justify-center gap-6 opacity-80 select-none pointer-events-none scale-90">
+        {/* Card 1: Left - Tilted */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-5 gap-4 transform -rotate-6 translate-y-8 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-[#4B8BB3]/10 rounded-bl-full"></div>
+            <div className="w-10 h-10 rounded-lg bg-[#4B8BB3]/20 flex items-center justify-center text-[#4B8BB3]">
+                <Sparkles size={20} />
+            </div>
+            <div className="space-y-2 mt-2">
+                <div className="w-3/4 h-3 bg-white/10 rounded"></div>
+                <div className="w-1/2 h-3 bg-white/10 rounded"></div>
+            </div>
+            <div className="mt-auto">
+                <div className="w-full h-16 bg-white/5 rounded-lg border border-white/5 p-3">
+                    <div className="w-full h-1.5 bg-[#4B8BB3]/30 rounded-full mb-2"></div>
+                    <div className="w-3/4 h-1.5 bg-white/10 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Card 2: Center - Main Feature Card */}
+        <div className="w-56 h-72 rounded-xl border border-[#4B8BB3]/30 bg-[#0f172a] shadow-2xl flex flex-col p-6 gap-4 transform -translate-y-2 z-10 relative overflow-hidden">
+            <div className="absolute -top-3 -right-3 w-10 h-10 bg-[#4B8BB3] rounded-full flex items-center justify-center shadow-lg border border-white/20">
+                <HelpCircle size={20} className="text-white" />
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-[#4B8BB3]/20 flex items-center justify-center text-[#4B8BB3] mb-2">
+                <Lightbulb size={24} />
+            </div>
+            <div className="w-full h-2 bg-white/10 rounded-full"></div>
+            <div className="w-2/3 h-2 bg-white/10 rounded-full"></div>
+
+            <div className="mt-auto space-y-2">
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
+                    <div className="w-6 h-6 rounded bg-[#4B8BB3]/30"></div>
+                    <div className="flex-1 h-2 bg-white/20 rounded"></div>
+                </div>
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
+                    <div className="w-6 h-6 rounded bg-slate-700"></div>
+                    <div className="flex-1 h-2 bg-slate-600 rounded"></div>
+                </div>
+            </div>
+        </div>
+
+        {/* Card 3: Right - Tilted */}
+        <div className="w-48 h-64 rounded-xl border border-white/10 bg-[#0f172a] shadow-xl flex flex-col p-5 gap-4 transform rotate-6 translate-y-8 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-brand-orange/10 rounded-bl-full"></div>
+            <div className="w-10 h-10 rounded-lg bg-brand-orange/20 flex items-center justify-center text-brand-orange">
+                <Flame size={20} />
+            </div>
+            <div className="space-y-2 mt-2">
+                <div className="w-full h-3 bg-white/10 rounded"></div>
+                <div className="w-2/3 h-3 bg-white/10 rounded"></div>
+            </div>
+            <div className="mt-auto">
+                <div className="w-full h-16 bg-white/5 rounded-lg border border-white/5 p-3">
+                    <div className="w-3/4 h-1.5 bg-brand-orange/20 rounded-full mb-2"></div>
+                    <div className="w-1/2 h-1.5 bg-white/10 rounded-full"></div>
+                </div>
+            </div>
+        </div>
     </div>
 );
 
@@ -317,11 +410,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                         <div className="pt-[100px]"></div>
 
                         <div className="max-w-2xl mx-auto space-y-4">
-                            <p className={`text - slate - 300 text - base font - light leading - relaxed ${alignmentClass} `}>
+                            <p className={`text-slate-300 text-base font-light leading-relaxed ${alignmentClass}`}>
                                 This is where you'll find your conversation history with Prometheus, your AI assistant for deeply personalized learning. Start your first conversation now!
                             </p>
 
-                            <p className={`text - slate - 500 text - sm ${alignmentClass} pb - [50px]`}>
+                            <p className={`text-slate-500 text-sm ${alignmentClass} pb-[50px]`}>
                                 Note: You can access Prometheus from several places.
                             </p>
                         </div>
@@ -400,11 +493,11 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     if (type === 'company') {
         return (
-            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>There are no Company Collections Yet</h2>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Company Collections</h2>
+            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>There are no Company Collections Yet</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Company Collections</h2>
 
-                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
+                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
                         This is where your organization can create custom collections. They can add courses and content to a collection, assign employees to that collection, and even designate content within that collection as required learning.
                     </p>
@@ -432,20 +525,20 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                     </div>
                 </div>
 
-                <p className={`text - slate - 400 text - lg italic border - t border - brand - blue - light / 10 pt - 6 mt - 6 ${alignmentClass} `}>
+                <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
                     Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
                 </p>
-            </div >
+            </div>
         );
     }
 
     if (type === 'instructors') {
         return (
-            <div className={`max - w - 3xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>Meet Our World-Class Experts</h2>
-                <h2 className={`text - 3xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Our Experts</h2>
+            <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Experts</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Experts</h2>
 
-                <div className={`text - slate - 400 text - lg space - y - 6 leading - relaxed font - light mb - 10 ${alignmentClass} `}>
+                <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
                         Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
                     </p>
@@ -478,10 +571,10 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
 
     // Generic
     return (
-        <div className={`max - w - 2xl animate - fade -in mx - auto ${isEmptyState ? 'text-center' : ''} `}>
-            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${!isEmptyState && "hidden"} `}>No content has been saved to this collection.</h2>
-            <h2 className={`text - 2xl font - light text - white mb - 6 ${headerClass} ${isEmptyState && "hidden"} `}>About Collections</h2>
-            <div className={`text - slate - 400 space - y - 4 leading - relaxed font - light ${alignmentClass} `}>
+        <div className={`max-w-2xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
+            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>No content has been saved to this collection.</h2>
+            <h2 className={`text-2xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Collections</h2>
+            <div className={`text-slate-400 space-y-4 leading-relaxed font-light ${alignmentClass}`}>
                 <p>Use collections to organize content from across the platform into dedicated workspaces. They can include Courses, Modules, Lessons, Activities, Files, and even AI Conversations.</p>
                 <p>On the right-side of your Collection, you'll notice the ability to ask questions from our helpful Prometheus AI assistant. Prometheus uses whatever is in your collection as context.</p>
                 <p>To add content to a collection, simply click the little <span className="inline-flex items-center justify-center w-5 h-5 bg-brand-orange rounded-full mx-1 align-middle"><Plus size={10} className="text-white" /></span> icon on any card, or drag it to the Collection Surface at the bottom of your screen.</p>
@@ -572,6 +665,54 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
                 <h3 className="text-lg font-bold text-white truncate">{item.title}</h3>
             </div>
         );
+    } else if (item.type === 'CONVERSATION') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-cyan-400/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-cyan-400/20 rounded text-cyan-400">
+                        <MessageSquare size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Conversation</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+            </div>
+        );
+    } else if (item.type === 'CONTEXT') {
+        Content = (
+            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-brand-orange/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
+                <div className="p-2 bg-brand-orange/20 rounded text-brand-orange">
+                    <FileText size={20} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
+                    <p className="text-[10px] text-slate-400">Context</p>
+                </div>
+            </div>
+        );
+    } else if (item.type === 'PROFILE') {
+        Content = (
+            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-cyan-400/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
+                <div className="p-2 bg-cyan-400/20 rounded text-cyan-400">
+                    <Users size={20} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
+                    <p className="text-[10px] text-slate-400">Profile</p>
+                </div>
+            </div>
+        );
+    } else if (item.type === 'NOTE') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#9A9724]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-[#9A9724]/20 rounded text-[#9A9724]">
+                        <StickyNote size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-[#9A9724] uppercase tracking-wider">Note</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+            </div>
+        );
     }
 
     return (
@@ -584,13 +725,43 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
     );
 };
 
-const GroupDetailCanvasWrapper = ({ group, manageTrigger }: { group: any, manageTrigger: number }) => {
+const GroupDetailCanvasWrapper = ({
+    group,
+    manageTrigger,
+    onViewingMember,
+    onDragStart,
+    onCourseClick,
+    onModuleClick,
+    onLessonClick,
+    onConversationClick
+}: {
+    group: any;
+    manageTrigger: number;
+    onViewingMember?: (member: any) => void;
+    onDragStart?: (item: DragItem) => void;
+    onCourseClick?: (courseId: number) => void;
+    onModuleClick?: (moduleItem: any) => void;
+    onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
+    onConversationClick?: (conversationId: string) => void;
+}) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
         import('@/components/org/GroupDetailCanvas').then(mod => setComponent(() => mod.default));
     }, []);
     if (!Component) return <div className="p-10 text-center">Loading Group...</div>;
-    return <Component group={group} manageTrigger={manageTrigger} onBack={() => { }} />;
+    return (
+        <Component
+            group={group}
+            manageTrigger={manageTrigger}
+            onBack={() => { }}
+            onViewingMember={onViewingMember}
+            onDragStart={onDragStart}
+            onCourseClick={onCourseClick}
+            onModuleClick={onModuleClick}
+            onLessonClick={onLessonClick}
+            onConversationClick={onConversationClick}
+        />
+    );
 };
 
 // --- MAIN CANVAS COMPONENT ---
@@ -610,8 +781,18 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     initialCourseId,
     onResumeConversation,
     activeConversationId,
+    onClearConversation,
     useDashboardV3,
-    onCollectionUpdate
+    onCollectionUpdate,
+    academyResetKey,
+    initialStatusFilter,
+    onNavigateWithFilter,
+    previousCollectionId,
+    onGoBack,
+    onExposeDragStart,
+    orgCollections = [],
+    isOrgAdmin = false,
+    onOrgCollectionsUpdate
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -619,7 +800,20 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
     const [isLoadingCollection, setIsLoadingCollection] = useState(false);
 
+    // Ref to skip the next collection items fetch after a manual delete
+    // This prevents the flash caused by refetching after we've already updated local state
+    const skipNextCollectionFetchRef = useRef(false);
+
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
+    const [viewingGroupMember, setViewingGroupMember] = useState<any | null>(null);
+
+    // Org collection viewing state
+    const [viewingOrgCollection, setViewingOrgCollection] = useState<{
+        id: string;
+        name: string;
+        items: any[];
+        isOrgAdmin: boolean;
+    } | null>(null);
 
     // Effect to load group details when activeCollectionId changes to group-*
     useEffect(() => {
@@ -632,6 +826,27 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             });
         } else {
             setViewingGroup(null);
+        }
+    }, [activeCollectionId]);
+
+    // Effect to load org collection when activeCollectionId changes to org-collection-*
+    useEffect(() => {
+        if (activeCollectionId.startsWith('org-collection-')) {
+            const collectionId = activeCollectionId.replace('org-collection-', '');
+            setIsLoadingCollection(true);
+            import('@/app/actions/org').then(async (mod) => {
+                const result = await mod.getOrgCollectionItems(collectionId);
+                setViewingOrgCollection({
+                    id: collectionId,
+                    name: result.collectionName,
+                    items: result.items,
+                    isOrgAdmin: result.isOrgAdmin
+                });
+                setCollectionItems(result.items as CollectionItemDetail[]);
+                setIsLoadingCollection(false);
+            });
+        } else {
+            setViewingOrgCollection(null);
         }
     }, [activeCollectionId]);
 
@@ -685,6 +900,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         // Force refresh of collection items so it appears immediately
         setRefreshTrigger(prev => prev + 1);
 
+        // Refresh collection counts in the parent (nav panel)
+        if (onCollectionUpdate) {
+            onCollectionUpdate();
+        }
+
         if (propOnAddToCollection) {
             propOnAddToCollection(itemId as any, collectionId);
         }
@@ -697,9 +917,33 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [activeFilters, setActiveFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [pendingFilters, setPendingFilters] = useState<FilterState>(INITIAL_FILTERS);
     const [visibleCourses, setVisibleCourses] = useState<Course[]>(courses);
+    const [visibleLessons, setVisibleLessons] = useState<LessonSearchResult[]>([]);
+    const [isLoadingLessons, setIsLoadingLessons] = useState(false);
     const [userProgress, setUserProgress] = useState<Record<number, any>>({});
     const [drawerMode, setDrawerMode] = useState<'filters' | 'prompts' | 'help'>('filters');
     const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
+
+    // Reset to All Courses view when Academy is clicked (via academyResetKey prop)
+    // This handles the case where user is already on Academy but viewing a course
+    useEffect(() => {
+        if (academyResetKey !== undefined && academyResetKey > 0) {
+            setActiveFilters(INITIAL_FILTERS);
+            setPendingFilters(INITIAL_FILTERS);
+            // Only update if not already null to prevent cascading effects
+            setSelectedCourseId(prev => prev === null ? prev : null);
+            setSelectedInstructorId(prev => prev === null ? prev : null);
+            setIsPlayerActive(false);
+        }
+    }, [academyResetKey]);
+
+    // Apply initial status filter when navigating to Academy with pre-set filter
+    useEffect(() => {
+        if (initialStatusFilter && initialStatusFilter.length > 0 && activeCollectionId === 'academy') {
+            const newFilters = { ...INITIAL_FILTERS, status: initialStatusFilter };
+            setActiveFilters(newFilters);
+            setPendingFilters(newFilters);
+        }
+    }, [initialStatusFilter, activeCollectionId]);
 
     useEffect(() => {
         const loadPrompts = async () => {
@@ -711,6 +955,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [isDragging, setIsDragging] = useState(false);
     const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
 
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -718,6 +963,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [isContextEditorOpen, setIsContextEditorOpen] = useState(false);
     const [editingContextItem, setEditingContextItem] = useState<UserContextItem | null>(null);
     const [contextTypeToAdd, setContextTypeToAdd] = useState<ContextItemType>('CUSTOM_CONTEXT');
+
+    // --- NOTES STATE ---
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+    const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+    const [noteToDelete, setNoteToDelete] = useState<{ id: string; title: string } | null>(null);
+    const [deleteNoteModalOpen, setDeleteNoteModalOpen] = useState(false);
 
     const handleOpenContextEditor = (type: ContextItemType = 'CUSTOM_CONTEXT', item: UserContextItem | null = null) => {
         setContextTypeToAdd(type);
@@ -733,6 +986,91 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             fetchCollectionItems(activeCollectionId).then(res => setCollectionItems(res.items));
         }
     };
+
+    // --- NOTE HANDLERS ---
+    const handleOpenNoteEditor = useCallback((noteId: string) => {
+        setEditingNoteId(noteId);
+        setIsNoteEditorOpen(true);
+    }, []);
+
+    const handleCloseNoteEditor = useCallback(() => {
+        setIsNoteEditorOpen(false);
+        setEditingNoteId(null);
+    }, []);
+
+    const handleCreateNote = useCallback(async (collectionId?: string, courseId?: number) => {
+        console.log('[MainCanvas.handleCreateNote] Called with collectionId:', collectionId, 'courseId:', courseId);
+        try {
+            const note = await createNoteAction({
+                course_id: courseId
+            });
+            console.log('[MainCanvas.handleCreateNote] Created note:', note?.id);
+
+            if (note) {
+                setNotes(prev => [note, ...prev]);
+
+                // If creating in a specific collection, add it there
+                console.log('[MainCanvas.handleCreateNote] Checking if should add to collection:', collectionId, 'condition:', collectionId && collectionId !== 'notes');
+                if (collectionId && collectionId !== 'notes') {
+                    console.log('[MainCanvas.handleCreateNote] Calling addNoteToCollectionAction...');
+                    const result = await addNoteToCollectionAction(note.id, collectionId);
+                    console.log('[MainCanvas.handleCreateNote] addNoteToCollectionAction result:', result);
+                }
+
+                // Open the editor for the new note
+                setEditingNoteId(note.id);
+                setIsNoteEditorOpen(true);
+
+                // Update counts
+                if (onCollectionUpdate) onCollectionUpdate();
+            } else {
+                alert('Failed to create note. The notes table may not exist yet. Please run the database migration.');
+            }
+        } catch (error) {
+            console.error('[MainCanvas] Error creating note:', error);
+            alert('Error creating note: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
+    }, [onCollectionUpdate]);
+
+    const handleNoteDeleted = useCallback((noteId: string) => {
+        setNotes(prev => prev.filter(n => n.id !== noteId));
+        if (onCollectionUpdate) onCollectionUpdate();
+    }, [onCollectionUpdate]);
+
+    const handleNoteSaved = useCallback(() => {
+        // Refresh notes list to get updated titles
+        if (activeCollectionId === 'notes') {
+            getNotesAction().then(setNotes);
+        }
+        if (onCollectionUpdate) onCollectionUpdate();
+    }, [activeCollectionId, onCollectionUpdate]);
+
+    const handleDeleteNoteInitiate = useCallback((note: Note) => {
+        setNoteToDelete({ id: note.id, title: note.title });
+        setDeleteNoteModalOpen(true);
+    }, []);
+
+    const confirmDeleteNote = useCallback(async () => {
+        if (!noteToDelete) return;
+        setDeleteNoteModalOpen(false);
+
+        const { deleteNoteAction } = await import('@/app/actions/notes');
+        const result = await deleteNoteAction(noteToDelete.id);
+
+        if (result.success) {
+            setNotes(prev => prev.filter(n => n.id !== noteToDelete.id));
+            if (onCollectionUpdate) onCollectionUpdate();
+        } else {
+            alert('Failed to delete note: ' + (result.error || 'Unknown error'));
+        }
+        setNoteToDelete(null);
+    }, [noteToDelete, onCollectionUpdate]);
+
+    const cancelDeleteNote = useCallback(() => {
+        setDeleteNoteModalOpen(false);
+        setNoteToDelete(null);
+    }, []);
+
     const [flaringPortalId, setFlaringPortalId] = useState<string | null>(null);
 
     const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
@@ -760,13 +1098,86 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     }, [savedItemIds, onCollectionUpdate, refreshTrigger, user?.id]);
 
+    // Listen for global collection refresh events (from insight saves, etc.)
+    useEffect(() => {
+        const handleCollectionRefresh = () => {
+            console.log('[MainCanvas] Collection refresh event received');
+            if (user?.id) {
+                import('@/app/actions/collections').then(mod => {
+                    mod.getCollectionCountsAction(user.id).then(setCollectionCounts);
+                });
+            }
+            // Also refresh collection items if we're viewing a collection
+            if (activeCollectionId && activeCollectionId !== 'academy' && activeCollectionId !== 'dashboard') {
+                setRefreshTrigger(prev => prev + 1);
+            }
+            // Also refresh conversations list (for new conversations from AI Panel)
+            fetchConversations();
+            // Notify parent (AppLayout/Dashboard) to also refresh
+            if (onCollectionUpdate) {
+                onCollectionUpdate();
+            }
+        };
+
+        window.addEventListener('collection:refresh', handleCollectionRefresh);
+        return () => {
+            window.removeEventListener('collection:refresh', handleCollectionRefresh);
+        };
+    }, [user?.id, activeCollectionId, onCollectionUpdate]);
+
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
 
-    // Sync selectedCourseId with parent (for AI Panel Context)
+    // --- HELP COLLECTION STATE ---
+    const [helpTopics, setHelpTopics] = useState<HelpTopic[]>([]);
+    const [isLoadingHelpTopics, setIsLoadingHelpTopics] = useState(false);
+    const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
+    const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId | string>('ai-insights');
+    const [activeHelpTopicFallback, setActiveHelpTopicFallback] = useState<{ title: string; contentText?: string } | null>(null);
+
+    const openHelpTopic = useCallback((topic: HelpTopic) => {
+        const nextTopicId = topic.slug || 'help-collection';
+        setActiveHelpTopicId(nextTopicId);
+        setActiveHelpTopicFallback({
+            title: topic.title,
+            contentText: topic.contentText
+        });
+        setIsHelpPanelOpen(true);
+    }, []);
+
+    // --- TOOLS COLLECTION STATE ---
+    const [tools, setTools] = useState<Tool[]>([]);
+    const [isLoadingTools, setIsLoadingTools] = useState(false);
+
+    // --- NOTES FETCH ---
+    const fetchNotes = async () => {
+        try {
+            setIsLoadingNotes(true);
+            const fetchedNotes = await getNotesAction();
+            setNotes(fetchedNotes);
+        } catch (error) {
+            console.error('[MainCanvas] Error fetching notes:', error);
+        } finally {
+            setIsLoadingNotes(false);
+        }
+    };
+
+    // Fetch notes when navigating to notes collection or on refresh
     useEffect(() => {
-        if (onCourseSelect) {
-            onCourseSelect(selectedCourseId ? String(selectedCourseId) : null);
+        if (activeCollectionId === 'notes') {
+            fetchNotes();
+        }
+    }, [activeCollectionId, refreshTrigger]);
+
+    // Sync selectedCourseId with parent (for AI Panel Context)
+    // Use a ref to track previously synced value and prevent redundant calls
+    const lastSyncedCourseId = useRef<string | null>(null);
+    useEffect(() => {
+        const courseIdStr = selectedCourseId ? String(selectedCourseId) : null;
+        // Only call parent if value actually changed
+        if (onCourseSelect && lastSyncedCourseId.current !== courseIdStr) {
+            lastSyncedCourseId.current = courseIdStr;
+            onCourseSelect(courseIdStr);
         }
     }, [selectedCourseId, onCourseSelect]);
 
@@ -836,6 +1247,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 setUser(user);
+
+                // --- RECORD DAILY ACTIVITY FOR STREAK TRACKING ---
+                // This records the user's access today for streak calculation
+                try {
+                    await supabase.rpc('record_user_activity', { p_user_id: user.id });
+                } catch (e) {
+                    console.error('Failed to record user activity:', e);
+                }
 
                 // --- AUTO MIGRATION LOGIC (Client-Side) ---
                 // 1. Instantiate Profile Card
@@ -930,15 +1349,89 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     useEffect(() => {
         setExpandedFooter(false);
         // If collection changes, ensure we exit course/instructor view
-        setSelectedCourseId(null);
-        setSelectedInstructorId(null);
+        // Use functional updates to prevent setting null when already null
+        setSelectedCourseId(prev => prev === null ? prev : null);
+        setSelectedInstructorId(prev => prev === null ? prev : null);
         setIsPlayerActive(false);
+        // Clear viewing group member to prevent flash when switching collections
+        setViewingGroupMember(null);
+    }, [activeCollectionId]);
+
+    // Fetch help topics when navigating to Help collection
+    useEffect(() => {
+        if (activeCollectionId === 'help') {
+            const fetchHelpTopics = async () => {
+                setIsLoadingHelpTopics(true);
+                try {
+                    const supabase = createClient();
+                    const { data, error } = await supabase
+                        .from('help_topics')
+                        .select('id, slug, title, summary, category, content_text, icon_name, display_order, is_active, created_at')
+                        .eq('is_active', true)
+                        .order('display_order', { ascending: true });
+
+                    if (error) {
+                        console.error('Error fetching help topics:', error);
+                        return;
+                    }
+
+                    // Map database fields to HelpTopic type
+                    const topics: HelpTopic[] = (data || []).map(row => ({
+                        type: 'HELP' as const,
+                        id: row.id,
+                        slug: row.slug,
+                        title: row.title,
+                        summary: row.summary,
+                        category: row.category,
+                        contentText: (row as any).content_text ?? undefined,
+                        iconName: row.icon_name,
+                        displayOrder: row.display_order,
+                        isActive: row.is_active,
+                        createdAt: row.created_at
+                    }));
+
+                    setHelpTopics(topics);
+                } catch (err) {
+                    console.error('Error fetching help topics:', err);
+                } finally {
+                    setIsLoadingHelpTopics(false);
+                }
+            };
+
+            fetchHelpTopics();
+        }
+    }, [activeCollectionId]);
+
+    // Fetch tools when navigating to Tools collection
+    useEffect(() => {
+        if (activeCollectionId === 'tools') {
+            const fetchTools = async () => {
+                setIsLoadingTools(true);
+                try {
+                    const fetchedTools = await fetchToolsAction();
+                    setTools(fetchedTools);
+                } catch (err) {
+                    console.error('Error fetching tools:', err);
+                } finally {
+                    setIsLoadingTools(false);
+                }
+            };
+
+            fetchTools();
+        }
     }, [activeCollectionId]);
 
     // Sync selectedCourseId with initialCourseId prop (which acts as activeCourseId from parent)
     useEffect(() => {
         if (initialCourseId) {
-            setSelectedCourseId(initialCourseId);
+            // Only set if different to prevent loops
+            setSelectedCourseId(prev => prev === initialCourseId ? prev : initialCourseId);
+        } else {
+            // Clear course selection when initialCourseId becomes null/undefined
+            // This handles cases like clicking Academy nav while viewing a course
+            // Use functional update to prevent setting null when already null
+            setSelectedCourseId(prev => prev === null ? prev : null);
+            setIsPlayerActive(false);
         }
     }, [initialCourseId]);
 
@@ -1056,6 +1549,40 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         return () => clearTimeout(exitTimeout);
     }, [activeFilters, activeCollectionId, courses]); // Added activeCollectionId dependency
 
+    // --- Lesson Search Effect ---
+    // Fetch lessons when lesson search is enabled and search query exists
+    useEffect(() => {
+        // Only search lessons in Academy when toggle is on and there's a search query
+        if (!activeFilters.includeLessons || !activeFilters.searchQuery || activeCollectionId !== 'academy') {
+            setVisibleLessons([]);
+            return;
+        }
+
+        let cancelled = false;
+        setIsLoadingLessons(true);
+
+        searchLessonsAction(activeFilters.searchQuery)
+            .then((results) => {
+                if (!cancelled) {
+                    setVisibleLessons(results);
+                }
+            })
+            .catch((error) => {
+                console.error('Failed to search lessons:', error);
+                if (!cancelled) {
+                    setVisibleLessons([]);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsLoadingLessons(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeFilters.includeLessons, activeFilters.searchQuery, activeCollectionId]);
 
     // State for Group Management Trigger (Lifted Up)
     const [groupManageTrigger, setGroupManageTrigger] = useState(0);
@@ -1082,6 +1609,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleResetFilters = () => {
         setPendingFilters(INITIAL_FILTERS);
         setActiveFilters(INITIAL_FILTERS);
+        setVisibleLessons([]); // Clear lesson search results
     };
 
     const toggleArrayFilter = (field: keyof FilterState, value: string) => {
@@ -1194,10 +1722,122 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setIsPlayerActive(false);
     };
 
+    // Handler for CoursePageV2 AI integration
+    const handleAskPrometheus = (prompt: string) => {
+        onSetAIPrompt(prompt);
+        onOpenAIPanel();
+    };
+
+    // Navigate to a module within its course
+    const handleModuleClick = async (moduleItem: any) => {
+        const courseId = moduleItem.course_id;
+        const moduleId = moduleItem.id;
+
+        if (!courseId) {
+            console.error('Module is missing course_id:', moduleItem);
+            return;
+        }
+
+        // Load course data
+        setSelectedCourseId(courseId);
+
+        try {
+            const syllabus = await fetchCourseModules(courseId);
+
+            // Fetch progress if user is logged in
+            const supabase = createClient();
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+
+            if (authUser) {
+                const { completedLessonIds } = await fetchUserCourseProgress(authUser.id, courseId);
+                syllabus.forEach(m => {
+                    m.lessons.forEach(l => {
+                        if (completedLessonIds.includes(l.id)) {
+                            l.isCompleted = true;
+                        }
+                    });
+                });
+            }
+
+            setSelectedCourseSyllabus(syllabus);
+
+            const resources = generateMockResources(courseId);
+            setSelectedCourseResources(resources);
+
+            // Set the module to open and go directly to player
+            setResumeModuleId(moduleId);
+            setIsPlayerActive(true);
+
+        } catch (error) {
+            console.error("Failed to load course for module:", error);
+        }
+    };
+
+    // Navigate to a lesson within its course
+    // autoPlay: if true, opens the player immediately; if false, just loads and selects the lesson
+    const handleLessonClick = async (lessonItem: any, autoPlay: boolean = true) => {
+        const lessonId = lessonItem.id;
+        const moduleId = lessonItem.module_id;
+
+        // Get course_id from the lesson's module relationship
+        const courseId = lessonItem.course_id || lessonItem.modules?.course_id || lessonItem.modules?.courses?.id;
+
+        if (!courseId) {
+            console.error('Lesson is missing course_id:', lessonItem);
+            return;
+        }
+
+        // Load course data
+        setSelectedCourseId(courseId);
+
+        try {
+            const syllabus = await fetchCourseModules(courseId);
+
+            // Fetch progress if user is logged in
+            const supabase = createClient();
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+
+            if (authUser) {
+                const { completedLessonIds } = await fetchUserCourseProgress(authUser.id, courseId);
+                syllabus.forEach(m => {
+                    m.lessons.forEach(l => {
+                        if (completedLessonIds.includes(l.id)) {
+                            l.isCompleted = true;
+                        }
+                    });
+                });
+            }
+
+            setSelectedCourseSyllabus(syllabus);
+
+            const resources = generateMockResources(courseId);
+            setSelectedCourseResources(resources);
+
+            // Set the lesson and module to open
+            setResumeLessonId(lessonId);
+            setResumeModuleId(moduleId);
+
+            // Only auto-play if requested (default behavior for existing calls)
+            if (autoPlay) {
+                setIsPlayerActive(true);
+            }
+
+        } catch (error) {
+            console.error("Failed to load course for lesson:", error);
+        }
+    };
+
     const handleDragStart = (item: DragItem) => {
         setIsDragging(true);
         setDraggedItem(item);
     };
+
+    // Expose drag start handler to parent for external triggers (e.g., AIPanel notes drag)
+    useEffect(() => {
+        if (onExposeDragStart) {
+            onExposeDragStart(handleDragStart);
+        }
+    }, [onExposeDragStart]);
 
     // Deprecated wrapper for CardStack which still passes ID
     const handleCourseDragStart = (courseId: number) => {
@@ -1246,7 +1886,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [prometheusConversationTitle, setPrometheusConversationTitle] = useState('New Conversation');
 
     // Initialize conversations from API
-    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [conversations, setConversations] = useState<(Conversation | ToolConversation)[]>([]);
 
     const fetchConversations = async () => {
         try {
@@ -1264,7 +1904,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         fetchConversations();
     }, []);
 
-    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const [activeConversation, setActiveConversation] = useState<Conversation | ToolConversation | null>(null);
     const [deleteConversationModalOpen, setDeleteConversationModalOpen] = useState(false);
     const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
 
@@ -1274,6 +1914,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [deleteContextModalOpen, setDeleteContextModalOpen] = useState(false);
     const [contextItemToDelete, setContextItemToDelete] = useState<{ id: string; type: ContextItemType; title: string } | null>(null);
+
+    // Collection Item Delete State (for COURSE, LESSON, MODULE, RESOURCE)
+    const [deleteCollectionItemModalOpen, setDeleteCollectionItemModalOpen] = useState(false);
+    const [collectionItemToDelete, setCollectionItemToDelete] = useState<{ id: string; type: string; title: string } | null>(null);
 
 
 
@@ -1288,11 +1932,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (!conversationToDelete) return;
         setDeleteConversationModalOpen(false);
         try {
-            await fetch(`/ api / conversations / ${conversationToDelete.id} `, {
+            await fetch(`/api/conversations/${conversationToDelete.id}`, {
                 method: 'DELETE'
             });
             setConversations(prev => prev.filter(c => c.id !== conversationToDelete.id));
             setConversationToDelete(null);
+            // Refresh collection counts after deletion
+            if (onCollectionUpdate) onCollectionUpdate();
         } catch (error) {
             console.error("Failed to delete conversation", error);
             alert("Failed to delete conversation.");
@@ -1335,6 +1981,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (result.success) {
             // Update local state to remove item immediately
             setCollectionItems(prev => prev.filter(item => item.id !== contextItemToDelete.id));
+            // Skip the next fetch since we already updated local state
+            skipNextCollectionFetchRef.current = true;
             if (onCollectionUpdate) onCollectionUpdate();
         } else {
             alert('Failed to delete context item: ' + result.error);
@@ -1342,25 +1990,52 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setContextItemToDelete(null);
     };
 
+    // Collection Item Delete Handlers (COURSE, LESSON, MODULE, RESOURCE)
+    const initiateDeleteCollectionItem = (id: string, type: string, title: string) => {
+        setCollectionItemToDelete({ id, type, title });
+        setDeleteCollectionItemModalOpen(true);
+    };
+
+    const confirmDeleteCollectionItem = async () => {
+        if (!collectionItemToDelete) return;
+        setDeleteCollectionItemModalOpen(false);
+
+        await removeFromCollection(collectionItemToDelete.id, activeCollectionId);
+        // Update local state to remove item immediately
+        setCollectionItems(prev => prev.filter(i => String(i.id) !== String(collectionItemToDelete.id)));
+        // Skip the next fetch since we already updated local state
+        skipNextCollectionFetchRef.current = true;
+        if (onCollectionUpdate) onCollectionUpdate();
+        setCollectionItemToDelete(null);
+    };
+
     // Updated Handler for UniversalCollectionCard
     const handleRemoveItem = async (itemId: string, itemType: string) => {
-        if (itemType === 'COURSE') {
-            removeFromCollection(itemId, activeCollectionId);
-            if (onCollectionUpdate) onCollectionUpdate();
-        } else if (itemType === 'CONVERSATION') {
+        if (itemType === 'CONVERSATION') {
+            // Conversations have their own confirmation modal
             const conv = conversations.find(c => c.id === itemId);
             if (conv) {
                 handleDeleteConversationInitiate(conv);
             }
-        } else {
-            // Context Items (Custom, File, Profile, Insight)
-            // Cast strictly if needed check
-            const type = itemType as ContextItemType;
-            if (type === 'AI_INSIGHT' || type === 'CUSTOM_CONTEXT' || type === 'FILE' || type === 'PROFILE') {
-                const item = collectionItems.find(i => i.id === itemId);
-                const title = item?.title || 'Context Item';
-                initiateDeleteContextItem(itemId, type, title);
-            }
+        } else if (itemType === 'NOTE') {
+            // Notes - remove from collection (not delete the note itself)
+            const { removeNoteFromCollectionAction } = await import('@/app/actions/notes');
+            const resolvedCollectionId = customCollections.find(c =>
+                c.id === activeCollectionId || c.label === activeCollectionId
+            )?.id || activeCollectionId;
+            await removeNoteFromCollectionAction(itemId, resolvedCollectionId);
+            // Refresh the collection
+            setRefreshTrigger(prev => prev + 1);
+        } else if (itemType === 'AI_INSIGHT' || itemType === 'CUSTOM_CONTEXT' || itemType === 'FILE' || itemType === 'PROFILE') {
+            // Context Items have their own confirmation modal
+            const item = collectionItems.find(i => i.id === itemId);
+            const title = item?.title || 'Context Item';
+            initiateDeleteContextItem(itemId, itemType as ContextItemType, title);
+        } else if (itemType === 'COURSE' || itemType === 'LESSON' || itemType === 'MODULE' || itemType === 'RESOURCE') {
+            // Standard collection items - use modal confirmation
+            const item = collectionItems.find(i => i.id === itemId || String(i.id) === itemId);
+            const itemName = item?.title || itemType.toLowerCase();
+            initiateDeleteCollectionItem(itemId, itemType, itemName);
         }
     };
 
@@ -1448,19 +2123,34 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     const handleSaveConversation = () => {
-        if (activeConversation) {
-            onOpenModal(activeConversation);
+        // Use effective conversation - either activeConversation or from conversations array via activeConversationId
+        const effectiveConversation = activeConversation || (activeConversationId ? conversations.find(c => c.id === activeConversationId) : null);
+        if (effectiveConversation) {
+            onOpenModal(effectiveConversation);
         }
     };
 
     const handleOpenConversation = (id: string) => {
         const conversation = conversations.find(c => c.id === id);
         if (conversation) {
-            onResumeConversation && onResumeConversation(conversation);
-            if (activeCollectionId === 'conversations') {
-                // If on conversations page, maybe navigate? For now just resume.
-            } else {
-                // Open drawer or AI panel?
+            // Tool conversations redirect to their originating tool page
+            if (conversation.type === 'TOOL_CONVERSATION') {
+                const toolConv = conversation as ToolConversation;
+                window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${id}`;
+                return;
+            }
+
+            // Regular conversations: navigate to their originating context and resume
+            // onResumeConversation handles navigation based on metadata.contextScope:
+            // - COURSE → Academy with course loaded
+            // - COLLECTION → Custom collection
+            // - TOOL → Tool page (redirect)
+            // - PLATFORM → Prometheus AI
+            onResumeConversation && onResumeConversation(conversation as Conversation);
+
+            // If not on conversations page, also trigger AI Panel open
+            // (onResumeConversation already opens it, but this ensures consistency)
+            if (activeCollectionId !== 'conversations') {
                 onOpenAIPanel();
             }
         }
@@ -1508,9 +2198,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setActiveConversation(null);
         setPrometheusConversationTitle('New Conversation');
         setPrometheusPagePrompt(''); // Clear prompt
-        // Force refresh? 
-        // PrometheusFullPage uses currentConversationId. If we set activeConversation to null, we pass undefined.
-        // It should start new.
+        // Clear parent's activeConversationId so we don't reload the old conversation
+        if (onClearConversation) {
+            onClearConversation();
+        }
+        // Navigate to Prometheus to start the new conversation
+        onSelectCollection('prometheus');
     };
 
     // Dynamic Title Generator
@@ -1522,6 +2215,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         if (activeCollectionId === 'instructors') return 'Course Experts';
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
+        if (activeCollectionId === 'tools') return 'AI-Powered Tools';
+        if (activeCollectionId === 'help') return 'Platform Features';
+        if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
+        if (activeCollectionId === 'assigned-learning') return 'Assigned Learning';
+
+        // Org collections
+        if (viewingOrgCollection) return viewingOrgCollection.name;
 
         const predefined = COLLECTION_NAV_ITEMS.find(i => i.id === activeCollectionId);
         if (predefined) return predefined.label;
@@ -1538,6 +2239,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'instructors') return 'Academy';
         if (activeCollectionId === 'personal-context') return 'Personal Context';
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
+        if (activeCollectionId === 'tools') return 'Tools Collection';
+        if (activeCollectionId === 'help') return 'Help Collection';
+        if (activeCollectionId === 'new-org-collection') return 'Create Collection';
+        if (activeCollectionId === 'company') return 'Org Collection';
+        if (activeCollectionId === 'assigned-learning') return 'My Learning';
+        if (viewingOrgCollection) return 'Org Collection';
         return 'My Collection';
     };
 
@@ -1564,6 +2271,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     // --- CONTEXT ITEMS FETCHING EFFECT ---
     // --- CONTEXT ITEMS & COLLECTION COURSES FETCHING EFFECT ---
     useEffect(() => {
+        // Skip fetch if we just did a manual delete (prevents flash from refetching)
+        if (skipNextCollectionFetchRef.current) {
+            skipNextCollectionFetchRef.current = false;
+            return;
+        }
+
         const loadMixedItems = async () => {
             // Guard: Don't fetch for system pages that aren't collections
             if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy') {
@@ -1593,7 +2306,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         })
                     : [];
 
-                console.log('[MainCanvas] Fetched Items:', { count: standardItems.length });
                 setCollectionItems(standardItems as CollectionItemDetail[]);
 
             } catch (err) {
@@ -1640,7 +2352,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const renderCollectionVisual = () => {
         if (activeCollectionId === 'conversations') return <ConversationVisual />;
         if (activeCollectionId === 'company') return <CompanyVisual />;
+        if (viewingOrgCollection) return <CompanyVisual />;
         if (activeCollectionId === 'instructors') return <InstructorVisual />;
+        if (activeCollectionId === 'help') return <HelpVisual />;
         return <GenericVisual />;
     };
 
@@ -1710,22 +2424,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
     if (selectedCourse) {
-        if (isPlayerActive) {
-            return (
-                <div className="flex-1 w-full h-full relative z-10">
-                    <CoursePlayer
-                        course={selectedCourse}
-                        syllabus={selectedCourseSyllabus}
-                        resources={selectedCourseResources}
-                        onBack={handleBackToCourseHome}
-                        initialLessonId={resumeLessonId}
-                        initialModuleId={resumeModuleId}
-                        userId={user?.id || ''}
-                    />
-                </div>
-            );
-        }
-
+        // Use the new unified CoursePageV2 which handles both description and player views internally
         return (
             <div
                 className="flex-1 w-full h-full relative z-10"
@@ -1733,7 +2432,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 onDragEnd={handleDragEnd}
                 onDrop={() => setIsDragging(false)}
             >
-                {/* Drag Layer still needs to be here for the course page dragging */}
+                {/* Drag Layer for course page dragging */}
                 {isDragging && draggedItem && (
                     <CustomDragLayer
                         item={draggedItem}
@@ -1742,17 +2441,20 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     />
                 )}
 
-                {/* Only render course page here, full screen essentially within canvas area */}
-                <CourseHomePage
+                {/* Unified Course Page with internal view mode switching */}
+                <CoursePageV2
                     course={selectedCourse}
                     syllabus={selectedCourseSyllabus}
                     resources={selectedCourseResources}
                     onBack={handleBackToCollection}
-                    onStartCourse={handleStartCourse}
                     onDragStart={handleDragStart}
                     onAddToCollection={(item) => {
                         onOpenModal(item as any);
                     }}
+                    onAskPrometheus={handleAskPrometheus}
+                    userId={user?.id || ''}
+                    initialLessonId={resumeLessonId}
+                    initialModuleId={resumeModuleId}
                 />
 
                 {/* Allow drag and drop to footer from Course Page */}
@@ -1761,18 +2463,22 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         isDragging={isDragging}
                         activeFlareId={flaringPortalId}
                         onCollectionClick={() => { }}
+                        customCollections={customCollections}
+                        isOpen={isCollectionSurfaceOpen}
+                        onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
                         onDropCourse={(portalId) => {
                             if (draggedItem) {
-                                if (draggedItem.type === 'COURSE') {
-                                    if (portalId === 'new') {
+                                if (portalId === 'new') {
+                                    // Open modal for New/Other collection selection
+                                    if (draggedItem.type === 'COURSE') {
                                         onOpenModal(courses.find(c => c.id === draggedItem.id));
                                     } else {
-                                        onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
-                                        setFlaringPortalId(portalId);
-                                        setTimeout(() => setFlaringPortalId(null), 500);
+                                        // For non-course items, pass the dragItem as context
+                                        onOpenModal(draggedItem as any);
                                     }
                                 } else {
-                                    // Handle non-course items (Mock)
+                                    // Add to existing collection
+                                    onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
                                     setFlaringPortalId(portalId);
                                     setTimeout(() => setFlaringPortalId(null), 500);
                                 }
@@ -1792,12 +2498,83 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             activeCollectionId === 'research' ||
             activeCollectionId === 'to_learn' ||
             activeCollectionId === 'conversations' || // Added conversations
+            activeCollectionId === 'notes' || // Added notes
             activeCollectionId === 'personal-context' ||
             customCollections.some(c => c.id === activeCollectionId);
 
         if (isUniversalCollection) {
-            if (isLoadingCollection && activeCollectionId !== 'personal-context' && activeCollectionId !== 'conversations') {
+            if (isLoadingCollection && activeCollectionId !== 'personal-context' && activeCollectionId !== 'conversations' && activeCollectionId !== 'notes') {
                 return <div className="text-white p-10 font-bold">Loading collection...</div>;
+            }
+
+            // Notes collection - render note cards directly
+            if (activeCollectionId === 'notes') {
+                if (isLoadingNotes) {
+                    return <div className="text-white p-10 font-bold">Loading notes...</div>;
+                }
+
+                if (notes.length === 0) {
+                    return (
+                        <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Edit className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Capture Your Learning Insights</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                Take notes as you learn, jot down key takeaways, and build your personal knowledge base. Notes created during courses stay connected to their context, making it easy to recall and apply what you've learned.
+                            </p>
+                            <p className="text-xs text-slate-500">Click "New Note" to create your first note.</p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                        {notes.map((note, index) => (
+                            <div key={note.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+                                <UniversalCard
+                                    type="NOTE"
+                                    title={note.title}
+                                    description={note.content.length > 150 ? note.content.slice(0, 150) + '...' : note.content}
+                                    meta={new Date(note.updated_at).toLocaleDateString()}
+                                    collections={note.collections}
+                                    onAction={() => handleOpenNoteEditor(note.id)}
+                                    onRemove={() => handleDeleteNoteInitiate(note)}
+                                    onAdd={() => onOpenModal({ type: 'NOTE', id: note.id, title: note.title } as any)}
+                                    draggable={true}
+                                    onDragStart={() => handleDragStart({
+                                        type: 'NOTE',
+                                        id: note.id,
+                                        title: note.title
+                                    })}
+                                />
+                            </div>
+                        ))}
+
+                        {/* Notes Collection Description Footer */}
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <StickyNote className="text-amber-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Edit className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Capture Your Learning Insights</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Take notes as you learn, jot down key takeaways, and build your personal knowledge base. Notes created during courses stay connected to their context, making it easy to recall and apply what you've learned.
+                            </p>
+                        </div>
+                    </div>
+                );
             }
 
             // Determine items source
@@ -1805,14 +2582,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             if (activeCollectionId === 'conversations') {
                 sourceItems = conversations.map(c => ({
                     ...c,
-                    itemType: 'CONVERSATION' // Map type to itemType for UniversalCollectionCard
+                    // Use correct type for tool conversations vs regular conversations
+                    itemType: c.type === 'TOOL_CONVERSATION' ? 'TOOL_CONVERSATION' : 'CONVERSATION'
                 })) as any[];
             }
 
             let displayItems = sourceItems;
 
-            // VIRTUAL PROFILE CARD LOGIC (Robust)
-            // VIRTUAL PROFILE CARD LOGIC (Robust)
+            // VIRTUAL PROFILE CARD LOGIC
             if (activeCollectionId === 'personal-context') {
                 // Dedupe Profiles
                 const profiles = displayItems.filter(i => i.itemType === 'PROFILE');
@@ -1850,20 +2627,158 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             }
 
             if (displayItems.length === 0) {
-                return <div className="text-slate-500 p-10 flex flex-col items-center">
-                    <p className="text-lg mb-2">This collection is empty.</p>
-                    {activeCollectionId === 'personal-context'
-                        ? <p className="text-sm">Add custom context to help the AI understand you better.</p>
-                        : <p className="text-sm">Drag and drop courses, lessons, or conversations here to save them.</p>
+                // Render beautiful empty state based on collection type
+                const renderEmptyState = () => {
+                    if (activeCollectionId === 'personal-context') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Sparkles className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <FileText className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Customize Your AI Experience</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    The context you add here (Personal Profile, Documents, Key Insights) is automatically shared with your AI Tutors to give you highly personalized guidance across the entire platform.
+                                </p>
+                                <p className="text-xs text-slate-500">Add custom context to help the AI understand you better.</p>
+                            </div>
+                        );
                     }
-                </div>;
+                    if (activeCollectionId === 'favorites') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-red/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Star className="text-brand-red w-full h-full" strokeWidth={1} fill="currentColor" />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <BookOpen className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Curated Learning Journey</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Save courses, lessons, and conversations that matter most to you. Your favorites are always just one click away, making it easy to revisit key insights and continue your professional growth.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to save them.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'research') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-orange/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Target className="text-brand-orange w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Lightbulb className="text-amber-400 w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Active Learning Hub</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Organize content you're actively working with. Use this space to collect courses, modules, and resources for current projects or initiatives—perfect for deep-dive research and focused learning.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to organize them.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'to_learn') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Bookmark className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Clock className="text-slate-400 w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Queue Up Your Future Learning</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Bookmark content you want to explore later. Build a personalized pipeline of courses and lessons that match your career goals—your future self will thank you.
+                                </p>
+                                <p className="text-xs text-slate-500">Drag and drop items here to save for later.</p>
+                            </div>
+                        );
+                    }
+                    if (activeCollectionId === 'conversations') {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <MessageSquare className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Flame className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your AI Learning Dialogues</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    Every conversation with your AI tutor is saved here. Revisit past discussions, continue where you left off, and watch your understanding deepen over time through personalized dialogue.
+                                </p>
+                                <p className="text-xs text-slate-500">Start a conversation to see it here.</p>
+                            </div>
+                        );
+                    }
+                    if (viewingOrgCollection) {
+                        return (
+                            <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                                <div className="mb-6 relative w-32 h-32">
+                                    <div className="absolute inset-0 bg-slate-400/20 blur-2xl rounded-full"></div>
+                                    <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                        <Building className="text-slate-400 w-full h-full" strokeWidth={1} />
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                        <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-light text-white mb-2 tracking-wide">{viewingOrgCollection.name}</h3>
+                                <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                    {viewingOrgCollection.isOrgAdmin
+                                        ? 'Add content to this company collection to share it with your entire organization. Drag courses here or use the + buttons above.'
+                                        : 'Access content curated specifically for your organization. Save items to your personal collections to keep learning.'}
+                                </p>
+                                <p className="text-xs text-slate-500">This collection is currently empty.</p>
+                            </div>
+                        );
+                    }
+                    // Custom collections fallback
+                    return (
+                        <div className="flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Folder className="text-purple-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Layers className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Custom Collection</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed mb-4">
+                                Organize your learning your way. Create themed collections for specific projects, skill tracks, or topics you're passionate about—complete flexibility to structure your professional development journey.
+                            </p>
+                            <p className="text-xs text-slate-500">Drag and drop items here to organize them.</p>
+                        </div>
+                    );
+                };
+                return renderEmptyState();
             }
 
 
 
 
             return (
-                <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                     {displayItems.map((item, index) => (
                         <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}>
@@ -1872,22 +2787,39 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 onRemove={(id, type) => handleRemoveItem(id, type)}
                                 onClick={(item) => {
                                     if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
+                                    else if (item.itemType === 'MODULE') {
+                                        handleModuleClick(item);
+                                    }
+                                    else if (item.itemType === 'LESSON') {
+                                        handleLessonClick(item);
+                                    }
                                     else if (item.itemType === 'CONVERSATION') {
                                         handleOpenConversation(item.id);
+                                    }
+                                    else if (item.itemType === 'TOOL_CONVERSATION') {
+                                        // Navigate to the tool page with the conversation loaded
+                                        const toolConv = item as any;
+                                        window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${item.id}`;
+                                    }
+                                    else if (item.itemType === 'NOTE') {
+                                        // Open the note editor
+                                        handleOpenNoteEditor(item.id as string);
                                     }
                                     else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
                                         handleOpenContextEditor(item.itemType, item as any);
                                     }
                                 }}
                                 onAdd={(item) => onOpenModal(item as any)}
+                                onDragStart={handleDragStart}
                             />
                         </div>
                     ))}
 
-                    {/* --- Personal Context Helper Footer --- */}
+                    {/* --- Collection Helper Footers --- */}
+
+                    {/* Personal Context */}
                     {activeCollectionId === 'personal-context' && (
-                        <div className="col-span-full flex flex-col items-center justify-center pt-20 pb-10 opacity-60">
-                            {/* Vector Graphic Placeholder */}
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
                             <div className="mb-6 relative w-32 h-32">
                                 <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
                                 <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
@@ -1897,10 +2829,125 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     <FileText className="text-brand-orange w-8 h-8" strokeWidth={1} />
                                 </div>
                             </div>
-
                             <h3 className="text-xl font-light text-white mb-2 tracking-wide">Customize Your AI Experience</h3>
                             <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
                                 The context you add here (Personal Profile, Documents, Key Insights) is automatically shared with your AI Tutors to give you highly personalized guidance across the entire platform.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Favorites */}
+                    {activeCollectionId === 'favorites' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-red/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Star className="text-brand-red w-full h-full" strokeWidth={1} fill="currentColor" />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <BookOpen className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Curated Learning Journey</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Save courses, lessons, and conversations that matter most to you. Your favorites are always just one click away, making it easy to revisit key insights and continue your professional growth.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Workspace (research) */}
+                    {activeCollectionId === 'research' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-orange/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Target className="text-brand-orange w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Lightbulb className="text-amber-400 w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Active Learning Hub</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Organize content you're actively working with. Use this space to collect courses, modules, and resources for current projects or initiatives—perfect for deep-dive research and focused learning.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Watchlist (to_learn) */}
+                    {activeCollectionId === 'to_learn' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Bookmark className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Clock className="text-slate-400 w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Queue Up Your Future Learning</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Bookmark content you want to explore later. Build a personalized pipeline of courses and lessons that match your career goals—your future self will thank you.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Conversations */}
+                    {activeCollectionId === 'conversations' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-brand-blue-light/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <MessageSquare className="text-brand-blue-light w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Flame className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your AI Learning Dialogues</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Every conversation with your AI tutor is saved here. Revisit past discussions, continue where you left off, and watch your understanding deepen over time through personalized dialogue.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Company */}
+                    {viewingOrgCollection && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-slate-400/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Building className="text-slate-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Users className="text-brand-blue-light w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">{viewingOrgCollection.name}</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                {viewingOrgCollection.isOrgAdmin
+                                    ? 'Add more content using the + buttons above or drag courses from the Academy.'
+                                    : 'Save items to your personal collections to continue your learning journey.'}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Custom Collections */}
+                    {customCollections.some(c => c.id === activeCollectionId) && activeCollectionId !== 'favorites' && activeCollectionId !== 'research' && activeCollectionId !== 'to_learn' && (
+                        <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
+                            <div className="mb-6 relative w-32 h-32">
+                                <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"></div>
+                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                    <Folder className="text-purple-400 w-full h-full" strokeWidth={1} />
+                                </div>
+                                <div className="absolute -right-4 -bottom-2 p-4 border border-white/10 bg-black/40 backdrop-blur-sm rounded-lg -rotate-6">
+                                    <Layers className="text-brand-orange w-8 h-8" strokeWidth={1} />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Your Custom Collection</h3>
+                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                Organize your learning your way. Create themed collections for specific projects, skill tracks, or topics you're passionate about—complete flexibility to structure your professional development journey.
                             </p>
                         </div>
                     )}
@@ -2053,7 +3100,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     ) : (
                         <>
                             {/* Search Input */}
-                            <div className="relative mb-8 mt-10 group">
+                            <div className="relative mb-4 mt-10 group">
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
                                 <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
                                     <Search size={20} className="text-slate-500 mr-4" />
@@ -2066,6 +3113,34 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     />
                                 </div>
                             </div>
+
+                            {/* Include Lessons Toggle - Only show when search query exists */}
+                            {pendingFilters.searchQuery && (
+                                <div className="flex items-center justify-between mb-8 p-3 bg-white/5 rounded-lg border border-white/10">
+                                    <div className="flex items-center gap-3">
+                                        <BookOpen size={16} className="text-brand-blue-light" />
+                                        <span className="text-sm text-slate-300">Include individual lessons in results</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setPendingFilters({
+                                            ...pendingFilters,
+                                            includeLessons: !pendingFilters.includeLessons
+                                        })}
+                                        className={`
+                                            relative w-12 h-6 rounded-full transition-colors
+                                            ${pendingFilters.includeLessons ? 'bg-brand-blue-light' : 'bg-slate-600'}
+                                        `}
+                                    >
+                                        <div className={`
+                                            absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
+                                            ${pendingFilters.includeLessons ? 'left-7' : 'left-1'}
+                                        `} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Spacer when no search query to maintain consistent spacing */}
+                            {!pendingFilters.searchQuery && <div className="mb-4" />}
 
                             {/* Filter Grid */}
                             <div className="grid grid-cols-5 gap-8 mb-8">
@@ -2270,10 +3345,31 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
 
                 {/* --- Header --- */}
                 {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
-                {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && (
+                {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && !viewingGroupMember && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
-                        <div>
-                            {viewingGroup ? (
+                        <div className="flex items-center gap-4">
+                            {/* Back Button - appears when there's a previous page to navigate to */}
+                            {previousCollectionId && onGoBack && (
+                                <button
+                                    onClick={onGoBack}
+                                    className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                    title="Go Back"
+                                >
+                                    <ArrowLeft size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+                                </button>
+                            )}
+                            <div>
+                            {viewingGroup && viewingGroupMember ? (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Users size={14} className="text-brand-blue-light" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">User Account</span>
+                                    </div>
+                                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                                        {viewingGroupMember.full_name}
+                                    </h1>
+                                </div>
+                            ) : viewingGroup ? (
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <Users size={14} className="text-brand-blue-light" />
@@ -2290,7 +3386,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             {activeCollectionId === 'personal-context' ? 'My Academy Profile' : getSubTitle()}
                                         </span>
                                     </div>
-                                    {activeFilterCount > 0 ? (
+                                    {activeCollectionId === 'academy' && activeFilterCount > 0 ? (
                                         <h1 className="text-3xl font-light text-white tracking-tight flex items-center gap-2">
                                             Filtered <span className="font-bold text-white">Results</span>
                                             <span className="text-xs bg-brand-blue-light text-brand-black px-2 py-1 rounded-full font-bold align-middle">{activeFilterCount} Active</span>
@@ -2330,36 +3426,47 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
                                 </>
                             )}
+                            </div>
                         </div>
 
                         <div className="flex space-x-4 items-center">
-                            {viewingGroup ? (
+                            {viewingGroup && !viewingGroupMember ? (
                                 <button
                                     onClick={() => setGroupManageTrigger(prev => prev + 1)}
                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                 >
                                     <Settings size={14} /> Manage Group
                                 </button>
+                            ) : viewingGroup && viewingGroupMember ? (
+                                null
                             ) : (
                                 <>
-                                    {/* Expanded to include Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                                    {/* Expanded to include Personal Context, Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
+                                    {/* Note: Org collections (org-collection-*) only show these buttons if user is org admin */}
                                     {(activeCollectionId === 'personal-context' ||
                                         activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
-                                        customCollections.some(c => c.id === activeCollectionId)) && (
+                                        customCollections.some(c => c.id === activeCollectionId) ||
+                                        (viewingOrgCollection && viewingOrgCollection.isOrgAdmin)) && (
                                             <div className="flex items-center gap-2 mr-4">
+                                                <button
+                                                    onClick={() => handleCreateNote(viewingOrgCollection ? viewingOrgCollection.id : activeCollectionId)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                >
+                                                    <Plus size={14} /> Note
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenContextEditor('CUSTOM_CONTEXT')}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
-                                                    <Plus size={14} /> Add Context
+                                                    <Plus size={14} /> Context
                                                 </button>
                                                 <button
                                                     onClick={() => handleOpenContextEditor('FILE')}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
-                                                    <Plus size={14} /> Add File
+                                                    <Plus size={14} /> File
                                                 </button>
                                             </div>
                                         )}
@@ -2373,43 +3480,65 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                 <MessageSquare size={14} /> New Conversation
                                             </button>
                                         </div>
+                                    ) : activeCollectionId === 'notes' ? (
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleCreateNote()}
+                                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                            >
+                                                <StickyNote size={14} /> New Note
+                                            </button>
+                                        </div>
                                     ) : activeCollectionId === 'prometheus' ? (
                                         /* Prometheus Actions */
                                         <div className="flex items-center gap-3">
-                                            {activeConversation && (
-                                                <button
-                                                    onClick={handleNewConversation}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                                >
-                                                    <MessageSquare size={14} /> New Conversation
-                                                </button>
-                                            )}
+                                            {/* Compute effective conversation data (handles both activeConversation and activeConversationId) */}
+                                            {(() => {
+                                                const effectiveConversation = activeConversation || (activeConversationId ? conversations.find(c => c.id === activeConversationId) : null);
+                                                const effectiveMessages = effectiveConversation?.messages || [];
+                                                const effectiveTitle = effectiveConversation?.title || prometheusConversationTitle || 'Prometheus Conversation';
+                                                const hasActiveConversation = effectiveConversation !== null;
+                                                const hasMessages = effectiveMessages.length > 0;
 
+                                                return (
+                                                    <>
+                                                        {hasActiveConversation && (
+                                                            <button
+                                                                onClick={handleNewConversation}
+                                                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                                            >
+                                                                <MessageSquare size={14} /> New Conversation
+                                                            </button>
+                                                        )}
 
+                                                        {/* Export Button - circular icon */}
+                                                        {hasMessages && (
+                                                            <button
+                                                                onClick={() => exportConversationAsMarkdown(
+                                                                    effectiveMessages,
+                                                                    effectiveTitle,
+                                                                    'Prometheus AI'
+                                                                )}
+                                                                className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                                                title="Export conversation as Markdown"
+                                                            >
+                                                                <Download size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                            </button>
+                                                        )}
 
-                                            {activeConversation && prometheusConversationTitle && prometheusConversationTitle !== 'New Conversation' && (
-                                                <button
-                                                    onClick={handleSaveConversation}
-                                                    disabled={!!activeConversation?.isSaved}
-                                                    className={`
-                                        flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all
-                                        ${activeConversation?.isSaved
-                                                            ? 'bg-white/10 text-slate-400 cursor-default border border-white/5'
-                                                            : 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.3)]'
-                                                        }
-`}
-                                                >
-                                                    {activeConversation?.isSaved ? (
-                                                        <>
-                                                            <Check size={14} /> Saved to Collection
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Plus size={14} /> Add to Collection
-                                                        </>
-                                                    )}
-                                                </button>
-                                            )}
+                                                        {/* Add to Collection Button - circular icon, always enabled for multi-collection support */}
+                                                        {hasActiveConversation && effectiveTitle !== 'New Conversation' && (
+                                                            <button
+                                                                onClick={handleSaveConversation}
+                                                                className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                                                                title="Save this conversation to a Collection"
+                                                            >
+                                                                <Plus size={18} className="text-slate-400 group-hover:text-white transition-colors" />
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
                                         /* Dashboard V3 Stats in Header - Smaller with warm glow */
@@ -2476,21 +3605,52 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                 </button>
                                             )}
 
+                                            {/* Quick Lesson Toggle - Show when search is active */}
+                                            {activeCollectionId === 'academy' && activeFilters.searchQuery && (
+                                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10">
+                                                    <span className="text-xs text-slate-400">
+                                                        {activeFilters.includeLessons ? 'Courses + Lessons' : 'Courses only'}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => {
+                                                            const newFilters = {
+                                                                ...activeFilters,
+                                                                includeLessons: !activeFilters.includeLessons
+                                                            };
+                                                            setActiveFilters(newFilters);
+                                                            setPendingFilters(newFilters);
+                                                        }}
+                                                        className={`
+                                                            relative w-10 h-5 rounded-full transition-colors
+                                                            ${activeFilters.includeLessons ? 'bg-brand-blue-light' : 'bg-slate-600'}
+                                                        `}
+                                                    >
+                                                        <div className={`
+                                                            absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform
+                                                            ${activeFilters.includeLessons ? 'left-5' : 'left-0.5'}
+                                                        `} />
+                                                    </button>
+                                                </div>
+                                            )}
+
                                         </>
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus */}
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes, Org Collections */}
                                     {!(activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'conversations' ||
+                                        activeCollectionId === 'notes' ||
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
-                                        activeCollectionId === 'company' ||
+                                        viewingOrgCollection ||
                                         activeCollectionId === 'instructors' ||
                                         activeCollectionId === 'dashboard' ||
                                         activeCollectionId === 'prometheus' ||
+                                        activeCollectionId === 'tools' ||
                                         activeCollectionId === 'certifications' ||
+                                        activeCollectionId === 'help' ||
                                         viewingGroup ||
                                         (customCollections && customCollections.some(c => c.id === activeCollectionId))
                                     ) && (
@@ -2514,8 +3674,33 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             </button>
                                         )}
 
+                                    {/* --- EXPERTS BUTTON (Only in Academy) --- */}
+                                    {activeCollectionId === 'academy' && (
+                                        <button
+                                            onClick={() => onSelectCollection('instructors')}
+                                            className="group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border bg-black/40 text-slate-300 border-white/10 hover:bg-black/60 hover:text-white hover:border-white/20"
+                                        >
+                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            <Users size={14} className="mr-3" />
+                                            <span>Experts</span>
+                                        </button>
+                                    )}
+
+                                    {/* --- CERTIFICATIONS BUTTON (Only in Academy) --- */}
+                                    {activeCollectionId === 'academy' && (
+                                        <button
+                                            onClick={() => onSelectCollection('certifications')}
+                                            className="group relative flex items-center px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md overflow-hidden border bg-black/40 text-slate-300 border-white/10 hover:bg-black/60 hover:text-white hover:border-white/20"
+                                        >
+                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            <Award size={14} className="mr-3" />
+                                            <span>Certifications</span>
+                                        </button>
+                                    )}
+
                                     {/* --- CUSTOM COLLECTION MANAGEMENT --- */}
-                                    {customCollections.some(c => c.id === activeCollectionId) && (
+                                    {(customCollections.some(c => c.id === activeCollectionId) ||
+                                      (viewingOrgCollection && viewingOrgCollection.isOrgAdmin)) && (
                                         <div className="relative">
                                             <button
                                                 onClick={() => setIsManageMenuOpen(!isManageMenuOpen)}
@@ -2532,12 +3717,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     >
                                                         <Edit size={14} /> Rename
                                                     </button>
+                                                    {!viewingOrgCollection && (
                                                     <button
                                                         onClick={handleDeleteCollectionSpy}
                                                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
                                                     >
                                                         <Trash size={14} /> Delete
                                                     </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -2551,13 +3738,17 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                 {/* --- Canvas Content Grid --- */}
                 {
                     viewingGroup ? (
-                        <div className="flex-1 w-full h-full bg-transparent overflow-y-auto relative z-10">
-                            {/* Using dynamic import for GroupDetailCanvas inside render if needed, or better, import at top */}
-                            {/* Since we can't easily add top-level imports now without viewing file start, let's use a lazy loaded component or assume we add it later. 
-                                  For now, I'll use a dynamic require logic wrapper in separate component or just trust I can add the import. 
-                                  Actually, let's just use the component. I'll add the import in a separate step if needed.
-                              */}
-                            <GroupDetailCanvasWrapper group={viewingGroup} manageTrigger={groupManageTrigger} />
+                        <div className="flex-1 w-full h-full bg-transparent overflow-y-auto relative z-10 custom-scrollbar">
+                            <GroupDetailCanvasWrapper
+                                group={viewingGroup}
+                                manageTrigger={groupManageTrigger}
+                                onViewingMember={setViewingGroupMember}
+                                onDragStart={handleDragStart}
+                                onCourseClick={handleCourseClick}
+                                onModuleClick={handleModuleClick}
+                                onLessonClick={handleLessonClick}
+                                onConversationClick={handleOpenConversation}
+                            />
                         </div>
                     ) :
                         activeCollectionId === 'prometheus' ? (
@@ -2599,11 +3790,22 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         user={user}
                                         courses={courses}
                                         onNavigate={onSelectCollection}
+                                        onNavigateWithFilter={onNavigateWithFilter}
                                         onStartCourse={handleCourseClick}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
                                         onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                                         onAddCourse={(course) => onOpenModal(course)}
+                                        onResumeConversation={onResumeConversation}
+                                        onCourseDragStart={handleCourseDragStart}
+                                        onOpenDrawer={() => toggleDrawer('prompts')}
+                                        onDeleteConversation={handleDeleteConversation}
+                                        onConversationDragStart={(conv) => handleDragStart({
+                                            type: 'CONVERSATION',
+                                            id: conv.id,
+                                            title: conv.title || 'Conversation',
+                                        })}
+                                        onAddConversation={(conv) => onOpenModal(conv)}
                                     />
                                 )}
                             </div>
@@ -2617,6 +3819,87 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                         ) : activeCollectionId === 'org-team' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
                                 <TeamManagement />
+                            </div>
+                        ) : activeCollectionId === 'assigned-learning' ? (
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <AssignedLearningCanvas />
+                            </div>
+                        ) : activeCollectionId === 'help' ? (
+                            // --- HELP COLLECTION VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
+                                    {isLoadingHelpTopics ? (
+                                        <div className="text-white p-10 font-bold">Loading help topics...</div>
+                                    ) : helpTopics.length === 0 ? (
+                                        <div className="text-slate-500 p-10 flex flex-col items-center">
+                                            <p className="text-lg mb-2">No help topics available.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                            {helpTopics.map((topic, index) => (
+                                                <div
+                                                    key={topic.id}
+                                                    className="animate-fade-in-up cursor-pointer"
+                                                    style={{ animationDelay: `${index * 50}ms` }}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => openHelpTopic(topic)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                            event.preventDefault();
+                                                            openHelpTopic(topic);
+                                                        }
+                                                    }}
+                                                >
+                                                    <UniversalCard
+                                                        type="HELP"
+                                                        title={topic.title}
+                                                        description={topic.summary}
+                                                        meta={topic.category || 'Platform'}
+                                                        draggable={false}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Help Collection Footer */}
+                                    {helpTopics.length > 0 && (
+                                        <div className="col-span-full flex flex-col items-center justify-center pt-20 pb-10 opacity-60">
+                                            <div className="mb-6 relative w-32 h-32">
+                                                <div className="absolute inset-0 bg-[#4B8BB3]/20 blur-2xl rounded-full"></div>
+                                                <div className="relative z-10 p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-xl rotate-3">
+                                                    <HelpCircle className="text-[#4B8BB3] w-full h-full" strokeWidth={1} />
+                                                </div>
+                                            </div>
+                                            <h3 className="text-xl font-light text-white mb-2 tracking-wide">Explore Platform Features</h3>
+                                            <p className="text-sm text-slate-400 max-w-lg text-center leading-relaxed">
+                                                Click any card above to learn more about that feature. Use the Collection Assistant to ask questions about the platform.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* HelpPanel for viewing topic content */}
+                                <HelpPanel
+                                    isOpen={isHelpPanelOpen}
+                                    onClose={() => setIsHelpPanelOpen(false)}
+                                    topicId={activeHelpTopicId}
+                                    fallbackTitle={activeHelpTopicFallback?.title}
+                                    fallbackContentText={activeHelpTopicFallback?.contentText}
+                                />
+                            </div>
+                        ) : activeCollectionId === 'tools' ? (
+                            // --- TOOLS COLLECTION VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <ToolsCollectionView
+                                    tools={tools}
+                                    isLoading={isLoadingTools}
+                                    onToolSelect={(slug) => {
+                                        // Navigate to tool page
+                                        window.location.href = `/tools/${slug}`;
+                                    }}
+                                />
                             </div>
                         ) : (
                             <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
@@ -2725,6 +4008,8 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                                             actionLabel="VIEW"
                                                                                             onAction={() => handleCourseClick(course.id)}
                                                                                             onAdd={() => handleAddButtonClick(course.id)}
+                                                                                            draggable={true}
+                                                                                            onDragStart={() => handleCourseDragStart(course.id)}
                                                                                         />
                                                                                     </div>
                                                                                 </LazyCourseCard>
@@ -2738,10 +4023,12 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 })}
                                             </div>
                                         ) : (
-                                            // If Universal Collection (Favorites, Workspace, Watchlist, Personal, Custom)
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Notes, Personal, Custom)
                                             (activeCollectionId === 'favorites' ||
                                                 activeCollectionId === 'research' ||
                                                 activeCollectionId === 'to_learn' ||
+                                                activeCollectionId === 'conversations' ||
+                                                activeCollectionId === 'notes' ||
                                                 activeCollectionId === 'personal-context' ||
                                                 activeCollectionId === 'org-collections' ||
                                                 activeCollectionId === 'org-analytics' ||
@@ -2765,7 +4052,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 </div>
                                             ) : (
                                                 <div className="pb-20">
-                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                                                         {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
                                                         {collectionItems.map((item) => (
                                                             <div key={item.id} className="animate-fade-in">
@@ -2773,12 +4060,13 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                     item={item as any} // Dynamic mapping handles types
                                                                     onRemove={(id, type) => initiateDeleteContextItem(id, type as ContextItemType, item.title)}
                                                                     onClick={(i) => {
-                                                                        if (i.itemType === 'MODULE' || i.itemType === 'LESSON') {
-                                                                            // Ideally navigate to course? For now just open modal or log
-                                                                            console.log('Open item:', i);
-                                                                            // We could construct a course link if we had courseId, but simplistic start:
+                                                                        if (i.itemType === 'MODULE') {
+                                                                            handleModuleClick(i);
+                                                                        } else if (i.itemType === 'LESSON') {
+                                                                            handleLessonClick(i);
                                                                         }
                                                                     }}
+                                                                    onDragStart={handleDragStart}
                                                                 />
                                                             </div>
                                                         ))}
@@ -2808,9 +4096,40 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                             actionLabel="VIEW"
                                                                             onAction={() => handleCourseClick(course.id)}
                                                                             onAdd={() => handleAddButtonClick(course.id)}
+                                                                            draggable={true}
+                                                                            onDragStart={() => handleCourseDragStart(course.id)}
                                                                         />
                                                                     </div>
                                                                 </LazyCourseCard>
+                                                            );
+                                                        })}
+
+                                                        {/* Render Lesson Search Results */}
+                                                        {activeFilters.includeLessons && visibleLessons.length > 0 && visibleLessons.map((lesson, index) => {
+                                                            const delay = Math.min(visibleCourses.length + index, 30) * 50;
+                                                            return (
+                                                                <div
+                                                                    key={`lesson-${lesson.id}`}
+                                                                    style={{ transitionDelay: `${delay}ms` }}
+                                                                    className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                >
+                                                                    <UniversalCard
+                                                                        type="LESSON"
+                                                                        title={lesson.title}
+                                                                        subtitle={lesson.course_author}
+                                                                        imageUrl={lesson.course_image}
+                                                                        meta={lesson.duration}
+                                                                        description={`From: ${lesson.course_title}`}
+                                                                        actionLabel="VIEW"
+                                                                        onAction={() => handleLessonClick(lesson, false)}
+                                                                        draggable={true}
+                                                                        onDragStart={() => handleDragStart({
+                                                                            type: 'LESSON',
+                                                                            id: lesson.id,
+                                                                            title: lesson.title,
+                                                                        })}
+                                                                    />
+                                                                </div>
                                                             );
                                                         })}
 
@@ -2826,6 +4145,12 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                     onAction={() => handleOpenConversation(conversation.id)}
                                                                     onRemove={() => handleDeleteConversation(conversation.id)}
                                                                     onAdd={() => onOpenModal(conversation)}
+                                                                    draggable={true}
+                                                                    onDragStart={() => handleDragStart({
+                                                                        type: 'CONVERSATION',
+                                                                        id: conversation.id,
+                                                                        title: conversation.title,
+                                                                    })}
                                                                 />
                                                             </div>
                                                         ))}
@@ -2898,6 +4223,9 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                             <CollectionSurface
                                 isDragging={isDragging}
                                 activeFlareId={flaringPortalId}
+                                customCollections={customCollections}
+                                isOpen={isCollectionSurfaceOpen}
+                                onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
                                 onCollectionClick={(id) => {
                                     if (id === 'new') {
                                         onOpenModal();
@@ -2907,16 +4235,19 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                 }}
                                 onDropCourse={(portalId) => {
                                     if (draggedItem) {
-                                        // Only supporting Course Drop to portals for now as per previous logic, 
-                                        // but MainCanvas supports generic items if we extended App logic.
-                                        if (draggedItem.type === 'COURSE') {
-                                            if (portalId === 'new') {
+                                        if (portalId === 'new') {
+                                            // Open modal for New/Other collection selection
+                                            if (draggedItem.type === 'COURSE') {
                                                 onOpenModal(courses.find(c => c.id === draggedItem.id));
                                             } else {
-                                                onImmediateAddToCollection(Number(draggedItem.id), portalId);
-                                                setFlaringPortalId(portalId);
-                                                setTimeout(() => setFlaringPortalId(null), 500);
+                                                // For non-course items, pass the dragItem as context
+                                                onOpenModal(draggedItem as any);
                                             }
+                                        } else {
+                                            // Add to existing collection
+                                            onImmediateAddToCollection(draggedItem.id, portalId, draggedItem.type);
+                                            setFlaringPortalId(portalId);
+                                            setTimeout(() => setFlaringPortalId(null), 500);
                                         }
                                         setIsDragging(false);
                                         setDraggedItem(null);
@@ -2961,6 +4292,28 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     description="This item will be permanently removed from this collection. This action cannot be undone."
                 />
 
+                {/* Delete Collection Item Confirmation (COURSE, LESSON, MODULE, RESOURCE) */}
+                <DeleteConfirmationModal
+                    isOpen={deleteCollectionItemModalOpen}
+                    onCancel={() => setDeleteCollectionItemModalOpen(false)}
+                    onConfirm={confirmDeleteCollectionItem}
+                    title={`Remove ${collectionItemToDelete?.type || 'Item'}?`}
+                    itemTitle={collectionItemToDelete?.title || 'Item'}
+                    confirmText="Remove Item"
+                    description="This item will be removed from this collection. This action cannot be undone."
+                />
+
+                {/* Delete Note Confirmation */}
+                <DeleteConfirmationModal
+                    isOpen={deleteNoteModalOpen}
+                    onCancel={cancelDeleteNote}
+                    onConfirm={confirmDeleteNote}
+                    title="Delete Note?"
+                    itemTitle={noteToDelete?.title || 'Note'}
+                    confirmText="Delete Note"
+                    description="This note will be permanently deleted. This action cannot be undone."
+                />
+
                 {/* --- Top Context Panel --- */}
                 <TopContextPanel
                     isOpen={isContextEditorOpen}
@@ -2973,6 +4326,15 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                         setRefreshTrigger(prev => prev + 1);
                         if (onCollectionUpdate) onCollectionUpdate();
                     }}
+                />
+
+                {/* --- Note Editor Panel --- */}
+                <NoteEditorPanel
+                    isOpen={isNoteEditorOpen}
+                    onClose={handleCloseNoteEditor}
+                    noteId={editingNoteId}
+                    onSaveSuccess={handleNoteSaved}
+                    onDeleteSuccess={handleNoteDeleted}
                 />
             </div >
         </div >

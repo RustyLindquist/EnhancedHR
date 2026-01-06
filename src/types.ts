@@ -29,11 +29,21 @@ import { LucideIcon } from 'lucide-react';
 
 export type CourseBadge = 'REQUIRED' | 'SHRM' | 'HRCI';
 
+export interface CourseAuthor {
+  id: string;
+  name: string;
+  title: string | null;
+  bio: string | null;
+  avatar: string | null;
+  credentials: string | null;
+}
+
 export interface Course {
   type: 'COURSE'; // Discriminator
   id: number;
   title: string;
   author: string;
+  authorDetails?: CourseAuthor; // Full author profile if available
   progress: number; // 0-100
   category: string;
   image?: string; // Featured image URL
@@ -200,8 +210,76 @@ export interface ProfileDetails {
     collections?: string[];
 }
 
+// --- Help System Types ---
+
+export interface HelpTopic {
+    type: 'HELP';
+    id: string;
+    slug: string;
+    title: string;
+    summary: string;
+    category?: string;
+    contentText?: string;
+    iconName?: string;
+    displayOrder: number;
+    isActive?: boolean;
+    createdAt?: string;
+    collections?: string[]; // For ContextCard compatibility (help topics are not draggable)
+}
+
+// --- Tool Types ---
+
+export interface Tool {
+  type: 'TOOL';
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  agent_type: string;
+  icon_name?: string;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  collections?: string[]; // For ContextCard compatibility (tools are not draggable to collections)
+}
+
+export interface ToolConversation extends Omit<Conversation, 'type'> {
+  type: 'TOOL_CONVERSATION';
+  tool_id: string;
+  tool_slug: string;
+  tool_title: string;
+}
+
+// Drag Item Types (used for drag/drop and modal operations)
+export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE' | 'TOOL_CONVERSATION';
+
+export interface DragItem {
+  type: DragItemType;
+  id: string | number;
+  title?: string;
+  subtitle?: string;
+  image?: string; // For preview
+  meta?: string;
+  collections?: string[]; // For modal compatibility
+}
+
+// --- Note Types ---
+
+export interface Note {
+  type: 'NOTE';
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  course_id: number | null;
+  course_title?: string;
+  created_at: string;
+  updated_at: string;
+  collections?: string[];
+}
+
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | HelpTopic | Tool | ToolConversation | DragItem;
 
 export interface BackgroundTheme {
   id: string;
@@ -257,8 +335,22 @@ export interface Lesson {
 export interface Module {
   id: string;
   title: string;
+  description?: string; // Optional module description
   duration: string; // Added duration
   lessons: Lesson[];
+}
+
+// Lesson search result with parent course context
+export interface LessonSearchResult {
+  id: string;
+  title: string;
+  duration: string;
+  type: 'video' | 'quiz' | 'article';
+  module_id: string;
+  course_id: number;
+  course_title: string;
+  course_image?: string;
+  course_author: string;
 }
 
 export interface AuthorProfile {
@@ -274,15 +366,4 @@ export interface Resource {
   type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
   url: string;
   size?: string;
-}
-
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE';
-
-export interface DragItem {
-  type: DragItemType;
-  id: string | number;
-  title?: string;
-  subtitle?: string;
-  image?: string; // For preview
-  meta?: string;
 }

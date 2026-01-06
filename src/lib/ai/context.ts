@@ -7,11 +7,16 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
     const contextItems: ContextItem[] = [];
 
     try {
-        // 1. Generate Embedding if query exists
+        // 1. Generate Embedding if needed (skip for Help collection which uses text matching)
         let queryEmbedding: number[] = [];
-        if (query) {
+        const shouldEmbedQuery = !!query && (
+            (scope.type === 'COURSE' && !!scope.id) ||
+            scope.type === 'PLATFORM' ||
+            (scope.type === 'COLLECTION' && !!scope.id && scope.id !== 'help')
+        );
+        if (shouldEmbedQuery) {
             const { generateEmbedding } = await import('./embedding');
-            queryEmbedding = await generateEmbedding(query);
+            queryEmbedding = await generateEmbedding(query!);
         }
 
         if (scope.type === 'COURSE' && scope.id) {
@@ -67,42 +72,127 @@ export async function getContextForScope(scope: ContextScope, query?: string): P
             }
 
         } else if (scope.type === 'COLLECTION' && scope.id) {
-            // Fetch items from collection_items
-            const { data: items } = await supabase
-                .from('collection_items')
-                .select('item_type, item_id')
-                .eq('collection_id', scope.id);
+            let handledCollectionScope = false;
 
-            if (items) {
-                const courseIds = items.filter(i => i.item_type === 'COURSE').map(i => i.item_id);
-                
-                // For Collection, we want to search across these courses.
-                // Since match_course_embeddings only takes one ID, we'll do a Global Search 
-                // and then filter in code (suboptimal but works without schema change)
-                // OR just do Global Search and assume relevance sorts it out.
-                // Let's do Global Search if query exists.
-                
-                if (queryEmbedding.length > 0) {
-                     const { data: chunks } = await supabase.rpc('match_course_embeddings', {
-                        query_embedding: queryEmbedding,
-                        match_threshold: 0.5,
-                        match_count: 7, // Slightly more for collections
-                        filter_course_id: null // Global search
+            // Special-case: Help Collection uses help_topics (not collection_items)
+            if (scope.id === 'help') {
+                const { data: topics, error } = await supabase
+                    .from('help_topics')
+                    .select('slug, title, summary, content_text, display_order')
+                    .eq('is_active', true)
+                    .order('display_order', { ascending: true });
+
+                if (!error && topics && topics.length > 0) {
+                    // Add a lightweight index so the agent can reference available help topics
+                    const indexLines = topics.map((t: any) => `- ${t.title} (${t.slug})`);
+                    contextItems.push({
+                        id: 'help_topics_index',
+                        type: 'HELP_INDEX',
+                        content: `Available Help Topics:\n${indexLines.join('\n')}`
                     });
 
-                    if (chunks) {
-                        // Filter to only items in this collection (if they are courses)
-                        // This assumes chunks have course_id.
-                        const relevantChunks = chunks.filter((c: any) => courseIds.includes(c.course_id.toString()));
-                        
-                        relevantChunks.forEach((chunk: any) => {
-                            contextItems.push({
-                                id: chunk.id,
-                                type: 'RAG_CONTENT',
-                                content: chunk.content,
-                                similarity: chunk.similarity
-                            });
+                    // Basic keyword scoring for retrieval
+                    const q = (query || '').toLowerCase();
+                    const terms = Array.from(new Set(
+                        q
+                            .split(/[^a-z0-9]+/g)
+                            .map(t => t.trim())
+                            .filter(t => t.length >= 3)
+                    ));
+
+                    const scored = topics.map((t: any) => {
+                        const title = (t.title || '').toLowerCase();
+                        const slug = (t.slug || '').toLowerCase();
+                        const summary = (t.summary || '').toLowerCase();
+                        const content = (t.content_text || '').toLowerCase();
+                        const haystack = `${title}\n${summary}\n${content}`;
+
+                        let score = 0;
+                        for (const term of terms) {
+                            if (slug.includes(term)) score += 5;
+                            if (title.includes(term)) score += 4;
+                            if (summary.includes(term)) score += 2;
+                            if (haystack.includes(term)) score += 1;
+                        }
+
+                        // Always prefer core orientation topics slightly
+                        if (t.slug === 'help-collection') score += 2;
+                        if (t.slug === 'getting-started') score += 1;
+
+                        return { ...t, score };
+                    });
+
+                    scored.sort((a: any, b: any) => {
+                        if (b.score !== a.score) return b.score - a.score;
+                        return (a.display_order || 0) - (b.display_order || 0);
+                    });
+
+                    const alwaysInclude = new Set(['help-collection', 'getting-started']);
+                    const selected: any[] = [];
+                    for (const t of scored) {
+                        if (selected.length >= 5) break;
+                        if (t.score <= 0 && terms.length > 0) continue;
+                        selected.push(t);
+                    }
+
+                    // Ensure anchors are present
+                    for (const slug of alwaysInclude) {
+                        const found = scored.find((t: any) => t.slug === slug);
+                        if (found && !selected.some(s => s.slug === slug)) {
+                            selected.unshift(found);
+                        }
+                    }
+
+                    const MAX_TOPIC_CHARS = 1800;
+                    selected.slice(0, 6).forEach((t: any) => {
+                        const raw = t.content_text || '';
+                        const trimmed = raw.length > MAX_TOPIC_CHARS ? `${raw.slice(0, MAX_TOPIC_CHARS)}…` : raw;
+                        contextItems.push({
+                            id: t.slug,
+                            type: 'HELP_TOPIC',
+                            content: `Help Topic: ${t.title} (${t.slug})\n\n${trimmed}`
                         });
+                    });
+                }
+
+                handledCollectionScope = true;
+            }
+
+            if (!handledCollectionScope) {
+                // Fetch items from collection_items
+                const { data: items } = await supabase
+                    .from('collection_items')
+                    .select('item_type, item_id')
+                    .eq('collection_id', scope.id);
+
+                if (items) {
+                    const courseIds = items.filter(i => i.item_type === 'COURSE').map(i => i.item_id);
+
+                    // For Collection, we want to search across these courses.
+                    // Since match_course_embeddings only takes one ID, we'll do a Global Search
+                    // and then filter in code (suboptimal but works without schema change).
+                    if (queryEmbedding.length > 0) {
+                        const { data: chunks } = await supabase.rpc('match_course_embeddings', {
+                            query_embedding: queryEmbedding,
+                            match_threshold: 0.5,
+                            match_count: 7, // Slightly more for collections
+                            filter_course_id: null // Global search
+                        });
+
+                        if (chunks) {
+                            // Filter to only items in this collection (if they are courses)
+                            // This assumes chunks have course_id.
+                            const relevantChunks = chunks.filter((c: any) => courseIds.includes(c.course_id.toString()));
+
+                            relevantChunks.forEach((chunk: any) => {
+                                contextItems.push({
+                                    id: chunk.id,
+                                    type: 'RAG_CONTENT',
+                                    content: chunk.content,
+                                    similarity: chunk.similarity
+                                });
+                            });
+                        }
                     }
                 }
             }

@@ -66,48 +66,76 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
 
     console.log('[getCollectionCountsAction] Starting count for user:', userId);
 
-    // Fetch User Collections for Alias Mapping
-    const { data: userCollections } = await admin
+    // Fetch User Collections for Alias Mapping (ordered by created_at for consistent resolution)
+    const { data: userCollections, error: userCollError } = await admin
         .from('user_collections')
-        .select('id, alias, label')
-        .eq('user_id', userId);
+        .select('id, label, is_custom, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
 
-    const collectionMap: Record<string, string> = {};
+    if (userCollError) {
+        console.error('[getCollectionCountsAction] Error fetching user collections:', userCollError);
+    }
+
+    // DIAGNOSTIC: Log all collections to identify duplicates
+    console.log('[getCollectionCountsAction] All collections:', userCollections?.map(c => ({
+        id: c.id,
+        label: c.label,
+        is_custom: c.is_custom,
+        created_at: c.created_at
+    })));
+
+    // Build UUID -> Alias map for system collections (based on label)
+    // Only map the FIRST (oldest) collection for each label to ensure consistent counts
+    const uuidToAlias: Record<string, string> = {};
+    const aliasToUuid: Record<string, string> = {}; // Track which alias already has a UUID assigned
     const labelToAlias: Record<string, string> = {
-        'Favorites': 'favorites',
-        'Workspace': 'research',
-        'Watchlist': 'to_learn',
-        'Personal Context': 'personal-context'
+        'favorites': 'favorites',
+        'workspace': 'research',
+        'watchlist': 'to_learn',
+        'personal context': 'personal-context'
     };
+
+    let personalContextId: string | null = null;
 
     if (userCollections) {
         userCollections.forEach((c: any) => {
-             if (c.alias) {
-                 collectionMap[c.id] = c.alias;
-             } else if (c.label && labelToAlias[c.label]) {
-                 collectionMap[c.id] = labelToAlias[c.label];
-             }
+            const lowerLabel = c.label?.toLowerCase().trim();
+
+            // Only set personalContextId once (first/oldest)
+            if (lowerLabel === 'personal context' && !personalContextId) {
+                personalContextId = c.id;
+            }
+
+            // Map UUID to alias only if this alias hasn't been assigned yet (first wins)
+            if (lowerLabel && labelToAlias[lowerLabel]) {
+                const alias = labelToAlias[lowerLabel];
+                if (!aliasToUuid[alias]) {
+                    uuidToAlias[c.id] = alias;
+                    aliasToUuid[alias] = c.id;
+                }
+            }
         });
     }
 
-    // 1. Count Courses (collection_items)
-    const { data: courseItems, error: courseError } = await admin
-        .from('collection_items')
-        .select('collection_id, user_collections!inner(user_id)')
-        .eq('user_collections.user_id', userId);
+    // DIAGNOSTIC: Log primary collection mapping
+    console.log('[getCollectionCountsAction] Primary collections (aliasToUuid):', aliasToUuid);
 
-    if (courseError) {
-        console.error('[getCollectionCountsAction] Error fetching collection items:', courseError);
+    // 1. Count items from collection_items table (courses, modules, lessons, conversations)
+    const { data: collectionItems, error: itemsError } = await admin
+        .from('collection_items')
+        .select('collection_id, item_type, item_id')
+        .in('collection_id', userCollections?.map(c => c.id) || []);
+
+    if (itemsError) {
+        console.error('[getCollectionCountsAction] Error fetching collection items:', itemsError);
     }
 
-    if (!courseError && courseItems) {
-        // console.log('[getCollectionCountsAction] Found collection items:', courseItems.length);
-        courseItems.forEach((item: any) => {
+    // Count items by collection UUID only
+    if (collectionItems) {
+        collectionItems.forEach((item: any) => {
             const id = item.collection_id;
             counts[id] = (counts[id] || 0) + 1;
-            // Map
-            const alias = collectionMap[id];
-            if (alias) counts[alias] = (counts[alias] || 0) + 1;
         });
     }
 
@@ -122,77 +150,54 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         console.error('[getCollectionCountsAction] Error fetching context items:', contextError);
     }
 
-    if (!contextError && contextItems) {
-        // console.log('[getCollectionCountsAction] Found context items:', contextItems.length);
+    if (contextItems) {
         contextItems.forEach((item: any) => {
             const id = item.collection_id;
             if (id) {
                 counts[id] = (counts[id] || 0) + 1;
-                // Map
-                const alias = collectionMap[id];
-                if (alias) counts[alias] = (counts[alias] || 0) + 1;
             }
         });
-        
-
-        // 4. Fetch Conversations for Legacy Metadata Counting (and Global Count)
-        const { data: conversations, error: conversationsError } = await admin
-            .from('conversations')
-            .select('id, metadata, user_id')
-            .eq('user_id', userId);
-
-        if (conversationsError) {
-             console.error('[getCollectionCountsAction] Error fetching conversations:', conversationsError);
-        }
-
-        // 4b. Fetch EXPLICITLY linked conversations to prevent double counting
-        const { data: linkedConversations } = await admin
-            .from('collection_items')
-            .select('collection_id, item_id')
-            .eq('user_id', userId)
-            .eq('item_type', 'CONVERSATION');
-
-        const linkedSet = new Set<string>();
-        if (linkedConversations) {
-            linkedConversations.forEach(link => {
-                linkedSet.add(`${link.collection_id}:${link.item_id}`);
-            });
-        }
-        
-
-
-        if (conversations) {
-
-            // Global count
-            counts['conversations'] = conversations.length;
-
-            // Per-collection count (Legacy Metadata)
-            conversations.forEach((conv: any) => {
-                const collections = conv.metadata?.collection_ids || conv.metadata?.collections;
-                if (Array.isArray(collections)) {
-                    collections.forEach((cId: string) => {
-                        // Check deduplication
-                        if (!linkedSet.has(`${cId}:${conv.id}`)) {
-                            // Increment count for UUID
-                            counts[cId] = (counts[cId] || 0) + 1;
-                            
-                            // Map to Alias if needed
-                            const alias = collectionMap[cId];
-                            if (alias) {
-                                counts[alias] = (counts[alias] || 0) + 1;
-                            }
-                            
-                            // Also: If the stored cId IS ITSELF an alias (e.g. 'favorites'), we count it directly.
-                            // But usually keys are UUIDs. If cId is 'favorites', counts['favorites']++ above (line 177).
-                        }
-                    });
-                }
-            });
-        }
     }
 
+    // 3. Fetch ALL conversations for global count
+    const { data: conversations, error: conversationsError } = await admin
+        .from('conversations')
+        .select('id, metadata')
+        .eq('user_id', userId);
 
-    // 4. Count Certifications
+    if (conversationsError) {
+        console.error('[getCollectionCountsAction] Error fetching conversations:', conversationsError);
+    }
+
+    // Global conversations count
+    if (conversations) {
+        counts['conversations'] = conversations.length;
+
+        // Build set of conversations already counted via collection_items
+        const linkedConversationIds = new Set<string>();
+        if (collectionItems) {
+            collectionItems
+                .filter((item: any) => item.item_type === 'CONVERSATION')
+                .forEach((item: any) => {
+                    linkedConversationIds.add(`${item.collection_id}:${item.item_id}`);
+                });
+        }
+
+        // Count conversations from metadata.collection_ids (legacy) - only if NOT already in collection_items
+        conversations.forEach((conv: any) => {
+            const metadataCollections = conv.metadata?.collection_ids || conv.metadata?.collections;
+            if (Array.isArray(metadataCollections)) {
+                metadataCollections.forEach((cId: string) => {
+                    // Only count if not already linked via collection_items
+                    if (!linkedConversationIds.has(`${cId}:${conv.id}`)) {
+                        counts[cId] = (counts[cId] || 0) + 1;
+                    }
+                });
+            }
+        });
+    }
+
+    // 4. Count Certifications (courses with badges)
     const { count: certificationCount, error: certError } = await admin
         .from('courses')
         .select('*', { count: 'exact', head: true })
@@ -203,48 +208,45 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         counts['certifications'] = certificationCount;
     }
 
-    // 5. Map UUIDs to System Aliases & Personal Context Logic
-    // Fetch collections to get IDs and Labels
-    const { data: userCols, error: colError } = await admin
-        .from('user_collections')
-        .select('id, label')
+    // 4b. Count Notes
+    const { count: notesCount, error: notesError } = await admin
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
-    
-    if (colError) console.error('[getCollectionCountsAction] Error fetching user cols:', colError);
 
+    if (!notesError && notesCount !== null) {
+        counts['notes'] = notesCount;
+    }
 
-    const LABEL_TO_ALIAS: Record<string, string> = {
-        'favorites': 'favorites',
-        'workspace': 'research',
-        'watchlist': 'to_learn',
-        'personal context': 'personal-context'
-    };
+    // 5. Virtual Profile Count Logic for Personal Context
+    if (personalContextId) {
+        const hasProfileItem = contextItems?.some((i: any) => i.collection_id === personalContextId && i.type === 'PROFILE');
+        if (!hasProfileItem) {
+            counts[personalContextId] = (counts[personalContextId] || 0) + 1;
+        }
+    }
 
-    let personalContextId: string | null = null;
+    // DIAGNOSTIC: Log counts by UUID before alias mapping
+    console.log('[getCollectionCountsAction] Counts by UUID (before alias mapping):',
+        Object.entries(counts)
+            .filter(([key]) => key.includes('-')) // Only UUIDs
+            .map(([uuid, count]) => {
+                const col = userCollections?.find(c => c.id === uuid);
+                return { uuid, label: col?.label, count, isPrimary: !!uuidToAlias[uuid] };
+            })
+    );
 
-    userCols?.forEach((col: any) => {
-        const lowerLabel = col.label.toLowerCase().trim();
-        const alias = LABEL_TO_ALIAS[lowerLabel];
-        
-        if (lowerLabel === 'personal context') personalContextId = col.id;
-
-        if (alias && counts[col.id]) {
+    // 6. Map UUID counts to system aliases AT THE END (not during iteration to avoid double counting)
+    // This creates alias keys that the UI expects (e.g., 'favorites', 'research', 'to_learn', 'personal-context')
+    userCollections?.forEach((col: any) => {
+        const alias = uuidToAlias[col.id];
+        if (alias && counts[col.id] !== undefined) {
             counts[alias] = counts[col.id];
         }
     });
 
-    // Virtual Profile Count Logic (moved here to allow using fetched ID)
-    if (personalContextId) {
-        const hasProfileItem = contextItems?.some((i: any) => i.collection_id === personalContextId && i.type === 'PROFILE');
-        if (!hasProfileItem) {
-             counts[personalContextId] = (counts[personalContextId] || 0) + 1;
-             // Update mapped alias too
-             counts['personal-context'] = counts[personalContextId];
-
-        }
-    }
-
-
+    // DIAGNOSTIC: Log final counts
+    console.log('[getCollectionCountsAction] Final counts:', counts);
 
     return counts;
 }
@@ -269,11 +271,15 @@ async function resolveCollectionId(supabase: any, collectionId: string, userId: 
     // Let's use createAdminClient inside here if we suspect RLS issues. 
     // However, the caller will likely use Admin Client.
 
+    // Use consistent ordering to ensure we always get the same collection
+    // when there are duplicates (matches context.ts resolution)
     const { data } = await supabase
         .from('user_collections')
         .select('id')
         .eq('user_id', userId)
         .eq('label', targetLabel)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
     if (data) return data.id;
@@ -408,10 +414,13 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
 export async function syncConversationCollectionsAction(userId: string, conversationId: string, targetIds: string[]) {
     const admin = createAdminClient();
 
-    // 1. Resolve Targets
+    // Nav filter IDs that are not real collections - filter these out
+    const NAV_FILTER_IDS = ['conversations', 'prometheus', 'dashboard', 'academy', 'certifications', 'instructors'];
+
+    // 1. Resolve Targets (filter out nav-filter IDs)
     const resolvedTargetIds: string[] = [];
     for (const id of targetIds) {
-        if (id === 'new') continue;
+        if (id === 'new' || NAV_FILTER_IDS.includes(id)) continue;
         const resolved = await resolveCollectionId(admin, id, userId);
         if (resolved) resolvedTargetIds.push(resolved);
     }
@@ -459,7 +468,144 @@ export async function syncConversationCollectionsAction(userId: string, conversa
             .eq('item_type', 'CONVERSATION')
             .in('collection_id', toRemove);
     }
-    
+
     revalidatePath('/dashboard');
     return { success: true };
+}
+
+/**
+ * Cleanup duplicate collections for the current user.
+ * - Moves items from duplicate collections to the primary (oldest) collection
+ * - Deletes duplicate collections
+ * - Returns a summary of what was cleaned up
+ */
+export async function cleanupDuplicateCollectionsAction() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const admin = createAdminClient();
+
+    // System collection labels to clean up
+    const systemLabels = ['Favorites', 'Workspace', 'Watchlist', 'Personal Context'];
+
+    const results: {
+        label: string;
+        primaryId: string;
+        duplicatesRemoved: number;
+        itemsMoved: number;
+    }[] = [];
+
+    for (const label of systemLabels) {
+        // Find all collections with this label, ordered by created_at
+        const { data: collections } = await admin
+            .from('user_collections')
+            .select('id, label, created_at')
+            .eq('user_id', user.id)
+            .ilike('label', label)
+            .order('created_at', { ascending: true });
+
+        if (!collections || collections.length <= 1) {
+            // No duplicates for this label
+            continue;
+        }
+
+        const primaryCollection = collections[0];
+        const duplicates = collections.slice(1);
+        const duplicateIds = duplicates.map(d => d.id);
+
+        console.log(`[cleanupDuplicateCollections] ${label}: Primary=${primaryCollection.id}, Duplicates=${duplicateIds.length}`);
+
+        // 1. Move collection_items from duplicates to primary
+        const { data: itemsToMove } = await admin
+            .from('collection_items')
+            .select('*')
+            .in('collection_id', duplicateIds);
+
+        let itemsMoved = 0;
+        if (itemsToMove && itemsToMove.length > 0) {
+            for (const item of itemsToMove) {
+                // Check if this item already exists in primary
+                const { data: existing } = await admin
+                    .from('collection_items')
+                    .select('collection_id')
+                    .eq('collection_id', primaryCollection.id)
+                    .eq('item_id', item.item_id)
+                    .eq('item_type', item.item_type)
+                    .maybeSingle();
+
+                if (!existing) {
+                    // Move item to primary collection
+                    await admin
+                        .from('collection_items')
+                        .update({ collection_id: primaryCollection.id })
+                        .eq('collection_id', item.collection_id)
+                        .eq('item_id', item.item_id)
+                        .eq('item_type', item.item_type);
+                    itemsMoved++;
+                } else {
+                    // Delete duplicate item
+                    await admin
+                        .from('collection_items')
+                        .delete()
+                        .eq('collection_id', item.collection_id)
+                        .eq('item_id', item.item_id)
+                        .eq('item_type', item.item_type);
+                }
+            }
+        }
+
+        // 2. Move user_context_items from duplicates to primary
+        const { data: contextToMove } = await admin
+            .from('user_context_items')
+            .select('*')
+            .in('collection_id', duplicateIds);
+
+        if (contextToMove && contextToMove.length > 0) {
+            for (const item of contextToMove) {
+                // Check if this item already exists in primary
+                const { data: existing } = await admin
+                    .from('user_context_items')
+                    .select('id')
+                    .eq('collection_id', primaryCollection.id)
+                    .eq('id', item.id)
+                    .maybeSingle();
+
+                if (!existing) {
+                    await admin
+                        .from('user_context_items')
+                        .update({ collection_id: primaryCollection.id })
+                        .eq('id', item.id);
+                    itemsMoved++;
+                }
+            }
+        }
+
+        // 3. Delete duplicate collections
+        const { error: deleteError } = await admin
+            .from('user_collections')
+            .delete()
+            .in('id', duplicateIds);
+
+        if (deleteError) {
+            console.error(`[cleanupDuplicateCollections] Error deleting duplicates for ${label}:`, deleteError);
+        }
+
+        results.push({
+            label,
+            primaryId: primaryCollection.id,
+            duplicatesRemoved: duplicates.length,
+            itemsMoved
+        });
+    }
+
+    console.log('[cleanupDuplicateCollections] Results:', results);
+
+    revalidatePath('/dashboard');
+    return {
+        success: true,
+        results,
+        summary: `Cleaned up ${results.reduce((sum, r) => sum + r.duplicatesRemoved, 0)} duplicate collections, moved ${results.reduce((sum, r) => sum + r.itemsMoved, 0)} items`
+    };
 }

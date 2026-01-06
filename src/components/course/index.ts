@@ -1,0 +1,9 @@
+export { default as CoursePageV2 } from './CoursePageV2';
+export { default as CourseHeader } from './CourseHeader';
+export { default as CourseDescriptionSection } from './CourseDescriptionSection';
+export { default as CourseInstructorCard } from './CourseInstructorCard';
+export { default as CourseCredits } from './CourseCredits';
+export { default as LessonPlayerSection } from './LessonPlayerSection';
+export { default as ModuleContainer } from './ModuleContainer';
+export { default as CourseLessonCard } from './CourseLessonCard';
+export { default as CourseResourcesSection } from './CourseResourcesSection';

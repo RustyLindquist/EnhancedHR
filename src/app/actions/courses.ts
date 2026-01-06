@@ -1,10 +1,14 @@
 'use server';
 
+import { unstable_noStore as noStore } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { Course } from '@/types';
+import { Course, LessonSearchResult } from '@/types';
+import { ExpertCredential } from './credentials';
 
 export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?: any }> {
+    // Opt out of caching for this server action
+    noStore();
     const admin = createAdminClient();
     const supabase = await createClient();
     
@@ -12,10 +16,20 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    // 1. Fetch raw courses
+    // 1. Fetch raw courses with author profile data
     const { data: coursesData, error } = await supabase
         .from('courses')
-        .select('*')
+        .select(`
+            *,
+            author_profile:author_id (
+                id,
+                full_name,
+                expert_title,
+                author_bio,
+                avatar_url,
+                credentials
+            )
+        `)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -86,13 +100,22 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
 
     const mappedCourses = coursesData.map((course: any) => {
         const userCollections = getCollectionsForCourse(course.id);
-        
+        const authorProfile = course.author_profile;
+
         return {
             type: 'COURSE' as const, // Explicit cast
             id: course.id,
             title: course.title,
             author: course.author,
-            progress: 0, 
+            authorDetails: authorProfile ? {
+                id: authorProfile.id,
+                name: authorProfile.full_name || course.author,
+                title: authorProfile.expert_title,
+                bio: authorProfile.author_bio,
+                avatar: authorProfile.avatar_url,
+                credentials: authorProfile.credentials
+            } : undefined,
+            progress: 0,
             category: course.category,
             image: course.image_url,
             description: course.description,
@@ -105,6 +128,9 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
         };
     });
 
+    // Debug log for troubleshooting
+    console.log(`[fetchCoursesAction] Returning ${mappedCourses.length} courses. IDs: ${mappedCourses.slice(0, 5).map((c: any) => c.id).join(', ')}...`);
+
     return {
         courses: mappedCourses,
         debug: {
@@ -112,7 +138,97 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
             rawCount: coursesData?.length,
             userId,
             error: error ? JSON.stringify(error) : null,
-            collectionCount: Object.keys(collectionMap).length
+            collectionCount: Object.keys(collectionMap).length,
+            courseIds: coursesData?.map((c: any) => c.id).slice(0, 10)
         }
     };
+}
+
+/**
+ * Search lessons by title with course context.
+ * Returns lessons matching the query along with their parent course info.
+ */
+export async function searchLessonsAction(query: string): Promise<LessonSearchResult[]> {
+    noStore();
+
+    if (!query || query.trim().length < 2) {
+        return [];
+    }
+
+    const supabase = await createClient();
+
+    // Search lessons with course info via nested join through modules
+    const { data, error } = await supabase
+        .from('lessons')
+        .select(`
+            id,
+            title,
+            duration,
+            type,
+            module_id,
+            modules (
+                id,
+                course_id,
+                courses (
+                    id,
+                    title,
+                    image_url,
+                    author
+                )
+            )
+        `)
+        .ilike('title', `%${query.trim()}%`)
+        .limit(50);
+
+    if (error) {
+        console.error('[searchLessonsAction] Error searching lessons:', error);
+        return [];
+    }
+
+    if (!data || data.length === 0) {
+        return [];
+    }
+
+    // Transform the nested data structure into flat LessonSearchResult
+    // Filter out lessons that don't have valid module/course data
+    return data
+        .filter((lesson: any) => lesson.modules && lesson.modules.courses)
+        .map((lesson: any) => ({
+            id: lesson.id,
+            title: lesson.title,
+            duration: lesson.duration || '',
+            type: lesson.type || 'video',
+            module_id: lesson.module_id,
+            course_id: lesson.modules.courses.id,
+            course_title: lesson.modules.courses.title,
+            course_image: lesson.modules.courses.image_url,
+            course_author: lesson.modules.courses.author || ''
+        }));
+}
+
+/**
+ * Fetch expert credentials for a specific author
+ * Used on course detail pages to display itemized credentials
+ */
+export async function getAuthorCredentialsAction(authorId: string): Promise<ExpertCredential[]> {
+    noStore();
+
+    if (!authorId) {
+        return [];
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('expert_credentials')
+        .select('*')
+        .eq('expert_id', authorId)
+        .order('display_order', { ascending: true });
+
+    if (error) {
+        console.error('[getAuthorCredentialsAction] Error:', error);
+        return [];
+    }
+
+    return data || [];
 }

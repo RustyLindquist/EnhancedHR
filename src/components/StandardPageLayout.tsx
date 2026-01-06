@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
-import { BACKGROUND_THEMES } from '@/constants';
-import { BackgroundTheme, Course } from '@/types';
+import CollectionSurface from '@/components/CollectionSurface';
+import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
+import { BackgroundTheme, Course, Collection } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 
 interface StandardPageLayoutProps {
@@ -20,6 +21,7 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
     const [rightOpen, setRightOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
 
     useEffect(() => {
         async function loadCourses() {
@@ -56,6 +58,23 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
                 {/* Center Content (The Canvas) */}
                 <div className="flex-1 flex flex-col relative overflow-hidden bg-transparent">
                     {children}
+
+                    {/* Collection Surface at bottom */}
+                    <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                        <CollectionSurface
+                            isDragging={false}
+                            activeFlareId={null}
+                            customCollections={DEFAULT_COLLECTIONS}
+                            isOpen={isCollectionSurfaceOpen}
+                            onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                            onCollectionClick={(id) => {
+                                handleSelectCollection(id);
+                            }}
+                            onDropCourse={() => {
+                                // No-op for standard pages - drag/drop handled elsewhere
+                            }}
+                        />
+                    </div>
                 </div>
 
                 {/* Right AI Panel */}

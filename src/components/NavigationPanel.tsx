@@ -21,10 +21,58 @@ import {
   Check,
   Upload,
   Brain,
-  Layers // Added Layers icon for custom collections
+  Layers, // Added Layers icon for custom collections
+  Building,
+  Plus
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
+
+// Animated Count Badge with warm glow effect on count change
+const AnimatedCountBadge: React.FC<{
+  count: number;
+  isActive: boolean;
+}> = ({ count, isActive }) => {
+  const [isGlowing, setIsGlowing] = useState(false);
+  const prevCountRef = useRef<number>(count);
+
+  useEffect(() => {
+    // Only trigger glow if count actually changed (not on initial mount)
+    if (prevCountRef.current !== count && prevCountRef.current !== undefined) {
+      setIsGlowing(true);
+      const timer = setTimeout(() => setIsGlowing(false), 1000);
+      return () => clearTimeout(timer);
+    }
+    prevCountRef.current = count;
+  }, [count]);
+
+  return (
+    <span
+      className={`
+        relative text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-300 overflow-visible
+        ${isActive
+          ? 'bg-brand-blue-light text-brand-black border-brand-blue-light'
+          : 'text-slate-500 bg-white/5 border-white/5 group-hover:text-slate-300'
+        }
+      `}
+    >
+      {/* Warm glow effect layer - extends beyond bounds for organic circular glow */}
+      {isGlowing && (
+        <span className="absolute -inset-2 rounded-full animate-count-glow pointer-events-none" />
+      )}
+      {/* Count number */}
+      <span className="relative z-10">{count}</span>
+    </span>
+  );
+};
+
+// Org Collection type for nav display
+interface OrgCollectionNav {
+  id: string;
+  label: string;
+  color: string;
+  item_count: number;
+}
 
 interface NavigationPanelProps {
   isOpen: boolean;
@@ -38,6 +86,8 @@ interface NavigationPanelProps {
   className?: string;
   collectionCounts?: Record<string, number>; // New prop for total counts
   customCollections?: Collection[]; // Added custom collections prop
+  orgMemberCount?: number; // Count of org members for "Manage Users" badge
+  orgCollections?: OrgCollectionNav[]; // Organization collections
 }
 
 const NavItem: React.FC<{
@@ -82,18 +132,22 @@ const NavItem: React.FC<{
         )}
 
         {isOpen && (
-          <div className="flex-1 flex justify-between items-center ml-3 overflow-hidden">
-            <span className={`
-              truncate transition-colors 
-              ${customTextClass ? customTextClass : (isActive ? 'text-white font-medium' : 'text-slate-400 font-medium group-hover:text-slate-200')}
-              text-sm tracking-wide
-            `}>
-              {item.label}
-            </span>
-            {count !== undefined && count > 0 && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${isActive ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'text-slate-500 bg-white/5 border-white/5 group-hover:text-slate-300'}`}>
-                {count}
+          <div className="flex-1 flex justify-between items-center ml-3 min-w-0">
+            {/* Label wrapper with overflow-hidden for truncation */}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <span className={`
+                block truncate transition-colors
+                ${customTextClass ? customTextClass : (isActive ? 'text-white font-medium' : 'text-slate-400 font-medium group-hover:text-slate-200')}
+                text-sm tracking-wide
+              `}>
+                {item.label}
               </span>
+            </div>
+            {/* Badge container - allows glow overflow */}
+            {count !== undefined && count > 0 && (
+              <div className="flex-shrink-0 ml-2 overflow-visible">
+                <AnimatedCountBadge count={count} isActive={isActive} />
+              </div>
             )}
           </div>
         )}
@@ -112,12 +166,14 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   customNavItems,
   className,
   collectionCounts,
-  customCollections = [] // Default to empty array
+  customCollections = [], // Default to empty array
+  orgMemberCount,
+  orgCollections = [] // Default to empty array
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -141,7 +197,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role, membership_status')
+          .select('full_name, role, membership_status, author_status, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -151,13 +207,16 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Prioritize profile role, fallback to metadata
         const role = profile?.role || user.user_metadata?.role || user.app_metadata?.role;
         const membershipStatus = profile?.membership_status;
+        const authorStatus = profile?.author_status;
 
         setUserProfile({
           fullName,
           email: user.email || '',
           initials,
           role,
-          membershipStatus
+          membershipStatus,
+          authorStatus,
+          avatarUrl: profile?.avatar_url
         });
 
         // Check for impersonation
@@ -170,7 +229,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     fetchUser();
   }, []);
 
+  // Listen for avatar updates from onboarding or settings
+  useEffect(() => {
+    const handleAvatarUpdate = (event: CustomEvent<{ url: string }>) => {
+      setUserProfile(prev => prev ? { ...prev, avatarUrl: event.detail.url } : prev);
+    };
 
+    window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+    };
+  }, []);
+
+  // Groups are now managed through the Users and Groups collection, not the nav panel
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -367,7 +438,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         {/* Collapse Toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute -right-3 top-9 bg-[#5694C7] border border-white/20 rounded-full p-1 text-white hover:bg-[#5694C7]/90 hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
+          className="absolute -right-3 top-9 bg-white/10 border border-white/10 rounded-full p-1 text-white/40 hover:bg-[#5694C7] hover:border-white/20 hover:text-white hover:shadow-[0_0_10px_rgba(86,148,199,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
         >
           {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -391,7 +462,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   item={item}
                   isOpen={isOpen}
                   count={['personal-context', 'conversations'].includes(item.id) ? getCollectionCount(item.id) : undefined}
-                  isActive={activeCollectionId === item.id || (pathname?.includes(item.id) && item.id !== 'dashboard')}
+                  isActive={activeCollectionId === item.id}
                   onClick={() => {
                     if (item.id.startsWith('admin/') || item.id === 'admin') {
                       router.push(`/${item.id}`);
@@ -416,9 +487,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             <div className="space-y-1">
               <div className="space-y-1">
                 {(() => {
-                  // Split collections for correct ordering: Default (minus Company/New) -> Company -> Custom -> New
-                  const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new' && i.id !== 'company');
-                  const companyCollection = COLLECTION_NAV_ITEMS.find(i => i.id === 'company');
+                  // Split collections for correct ordering: Default (minus New) -> Custom -> New
+                  const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new');
                   const newCollectionAction = COLLECTION_NAV_ITEMS.find(i => i.id === 'new');
 
                   // Sort custom collections alphabetically
@@ -429,17 +499,11 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       id: c.id,
                       label: c.label,
                       icon: Layers, // Default icon for custom
-                      color: c.color ? `text-[${c.color}]` : 'text-slate-400' // Dynamic color class - tricky with Tailwind JIT if not safe-listed, but let's try inline style in NavItem if needed. NavItem uses className.
-                      // Actually NavItem uses `item.color` as a class string. `text-[hex]` might work if configured or we can rely on style prop if we modify NavItem. 
-                      // For now let's reuse a standard color or rely on the prop passing through.
-                      // Actually, NavItem implementation:
-                      // ${isActive ? '...' : (item.color || 'text-slate-400')}
-                      // If we pass a hex color like '#ABC', `text-[#ABC]` is valid Tailwind arbitrary value.
+                      color: c.color ? `text-[${c.color}]` : 'text-slate-400'
                     } as NavItemConfig));
 
                   const finalItems = [
                     ...staticCollections,
-                    ...(companyCollection ? [companyCollection] : []),
                     ...sortedCustom,
                     ...(newCollectionAction ? [newCollectionAction] : [])
                   ];
@@ -453,7 +517,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       <NavItem
                         item={item}
                         isOpen={isOpen}
-                        count={item.id !== 'new' && item.id !== 'company' && !item.id.startsWith('custom-') ? getCollectionCount(item.id) : (item.id.startsWith('custom-') ? getCollectionCount(item.id) : undefined)}
+                        count={item.id !== 'new' ? getCollectionCount(item.id) : undefined}
                         isActive={activeCollectionId === item.id}
                         onClick={() => onSelectCollection(item.id)}
                       />
@@ -465,8 +529,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         )}
 
-        {/* My Organization (Only for Org Admins) */}
-        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin') && (
+        {/* My Organization (For employees, org admins, and platform admins) */}
+        {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee' || userProfile?.role === 'admin') && (
           <div className="px-4 mb-8">
             {isOpen && (
               <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 drop-shadow-sm">
@@ -474,7 +538,80 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               </h4>
             )}
             <div className="space-y-1">
-              {ORG_NAV_ITEMS.map((item) => (
+              {/* Org Admin items - Analytics, All Users (org admin only) */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={item}
+                    isOpen={isOpen}
+                    count={item.id === 'org-team' ? orgMemberCount : undefined}
+                    isActive={activeCollectionId === item.id}
+                    onClick={() => onSelectCollection(item.id)}
+                  />
+                </div>
+              ))}
+
+              {/* User Groups are now accessed through the Users and Groups collection */}
+
+              {/* Default Org Collection - show for all org members */}
+              <div
+                onMouseEnter={(e) => handleItemHover({ id: 'company', label: 'Org Collection', icon: Building }, e, () => onSelectCollection('company'))}
+                onMouseLeave={handleItemLeave}
+              >
+                <NavItem
+                  item={{ id: 'company', label: 'Org Collection', icon: Building, color: 'text-slate-400' }}
+                  isOpen={isOpen}
+                  isActive={activeCollectionId === 'company'}
+                  onClick={() => onSelectCollection('company')}
+                />
+              </div>
+
+              {/* Custom Org Collections - show for all org members */}
+              {orgCollections.map((collection) => {
+                const navItem: NavItemConfig = {
+                  id: `org-collection-${collection.id}`,
+                  label: collection.label,
+                  icon: Building,
+                  color: 'text-slate-400'
+                };
+                return (
+                  <div
+                    key={`org-collection-${collection.id}`}
+                    onMouseEnter={(e) => handleItemHover(navItem, e, () => onSelectCollection(`org-collection-${collection.id}`))}
+                    onMouseLeave={handleItemLeave}
+                  >
+                    <NavItem
+                      item={navItem}
+                      isOpen={isOpen}
+                      isActive={activeCollectionId === `org-collection-${collection.id}`}
+                      count={collection.item_count}
+                      onClick={() => onSelectCollection(`org-collection-${collection.id}`)}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* New Org Collection - only for org admins */}
+              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
+                <div
+                  onMouseEnter={(e) => handleItemHover({ id: 'new-org-collection', label: 'New Org Collection', icon: Plus }, e, () => onSelectCollection('new-org-collection'))}
+                  onMouseLeave={handleItemLeave}
+                >
+                  <NavItem
+                    item={{ id: 'new-org-collection', label: 'New Org Collection', icon: Plus, color: 'text-brand-blue-light' }}
+                    isOpen={isOpen}
+                    isActive={activeCollectionId === 'new-org-collection'}
+                    onClick={() => onSelectCollection('new-org-collection')}
+                  />
+                </div>
+              )}
+
+              {/* Assigned Learning - show for employees and org admins (at the end) */}
+              {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
                 <div
                   key={item.id}
                   onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
@@ -493,28 +630,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         )}
 
         {/* Employee Groups section removed - groups are now accessed through Users and Groups collection */}
-      </div>
-
-
-
-      {/* Bottom Branding (Flame + Tagline) */}
-      <div className={`absolute bottom-28 w-full flex flex-col items-center justify-center pb-6 transition-opacity duration-500 pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0 hidden'} z-0`}>
-        <div className="relative w-36 h-36 flex items-center justify-center mb-8 transition-transform duration-700 group-hover:scale-105">
-          {/* Glow Effect */}
-          <div className="absolute inset-0 bg-brand-blue-light/5 blur-3xl rounded-full transition-all duration-700 opacity-0 group-hover:opacity-20"></div>
-
-          {/* Flame Image */}
-          <img
-            src="/images/logos/EnhancedHR-logo-mark-flame.png"
-            alt="Mark"
-            className="h-full w-full object-contain opacity-20 transition-all duration-700 group-hover:opacity-100"
-          />
-        </div>
-
-        {/* Tagline */}
-        <span className="text-[11px] font-black text-[#1e293b] uppercase tracking-[0.2em] drop-shadow-sm select-none transition-all duration-500 group-hover:text-white group-hover:tracking-[0.25em]">
-          World-Class Learning
-        </span>
       </div>
 
       {/* User Profile Summary (Bottom) */}
@@ -547,7 +662,50 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   My Account
                 </button>
 
+                <button
+                  onClick={() => {
+                    router.push('/settings');
+                    setIsProfileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <Settings size={16} className="mr-3 text-slate-400" />
+                  Settings
+                </button>
 
+                {/* Expert Dashboard Link - Only for approved experts */}
+                {userProfile?.authorStatus === 'approved' && (
+                  <button
+                    onClick={() => {
+                      router.push('/author');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <PenTool size={16} className="mr-3 text-brand-orange" />
+                      Expert Dashboard
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
+
+                {/* Platform Dashboard Link - Show when in Expert Dashboard */}
+                {pathname?.startsWith('/author') && (
+                  <button
+                    onClick={() => {
+                      router.push('/dashboard');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <LayoutDashboard size={16} className="mr-3 text-brand-blue-light" />
+                      Platform Dashboard
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
 
                 <button
                   onClick={() => setMenuView('backgrounds')}
@@ -741,10 +899,18 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           {/* Content */}
           <div className="relative z-10 flex items-center">
             <div className={`
-                w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300
+                w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,0,0,0.5)] shrink-0 group-hover:scale-105 transition-transform duration-300 overflow-hidden
                 ${isImpersonating ? 'shadow-[0_0_15px_rgba(220,38,38,0.8)] border-brand-red/50' : ''}
             `}>
-              {userProfile?.initials || '...'}
+              {userProfile?.avatarUrl ? (
+                <img
+                  src={userProfile.avatarUrl}
+                  alt={userProfile.fullName || 'Profile'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userProfile?.initials || '...'
+              )}
             </div>
             {isOpen && (
               <div className="ml-3 overflow-hidden flex-1">

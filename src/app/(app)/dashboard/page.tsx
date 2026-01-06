@@ -1,15 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import MainCanvas from '@/components/MainCanvas';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import AddCollectionModal from '@/components/AddCollectionModal';
+import NewOrgCollectionModal from '@/components/NewOrgCollectionModal';
+import HelpPanel from '@/components/help/HelpPanel';
+import { HelpTopicId } from '@/components/help/HelpContent';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
-import { BackgroundTheme, Course, Collection, ContextCard } from '@/types';
+import { BackgroundTheme, Course, Collection, ContextCard, DragItem } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 
 import {
@@ -19,11 +24,28 @@ import {
 } from 'lucide-react';
 
 function HomeContent() {
+  // URL params and router - needed early for navigation handlers
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const courseIdParam = searchParams.get('courseId');
+  const collectionParam = searchParams.get('collection');
+
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true); // Restore default open
   const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
-  // ...
 
+  // Help Panel State
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpTopicId, setHelpTopicId] = useState<HelpTopicId>('notes');
+
+  // Onboarding State
+  const {
+    showOnboarding,
+    isLoading: onboardingLoading,
+    profile: onboardingProfile,
+    completeOnboarding,
+    dismissOnboarding
+  } = useOnboarding();
 
   // Lifted State: Courses source of truth
   const [courses, setCourses] = useState<Course[]>([]);
@@ -43,7 +65,10 @@ function HomeContent() {
   // Navigation & Collection State
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
   const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
+  const [orgMemberCount, setOrgMemberCount] = useState<number>(0);
+  const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
   const [user, setUser] = useState<any>(null); // Track user for DB ops
+  const [isOrgAdmin, setIsOrgAdmin] = useState<boolean>(false); // Track if user is org admin
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -93,10 +118,23 @@ function HomeContent() {
         // We can call the new function here, but need to be careful with closure/dependency interaction
         // Since refreshCollectionCounts depends on 'user' state which might not be set in closure yet if we just set it.
         // Actually, we define refreshCollectionCounts to use 'user' state, but inside this useEffect 'user' variable is local.
-        // So let's duplicate the logic slightly or pass user to the function? 
+        // So let's duplicate the logic slightly or pass user to the function?
         // Better: pass user ID to function to avoid state dependency issues.
 
         await refreshCountsForUser(user.id);
+
+        // 3. Fetch org member count for navigation badge
+        const { getOrgMemberCount, getOrgCollections, checkIsOrgAdmin } = await import('@/app/actions/org');
+        const memberCount = await getOrgMemberCount();
+        setOrgMemberCount(memberCount);
+
+        // 4. Fetch org collections
+        const orgColls = await getOrgCollections();
+        setOrgCollections(orgColls);
+
+        // 5. Get org admin status
+        const isAdmin = await checkIsOrgAdmin();
+        setIsOrgAdmin(isAdmin);
       }
     }
     initUserAndCollections();
@@ -207,13 +245,41 @@ function HomeContent() {
           const { syncConversationCollectionsAction } = await import('@/app/actions/collections');
           const targetIds = finalSelectionIds.filter(id => id !== 'new');
 
-          await syncConversationCollectionsAction(user.id, modalItem.id, targetIds);
+          await syncConversationCollectionsAction(user.id, String(modalItem.id), targetIds);
           await refreshCollectionCounts();
         } else {
           console.error('User missing during save!');
         }
+      } else if (modalItem.type === 'MODULE' || modalItem.type === 'LESSON' || modalItem.type === 'RESOURCE') {
+        // Course content items (Module, Lesson, Resource) go to collection_items table
+        if (user) {
+          const { addToCollectionAction } = await import('@/app/actions/collections');
+
+          const promises = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(collectionId => {
+              return addToCollectionAction(String(modalItem.id), modalItem.type, collectionId);
+            });
+
+          await Promise.all(promises);
+          await refreshCollectionCounts();
+        }
+      } else if (modalItem.type === 'NOTE') {
+        // Notes use the addNoteToCollectionAction
+        if (user) {
+          const { addNoteToCollectionAction } = await import('@/app/actions/notes');
+
+          const promises = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(collectionId => {
+              return addNoteToCollectionAction(String(modalItem.id), collectionId);
+            });
+
+          await Promise.all(promises);
+          await refreshCollectionCounts();
+        }
       } else {
-        // Generic / Context Items (Module, Lesson, Resource, etc.)
+        // Other Context Items (AI_INSIGHT, CUSTOM_CONTEXT, FILE, etc.)
         if (user) {
           const { createContextItem } = await import('@/app/actions/context');
 
@@ -253,10 +319,74 @@ function HomeContent() {
     setIsAddModalOpen(true);
   };
 
+  // Handler for adding a conversation to a collection from AI Panel
+  const handleAddConversationToCollection = (conversationId: string, title: string) => {
+    handleOpenModal({
+      type: 'CONVERSATION',
+      id: conversationId,
+      title: title
+    });
+  };
+
+  // Handler for adding a note to a collection from AI Panel Notes tab
+  const handleAddNoteToCollection = (item: { type: 'NOTE'; id: string; title: string }) => {
+    handleOpenModal({
+      type: 'NOTE',
+      id: item.id,
+      title: item.title
+    });
+  };
+
+  // Ref to store MainCanvas's drag handler for note dragging from AIPanel
+  const mainCanvasDragStartRef = useRef<((item: DragItem) => void) | null>(null);
+
+  // Callback to receive drag handler from MainCanvas
+  const handleExposeDragStart = useCallback((handler: (item: DragItem) => void) => {
+    mainCanvasDragStartRef.current = handler;
+  }, []);
+
+  // Handler for note drag from AIPanel - triggers MainCanvas drag
+  const handleNoteDragStart = useCallback((item: { type: 'NOTE'; id: string; title: string }) => {
+    if (mainCanvasDragStartRef.current) {
+      mainCanvasDragStartRef.current({
+        type: 'NOTE',
+        id: item.id,
+        title: item.title
+      });
+    }
+  }, []);
+
+  // State for new org collection modal
+  const [isNewOrgCollectionModalOpen, setIsNewOrgCollectionModalOpen] = useState(false);
+
   const handleSelectCollection = (id: string) => {
     if (id === 'new') {
       handleOpenModal(undefined);
+    } else if (id === 'new-org-collection') {
+      setIsNewOrgCollectionModalOpen(true);
     } else {
+      // Track previous collection for back navigation (only if actually changing)
+      if (id !== activeCollectionId) {
+        setPreviousCollectionId(activeCollectionId);
+
+        // Clear active conversation when navigating to a different collection
+        // This ensures the AI panel starts fresh with the new context/agent/RAG
+        // Note: handleResumeConversation explicitly sets activeConversationId for resuming
+        setActiveConversationId(null);
+      }
+
+      // Always clear the active course when selecting a collection
+      // This ensures clicking Academy always returns to All Courses view
+      if (id === 'academy') {
+        setActiveCourseId(null);
+        // Increment reset key to trigger filter reset in MainCanvas
+        // This works even if already on Academy (clicking Academy again)
+        setAcademyResetKey(prev => prev + 1);
+        // Clear URL params to prevent useEffect from re-setting the course
+        if (courseIdParam) {
+          router.replace('/dashboard?collection=academy', { scroll: false });
+        }
+      }
       setActiveCollectionId(id);
     }
   };
@@ -295,6 +425,10 @@ function HomeContent() {
   // Lifted state for Context Awareness
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  // Reset trigger for Academy view - increments to force filter reset
+  const [academyResetKey, setAcademyResetKey] = useState(0);
+  // Initial status filter for Academy (e.g., ['IN_PROGRESS'] from "view all" on dashboard)
+  const [initialStatusFilter, setInitialStatusFilter] = useState<string[]>([]);
 
   const handleOpenAIPanel = () => {
     if (activeCollectionId !== 'prometheus') {
@@ -302,27 +436,53 @@ function HomeContent() {
     }
   };
 
-  const handleCourseSelect = (courseId: string | null) => {
-    setActiveCourseId(courseId);
-  };
+  // Memoized to prevent useEffect re-runs in MainCanvas
+  const handleCourseSelect = useCallback((courseId: string | null) => {
+    // Only update if value actually changed to prevent loops
+    setActiveCourseId(prev => {
+      if (prev !== courseId) {
+        // Clear active conversation when course context changes
+        // This ensures AI panel starts fresh with the correct agent and RAG
+        setActiveConversationId(null);
+        return courseId;
+      }
+      return prev;
+    });
+  }, []);
+
+  // Navigate to a collection with a pre-set status filter
+  const handleNavigateWithFilter = useCallback((collectionId: string, statusFilter: string[]) => {
+    setInitialStatusFilter(statusFilter);
+    setActiveCollectionId(collectionId);
+  }, []);
 
   // Handle Resuming Conversation from MainCanvas
+  // Navigates to the originating context so the conversation can resume with the correct RAG and agent
   const handleResumeConversation = (conversation: any) => {
     const { metadata, id } = conversation;
     const scope = metadata?.contextScope;
 
     if (scope) {
       if (scope.type === 'COURSE') {
+        // Navigate to Academy with the course loaded
         setActiveCourseId(scope.id);
         setActiveCollectionId('academy');
       } else if (scope.type === 'COLLECTION') {
+        // Navigate to the originating custom collection
         setActiveCollectionId(scope.id);
         setActiveCourseId(null);
-      } else if (scope.type === 'PLATFORM') {
+      } else if (scope.type === 'TOOL') {
+        // Redirect to the tool page - this handles edge cases where a tool conversation
+        // wasn't typed as TOOL_CONVERSATION. The tool slug is in scope.id
+        window.location.href = `/tools/${scope.id}?conversationId=${id}`;
+        return; // Exit early since we're doing a full page navigation
+      } else {
+        // PLATFORM or unknown scope type - default to Prometheus
         setActiveCollectionId('prometheus');
         setActiveCourseId(null);
       }
     } else {
+      // No scope metadata - default to Prometheus (general AI)
       setActiveCollectionId('prometheus');
     }
 
@@ -330,12 +490,23 @@ function HomeContent() {
     setRightOpen(true);
   };
 
-  const searchParams = useSearchParams();
-  const courseIdParam = searchParams.get('courseId');
-  const collectionParam = searchParams.get('collection');
-
   // Navigation & Collection State
   const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
+  const [previousCollectionId, setPreviousCollectionId] = useState<string | null>(null);
+
+  // Go back to previous collection
+  const handleGoBack = useCallback(() => {
+    if (previousCollectionId) {
+      setActiveCollectionId(previousCollectionId);
+      setPreviousCollectionId(null); // Clear after going back (one-step only)
+    }
+  }, [previousCollectionId]);
+
+  // Open help panel with specific topic
+  const handleOpenHelp = useCallback((topicId: string) => {
+    setHelpTopicId(topicId as HelpTopicId);
+    setIsHelpOpen(true);
+  }, []);
 
   useEffect(() => {
     if (courseIdParam) {
@@ -368,6 +539,8 @@ function HomeContent() {
         <AddCollectionModal
           item={modalItem}
           availableCollections={customCollections}
+          orgCollections={orgCollections}
+          isOrgAdmin={isOrgAdmin}
           onClose={() => {
             setIsAddModalOpen(false);
             setModalItem(null);
@@ -375,6 +548,17 @@ function HomeContent() {
           onSave={handleSaveToCollection}
         />
       )}
+
+      {/* New Org Collection Modal */}
+      <NewOrgCollectionModal
+        isOpen={isNewOrgCollectionModalOpen}
+        onClose={() => setIsNewOrgCollectionModalOpen(false)}
+        onSuccess={async () => {
+          const { getOrgCollections } = await import('@/app/actions/org');
+          const updated = await getOrgCollections();
+          setOrgCollections(updated);
+        }}
+      />
 
       {/* Main Application Layer */}
       <div className="flex w-full h-full relative z-10">
@@ -389,13 +573,15 @@ function HomeContent() {
           onSelectCollection={handleSelectCollection}
           collectionCounts={collectionCounts}
           customCollections={customCollections}
+          orgMemberCount={orgMemberCount}
+          orgCollections={orgCollections}
         />
 
         {/* Center Content - Using Dashboard V3 */}
         <MainCanvas
           courses={courses}
           activeCollectionId={activeCollectionId}
-          onSelectCollection={setActiveCollectionId}
+          onSelectCollection={handleSelectCollection}
           customCollections={customCollections}
           onOpenModal={handleOpenModal}
           onImmediateAddToCollection={handleImmediateAddToCollection}
@@ -405,9 +591,23 @@ function HomeContent() {
           initialCourseId={activeCourseId ? parseInt(activeCourseId, 10) : undefined}
           onResumeConversation={handleResumeConversation}
           activeConversationId={activeConversationId}
+          onClearConversation={() => setActiveConversationId(null)}
           useDashboardV3={true}
           onCollectionUpdate={() => {
             if (user) refreshCollectionsAndCounts(user.id);
+          }}
+          academyResetKey={academyResetKey}
+          initialStatusFilter={initialStatusFilter}
+          onNavigateWithFilter={handleNavigateWithFilter}
+          previousCollectionId={previousCollectionId}
+          onGoBack={handleGoBack}
+          onExposeDragStart={handleExposeDragStart}
+          orgCollections={orgCollections}
+          isOrgAdmin={isOrgAdmin}
+          onOrgCollectionsUpdate={async () => {
+            const { getOrgCollections } = await import('@/app/actions/org');
+            const updated = await getOrgCollections();
+            setOrgCollections(updated);
           }}
         />
 
@@ -427,10 +627,32 @@ function HomeContent() {
             contextScope={contextScope}
             conversationId={activeConversationId}
             onConversationIdChange={setActiveConversationId}
+            onAddConversationToCollection={handleAddConversationToCollection}
+            onAddNoteToCollection={handleAddNoteToCollection}
+            onNoteDragStart={handleNoteDragStart}
+            onOpenHelp={handleOpenHelp}
           />
         )}
       </div>
 
+      {/* Help Panel */}
+      <HelpPanel
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        topicId={helpTopicId}
+      />
+
+      {/* Onboarding Modal - Shows for new users */}
+      {!onboardingLoading && showOnboarding && user && (
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={dismissOnboarding}
+          onComplete={completeOnboarding}
+          userId={user.id}
+          userName={onboardingProfile?.full_name || undefined}
+          currentAvatarUrl={onboardingProfile?.avatar_url}
+        />
+      )}
     </div>
   );
 }

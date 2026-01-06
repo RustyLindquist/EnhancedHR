@@ -192,24 +192,130 @@ const BackgroundSystem: React.FC<BackgroundSystemProps> = ({ theme }) => {
         {/* Aurora Waves - Using SVG for smoother curves - Increased Opacity */}
         <div className="absolute inset-0 w-full h-full overflow-hidden opacity-60">
             {/* Wave 1 (Green) */}
-            <div 
+            <div
                 className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] rounded-[100%] bg-gradient-to-r from-transparent via-[#2dd4bf]/20 to-transparent blur-[80px] animate-aurora-wave-1 mix-blend-screen"
                 style={{ transformOrigin: 'center center' }}
             />
-            
+
             {/* Wave 2 (Purple/Blue) */}
-            <div 
+            <div
                 className="absolute top-[10%] left-[-10%] w-[120%] h-[100%] rounded-[100%] bg-gradient-to-r from-transparent via-[#818cf8]/20 to-transparent blur-[90px] animate-aurora-wave-2 mix-blend-screen"
                 style={{ transformOrigin: 'center center' }}
             />
         </div>
 
         {/* Starfield (Static dots) */}
-        <div className="absolute inset-0" 
+        <div className="absolute inset-0"
             style={{
                 backgroundImage: 'radial-gradient(white 1px, transparent 1px)',
                 backgroundSize: '100px 100px',
                 opacity: 0.1
+            }}
+        />
+    </>
+  );
+
+  // --- LIGHT THEMES ---
+
+  const renderMorningMist = () => (
+    <>
+        {/* Soft Light Gray Base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0]" />
+
+        {/* Subtle Warm Glow - Top Left */}
+        <div
+            className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] animate-mist-drift-1"
+            style={{ background: 'radial-gradient(circle, rgba(147, 197, 253, 0.3) 0%, transparent 70%)' }}
+        />
+
+        {/* Subtle Cool Glow - Bottom Right */}
+        <div
+            className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[100px] animate-mist-drift-2"
+            style={{ background: 'radial-gradient(circle, rgba(199, 210, 254, 0.35) 0%, transparent 70%)' }}
+        />
+
+        {/* Floating Soft Orbs */}
+        <div className="absolute inset-0 overflow-hidden">
+            <div
+                className="absolute top-[20%] left-[15%] w-32 h-32 rounded-full bg-[#bfdbfe]/20 blur-[40px] animate-particle-float-1"
+            />
+            <div
+                className="absolute top-[50%] right-[20%] w-48 h-48 rounded-full bg-[#c7d2fe]/20 blur-[50px] animate-particle-float-2"
+            />
+            <div
+                className="absolute bottom-[25%] left-[40%] w-40 h-40 rounded-full bg-[#e0e7ff]/25 blur-[45px] animate-particle-float-3"
+            />
+        </div>
+
+        {/* Very Subtle Grid Pattern */}
+        <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+                backgroundImage: `
+                    linear-gradient(to right, rgba(148, 163, 184, 0.5) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(148, 163, 184, 0.5) 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px'
+            }}
+        />
+    </>
+  );
+
+  const renderCleanSlate = () => (
+    <>
+        {/* Cool Gray Base */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f1f5f9] via-[#e2e8f0] to-[#cbd5e1]" />
+
+        {/* Subtle Blue Accent - Top */}
+        <div
+            className="absolute top-0 left-0 right-0 h-1/2"
+            style={{
+                background: 'linear-gradient(180deg, rgba(147, 197, 253, 0.08) 0%, transparent 100%)'
+            }}
+        />
+
+        {/* Soft Vignette */}
+        <div
+            className="absolute inset-0"
+            style={{
+                background: 'radial-gradient(ellipse at center, transparent 40%, rgba(148, 163, 184, 0.15) 100%)'
+            }}
+        />
+
+        {/* Minimal Dot Pattern */}
+        <div className="absolute inset-0"
+            style={{
+                backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+                opacity: 0.5
+            }}
+        />
+    </>
+  );
+
+  const renderSoftLinen = () => (
+    <>
+        {/* Warm Cream/Linen Base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#faf8f5] via-[#f5f3ef] to-[#ebe7e0]" />
+
+        {/* Subtle Warm Glow - Center */}
+        <div
+            className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[80%] h-[60%] rounded-full blur-[150px]"
+            style={{ background: 'radial-gradient(circle, rgba(253, 230, 138, 0.1) 0%, transparent 70%)' }}
+        />
+
+        {/* Soft Paper Texture */}
+        <div className="absolute inset-0 opacity-[0.04]"
+            style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")`
+            }}
+        />
+
+        {/* Subtle Warm Edge */}
+        <div
+            className="absolute inset-0"
+            style={{
+                background: 'radial-gradient(ellipse at center, transparent 50%, rgba(217, 197, 169, 0.1) 100%)'
             }}
         />
     </>
@@ -221,7 +327,7 @@ const BackgroundSystem: React.FC<BackgroundSystemProps> = ({ theme }) => {
       <div className="absolute inset-0 bg-[#0A0D12]" />
 
       {isCustom ? (
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
           style={{ backgroundImage: `url(${theme.value})` }}
         >
@@ -233,18 +339,21 @@ const BackgroundSystem: React.FC<BackgroundSystemProps> = ({ theme }) => {
             {theme.id === 'neon-horizon' && renderNeonHorizon()}
             {theme.id === 'zen-particles' && renderZenParticles()}
             {theme.id === 'arctic-aurora' && renderArcticAurora()}
+            {theme.id === 'morning-mist' && renderMorningMist()}
+            {theme.id === 'clean-slate' && renderCleanSlate()}
+            {theme.id === 'soft-linen' && renderSoftLinen()}
             {/* Fallback for static presets */}
-            {!['deep-void', 'neon-horizon', 'zen-particles', 'arctic-aurora'].includes(theme.id) && (
+            {!['deep-void', 'neon-horizon', 'zen-particles', 'arctic-aurora', 'morning-mist', 'clean-slate', 'soft-linen'].includes(theme.id) && (
                  <div className={`absolute inset-0 transition-all duration-1000 ${theme.value}`}></div>
             )}
         </>
       )}
 
-      {/* Global Noise Texture Overlay (Applied to all except Zen which has its own) */}
-      {theme.id !== 'zen-particles' && (
-        <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay z-10" 
-            style={{ 
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")` 
+      {/* Global Noise Texture Overlay (Applied to dark themes only, light themes have their own textures) */}
+      {!['zen-particles', 'morning-mist', 'clean-slate', 'soft-linen'].includes(theme.id) && (
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay z-10"
+            style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E")`
             }}>
         </div>
       )}

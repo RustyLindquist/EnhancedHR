@@ -1,4 +1,5 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton, OrgSubscriptionButton } from '@/components/settings/BillingButtons';
 import SeatManager from '@/components/settings/SeatManager';
@@ -11,13 +12,15 @@ export default async function BillingPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return <div>Please log in.</div>;
+    if (!user) redirect('/login');
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, trial_minutes_used, billing_period_end,stripe_customer_id, org_id')
+        .select('membership_status, trial_minutes_used, billing_period_end, stripe_customer_id, org_id, role')
         .eq('id', user.id)
         .single();
+
+    const isPlatformAdmin = profile?.role === 'admin';
 
     let activeMembers = 0;
     let stripeQuantity = 0;
@@ -95,8 +98,8 @@ export default async function BillingPage() {
                     </div>
 
 
-                    {/* Org Seat Management */}
-                    {profile?.membership_status === 'org_admin' && stripeQuantity > 0 && (
+                    {/* Org Seat Management - Show for org_admin or platform admin with org_id */}
+                    {(profile?.membership_status === 'org_admin' || isPlatformAdmin) && profile?.org_id && stripeQuantity > 0 && (
                         <SeatManager
                             orgId={profile.org_id!}
                             currentSeats={stripeQuantity}

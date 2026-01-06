@@ -135,7 +135,7 @@ const UnifiedAssignmentModal: React.FC<UnifiedAssignmentModalProps> = ({ isOpen,
                 </div>
 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto p-4 min-h-[300px]">
+                <div className="flex-1 overflow-y-auto p-4 min-h-[300px] dropdown-scrollbar">
                     {loading ? (
                         <div className="flex justify-center items-center h-full">
                             <Loader2 className="animate-spin text-slate-300" size={24} />

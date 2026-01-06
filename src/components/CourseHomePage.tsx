@@ -10,6 +10,7 @@ import { DEFAULT_COURSE_IMAGE, MOCK_AUTHOR_PROFILE } from '../constants';
 import RatingModal from './RatingModal';
 import { issueCertificate } from '@/lib/certificates';
 import Link from 'next/link';
+import ResourceCard from './cards/ResourceCard';
 
 interface CourseHomePageProps {
     course: Course;
@@ -373,58 +374,31 @@ const CourseHomePage: React.FC<CourseHomePageProps> = ({
                     </div>
 
                     {isMaterialsOpen && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 pt-6 animate-fade-in">
-                            {resources.map(resource => {
-                                const isPDF = resource.type === 'PDF';
-                                const isDoc = resource.type === 'DOC';
-                                const colorClass = isPDF ? 'text-red-400' : isDoc ? 'text-blue-400' : 'text-green-400';
-
-                                return (
-                                    <div
-                                        key={resource.id}
-                                        draggable
-                                        onDragStart={(e) => {
-                                            const emptyImg = new Image();
-                                            emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                            e.dataTransfer.setDragImage(emptyImg, 0, 0);
-                                            onDragStart({ type: 'RESOURCE', id: resource.id, title: resource.title, subtitle: resource.type });
-                                        }}
-                                        className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl p-4 flex flex-col gap-3 transition-all hover:-translate-y-1 cursor-grab active:cursor-grabbing h-32"
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div className={`w-10 h-10 rounded-lg bg-black/30 border border-white/5 flex items-center justify-center ${colorClass}`}>
-                                                <FileText size={18} />
-                                            </div>
-                                            <button className="p-1.5 rounded-full hover:bg-white/10 text-slate-500 hover:text-white transition-colors">
-                                                <Download size={14} />
-                                            </button>
-                                        </div>
-
-                                        <div className="mt-auto">
-                                            <h4 className="text-xs font-bold text-white line-clamp-1 mb-1">{resource.title}</h4>
-                                            <p className="text-[9px] text-slate-500 font-mono flex justify-between">
-                                                <span>{resource.type}</span>
-                                                <span>{resource.size}</span>
-                                            </p>
-                                        </div>
-
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onAddToCollection({
-                                                    type: 'RESOURCE',
-                                                    id: resource.id,
-                                                    title: resource.title,
-                                                    subtitle: course.title
-                                                });
-                                            }}
-                                            className="absolute top-3 right-8 w-6 h-6 rounded-full bg-white/10 hover:bg-brand-orange text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <Plus size={12} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                        <div className="grid gap-x-6 gap-y-8 pt-6 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                            {resources.map(resource => (
+                                <ResourceCard
+                                    key={resource.id}
+                                    title={resource.title}
+                                    author={course.author}
+                                    courseTitle={course.title}
+                                    fileSize={resource.size}
+                                    fileUrl={resource.url}
+                                    showRemove={false}
+                                    onAdd={() => onAddToCollection({
+                                        type: 'RESOURCE',
+                                        id: resource.id,
+                                        title: resource.title,
+                                        subtitle: course.title
+                                    })}
+                                    draggable
+                                    onDragStart={(e) => {
+                                        const emptyImg = new Image();
+                                        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+                                        onDragStart({ type: 'RESOURCE', id: resource.id, title: resource.title, subtitle: resource.type });
+                                    }}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>

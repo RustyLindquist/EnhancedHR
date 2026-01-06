@@ -1,4 +1,4 @@
-export type AgentType = 'course_assistant' | 'course_tutor' | 'platform_assistant' | 'collection_assistant';
+export type AgentType = 'course_assistant' | 'course_tutor' | 'platform_assistant' | 'collection_assistant' | 'analytics_assistant';
 
 export type ContextScopeType = 'COURSE' | 'COLLECTION' | 'PLATFORM' | 'USER';
 

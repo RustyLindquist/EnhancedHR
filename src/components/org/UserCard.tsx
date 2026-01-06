@@ -1,80 +1,94 @@
 
 import React from 'react';
 import { OrgMember } from '@/app/actions/org';
-import { User, Clock, Award, MessageSquare, BookOpen } from 'lucide-react';
+import { Shield, Plus } from 'lucide-react';
 
 interface UserCardProps {
     member: OrgMember;
     onClick: () => void;
+    onAddToGroup?: () => void;
 }
 
-export default function UserCard({ member, onClick }: UserCardProps) {
+export default function UserCard({ member, onClick, onAddToGroup }: UserCardProps) {
+    const isAdmin = member.membership_status === 'org_admin' || member.role === 'org_admin' || member.role === 'admin';
+    const initials = member.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?';
+
     return (
         <div
             onClick={onClick}
-            className="group relative bg-[#131b2c] border border-white/5 rounded-2xl overflow-hidden hover:border-brand-blue-light/50 transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-brand-blue-light/10"
+            className="group relative w-full h-[340px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-[0_0_40px_rgba(120,192,240,0.2)] border border-white/5 hover:border-brand-blue-light/30 bg-[#0f172a]"
         >
-            {/* Header / Avatar Area */}
-            <div className="p-6 pb-4 flex items-start justify-between">
-                <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-blue-dark to-brand-blue-light/30 flex items-center justify-center border border-white/10 text-white font-bold text-lg">
-                        {member.avatar_url ? (
-                            <img src={member.avatar_url} alt={member.full_name} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            member.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                        )}
+            {/* Background Image / Avatar */}
+            <div className="absolute inset-0">
+                {member.avatar_url ? (
+                    <img
+                        src={member.avatar_url}
+                        alt={member.full_name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                ) : (
+                    /* Fallback gradient with initials */
+                    <div className="w-full h-full bg-gradient-to-br from-brand-blue-dark via-slate-800 to-slate-900 flex items-center justify-center">
+                        <span className="text-6xl font-bold text-white/20">{initials}</span>
                     </div>
-                    <div>
-                        <h3 className="text-white font-semibold text-lg group-hover:text-brand-blue-light transition-colors">
-                            {member.full_name}
-                        </h3>
-                        <p className="text-slate-400 text-sm">{member.role_title || member.role}</p>
-                    </div>
-                </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium uppercase tracking-wider ${member.membership_status === 'active' || member.membership_status === 'org_admin' ? 'bg-green-500/10 text-green-400' : 'bg-slate-500/10 text-slate-400'
-                    }`}>
-                    {member.membership_status === 'org_admin' ? 'Admin' : 'Member'}
-                </div>
+                )}
+                {/* Gradient Overlay - Only at bottom for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/60 to-transparent opacity-90" />
             </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-px bg-white/5 mx-6 mb-6 mt-2 rounded-xl overflow-hidden border border-white/5">
+            {/* Content Container */}
+            <div className="absolute inset-0 p-6 pb-[30px] flex flex-col justify-end">
 
-                {/* Courses */}
-                <div className="bg-[#131b2c] p-3 flex flex-col items-center justify-center text-center group-hover:bg-[#1a2438] transition-colors">
-                    <BookOpen size={16} className="text-brand-blue-light mb-1 opacity-70" />
-                    <span className="text-white font-bold text-lg">{member.courses_completed || 0}</span>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Courses</span>
+                {/* Top Bar with Dark Overlay */}
+                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 via-black/40 to-transparent pt-3 pb-6 px-4">
+                    <div className="flex items-center justify-between">
+                        {/* Admin Badge - Left side */}
+                        <div className="flex items-center">
+                            {isAdmin && (
+                                <div className="bg-brand-orange/30 backdrop-blur-md border border-brand-orange/40 text-brand-orange px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg">
+                                    <Shield size={12} fill="currentColor" /> Admin
+                                </div>
+                            )}
+                        </div>
+                        {/* Add to Group Button - Right side, always in same position */}
+                        <div className="flex items-center">
+                            {onAddToGroup && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onAddToGroup(); }}
+                                    className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 hover:border-white/60 transition-all shadow-lg"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Credits */}
-                <div className="bg-[#131b2c] p-3 flex flex-col items-center justify-center text-center group-hover:bg-[#1a2438] transition-colors">
-                    <Award size={16} className="text-brand-orange mb-1 opacity-70" />
-                    <span className="text-white font-bold text-lg">{member.credits_earned || 0}</span>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Credits</span>
-                </div>
+                {/* Info */}
+                <div className="transform transition-transform duration-500 translate-y-4 group-hover:translate-y-0">
 
-                {/* Time */}
-                <div className="bg-[#131b2c] p-3 flex flex-col items-center justify-center text-center group-hover:bg-[#1a2438] transition-colors">
-                    <Clock size={16} className="text-purple-400 mb-1 opacity-70" />
-                    <span className="text-white font-bold text-lg">{member.total_time_spent_minutes || 0}<span className="text-xs font-normal text-slate-500 ml-0.5">m</span></span>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Time</span>
-                </div>
+                    {/* Role Title */}
+                    {member.role_title && (
+                        <div className="flex items-center gap-2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                            <span className="text-brand-blue-light text-xs font-bold uppercase tracking-widest">{member.role_title}</span>
+                        </div>
+                    )}
 
-                {/* AI Chats */}
-                <div className="bg-[#131b2c] p-3 flex flex-col items-center justify-center text-center group-hover:bg-[#1a2438] transition-colors">
-                    <MessageSquare size={16} className="text-pink-400 mb-1 opacity-70" />
-                    <span className="text-white font-bold text-lg">{member.conversations_count || 0}</span>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">AI Chats</span>
-                </div>
-            </div>
+                    {/* Name */}
+                    <h3 className="text-2xl font-bold text-white mb-5 leading-tight group-hover:text-brand-blue-light transition-colors">
+                        {member.full_name}
+                    </h3>
 
-            {/* Footer / Last Active */}
-            <div className="px-6 pb-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-white/5 mt-auto">
-                <span className="py-3">Last Active:</span>
-                <span className="text-slate-400">
-                    {member.last_login ? new Date(member.last_login).toLocaleDateString() : 'Never'}
-                </span>
+                    {/* Stats Grid - 2x2 layout */}
+                    <div className="border-t border-white/10 pt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <span className="text-xs font-medium text-slate-300">{member.courses_completed || 0} Courses</span>
+                            <span className="text-xs font-medium text-slate-300">{member.credits_earned || 0} Credits</span>
+                            <span className="text-xs font-medium text-slate-300">{member.total_time_spent_minutes || 0}m Learning</span>
+                            <span className="text-xs font-medium text-slate-300">{member.conversations_count || 0} AI Chats</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

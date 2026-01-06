@@ -67,9 +67,21 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
     // Given the prompt asked to "connect to database", let's assume the 'courses' prop in UserDashboard 
     // is already the full list. We just need to know WHICH ones are in progress.
     
-    // 4. Streak (Mock logic: check last login or consecutive days)
-    // For now, we'll mock streak as 1 if they have activity today.
-    const streak = 1; 
+    // 4. Streak - Get current streak
+    // Activity is recorded on app mount in MainCanvas, this just retrieves the streak value
+    let streak = 0;
+    try {
+        const { data: streakData, error: streakError } = await supabase
+            .rpc('get_user_streak', { p_user_id: userId });
+
+        if (streakError) {
+            console.error('Error getting streak:', streakError);
+        } else {
+            streak = streakData || 0;
+        }
+    } catch (e) {
+        console.error('Streak calculation failed:', e);
+    } 
 
     // 5. Trending Courses (Mock for now, or fetch top rated)
     // In a real app, we'd query: supabase.from('courses').select('*').order('rating', { ascending: false }).limit(4);

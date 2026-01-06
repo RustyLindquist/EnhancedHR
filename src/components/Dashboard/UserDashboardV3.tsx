@@ -1,50 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Flame,
     Clock,
     Award,
     TrendingUp,
-    ArrowRight,
     Play,
     Sparkles,
     BookOpen,
     Zap,
     MessageSquare,
     Layers,
-    X,
     Loader2,
     ChevronRight
 } from 'lucide-react';
-import { Course } from '@/types';
+import { Course, Conversation, ToolConversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
-import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
+import { fetchConversationsAction } from '@/app/actions/conversations';
 import UniversalCard from '../cards/UniversalCard';
+import PrometheusDashboardWidget from '../PrometheusDashboardWidget';
 
 interface UserDashboardV3Props {
     user: any;
     courses: Course[];
     onNavigate: (collectionId: string) => void;
+    onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
     onSetPrometheusPagePrompt: (prompt: string) => void;
     onAddCourse: (course: Course) => void;
+    onResumeConversation?: (conversation: Conversation) => void;
+    onCourseDragStart?: (courseId: number) => void;
+    onOpenDrawer: () => void;
+    onDeleteConversation?: (conversationId: string) => void;
+    onConversationDragStart?: (conversation: Conversation) => void;
+    onAddConversation?: (conversation: Conversation) => void;
 }
 
 const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     user,
     courses,
     onNavigate,
+    onNavigateWithFilter,
     onStartCourse,
     onOpenAIPanel,
     onSetAIPrompt,
     onSetPrometheusPagePrompt,
-    onAddCourse
+    onAddCourse,
+    onResumeConversation,
+    onCourseDragStart,
+    onOpenDrawer,
+    onDeleteConversation,
+    onConversationDragStart,
+    onAddConversation
 }) => {
-    // ... existing state ...
-    const [aiPrompt, setAiPrompt] = useState('');
     const [stats, setStats] = useState<DashboardStats>({
         totalTime: '0h 0m',
         coursesCompleted: 0,
@@ -55,14 +65,14 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [trendingIds, setTrendingIds] = useState<number[]>([]);
     const [recertifications, setRecertifications] = useState<any[]>([]);
     const [userProgress, setUserProgress] = useState<Record<number, { progress: number, lastAccessed: string }>>({});
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [heroPrompts, setHeroPrompts] = useState<PromptSuggestion[]>([]);
-    const [panelPrompts, setPanelPrompts] = useState<PromptSuggestion[]>([]);
 
     // Tab State - Recommended is now first/default
     const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+
+    // Conversations State
+    const [recentConversations, setRecentConversations] = useState<(Conversation | ToolConversation)[]>([]);
 
     const router = useRouter();
 
@@ -85,14 +95,20 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
         loadData();
     }, [user?.id]);
 
+
     useEffect(() => {
-        const loadPrompts = async () => {
-            const prompts = await fetchPromptSuggestions('user_dashboard');
-            setHeroPrompts(prompts.slice(0, 4));
-            setPanelPrompts(prompts.slice(4));
+        const loadConversations = async () => {
+            if (user?.id) {
+                try {
+                    const conversations = await fetchConversationsAction();
+                    setRecentConversations(conversations.slice(0, 6));
+                } catch (error) {
+                    console.error("Failed to load conversations", error);
+                }
+            }
         };
-        loadPrompts();
-    }, []);
+        loadConversations();
+    }, [user?.id]);
 
     useEffect(() => {
         if (activeTab === 'recommended' && recommendedCourses.length === 0 && user?.id) {
@@ -122,141 +138,24 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     const trendingCourses = courses.filter(c => trendingIds.includes(c.id));
 
-    const handleAiSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (aiPrompt.trim()) {
-            onSetPrometheusPagePrompt(aiPrompt);
-            setAiPrompt('');
-        }
-    };
-
     const handlePromptClick = (prompt: string) => {
         onSetPrometheusPagePrompt(prompt);
     };
 
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
-            {/* Scrollable content with 200px padding from header (140px + 60px from mt-[60px] container) */}
-            <div className="max-w-6xl mx-auto px-8 pt-[140px]">
+            {/* Scrollable content - wider container for more cards per row */}
+            {/* 50px padding from top of dashboard area */}
+            <div className="max-w-[1800px] mx-auto px-8 pt-[50px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
-                    PROMETHEUS AI SECTION - Tightened & Refined
-                    mb-36 for ~150px gap before Trending section (current 96px + 50px = 144px)
+                    PROMETHEUS AI SECTION - Using Widget Component
                 ══════════════════════════════════════════════════════════════════ */}
-                <div className="flex flex-col items-center relative z-10 mb-36">
-
-                    {/* Logo & Title - Condensed */}
-                    <div className="flex flex-col items-center mb-6 group cursor-default">
-                        <div className="relative mb-4 transition-transform duration-700 group-hover:scale-105">
-                            <div className="absolute inset-0 bg-brand-orange/20 blur-[40px] rounded-full animate-pulse-slow" />
-                            {/* Flame reduced by 15%: 192px * 0.85 ≈ 163px → using w-40 (160px) */}
-                            <img
-                                src="/images/logos/EnhancedHR-logo-mark-flame.png"
-                                alt="Prometheus AI"
-                                className="w-40 h-40 relative z-10 drop-shadow-[0_0_30px_rgba(255,147,0,0.4)] object-contain"
-                            />
-                        </div>
-                        <h1 className="text-3xl font-extralight text-white tracking-tight text-center mb-1">
-                            Prometheus <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-amber-400">AI</span>
-                        </h1>
-                        <p className="text-sm text-slate-500 font-light">Your personal learning assistant</p>
-                    </div>
-
-                    {/* Prompt Section */}
-                    <div className="w-full max-w-3xl">
-
-                        {/* View More Link - Aligned Right */}
-                        <div className="flex justify-end mb-3">
-                            <button
-                                onClick={() => setIsDrawerOpen(true)}
-                                className="flex items-center gap-1 text-xs text-slate-500 hover:text-brand-blue-light transition-colors"
-                            >
-                                <Sparkles size={10} />
-                                <span>more prompts</span>
-                                <ChevronRight size={10} />
-                            </button>
-                        </div>
-
-                        {/* Prompt Cards - 2x2 Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            {[
-                                {
-                                    id: 'cap-1',
-                                    title: 'Difficult Conversations',
-                                    description: 'Role-play challenging discussions',
-                                    prompt: 'I need to have a difficult conversation with an employee who is underperforming. Can you role-play this with me?',
-                                    accent: 'from-blue-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-2',
-                                    title: 'Policy & Compliance',
-                                    description: 'Draft policies and communications',
-                                    prompt: 'I need to draft an email announcing a new Return to Office policy. Help me write a balanced message.',
-                                    accent: 'from-emerald-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-3',
-                                    title: 'Strategic Analysis',
-                                    description: 'Analyze leadership and decisions',
-                                    prompt: 'Analyze my leadership style based on a recent situation I will describe.',
-                                    accent: 'from-purple-500/20 to-transparent'
-                                },
-                                {
-                                    id: 'cap-4',
-                                    title: 'Creative Solutions',
-                                    description: 'Brainstorm ideas and initiatives',
-                                    prompt: 'I want to launch a wellness initiative for a remote team. Give me 5 creative, low-cost ideas.',
-                                    accent: 'from-amber-500/20 to-transparent'
-                                }
-                            ].map((card) => (
-                                <button
-                                    key={card.id}
-                                    onClick={() => handlePromptClick(card.prompt)}
-                                    className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-4 text-left transition-all duration-300"
-                                >
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${card.accent} opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-500`} />
-                                    <div className="relative z-10">
-                                        <h3 className="text-sm font-medium text-slate-200 group-hover:text-white mb-0.5 transition-colors">{card.title}</h3>
-                                        <p className="text-xs text-slate-600 group-hover:text-slate-400 transition-colors">{card.description}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Input Box - Tight against prompts */}
-                        <div className="relative">
-                            <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
-                            <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
-                                <div className="p-2.5 text-brand-orange/60">
-                                    <Flame size={18} />
-                                </div>
-                                <form onSubmit={handleAiSubmit} className="flex-1 flex">
-                                    <input
-                                        type="text"
-                                        value={aiPrompt}
-                                        onChange={(e) => setAiPrompt(e.target.value)}
-                                        placeholder="Ask anything..."
-                                        className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-600 px-2 font-light h-11"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={!aiPrompt.trim()}
-                                        className={`
-                                            p-2.5 rounded-lg transition-all duration-300 mr-1
-                                            ${aiPrompt.trim()
-                                                ? 'bg-brand-blue-light text-brand-black hover:bg-white'
-                                                : 'bg-white/[0.03] text-slate-700 cursor-not-allowed'}
-                                        `}
-                                    >
-                                        <ArrowRight size={18} />
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        {/* AI Disclaimer */}
-                        <p className="text-center text-[10px] text-slate-600/60 mt-3">AI can make mistakes. Verify important information.</p>
-                    </div>
+                <div className="relative z-10 mb-12">
+                    <PrometheusDashboardWidget
+                        onSetPrometheusPagePrompt={onSetPrometheusPagePrompt}
+                        onOpenDrawer={onOpenDrawer}
+                    />
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════════
@@ -291,97 +190,169 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         </button>
                     </div>
 
-                    {/* Course Cards Grid */}
+                    {/* Course Cards - Horizontal Scroll */}
                     <div className="min-h-[220px]">
                         {activeTab === 'trending' ? (
-                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                                {trendingCourses.length > 0 ? trendingCourses.slice(0, 4).map((course, idx) => (
-                                    <UniversalCard
-                                        key={course.id}
-                                        type="COURSE"
-                                        title={course.title}
-                                        subtitle={course.author}
-                                        imageUrl={course.image}
-                                        meta={course.duration}
-                                        categories={[`#${idx + 1} TRENDING`]}
-                                        credits={{
-                                            shrm: course.badges?.includes('SHRM'),
-                                            hrci: course.badges?.includes('HRCI')
-                                        }}
-                                        actionLabel="VIEW"
-                                        rating={course.rating}
-                                        onAction={() => onStartCourse(course.id)}
-                                        onAdd={() => onAddCourse(course)}
-                                    />
-                                )) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">No trending courses available</div>
-                                )}
-                            </div>
+                            trendingCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {trendingCourses.slice(0, 8).map((course, idx) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={[`#${idx + 1} TRENDING`]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                                draggable={!!onCourseDragStart}
+                                                onDragStart={() => onCourseDragStart?.(course.id)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">No trending courses available</div>
+                            )
                         ) : (
-                            <div className="grid gap-4 animate-fade-in" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                                {loadingRecommendations ? (
-                                    <div className="col-span-full flex justify-center py-16">
-                                        <Loader2 size={24} className="animate-spin text-brand-blue-light" />
-                                    </div>
-                                ) : recommendedCourses.length > 0 ? (
-                                    recommendedCourses.slice(0, 4).map((course) => (
-                                        <UniversalCard
-                                            key={course.id}
-                                            type="COURSE"
-                                            title={course.title}
-                                            subtitle={course.author}
-                                            imageUrl={course.image}
-                                            meta={course.duration}
-                                            categories={["FOR YOU"]}
-                                            credits={{
-                                                shrm: course.badges?.includes('SHRM'),
-                                                hrci: course.badges?.includes('HRCI')
-                                            }}
-                                            actionLabel="VIEW"
-                                            rating={course.rating}
-                                            onAction={() => onStartCourse(course.id)}
-                                            onAdd={() => onAddCourse(course)}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="col-span-full text-center text-slate-600 py-12">
-                                        Unable to generate recommendations
-                                    </div>
-                                )}
-                            </div>
+                            loadingRecommendations ? (
+                                <div className="flex justify-center py-16">
+                                    <Loader2 size={24} className="animate-spin text-brand-blue-light" />
+                                </div>
+                            ) : recommendedCourses.length > 0 ? (
+                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                    {recommendedCourses.slice(0, 8).map((course) => (
+                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type="COURSE"
+                                                title={course.title}
+                                                subtitle={course.author}
+                                                description={course.description}
+                                                imageUrl={course.image}
+                                                meta={course.duration}
+                                                categories={["FOR YOU"]}
+                                                credits={{
+                                                    shrm: course.badges?.includes('SHRM'),
+                                                    hrci: course.badges?.includes('HRCI')
+                                                }}
+                                                actionLabel="VIEW"
+                                                rating={course.rating}
+                                                onAction={() => onStartCourse(course.id)}
+                                                onAdd={() => onAddCourse(course)}
+                                                draggable={!!onCourseDragStart}
+                                                onDragStart={() => onCourseDragStart?.(course.id)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-600 py-12">
+                                    Unable to generate recommendations
+                                </div>
+                            )
                         )}
                     </div>
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════════
+                    CONTINUE THE CONVERSATION SECTION
+                ══════════════════════════════════════════════════════════════════ */}
+                {recentConversations.length > 0 && (
+                    <div className="mb-14">
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={16} className="text-brand-blue-light" />
+                                <h2 className="text-lg font-light text-white">Continue the Conversation</h2>
+                            </div>
+                            <button
+                                onClick={() => onNavigate('conversations')}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
+                        </div>
+
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
+                            {recentConversations.map(conversation => {
+                                const isToolConv = conversation.type === 'TOOL_CONVERSATION';
+                                const toolConv = isToolConv ? conversation as ToolConversation : null;
+                                return (
+                                    <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
+                                        <UniversalCard
+                                            type={isToolConv ? 'TOOL_CONVERSATION' : 'CONVERSATION'}
+                                            title={conversation.title || 'Untitled Conversation'}
+                                            subtitle={isToolConv ? toolConv?.tool_title : undefined}
+                                            description={conversation.lastMessage || 'No messages yet.'}
+                                            meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
+                                            actionLabel="CHAT"
+                                            onAction={() => {
+                                                if (isToolConv && toolConv) {
+                                                    window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${conversation.id}`;
+                                                } else {
+                                                    onResumeConversation?.(conversation as Conversation);
+                                                }
+                                            }}
+                                            onRemove={() => onDeleteConversation?.(conversation.id)}
+                                            onAdd={() => onAddConversation?.(conversation as Conversation)}
+                                            draggable={!!onConversationDragStart}
+                                            onDragStart={() => onConversationDragStart?.(conversation as Conversation)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* ══════════════════════════════════════════════════════════════════
                     CONTINUE LEARNING SECTION
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="mb-14">
-                    <div className="flex items-center gap-2 mb-5">
-                        <Play size={16} className="text-brand-blue-light" />
-                        <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                    <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-2">
+                            <Play size={16} className="text-brand-blue-light" />
+                            <h2 className="text-lg font-light text-white">Continue Learning</h2>
+                        </div>
+                        {inProgressCourses.length > 0 && (
+                            <button
+                                onClick={() => onNavigateWithFilter?.('academy', ['IN_PROGRESS'])}
+                                className="text-xs text-slate-500 hover:text-brand-blue-light transition-colors flex items-center gap-1"
+                            >
+                                view all
+                                <ChevronRight size={12} />
+                            </button>
+                        )}
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
                             {inProgressCourses.map(course => (
-                                <UniversalCard
-                                    key={course.id}
-                                    type="COURSE"
-                                    title={course.title}
-                                    subtitle={course.author}
-                                    imageUrl={course.image}
-                                    meta={`${course.progress}% Complete`}
-                                    categories={["IN PROGRESS"]}
-                                    actionLabel="RESUME"
-                                    rating={course.rating}
-                                    onAction={() => onStartCourse(course.id)}
-                                    // onAdd={() => onAddCourse(course)} 
-                                    // In-progress probably doesn't need 'add to favorites' if it's already in progress? 
-                                    // But user said "on Dashboard, there should only be the 'add' icon".
-                                    // Let's ensure consistency.
-                                    onAdd={() => onAddCourse(course)}
-                                />
+                                <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                    <UniversalCard
+                                        type="COURSE"
+                                        title={course.title}
+                                        subtitle={course.author}
+                                        description={course.description}
+                                        imageUrl={course.image}
+                                        meta={`${course.progress}% Complete`}
+                                        categories={["IN PROGRESS"]}
+                                        actionLabel="RESUME"
+                                        rating={course.rating}
+                                        onAction={() => onStartCourse(course.id)}
+                                        onAdd={() => onAddCourse(course)}
+                                        draggable={!!onCourseDragStart}
+                                        onDragStart={() => onCourseDragStart?.(course.id)}
+                                    />
+                                </div>
                             ))}
                         </div>
                     ) : (
@@ -457,56 +428,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     )}
                 </div>
 
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════════════
-                PROMPTS DRAWER
-            ══════════════════════════════════════════════════════════════════ */}
-            <div
-                className={`
-                    fixed top-[60px] left-0 w-full z-[100]
-                    transition-transform duration-500 ease-out
-                    ${isDrawerOpen ? 'translate-y-0' : '-translate-y-full'}
-                `}
-            >
-                <div className="bg-[#0a0d12]/98 backdrop-blur-2xl border-b border-white/5 shadow-2xl pb-8">
-                    <div className="max-w-6xl mx-auto px-8 pt-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-light text-white flex items-center gap-2">
-                                <Sparkles size={16} className="text-brand-blue-light" />
-                                Prompt Library
-                            </h2>
-                            <button
-                                onClick={() => setIsDrawerOpen(false)}
-                                className="p-2 rounded-lg hover:bg-white/5 text-slate-500 hover:text-white transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-                            {panelPrompts.map(p => (
-                                <button
-                                    key={p.id}
-                                    onClick={() => {
-                                        handlePromptClick(p.prompt);
-                                        setIsDrawerOpen(false);
-                                    }}
-                                    className="text-left p-4 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.03] hover:border-white/[0.08] transition-all group"
-                                >
-                                    <div className="flex items-center gap-2 text-slate-600 group-hover:text-brand-blue-light mb-2 transition-colors">
-                                        <MessageSquare size={12} />
-                                        <span className="text-[10px] uppercase tracking-wider">{p.category}</span>
-                                    </div>
-                                    <div className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors line-clamp-2">
-                                        {p.label}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <div className="w-full h-screen bg-black/60 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
             </div>
 
         </div>

@@ -15,8 +15,14 @@ export interface ContentAssignment {
   created_at: string;
   content_details?: {
       title: string;
-      thumbnail_url?: string; // Optional if we fetch it
-      learning_status?: 'not_started' | 'in_progress' | 'completed'; // Derived logic
+      thumbnail_url?: string;
+      description?: string;
+      author?: string;
+      duration?: string;
+      category?: string;
+      rating?: number;
+      badges?: string[];
+      learning_status?: 'not_started' | 'in_progress' | 'completed';
   };
 }
 
@@ -112,19 +118,83 @@ export async function getDirectAssignments(assigneeType: 'user' | 'group', assig
     // For MVP, let's try to fetch course titles if content_type is course.
     
     const enriched = await Promise.all(assignments.map(async (a) => {
-        let title = 'Unknown Content';
-        let thumbnail_url: string | undefined;
+        let contentDetails: ContentAssignment['content_details'] = { title: 'Unknown Content' };
+
         if (a.content_type === 'course') {
-            const { data: course } = await client.from('courses').select('title, image').eq('id', a.content_id).single();
+            const { data: course } = await client
+                .from('courses')
+                .select('title, image_url, description, author, duration, category, rating, badges')
+                .eq('id', a.content_id)
+                .single();
             if (course) {
-                title = course.title;
-                // @ts-ignore
-                if (course.image) thumbnail_url = course.image;
+                contentDetails = {
+                    title: course.title,
+                    thumbnail_url: course.image_url || undefined,
+                    description: course.description || undefined,
+                    author: course.author || undefined,
+                    duration: course.duration || undefined,
+                    category: course.category || undefined,
+                    rating: course.rating ? Number(course.rating) : undefined,
+                    badges: course.badges || undefined
+                };
+            }
+        } else if (a.content_type === 'module') {
+            const { data: module } = await client
+                .from('modules')
+                .select('title, description, duration, courses(title, image_url, author)')
+                .eq('id', a.content_id)
+                .single();
+            if (module) {
+                const courseData = module.courses as any;
+                contentDetails = {
+                    title: module.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title || module.description || undefined,
+                    author: courseData?.author || 'EnhancedHR',
+                    duration: module.duration || undefined,
+                    category: 'Module'
+                };
+            }
+        } else if (a.content_type === 'lesson') {
+            const { data: lesson } = await client
+                .from('lessons')
+                .select('title, duration, type, modules(title, courses(title, image_url, author))')
+                .eq('id', a.content_id)
+                .single();
+            if (lesson) {
+                const moduleData = lesson.modules as any;
+                const courseData = moduleData?.courses as any;
+                contentDetails = {
+                    title: lesson.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title ? `${courseData.title} → ${moduleData?.title}` : moduleData?.title || undefined,
+                    author: courseData?.author || 'EnhancedHR',
+                    duration: lesson.duration || undefined,
+                    category: lesson.type || 'Lesson'
+                };
+            }
+        } else if (a.content_type === 'resource') {
+            const { data: resource } = await client
+                .from('resources')
+                .select('title, type, size, courses(title, image_url)')
+                .eq('id', a.content_id)
+                .single();
+            if (resource) {
+                const courseData = resource.courses as any;
+                contentDetails = {
+                    title: resource.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title || 'Course Resource',
+                    author: resource.type || 'Resource',
+                    duration: resource.size || undefined,
+                    category: 'Resource'
+                };
             }
         }
+
         return {
             ...a,
-            content_details: { title, thumbnail_url }
+            content_details: contentDetails
         };
     }));
 
@@ -177,24 +247,100 @@ export async function getUserAggregateAssignments(userId: string) {
         ...(orgAssignments || [])
     ];
 
-    // Deduplicate? (If assigned to group AND user, show once? Or show both sources?)
-    // Let's return all, UI can group/dedupe.
+    // Deduplicate by content_type + content_id, keeping the most specific assignment
+    // Priority: user > group > org
+    type AssignmentRecord = typeof all[number];
+    const priorityMap: Record<string, number> = { 'user': 3, 'group': 2, 'org': 1 };
+    const deduped = all.reduce((acc, assignment) => {
+        const key = `${assignment.content_type}-${assignment.content_id}`;
+        const existing = acc.get(key);
+        if (!existing || priorityMap[assignment.assignee_type] > priorityMap[existing.assignee_type]) {
+            acc.set(key, assignment);
+        }
+        return acc;
+    }, new Map<string, AssignmentRecord>());
+
+    const dedupedAssignments: AssignmentRecord[] = Array.from(deduped.values());
 
     // Enrich (similar to above)
-     const enriched = await Promise.all(all.map(async (a) => {
-        let title = 'Unknown Content';
-        let thumbnail_url: string | undefined;
+    const enriched = await Promise.all(dedupedAssignments.map(async (a) => {
+        let contentDetails: ContentAssignment['content_details'] = { title: 'Unknown Content' };
+
         if (a.content_type === 'course') {
-            const { data: course } = await supabase.from('courses').select('title, image').eq('id', a.content_id).single();
+            const { data: course } = await supabase
+                .from('courses')
+                .select('title, image_url, description, author, duration, category, rating, badges')
+                .eq('id', a.content_id)
+                .single();
             if (course) {
-                title = course.title;
-                // @ts-ignore
-                if (course.image) thumbnail_url = course.image;
+                contentDetails = {
+                    title: course.title,
+                    thumbnail_url: course.image_url || undefined,
+                    description: course.description || undefined,
+                    author: course.author || undefined,
+                    duration: course.duration || undefined,
+                    category: course.category || undefined,
+                    rating: course.rating ? Number(course.rating) : undefined,
+                    badges: course.badges || undefined
+                };
+            }
+        } else if (a.content_type === 'module') {
+            const { data: module } = await supabase
+                .from('modules')
+                .select('title, description, duration, courses(title, image_url, author)')
+                .eq('id', a.content_id)
+                .single();
+            if (module) {
+                const courseData = module.courses as any;
+                contentDetails = {
+                    title: module.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title || module.description || undefined,
+                    author: courseData?.author || 'EnhancedHR',
+                    duration: module.duration || undefined,
+                    category: 'Module'
+                };
+            }
+        } else if (a.content_type === 'lesson') {
+            const { data: lesson } = await supabase
+                .from('lessons')
+                .select('title, duration, type, modules(title, courses(title, image_url, author))')
+                .eq('id', a.content_id)
+                .single();
+            if (lesson) {
+                const moduleData = lesson.modules as any;
+                const courseData = moduleData?.courses as any;
+                contentDetails = {
+                    title: lesson.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title ? `${courseData.title} → ${moduleData?.title}` : moduleData?.title || undefined,
+                    author: courseData?.author || 'EnhancedHR',
+                    duration: lesson.duration || undefined,
+                    category: lesson.type || 'Lesson'
+                };
+            }
+        } else if (a.content_type === 'resource') {
+            const { data: resource } = await supabase
+                .from('resources')
+                .select('title, type, size, courses(title, image_url)')
+                .eq('id', a.content_id)
+                .single();
+            if (resource) {
+                const courseData = resource.courses as any;
+                contentDetails = {
+                    title: resource.title,
+                    thumbnail_url: courseData?.image_url || undefined,
+                    description: courseData?.title || 'Course Resource',
+                    author: resource.type || 'Resource',
+                    duration: resource.size || undefined,
+                    category: 'Resource'
+                };
             }
         }
+
         return {
             ...a,
-            content_details: { title, thumbnail_url }
+            content_details: contentDetails
         };
     }));
 

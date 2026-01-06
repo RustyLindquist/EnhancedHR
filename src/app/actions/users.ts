@@ -186,11 +186,30 @@ export async function deleteUser(userId: string) {
 
     // 2. Explicitly delete profile if cascade didn't happen (or to be sure)
     const { error: profileError } = await supabase.from('profiles').delete().eq('id', userId);
-    
+
     if (profileError) {
          console.error('Error deleting profile:', profileError);
     }
 
     revalidatePath('/admin/users');
+    return { success: true };
+}
+
+export async function resetUserPassword(userId: string, newPassword: string) {
+    const supabase = createAdminClient();
+
+    if (!newPassword || newPassword.length < 6) {
+        return { error: 'Password must be at least 6 characters' };
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+        password: newPassword
+    });
+
+    if (error) {
+        console.error('Error resetting password:', error);
+        return { error: `Failed to reset password: ${error.message}` };
+    }
+
     return { success: true };
 }

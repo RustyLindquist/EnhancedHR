@@ -30,11 +30,13 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
             {/* Panel */}
             <div
                 className={`
-               fixed top-0 left-0 w-full z-[100]
+               fixed left-0 w-full z-[100]
                bg-[#0f172a]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl
-               transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[90vh]
-               ${isOpen ? 'translate-y-0' : '-translate-y-full'}
+               transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[75vh]
             `}
+                style={{
+                    top: isOpen ? '0' : '-100%'
+                }}
             >
                 {/* Header - Padding increased to clear sidebars (Nav: 288px, AI: ~400px) */}
                 <div className="h-24 flex items-center justify-between px-10 md:pl-[300px] md:pr-[400px] border-b border-white/10 flex-shrink-0">
@@ -55,7 +57,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden dropdown-scrollbar">
                     <div className="w-full h-full px-10 md:pl-[300px] md:pr-[400px] pb-[50px]">
                         {children}
                     </div>

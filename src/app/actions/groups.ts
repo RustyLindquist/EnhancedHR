@@ -31,11 +31,12 @@ export async function createGroup(name: string, memberIds: string[]) {
   // Get User's Org ID
   const { data: profile } = await supabase
     .from('profiles')
-    .select('org_id, role')
+    .select('org_id, role, membership_status')
     .eq('id', user.id)
     .single();
 
-  if (!profile || !profile.org_id || (profile.role !== 'admin' && profile.role !== 'org_admin')) {
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+  if (!profile || !profile.org_id || !isAdmin) {
       return { success: false, error: 'Permission denied' };
   }
 
@@ -89,8 +90,9 @@ export async function updateGroup(groupId: string, name: string, memberIds: stri
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Verify Org Admin
-     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-     if (profile?.role !== 'admin' && profile?.role !== 'org_admin') return { success: false, error: 'Permission denied' };
+    const { data: profile } = await supabase.from('profiles').select('role, membership_status').eq('id', user.id).single();
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return { success: false, error: 'Permission denied' };
 
     // 1. Update Name
     const { error: updateError } = await supabaseAdmin
@@ -134,8 +136,9 @@ export async function deleteGroup(groupId: string) {
     if (!user) return { success: false, error: 'Unauthorized' };
 
     // Check Role
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'admin' && profile?.role !== 'org_admin') return { success: false, error: 'Permission denied' };
+    const { data: profile } = await supabase.from('profiles').select('role, membership_status').eq('id', user.id).single();
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return { success: false, error: 'Permission denied' };
 
     const supabaseAdmin = await createAdminClient();
     const { error } = await supabaseAdmin.from('employee_groups').delete().eq('id', groupId);
@@ -151,10 +154,17 @@ export async function getOrgGroups() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('org_id, role, membership_status').eq('id', user.id).single();
     if (!profile?.org_id) return [];
 
-    const { data: groups, error } = await supabase
+    // Check if user is admin
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!isAdmin) return [];
+
+    // Use admin client to bypass RLS since the RLS policies may not include membership_status
+    const supabaseAdmin = await createAdminClient();
+
+    const { data: groups, error } = await supabaseAdmin
         .from('employee_groups')
         .select(`
             *,
@@ -177,8 +187,23 @@ export async function getOrgGroups() {
 
 export async function getGroupDetails(groupId: string) {
     const supabase = await createClient();
-    
-    const { data: group, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Verify the user is an admin (role or membership_status)
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !isAdmin) return null;
+
+    // Use admin client to bypass RLS since the RLS policies may not include membership_status
+    const supabaseAdmin = await createAdminClient();
+
+    const { data: group, error } = await supabaseAdmin
         .from('employee_groups')
         .select(`
             *,
@@ -189,10 +214,11 @@ export async function getGroupDetails(groupId: string) {
 
     if (error || !group) return null;
 
-    if (error || !group) return null;
+    // Verify the group belongs to the user's org
+    if (group.org_id !== profile.org_id) return null;
 
-    // Fetch members with profiles
-    const { data: members } = await supabase
+    // Fetch members with profiles using admin client
+    const { data: members } = await supabaseAdmin
         .from('employee_group_members')
         .select(`
             user_id,
@@ -213,4 +239,320 @@ export async function getGroupDetails(groupId: string) {
         members: formattedMembers,
         member_count: formattedMembers.length
     };
+}
+
+/**
+ * Get which groups a specific member belongs to
+ */
+export async function getMemberGroups(memberId: string): Promise<string[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: memberships } = await supabase
+        .from('employee_group_members')
+        .select('group_id')
+        .eq('user_id', memberId);
+
+    return memberships?.map(m => m.group_id) || [];
+}
+
+/**
+ * Update which groups a member belongs to
+ */
+export async function updateMemberGroups(
+    memberId: string,
+    groupIds: string[],
+    newGroup?: { name: string }
+): Promise<{ success: boolean; error?: string; newGroupId?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Verify admin
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !profile.org_id || !isAdmin) {
+        return { success: false, error: 'Permission denied' };
+    }
+
+    const supabaseAdmin = await createAdminClient();
+    let newGroupId: string | undefined;
+
+    // Create new group if requested
+    if (newGroup?.name) {
+        const { data: createdGroup, error: createError } = await supabaseAdmin
+            .from('employee_groups')
+            .insert({ org_id: profile.org_id, name: newGroup.name })
+            .select()
+            .single();
+
+        if (createError) {
+            console.error('Error creating group:', createError);
+            return { success: false, error: createError.message };
+        }
+        newGroupId = createdGroup.id;
+        groupIds = [...groupIds, createdGroup.id];
+    }
+
+    // Get current memberships for this member
+    const { data: currentMemberships } = await supabaseAdmin
+        .from('employee_group_members')
+        .select('group_id')
+        .eq('user_id', memberId);
+
+    const currentGroupIds = new Set(currentMemberships?.map(m => m.group_id) || []);
+    const targetGroupIds = new Set(groupIds);
+
+    // Groups to add
+    const toAdd = groupIds.filter(id => !currentGroupIds.has(id));
+    // Groups to remove
+    const toRemove = [...currentGroupIds].filter(id => !targetGroupIds.has(id));
+
+    // Remove from groups
+    if (toRemove.length > 0) {
+        const { error: removeError } = await supabaseAdmin
+            .from('employee_group_members')
+            .delete()
+            .eq('user_id', memberId)
+            .in('group_id', toRemove);
+
+        if (removeError) {
+            console.error('Error removing from groups:', removeError);
+            return { success: false, error: removeError.message };
+        }
+    }
+
+    // Add to groups
+    if (toAdd.length > 0) {
+        const { error: addError } = await supabaseAdmin
+            .from('employee_group_members')
+            .insert(toAdd.map(gid => ({ user_id: memberId, group_id: gid })));
+
+        if (addError) {
+            console.error('Error adding to groups:', addError);
+            return { success: false, error: addError.message };
+        }
+    }
+
+    revalidatePath('/org/team');
+    revalidatePath('/org/users');
+    return { success: true, newGroupId };
+}
+
+export interface GroupStats {
+    totalLearningMinutes: number;
+    avgLearningMinutes: number;
+    coursesCompleted: number;
+    totalConversations: number;
+    activeMembers: number;
+    totalMembers: number;
+}
+
+/**
+ * Get aggregated platform usage statistics for a group
+ */
+export async function getGroupStats(groupId: string): Promise<GroupStats | null> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Verify admin access
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !isAdmin) return null;
+
+    const supabaseAdmin = await createAdminClient();
+
+    // Get member IDs for this group
+    const { data: members } = await supabaseAdmin
+        .from('employee_group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+
+    if (!members || members.length === 0) {
+        return {
+            totalLearningMinutes: 0,
+            avgLearningMinutes: 0,
+            coursesCompleted: 0,
+            totalConversations: 0,
+            activeMembers: 0,
+            totalMembers: 0
+        };
+    }
+
+    const memberIds = members.map(m => m.user_id);
+    const totalMembers = memberIds.length;
+
+    // Fetch user_progress for these members
+    const { data: progressData } = await supabaseAdmin
+        .from('user_progress')
+        .select('user_id, view_time_seconds, is_completed, last_accessed')
+        .in('user_id', memberIds);
+
+    // Fetch conversations count
+    const { data: conversationData } = await supabaseAdmin
+        .from('conversations')
+        .select('user_id')
+        .in('user_id', memberIds);
+
+    // Aggregate stats
+    let totalViewTimeSeconds = 0;
+    let coursesCompleted = 0;
+    const activeUserIds = new Set<string>();
+
+    progressData?.forEach(p => {
+        totalViewTimeSeconds += p.view_time_seconds || 0;
+        if (p.is_completed) coursesCompleted += 1;
+        // Consider "active" if they have any progress in the last 30 days
+        if (p.last_accessed) {
+            const lastAccess = new Date(p.last_accessed);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            if (lastAccess >= thirtyDaysAgo) {
+                activeUserIds.add(p.user_id);
+            }
+        }
+    });
+
+    const totalLearningMinutes = Math.round(totalViewTimeSeconds / 60);
+    const avgLearningMinutes = totalMembers > 0 ? Math.round(totalLearningMinutes / totalMembers) : 0;
+    const totalConversations = conversationData?.length || 0;
+
+    return {
+        totalLearningMinutes,
+        avgLearningMinutes,
+        coursesCompleted,
+        totalConversations,
+        activeMembers: activeUserIds.size,
+        totalMembers
+    };
+}
+
+export interface GroupMemberWithStats {
+    id: string;
+    email: string;
+    full_name: string;
+    avatar_url: string;
+    role: string;
+    membership_status: string;
+    courses_completed: number;
+    total_time_spent_minutes: number;
+    credits_earned: number;
+    conversations_count: number;
+}
+
+/**
+ * Get group members with their individual stats (for UserCard display)
+ */
+export async function getGroupMembersWithStats(groupId: string): Promise<GroupMemberWithStats[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Verify admin access
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !isAdmin) return [];
+
+    const supabaseAdmin = await createAdminClient();
+
+    // Get member IDs for this group
+    const { data: groupMembers } = await supabaseAdmin
+        .from('employee_group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+
+    if (!groupMembers || groupMembers.length === 0) return [];
+
+    const memberIds = groupMembers.map(m => m.user_id);
+
+    // Fetch full profile data for members (including any email if stored in profiles)
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, avatar_url, role, membership_status')
+        .in('id', memberIds);
+
+    // Note: We don't query auth.users directly as it requires special access
+    // Email could be fetched via auth.admin.listUsers but for now we skip it
+
+    // Fetch progress data
+    const { data: progressData } = await supabaseAdmin
+        .from('user_progress')
+        .select('user_id, view_time_seconds, is_completed')
+        .in('user_id', memberIds);
+
+    // Fetch conversations
+    const { data: conversationData } = await supabaseAdmin
+        .from('conversations')
+        .select('user_id')
+        .in('user_id', memberIds);
+
+    // Fetch credits
+    const { data: creditsData } = await supabaseAdmin
+        .from('user_credits_ledger')
+        .select('user_id, amount')
+        .in('user_id', memberIds);
+
+    // Aggregate metrics per user
+    const metricsMap = new Map<string, {
+        timeSeconds: number;
+        completed: number;
+        conversations: number;
+        credits: number;
+    }>();
+
+    memberIds.forEach(id => {
+        metricsMap.set(id, { timeSeconds: 0, completed: 0, conversations: 0, credits: 0 });
+    });
+
+    progressData?.forEach(p => {
+        const m = metricsMap.get(p.user_id);
+        if (m) {
+            m.timeSeconds += p.view_time_seconds || 0;
+            if (p.is_completed) m.completed += 1;
+        }
+    });
+
+    conversationData?.forEach(c => {
+        const m = metricsMap.get(c.user_id);
+        if (m) m.conversations += 1;
+    });
+
+    creditsData?.forEach(c => {
+        const m = metricsMap.get(c.user_id);
+        if (m) m.credits += c.amount || 0;
+    });
+
+    // Build final array
+    return (profiles || []).map(p => {
+        const metrics = metricsMap.get(p.id) || { timeSeconds: 0, completed: 0, conversations: 0, credits: 0 };
+        return {
+            id: p.id,
+            email: '', // Email not available without auth.users access
+            full_name: p.full_name || 'Unknown',
+            avatar_url: p.avatar_url || '',
+            role: p.role || 'user',
+            membership_status: p.membership_status || 'employee',
+            courses_completed: metrics.completed,
+            total_time_spent_minutes: Math.round(metrics.timeSeconds / 60),
+            credits_earned: metrics.credits,
+            conversations_count: metrics.conversations
+        };
+    });
 }

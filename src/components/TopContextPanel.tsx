@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, User, Upload, Brain } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, FileText, User, Upload, Brain, Loader2 } from 'lucide-react';
 import { ContextItemType, UserContextItem, ProfileDetails } from '../types';
-import { createContextItem, updateContextItem } from '../app/actions/context';
+import { createContextItem, updateContextItem, createFileContextItem } from '../app/actions/context';
 import GlobalTopPanel from './GlobalTopPanel';
 
 interface TopContextPanelProps {
@@ -25,13 +25,28 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
 }) => {
     const [title, setTitle] = useState('');
     const [textContent, setTextContent] = useState('');
-    // Mock File State
-    const [selectedMockFile, setSelectedMockFile] = useState<string | null>(null);
+    // File State
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     // Profile Fields
     const [profileData, setProfileData] = useState<ProfileDetails['content']>({});
 
     const [isSaving, setIsSaving] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const [itemType, setItemType] = useState<ContextItemType>(initialType);
+
+    // Supported file types for upload
+    const SUPPORTED_TYPES = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'text/markdown',
+        'text/csv',
+        'application/json',
+        'image/jpeg',
+        'image/png',
+        'image/gif'
+    ];
 
     // Reset or Load on Open
     useEffect(() => {
@@ -49,51 +64,79 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                 setItemType(initialType);
                 setTitle('');
                 setTextContent('');
-                setSelectedMockFile(null);
+                setSelectedFile(null);
+                setUploadProgress(null);
                 setProfileData({});
             }
         }
     }, [isOpen, itemToEdit, initialType]);
 
+    // Handle file selection from input or drop
+    const handleFileSelect = (file: File) => {
+        // Check file type
+        if (!SUPPORTED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx|txt|md|csv|json|jpg|jpeg|png|gif)$/i)) {
+            alert('Unsupported file type. Supported: PDF, DOCX, TXT, MD, CSV, JSON, JPG, PNG, GIF');
+            return;
+        }
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File too large. Maximum size is 10MB.');
+            return;
+        }
+        setSelectedFile(file);
+        if (!title) {
+            setTitle(file.name);
+        }
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
+        setUploadProgress(null);
         try {
-            let contentToSave: any = {};
-
-            if (itemType === 'CUSTOM_CONTEXT') {
-                contentToSave = { text: textContent };
-            } else if (itemType === 'AI_INSIGHT') {
-                // Usually not editable via this panel deeply, but we allow text edit
-                contentToSave = { ...itemToEdit?.content, insight: textContent };
-            } else if (itemType === 'PROFILE') {
-                contentToSave = profileData;
-            } else if (itemType === 'FILE') {
-                // Mock File Save for now - just title/metadata
-                contentToSave = {
-                    fileName: selectedMockFile || title || 'Uploaded Document',
-                    fileType: 'mock',
-                    url: '#'
-                };
-                if (!title) setTitle(selectedMockFile || 'Uploaded Document');
-            }
-
-            // If activeCollectionId is 'personal-context', passing it directly to server action to resolve
             const targetCollectionId = activeCollectionId;
-
             let result;
-            if (itemToEdit && itemToEdit.id !== 'virtual-profile-placeholder') {
-                result = await updateContextItem(itemToEdit.id, {
-                    title: title || 'Untitled',
-                    content: contentToSave
-                });
+
+            // Handle FILE type separately with full upload pipeline
+            if (itemType === 'FILE' && selectedFile && !itemToEdit) {
+                setUploadProgress('Uploading file...');
+                const fileBuffer = await selectedFile.arrayBuffer();
+
+                setUploadProgress('Parsing content...');
+                result = await createFileContextItem(
+                    targetCollectionId,
+                    selectedFile.name,
+                    selectedFile.type,
+                    fileBuffer
+                );
+                setUploadProgress('Generating embeddings...');
             } else {
-                // Create new (or handle virtual profile becoming real)
-                result = await createContextItem({
-                    collection_id: targetCollectionId,
-                    type: itemType,
-                    title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
-                    content: contentToSave
-                });
+                // Handle other types (CUSTOM_CONTEXT, PROFILE, AI_INSIGHT)
+                let contentToSave: any = {};
+
+                if (itemType === 'CUSTOM_CONTEXT') {
+                    contentToSave = { text: textContent };
+                } else if (itemType === 'AI_INSIGHT') {
+                    contentToSave = { ...itemToEdit?.content, insight: textContent };
+                } else if (itemType === 'PROFILE') {
+                    contentToSave = profileData;
+                } else if (itemType === 'FILE') {
+                    // Editing existing file - just update metadata
+                    contentToSave = itemToEdit?.content || {};
+                }
+
+                if (itemToEdit && itemToEdit.id !== 'virtual-profile-placeholder') {
+                    result = await updateContextItem(itemToEdit.id, {
+                        title: title || 'Untitled',
+                        content: contentToSave
+                    });
+                } else {
+                    result = await createContextItem({
+                        collection_id: targetCollectionId,
+                        type: itemType,
+                        title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
+                        content: contentToSave
+                    });
+                }
             }
 
             if (!result.success) {
@@ -106,6 +149,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
             alert(error instanceof Error ? error.message : "Failed to save context item.");
         } finally {
             setIsSaving(false);
+            setUploadProgress(null);
         }
     };
 
@@ -241,65 +285,83 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                 )}
 
                 {itemType === 'FILE' && (
-                    selectedMockFile ? (
-                        <div className="border border-white/10 bg-white/5 rounded-2xl p-6 flex items-center justify-between group animate-fade-in-up">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-500/20 text-blue-400 rounded-xl">
-                                    <FileText size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-white font-medium">{selectedMockFile}</h3>
-                                    <p className="text-xs text-slate-400">Ready to upload</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setSelectedMockFile(null)}
-                                className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-red-400 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-                    ) : (
-                        <div
-                            onClick={() => setSelectedMockFile('example-document.pdf')}
-                            onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
+                    <>
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.docx,.doc,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileSelect(file);
                             }}
-                            onDragEnter={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const files = e.dataTransfer.files;
-                                if (files && files.length > 0) {
-                                    const file = files[0];
-                                    const validTypes = ['.jpg', '.jpeg', '.gif', '.png', '.doc', '.docx', '.ppt', '.pptx', '.md', '.txt'];
-                                    const isTypeValid = validTypes.some(type => file.name.toLowerCase().endsWith(type));
+                        />
 
-                                    if (isTypeValid) {
-                                        setSelectedMockFile(file.name);
-                                        // Here we would normally set the actual file object to state for upload
-                                        // setFileToUpload(file);
-                                    } else {
-                                        alert("File type not supported. Please upload: jpg, gif, png, doc, docx, ppt, pptx, md, txt");
-                                    }
-                                }
-                            }}
-                            className="border-2 border-dashed border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-slate-500 hover:border-brand-blue-light/50 hover:bg-white/5 transition-all cursor-pointer group"
-                        >
-                            <div className="p-4 bg-white/5 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                                <Upload size={32} className="text-slate-400 group-hover:text-brand-blue-light" />
+                        {selectedFile ? (
+                            <div className="border border-white/10 bg-white/5 rounded-2xl p-6 flex items-center justify-between group animate-fade-in-up">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-blue-500/20 text-blue-400 rounded-xl">
+                                        <FileText size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-medium">{selectedFile.name}</h3>
+                                        <p className="text-xs text-slate-400">
+                                            {(selectedFile.size / 1024).toFixed(1)} KB • Ready to upload
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedFile(null)}
+                                    className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-red-400 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <p className="text-lg font-medium text-slate-300">Drag and drop file here</p>
-                            <p className="text-sm opacity-50 mt-2 mb-6">Support for PDF, DOCX, TXT, JPG, PNG, MD</p>
-                            <button className="px-6 py-2 bg-white/10 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-colors">
-                                Browse Files
-                            </button>
-                        </div>
-                    )
+                        ) : (
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.currentTarget.classList.add('border-brand-blue-light', 'bg-brand-blue-light/10');
+                                }}
+                                onDragLeave={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.currentTarget.classList.remove('border-brand-blue-light', 'bg-brand-blue-light/10');
+                                }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.currentTarget.classList.remove('border-brand-blue-light', 'bg-brand-blue-light/10');
+                                    const file = e.dataTransfer.files?.[0];
+                                    if (file) handleFileSelect(file);
+                                }}
+                                className="border-2 border-dashed border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-slate-500 hover:border-brand-blue-light/50 hover:bg-white/5 transition-all cursor-pointer group"
+                            >
+                                <div className="p-4 bg-white/5 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                                    <Upload size={32} className="text-slate-400 group-hover:text-brand-blue-light" />
+                                </div>
+                                <p className="text-lg font-medium text-slate-300">Drag and drop file here</p>
+                                <p className="text-sm opacity-50 mt-2 mb-6">Support for PDF, DOCX, TXT, MD, CSV, JSON, JPG, PNG, GIF (max 10MB)</p>
+                                <button
+                                    type="button"
+                                    className="px-6 py-2 bg-white/10 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-colors"
+                                >
+                                    Browse Files
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Upload progress indicator */}
+                        {uploadProgress && (
+                            <div className="flex items-center gap-3 text-brand-blue-light mt-4">
+                                <Loader2 size={16} className="animate-spin" />
+                                <span className="text-sm">{uploadProgress}</span>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </GlobalTopPanel >

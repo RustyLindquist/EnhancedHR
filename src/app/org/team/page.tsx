@@ -2,30 +2,34 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { Shield } from 'lucide-react';
 import RemoveUserButton from '@/components/org/RemoveUserButton';
+import { getOrgContext } from '@/lib/org-context';
+import { getBaseUrl } from '@/lib/url';
 
 export default async function OrgTeamPage() {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    // Get Org Details
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id, organizations(*)')
-        .eq('id', user?.id)
+    // Get org context (handles platform admin org selection automatically)
+    const orgContext = await getOrgContext();
+
+    if (!orgContext) return <div>Access Denied</div>;
+
+    // Get organization details for invite URL
+    const { data: org } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', orgContext.orgId)
         .single();
 
-    if (!profile?.org_id) return <div>Access Denied</div>;
+    const baseUrl = await getBaseUrl();
+    const inviteUrl = org
+        ? `${baseUrl}/${org.slug}/${org.invite_hash}`
+        : '';
 
-    const org = profile.organizations as any;
-    // URL format: /[slug]/[hash]
-    // We need to make sure we have the hash. In a real app, we might regenerate this.
-    const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${org.slug}/${org.invite_hash}`;
-
-    // Fetch Members
+    // Fetch Members using the effective org ID
     const { data: members } = await supabase
         .from('profiles')
         .select('*')
-        .eq('org_id', profile.org_id)
+        .eq('org_id', orgContext.orgId)
         .order('created_at', { ascending: false });
 
     return (
