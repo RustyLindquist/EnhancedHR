@@ -4,6 +4,7 @@ import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
 import CollectionSurface from './CollectionSurface';
 import TeamManagement from '@/components/org/TeamManagement';
+import UsersAndGroupsCanvas from '@/components/org/UsersAndGroupsCanvas';
 import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page
 import CoursePlayer from './CoursePlayer';
@@ -2269,7 +2270,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
 
                 {/* --- Header --- */}
                 {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
-                {activeCollectionId !== 'org-team' && (
+                {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div>
                             {viewingGroup ? (
@@ -2605,6 +2606,13 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         onAddCourse={(course) => onOpenModal(course)}
                                     />
                                 )}
+                            </div>
+                        ) : activeCollectionId === 'users-groups' ? (
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <UsersAndGroupsCanvas
+                                    onSelectAllUsers={() => onSelectCollection('org-team')}
+                                    onSelectGroup={(groupId) => onSelectCollection(`group-${groupId}`)}
+                                />
                             </div>
                         ) : activeCollectionId === 'org-team' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">

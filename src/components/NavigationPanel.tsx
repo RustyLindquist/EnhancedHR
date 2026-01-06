@@ -134,10 +134,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     { id: 'user', label: 'Individual User', email: 'demo.user@enhancedhr.ai', icon: User, color: 'text-slate-400' },
   ];
 
-  const [employeeGroups, setEmployeeGroups] = useState<any[]>([]);
-
   useEffect(() => {
-    const fetchUserAndGroups = async () => {
+    const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Get profile data
@@ -167,16 +165,9 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         if (backupSession) {
           setIsImpersonating(true);
         }
-
-        // Fetch Groups if admin
-        if (role === 'org_admin' || role === 'admin' || membershipStatus === 'org_admin') {
-          const { getOrgGroups } = await import('@/app/actions/groups');
-          const groups = await getOrgGroups();
-          setEmployeeGroups(groups);
-        }
       }
     };
-    fetchUserAndGroups();
+    fetchUser();
   }, []);
 
 
@@ -501,39 +492,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         )}
 
-        {/* Employee Groups (Only for Org Admins) */}
-        {!customNavItems && (userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
-          <div className="px-4 mb-8">
-            {isOpen && (
-              <div className="flex items-center justify-between mb-2 pl-2">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest drop-shadow-sm">
-                  Employee Groups
-                </h4>
-              </div>
-            )}
-            <div className="space-y-1">
-              {/* Groups List */}
-              {employeeGroups.map((group) => (
-                <div
-                  key={`group-${group.id}`}
-                  onMouseEnter={(e) => handleItemHover({ id: `group-${group.id}`, label: group.name, icon: Users }, e, () => onSelectCollection(`group-${group.id}`))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={{ id: `group-${group.id}`, label: group.name, icon: Users }}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === `group-${group.id}`}
-                    count={group.member_count}
-                    onClick={() => onSelectCollection(`group-${group.id}`)}
-                  />
-                </div>
-              ))}
-              {employeeGroups.length === 0 && isOpen && (
-                <div className="text-xs text-slate-600 pl-3 italic">No groups yet</div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Employee Groups section removed - groups are now accessed through Users and Groups collection */}
       </div>
 
 
