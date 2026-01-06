@@ -5,6 +5,7 @@ import { Users, BookOpen, BarChart3, Plus } from 'lucide-react';
 import ContentPickerModal from './ContentPickerModal';
 import GroupManagement from './GroupManagement';
 import UserCard from './UserCard';
+import UserDetailDashboard from './UserDetailDashboard';
 import AddToGroupModal from './AddToGroupModal';
 import { OrgMember } from '@/app/actions/org';
 import UniversalCard from '@/components/cards/UniversalCard';
@@ -13,9 +14,10 @@ interface GroupDetailCanvasProps {
     group: any;
     onBack: () => void;
     manageTrigger?: number;
+    onViewingMember?: (member: OrgMember | null) => void;
 }
 
-const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, manageTrigger }) => {
+const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, manageTrigger, onViewingMember }) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
     const [showEditGroup, setShowEditGroup] = useState(false);
@@ -24,6 +26,12 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
     const [members, setMembers] = useState<GroupMemberWithStats[]>([]);
     const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
     const [pickerAssignmentType, setPickerAssignmentType] = useState<'required' | 'recommended'>('required');
+    const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
+
+    // Notify parent when viewing member changes
+    useEffect(() => {
+        onViewingMember?.(selectedMember);
+    }, [selectedMember, onViewingMember]);
 
     useEffect(() => {
         if (group?.id) {
@@ -61,6 +69,16 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
     };
 
     if (!fullGroup) return null;
+
+    // Show employee detail view when a member is selected
+    if (selectedMember) {
+        return (
+            <UserDetailDashboard
+                member={selectedMember}
+                onBack={() => setSelectedMember(null)}
+            />
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-transparent overflow-y-auto pb-36 animate-fade-in custom-scrollbar">
@@ -133,7 +151,22 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
                                     last_login: '',
                                     conversations_count: member.conversations_count
                                 }}
-                                onClick={() => {/* Could navigate to user detail */}}
+                                onClick={() => setSelectedMember({
+                                    id: member.id,
+                                    email: member.email,
+                                    full_name: member.full_name,
+                                    avatar_url: member.avatar_url,
+                                    role: member.role,
+                                    role_title: '',
+                                    membership_status: member.membership_status,
+                                    created_at: '',
+                                    is_owner: false,
+                                    courses_completed: member.courses_completed,
+                                    total_time_spent_minutes: member.total_time_spent_minutes,
+                                    credits_earned: member.credits_earned,
+                                    last_login: '',
+                                    conversations_count: member.conversations_count
+                                })}
                                 onAddToGroup={() => setAddToGroupMember({
                                     id: member.id,
                                     email: member.email,

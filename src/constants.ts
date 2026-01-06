@@ -787,5 +787,23 @@ export const BACKGROUND_THEMES: BackgroundTheme[] = [
     label: 'Ocean Depths',
     type: 'preset',
     value: 'bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-[#054C74]/40 via-[#0A0D12] to-black'
+  },
+  {
+    id: 'morning-mist',
+    label: 'Morning Mist (Animated)',
+    type: 'preset',
+    value: 'bg-[#f8fafc]'
+  },
+  {
+    id: 'clean-slate',
+    label: 'Clean Slate',
+    type: 'preset',
+    value: 'bg-[#f1f5f9]'
+  },
+  {
+    id: 'soft-linen',
+    label: 'Soft Linen',
+    type: 'preset',
+    value: 'bg-[#faf8f5]'
   }
 ];
