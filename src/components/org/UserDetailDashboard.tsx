@@ -19,7 +19,7 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
             {/* Sticky Header */}
             <div className="sticky top-0 z-50">
                 <CanvasHeader
-                    context="User Account"
+                    context="User Details"
                     title={member.full_name}
                     onBack={onBack}
                     backLabel="Back to Users"

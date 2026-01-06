@@ -576,3 +576,179 @@ The goal is **emergent optimization**: the more we work together, the better the
 2. Leave the system slightly better than before
 
 This isn't overhead — it's how we build a system that continuously improves.
+
+---
+
+## Pre-Task Checkpoint (MANDATORY)
+
+Before implementing ANY task involving code changes, the Main Agent MUST complete this checkpoint.
+
+### When It Applies
+
+This checkpoint is required for:
+- Any implementation work (frontend, backend, server actions)
+- Bug fixes that involve code changes
+- Feature additions or modifications
+- Schema/database changes
+- Any task matching spawn criteria
+
+### Skip Only When ALL True
+
+- Pure text/content change (no code)
+- Single-line typo fix
+- User explicitly says "skip the checkpoint"
+
+### The Checkpoint Process
+
+**Step 1: Evaluate Spawn Criteria**
+
+Check each agent type against spawn criteria:
+
+| Agent Type | Check Against | Decision |
+|------------|--------------|----------|
+| Doc Agent | "When to Spawn the Doc Agent" section | YES/NO + reason |
+| Frontend Agent | "When to Spawn the Frontend Agent" section | YES/NO + reason |
+| Test Agent | Defer until after implementation | Document for later |
+
+**Step 2: Document Decision**
+
+Output the Pre-Task Acknowledgment Pattern:
+
+```
+## Task Analysis
+
+**Spawn Criteria Check:**
+- Doc Agent: [YES/NO] - [reason]
+- Frontend Agent: [YES/NO] - [reason]
+- Test Agent: [NO - will evaluate after implementation]
+
+**Spawning:** [list agents or "None - simple task"]
+**Proceeding with:** [approach]
+```
+
+**Step 3: Spawn Required Agents**
+
+If any agent evaluation returned YES:
+1. Spawn that agent BEFORE proceeding
+2. Update session tracking (see below)
+3. Query as needed per Coordination Patterns
+
+**Step 4: Proceed**
+
+Only after completing Steps 1-3 should implementation begin.
+
+---
+
+## Session Tracking
+
+To enable resumption and provide audit trails, the Main Agent maintains a session registry.
+
+### Active Agent Registry
+
+Location: `.context/agents/active.yaml`
+
+### Registry Schema
+
+```yaml
+session_start: "2026-01-05T10:30:00Z"
+session_description: "Brief description of user's request"
+
+agents:
+  - id: "abc123"
+    type: "doc-agent"
+    purpose: "Feature knowledge for collections work"
+    spawned_at: "2026-01-05T10:30:15Z"
+    status: "active"
+    related_tasks:
+      - "Query about collections invariants"
+      - "Plan validation for context cards"
+    notes: "Loaded collections.md, prometheus-chat.md"
+
+  - id: "def456"
+    type: "frontend-agent"
+    purpose: "UI implementation for context cards"
+    spawned_at: "2026-01-05T10:35:00Z"
+    status: "completed"
+    related_tasks:
+      - "Make context cards clickable"
+      - "Add drag-and-drop support"
+```
+
+### When to Update
+
+**On agent spawn:**
+- Add entry with id, type, purpose, timestamp
+- Set status to "active"
+
+**During work:**
+- Add related_tasks as work progresses
+- Add notes for context (docs loaded, etc.)
+
+**On session end:**
+- Run `/handoff` which includes agent summary
+- Mark agents as completed
+
+### Benefits
+
+| Benefit | How It Helps |
+|---------|-------------|
+| Resumption | Next session can see what was happening |
+| Audit Trail | Clear record of spawn decisions |
+| Handoff | Clean context transfer |
+| Debugging | If something breaks, see what agents touched it |
+
+---
+
+## Optimization Capture Protocol
+
+All agents participate in the meta-cognitive layer by capturing optimization opportunities during normal work.
+
+### What Each Agent Watches For
+
+| Agent Type | Watch For |
+|------------|-----------|
+| **Main Agent** | Workflow patterns, coordination friction, missing agents, user statements |
+| **Doc Agent** | Documentation gaps, undocumented invariants, coupling patterns |
+| **Frontend Agent** | Design system gaps, repeated UI patterns, missing components |
+| **Test Agent** | Testing gaps, workflow coverage issues, validation patterns |
+| **Ops Agent** | System-wide patterns, optimization effectiveness |
+
+### User Statement Detection (All Agents)
+
+**Trigger phrases to watch for:**
+- "we always..." / "we never..."
+- "the rule is..." / "the pattern is..."
+- "from now on..." / "going forward..."
+- Any correction that implies a broader principle
+
+**Response pattern:**
+1. Complete the immediate task
+2. Capture the optimization in `.context/optimizations/pending.yaml`
+3. Continue work — don't ask for permission to capture
+
+### Capture Format
+
+```yaml
+- id: "OPT-YYYY-MM-DD-NNN"
+  type: skill | rule | doc | protocol | agent | process
+  source_agent: main-agent | doc-agent | frontend-agent | test-agent
+  timestamp: "ISO-8601"
+  trigger: "What prompted this observation"
+  observation: "What you noticed"
+  proposal: "What should change"
+  impact: "Why it matters"
+  frequency: one-time | occasional | frequent | constant
+  effort: trivial | small | medium | large
+  priority: null
+  status: pending
+```
+
+### When NOT to Capture
+
+Don't capture:
+- One-off preferences
+- Things already documented
+- Speculative ideas without observed need
+- Implementation details without broader applicability
+
+**Focus on observed friction and repeated patterns.**

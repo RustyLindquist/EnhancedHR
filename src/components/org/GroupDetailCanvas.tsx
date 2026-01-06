@@ -9,15 +9,32 @@ import UserDetailDashboard from './UserDetailDashboard';
 import AddToGroupModal from './AddToGroupModal';
 import { OrgMember } from '@/app/actions/org';
 import UniversalCard from '@/components/cards/UniversalCard';
+import UniversalCollectionCard, { CollectionItemDetail } from '@/components/UniversalCollectionCard';
+import { DragItem } from '@/types';
 
 interface GroupDetailCanvasProps {
     group: any;
     onBack: () => void;
     manageTrigger?: number;
     onViewingMember?: (member: OrgMember | null) => void;
+    onDragStart?: (item: DragItem) => void;
+    onCourseClick?: (courseId: number) => void;
+    onModuleClick?: (moduleItem: any) => void;
+    onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
+    onConversationClick?: (conversationId: string) => void;
 }
 
-const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, manageTrigger, onViewingMember }) => {
+const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
+    group,
+    onBack,
+    manageTrigger,
+    onViewingMember,
+    onDragStart,
+    onCourseClick,
+    onModuleClick,
+    onLessonClick,
+    onConversationClick
+}) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
     const [showEditGroup, setShowEditGroup] = useState(false);
@@ -32,6 +49,11 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
     useEffect(() => {
         onViewingMember?.(selectedMember);
     }, [selectedMember, onViewingMember]);
+
+    // Clear selected member when group changes
+    useEffect(() => {
+        setSelectedMember(null);
+    }, [group?.id]);
 
     useEffect(() => {
         if (group?.id) {
@@ -66,6 +88,19 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
     const openPickerForType = (type: 'required' | 'recommended') => {
         setPickerAssignmentType(type);
         setShowPicker(true);
+    };
+
+    // Handle click on assignment cards
+    const handleAssignmentClick = (item: CollectionItemDetail) => {
+        if (item.itemType === 'COURSE' && onCourseClick) {
+            onCourseClick(item.id as number);
+        } else if (item.itemType === 'MODULE' && onModuleClick) {
+            onModuleClick(item);
+        } else if (item.itemType === 'LESSON' && onLessonClick) {
+            onLessonClick(item);
+        } else if (item.itemType === 'CONVERSATION' && onConversationClick) {
+            onConversationClick(item.id as string);
+        }
     };
 
     if (!fullGroup) return null;
@@ -218,6 +253,8 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
                                 key={assignment.id}
                                 assignment={assignment}
                                 onRemove={() => loadData()}
+                                onClick={handleAssignmentClick}
+                                onDragStart={onDragStart}
                             />
                         ))}
                     </div>
@@ -252,6 +289,8 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({ group, onBack, ma
                                 key={assignment.id}
                                 assignment={assignment}
                                 onRemove={() => loadData()}
+                                onClick={handleAssignmentClick}
+                                onDragStart={onDragStart}
                             />
                         ))}
                     </div>
@@ -325,7 +364,17 @@ const StatCard = ({ label, value, color }: { label: string; value: string; color
     );
 };
 
-const AssignmentCard = ({ assignment, onRemove }: { assignment: ContentAssignment; onRemove: () => void }) => {
+const AssignmentCard = ({
+    assignment,
+    onRemove,
+    onClick,
+    onDragStart
+}: {
+    assignment: ContentAssignment;
+    onRemove: () => void;
+    onClick?: (item: CollectionItemDetail) => void;
+    onDragStart?: (item: DragItem) => void;
+}) => {
     const handleRemove = async () => {
         const result = await removeAssignment(assignment.id);
         if (result.success) {
@@ -333,32 +382,78 @@ const AssignmentCard = ({ assignment, onRemove }: { assignment: ContentAssignmen
         }
     };
 
-    // Map content_type to CardType
-    const cardTypeMap: Record<string, 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE'> = {
-        course: 'COURSE',
-        module: 'MODULE',
-        lesson: 'LESSON',
-        resource: 'RESOURCE'
-    };
-
     const details = assignment.content_details;
 
+    // Map assignment to CollectionItemDetail format
+    const mapToCollectionItem = (): CollectionItemDetail => {
+        const baseData = {
+            id: assignment.content_id,
+            title: details?.title || 'Unknown Content',
+        };
+
+        // Use type assertion to access extended fields that may exist
+        const extendedDetails = details as any;
+
+        switch (assignment.content_type) {
+            case 'course':
+                return {
+                    ...baseData,
+                    itemType: 'COURSE',
+                    type: 'COURSE',
+                    author: details?.author || '',
+                    progress: 0,
+                    category: details?.category || '',
+                    image: details?.thumbnail_url,
+                    description: details?.description || '',
+                    duration: details?.duration || '',
+                    rating: details?.rating || 0,
+                    badges: details?.badges || [],
+                    isSaved: false,
+                    collections: [],
+                    dateAdded: assignment.created_at || new Date().toISOString(),
+                } as any;
+
+            case 'module':
+                return {
+                    ...baseData,
+                    itemType: 'MODULE',
+                    author: details?.author,
+                    courseTitle: extendedDetails?.course_title,
+                    duration: details?.duration,
+                    image: details?.thumbnail_url,
+                    course_id: extendedDetails?.course_id,
+                } as any;
+
+            case 'lesson':
+                return {
+                    ...baseData,
+                    itemType: 'LESSON',
+                    moduleTitle: extendedDetails?.module_title,
+                    courseTitle: extendedDetails?.course_title,
+                    duration: details?.duration,
+                    image: details?.thumbnail_url,
+                    module_id: extendedDetails?.module_id,
+                    course_id: extendedDetails?.course_id,
+                } as any;
+
+            default:
+                // Handle resource and any other types
+                return {
+                    ...baseData,
+                    itemType: 'RESOURCE',
+                    description: details?.description,
+                } as any;
+        }
+    };
+
+    const collectionItem = mapToCollectionItem();
+
     return (
-        <UniversalCard
-            type={cardTypeMap[assignment.content_type] || 'COURSE'}
-            title={details?.title || 'Unknown Content'}
-            subtitle={details?.author}
-            description={details?.description}
-            imageUrl={details?.thumbnail_url}
-            meta={details?.duration}
-            categories={details?.category ? [details.category] : undefined}
-            rating={details?.rating}
-            credits={{
-                shrm: details?.badges?.includes('SHRM'),
-                hrci: details?.badges?.includes('HRCI')
-            }}
-            onRemove={handleRemove}
-            actionLabel="VIEW"
+        <UniversalCollectionCard
+            item={collectionItem}
+            onRemove={() => handleRemove()}
+            onClick={(item) => onClick?.(item)}
+            onDragStart={onDragStart}
         />
     );
 };

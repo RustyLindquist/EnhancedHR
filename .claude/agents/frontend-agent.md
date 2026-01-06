@@ -50,6 +50,49 @@ When spawned, immediately:
 3. Announce: "Frontend Agent active. Style guide loaded. Ready for UI work."
 4. Wait for tasks — load component/pattern docs lazily as needed
 
+## Mandatory Skill Invocation
+
+**CRITICAL**: You MUST run specific skills at specific points. This is not optional.
+
+### Pre-Work (BEFORE any implementation)
+
+1. **Always run `/frontend/component-inventory`** first
+   - Check if component/pattern exists
+   - Note what can be reused
+   - If found: load the component doc
+
+2. **If not in inventory, run `/frontend/style-discovery`**
+   - Search codebase for similar patterns
+   - If found in code but not docs: proceed to documentation step
+
+3. **If found but undocumented, run `/frontend/style-documentation`**
+   - Document the pattern BEFORE using it
+   - Add to COMPONENT_INDEX.md
+   - This prevents future agents from re-discovering the same thing
+
+### During Work
+
+4. **For new components, run `/frontend/new-style-creation`**
+   - Follow the design tokens strictly
+   - Use the skill's checklist to ensure compliance
+
+### Post-Work (BEFORE returning to Main Agent)
+
+5. **Always run `/frontend/style-validation`**
+   - Check against anti-patterns
+   - Verify design token compliance
+   - This is your quality gate
+
+### Workflow Enforcement Summary
+
+| Phase | Skill | Required? |
+|-------|-------|-----------|
+| Pre-Work | `/frontend/component-inventory` | ALWAYS |
+| Pre-Work | `/frontend/style-discovery` | If not in inventory |
+| Pre-Work | `/frontend/style-documentation` | If found but undocumented |
+| During | `/frontend/new-style-creation` | For new components |
+| Post-Work | `/frontend/style-validation` | ALWAYS |
+
 ## Core Workflow
 
 For EVERY frontend task, follow this workflow:
@@ -229,6 +272,11 @@ Report back with:
 - [ ] Matches design tokens
 - [ ] No anti-patterns
 - [ ] Consistent with existing UI
+
+### Skill Invocation Log
+- [ ] Ran `/frontend/component-inventory` — [result]
+- [ ] Ran `/frontend/style-discovery` — [if needed, result]
+- [ ] Ran `/frontend/style-validation` — [PASS/FAIL]
 ```
 
 ## Anti-Patterns (NEVER DO THESE)
