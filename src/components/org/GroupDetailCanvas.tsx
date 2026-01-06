@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupDetails, getGroupStats, getGroupMembersWithStats, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
 import { ContentAssignment, getDirectAssignments, removeAssignment } from '@/app/actions/assignments';
-import { Users, BookOpen, BarChart3, Plus } from 'lucide-react';
+import { Users, BookOpen, BarChart3, Plus, Sparkles } from 'lucide-react';
 import ContentPickerModal from './ContentPickerModal';
-import GroupManagement from './GroupManagement';
 import UserCard from './UserCard';
 import UserDetailDashboard from './UserDetailDashboard';
 import AddToGroupModal from './AddToGroupModal';
@@ -37,7 +36,6 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
 }) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
-    const [showEditGroup, setShowEditGroup] = useState(false);
     const [fullGroup, setFullGroup] = useState<any>(group);
     const [stats, setStats] = useState<GroupStats | null>(null);
     const [members, setMembers] = useState<GroupMemberWithStats[]>([]);
@@ -61,11 +59,9 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
         }
     }, [group?.id]);
 
-    useEffect(() => {
-        if (manageTrigger && manageTrigger > 0) {
-            setShowEditGroup(true);
-        }
-    }, [manageTrigger]);
+    // Note: manageTrigger is passed from parent but should NOT auto-open panels
+    // Panels should only open when user explicitly clicks buttons
+    // The manageTrigger prop can be used for other management actions if needed in the future
 
     const loadData = async () => {
         const [details, assigns, groupStats, memberStats] = await Promise.all([
@@ -164,6 +160,12 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                     <Users size={16} className="text-slate-400" />
                     Group Members
                     <span className="text-brand-blue-light ml-2">({members.length})</span>
+                    {fullGroup.is_dynamic && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/30">
+                            <Sparkles size={10} />
+                            Auto-updating
+                        </span>
+                    )}
                 </h3>
                 {members.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -230,77 +232,82 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                 )}
             </div>
 
-            {/* Section 3: Required Content */}
-            <div className="px-8 py-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                        <BookOpen size={16} className="text-brand-red" />
-                        Required Content
-                        <span className="text-brand-red ml-2">({requiredAssignments.length})</span>
-                    </h3>
-                    <button
-                        onClick={() => openPickerForType('required')}
-                        className="flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-lg hover:bg-brand-red/20 transition-colors text-sm font-medium"
-                    >
-                        <Plus size={14} />
-                        Add Required
-                    </button>
-                </div>
-                {requiredAssignments.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {requiredAssignments.map((assignment) => (
-                            <AssignmentCard
-                                key={assignment.id}
-                                assignment={assignment}
-                                onRemove={() => loadData()}
-                                onClick={handleAssignmentClick}
-                                onDragStart={onDragStart}
-                            />
-                        ))}
+            {/* Section 3 & 4: Content Assignments (hidden for dynamic groups) */}
+            {!fullGroup.is_dynamic && (
+                <>
+                    {/* Section 3: Required Content */}
+                    <div className="px-8 py-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                <BookOpen size={16} className="text-brand-red" />
+                                Required Content
+                                <span className="text-brand-red ml-2">({requiredAssignments.length})</span>
+                            </h3>
+                            <button
+                                onClick={() => openPickerForType('required')}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-lg hover:bg-brand-red/20 transition-colors text-sm font-medium"
+                            >
+                                <Plus size={14} />
+                                Add Required
+                            </button>
+                        </div>
+                        {requiredAssignments.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {requiredAssignments.map((assignment) => (
+                                    <AssignmentCard
+                                        key={assignment.id}
+                                        assignment={assignment}
+                                        onRemove={() => loadData()}
+                                        onClick={handleAssignmentClick}
+                                        onDragStart={onDragStart}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
+                                <p className="text-slate-400 text-sm">No required content assigned.</p>
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
-                        <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
-                        <p className="text-slate-400 text-sm">No required content assigned.</p>
-                    </div>
-                )}
-            </div>
 
-            {/* Section 4: Suggested Content */}
-            <div className="px-8 py-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                        <BookOpen size={16} className="text-brand-blue-light" />
-                        Suggested Content
-                        <span className="text-brand-blue-light ml-2">({recommendedAssignments.length})</span>
-                    </h3>
-                    <button
-                        onClick={() => openPickerForType('recommended')}
-                        className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 text-brand-blue-light rounded-lg hover:bg-brand-blue-light/20 transition-colors text-sm font-medium"
-                    >
-                        <Plus size={14} />
-                        Add Suggested
-                    </button>
-                </div>
-                {recommendedAssignments.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {recommendedAssignments.map((assignment) => (
-                            <AssignmentCard
-                                key={assignment.id}
-                                assignment={assignment}
-                                onRemove={() => loadData()}
-                                onClick={handleAssignmentClick}
-                                onDragStart={onDragStart}
-                            />
-                        ))}
+                    {/* Section 4: Suggested Content */}
+                    <div className="px-8 py-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                <BookOpen size={16} className="text-brand-blue-light" />
+                                Suggested Content
+                                <span className="text-brand-blue-light ml-2">({recommendedAssignments.length})</span>
+                            </h3>
+                            <button
+                                onClick={() => openPickerForType('recommended')}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 text-brand-blue-light rounded-lg hover:bg-brand-blue-light/20 transition-colors text-sm font-medium"
+                            >
+                                <Plus size={14} />
+                                Add Suggested
+                            </button>
+                        </div>
+                        {recommendedAssignments.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {recommendedAssignments.map((assignment) => (
+                                    <AssignmentCard
+                                        key={assignment.id}
+                                        assignment={assignment}
+                                        onRemove={() => loadData()}
+                                        onClick={handleAssignmentClick}
+                                        onDragStart={onDragStart}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
+                                <p className="text-slate-400 text-sm">No suggested content assigned.</p>
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
-                        <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
-                        <p className="text-slate-400 text-sm">No suggested content assigned.</p>
-                    </div>
-                )}
-            </div>
+                </>
+            )}
 
             {/* Content Picker Modal */}
             <ContentPickerModal
@@ -310,17 +317,6 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                 assigneeId={group.id}
                 defaultAssignmentType={pickerAssignmentType}
                 onSuccess={() => loadData()}
-            />
-
-            {/* Group Management Panel */}
-            <GroupManagement
-                isOpen={showEditGroup}
-                onClose={() => setShowEditGroup(false)}
-                editGroup={fullGroup}
-                onSuccess={() => {
-                    window.dispatchEvent(new CustomEvent('groupsUpdated'));
-                    loadData();
-                }}
             />
 
             {/* Add to Group Modal */}
