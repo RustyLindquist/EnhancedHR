@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { trackLoginEvent } from '@/app/actions/org-dashboard'
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
@@ -11,6 +12,10 @@ export async function GET(request: Request) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
+            // Track login event for analytics (OAuth flow)
+            const userAgent = request.headers.get('user-agent') || undefined
+            await trackLoginEvent(userAgent)
+
             const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
             const isLocalEnv = process.env.NODE_ENV === 'development'
             if (isLocalEnv) {
