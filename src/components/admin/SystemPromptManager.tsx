@@ -287,7 +287,7 @@ export default function SystemPromptManager({ initialPrompts }: SystemPromptMana
 
             <div className="flex flex-1 gap-6 min-h-0">
                 {/* Sidebar List */}
-                <div className="w-1/3 flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="w-1/3 flex flex-col gap-2 overflow-y-auto pr-2 pb-[100px] custom-scrollbar">
                     {viewMode === 'agents' ? (
                         prompts.map((prompt) => (
                             <button

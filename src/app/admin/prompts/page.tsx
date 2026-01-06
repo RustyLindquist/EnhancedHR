@@ -13,7 +13,7 @@ export default async function AdminPromptsPage() {
         .order('agent_type');
 
     return (
-        <div className="space-y-6 animate-fade-in h-full flex flex-col">
+        <div className="space-y-6 animate-fade-in h-full flex flex-col pb-[100px]">
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">AI Agents</h1>
                 <p className="text-slate-400">Configure the core instructions and models for the platform's AI agents.</p>

@@ -27,6 +27,8 @@
   --animate-neon-float-3: neon-float 12s ease-in-out infinite;
   --animate-shine: shine 1s;
   --animate-count-glow: count-glow 1000ms ease-out forwards;
+  --animate-mist-drift-1: mist-drift 20s ease-in-out infinite;
+  --animate-mist-drift-2: mist-drift 25s ease-in-out infinite reverse;
 
   /* Keyframes */
   @keyframes count-glow {
@@ -145,6 +147,29 @@
   @keyframes shine {
     100% {
       left: 125%;
+    }
+  }
+
+  @keyframes mist-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.6;
+    }
+
+    25% {
+      transform: translate(5%, 3%) scale(1.05);
+      opacity: 0.7;
+    }
+
+    50% {
+      transform: translate(-3%, 5%) scale(1.1);
+      opacity: 0.5;
+    }
+
+    75% {
+      transform: translate(-5%, -3%) scale(1.03);
+      opacity: 0.65;
     }
   }
 }

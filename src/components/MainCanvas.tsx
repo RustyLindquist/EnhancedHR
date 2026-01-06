@@ -724,13 +724,13 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
     );
 };
 
-const GroupDetailCanvasWrapper = ({ group, manageTrigger }: { group: any, manageTrigger: number }) => {
+const GroupDetailCanvasWrapper = ({ group, manageTrigger, onViewingMember }: { group: any, manageTrigger: number, onViewingMember?: (member: any) => void }) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
         import('@/components/org/GroupDetailCanvas').then(mod => setComponent(() => mod.default));
     }, []);
     if (!Component) return <div className="p-10 text-center">Loading Group...</div>;
-    return <Component group={group} manageTrigger={manageTrigger} onBack={() => { }} />;
+    return <Component group={group} manageTrigger={manageTrigger} onBack={() => { }} onViewingMember={onViewingMember} />;
 };
 
 // --- MAIN CANVAS COMPONENT ---
@@ -774,6 +774,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const skipNextCollectionFetchRef = useRef(false);
 
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
+    const [viewingGroupMember, setViewingGroupMember] = useState<any | null>(null);
 
     // Org collection viewing state
     const [viewingOrgCollection, setViewingOrgCollection] = useState<{
@@ -792,8 +793,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 const details = await mod.getGroupDetails(groupId);
                 setViewingGroup(details);
             });
+            // Clear any previously viewed member when switching groups
+            setViewingGroupMember(null);
         } else {
             setViewingGroup(null);
+            setViewingGroupMember(null);
         }
     }, [activeCollectionId]);
 
@@ -3325,7 +3329,17 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 </button>
                             )}
                             <div>
-                            {viewingGroup ? (
+                            {viewingGroup && viewingGroupMember ? (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Users size={14} className="text-brand-blue-light" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-light">User Account</span>
+                                    </div>
+                                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                                        {viewingGroupMember.full_name}
+                                    </h1>
+                                </div>
+                            ) : viewingGroup ? (
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <Users size={14} className="text-brand-blue-light" />
@@ -3386,13 +3400,15 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                         </div>
 
                         <div className="flex space-x-4 items-center">
-                            {viewingGroup ? (
+                            {viewingGroup && !viewingGroupMember ? (
                                 <button
                                     onClick={() => setGroupManageTrigger(prev => prev + 1)}
                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                 >
                                     <Settings size={14} /> Manage Group
                                 </button>
+                            ) : viewingGroup && viewingGroupMember ? (
+                                null
                             ) : (
                                 <>
                                     {/* Expanded to include Personal Context, Favorites, Workspace (research), Watchlist (to_learn), and Custom Collections */}
@@ -3693,7 +3709,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                 {
                     viewingGroup ? (
                         <div className="flex-1 w-full h-full bg-transparent overflow-y-auto relative z-10 custom-scrollbar">
-                            <GroupDetailCanvasWrapper group={viewingGroup} manageTrigger={groupManageTrigger} />
+                            <GroupDetailCanvasWrapper group={viewingGroup} manageTrigger={groupManageTrigger} onViewingMember={setViewingGroupMember} />
                         </div>
                     ) :
                         activeCollectionId === 'prometheus' ? (
