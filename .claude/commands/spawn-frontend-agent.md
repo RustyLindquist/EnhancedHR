@@ -11,6 +11,35 @@ Use this command for ANY frontend work:
 - Fixing UI bugs (not just typos)
 - Layout changes
 
+## When NOT to Use
+
+Skip the Frontend Agent ONLY when ALL of these are true:
+- Pure text/content change (no styling)
+- Backend-only work (server actions, API)
+- Simple typo fix
+- No visual/UI changes involved
+
+### Examples: Skip Frontend Agent
+
+| Task | Why Skip |
+|------|----------|
+| "Change 'Submit' to 'Save'" | Text only, no styling |
+| "Fix spelling error in description" | Content only |
+| "Add new server action for enrollment" | Backend only |
+| "Update API response format" | Backend only |
+
+### Examples: DO NOT Skip Frontend Agent
+
+| Task | Why Spawn |
+|------|-----------|
+| "Make the button blue" | Styling change |
+| "Add a loading spinner" | New UI element |
+| "Fix the card layout on mobile" | Layout change |
+| "Add hover effect to links" | Styling change |
+| "Create a new modal" | New component |
+
+**When in doubt, spawn.** The Frontend Agent ensures design system compliance.
+
 ## What Happens
 
 1. Frontend Agent loads:

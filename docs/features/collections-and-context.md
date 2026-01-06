@@ -115,6 +115,9 @@ Collections let users and org admins organize heterogeneous learning objects (co
 - Embeddings for any user_context_item must be written to `unified_embeddings` with matching user_id and (when scoped) collection_id; failing embeddings should be treated as a bug even if creation succeeds.
 - Default collections are singletons per label per user; when duplicates occur, oldest row is treated as canonical and duplicates should be merged then removed.
 - Deleting a collection must not leave orphaned context items; move or delete `user_context_items` referencing that collection before/after deletion.
+- **Context cards MUST always be clickable**: All context cards (courses, lessons, modules, conversations, notes, context items) must have click handlers that navigate to or open their associated content/location. This ensures users can always access the full content from any collection view.
+- **Context cards MUST always be draggable**: All context cards must support drag-and-drop functionality with a follow-along visual artifact (via CustomDragLayer), enabling users to organize content by dragging items onto the CollectionSurface. Use `UniversalCollectionCard` wrapper (not direct `UniversalCard`) to ensure both click and drag handlers are properly wired.
+- **Anti-pattern**: Direct use of `UniversalCard` without click/drag handlers in collection views is an anti-pattern. Always use `UniversalCollectionCard` which properly wraps `UniversalCard` with required interaction handlers.
 
 ## Failure Modes & Recovery
 - **Duplicate system collections** (multiple rows with same label) cause counts to drift and alias resolution to pick an arbitrary row. Run `cleanupDuplicateCollectionsAction` to merge items and remove duplicates.

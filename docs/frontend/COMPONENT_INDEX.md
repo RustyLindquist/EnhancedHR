@@ -38,7 +38,7 @@ This is the master inventory of all documented UI components. The Frontend Agent
 | InteractiveCardWrapper | `/src/components/cards/InteractiveCardWrapper.tsx` | Wrapper that adds glow effects and drag interaction to cards | [Pending] |
 | ConversationCard | `/src/components/ConversationCard.tsx` | Chat conversation preview (legacy, may be replaced by UniversalCard) | [Pending] |
 | InstructorCard | `/src/components/InstructorCard.tsx` | Instructor/expert profile card | [Pending] |
-| UniversalCollectionCard | `/src/components/UniversalCollectionCard.tsx` | Collection display card | [Pending] |
+| UniversalCollectionCard | `/src/components/UniversalCollectionCard.tsx` | Standard wrapper for context cards in collection views - ensures cards are clickable and draggable with proper handlers | [UniversalCollectionCard](./components/UniversalCollectionCard.md) |
 | CardStack | `/src/components/CardStack.tsx` | Stacked card layout component | [Pending] |
 
 ### Form Components

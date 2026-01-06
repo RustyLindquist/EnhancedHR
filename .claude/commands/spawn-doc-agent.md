@@ -13,6 +13,35 @@ Use this command when ANY of these are true:
 - Task touches billing/payments
 - You're uncertain about scope or impact
 
+## When NOT to Use
+
+Skip the Doc Agent ONLY when ALL of these are true:
+- Pure styling/CSS change (e.g., "Make the button blue")
+- Single-file, single-feature change
+- No server/DB involvement
+- No AI behavior changes
+- Change is entirely frontend presentation
+
+### Examples: Skip Doc Agent
+
+| Task | Why Skip |
+|------|----------|
+| "Change button color from blue to green" | Pure CSS, single component |
+| "Add tooltip to the save button" | Single UI element, no logic |
+| "Fix typo in header text" | Content only, no code |
+| "Add hover state to card" | Styling only |
+
+### Examples: DO NOT Skip Doc Agent
+
+| Task | Why Spawn |
+|------|-----------|
+| "Fix bug where save button doesn't work" | Bug fix = need to understand intended behavior |
+| "Add a new button that calls an API" | Touches server action |
+| "Change how the card displays progress" | May touch multiple features |
+| "Fix the collection dropdown" | Collections is high-coupling feature |
+
+**When in doubt, spawn.** Over-spawning is safe; under-spawning causes regressions.
+
 ## What Happens
 
 1. A new Doc Agent is spawned in the background

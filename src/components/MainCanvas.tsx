@@ -724,13 +724,43 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
     );
 };
 
-const GroupDetailCanvasWrapper = ({ group, manageTrigger, onViewingMember }: { group: any, manageTrigger: number, onViewingMember?: (member: any) => void }) => {
+const GroupDetailCanvasWrapper = ({
+    group,
+    manageTrigger,
+    onViewingMember,
+    onDragStart,
+    onCourseClick,
+    onModuleClick,
+    onLessonClick,
+    onConversationClick
+}: {
+    group: any;
+    manageTrigger: number;
+    onViewingMember?: (member: any) => void;
+    onDragStart?: (item: DragItem) => void;
+    onCourseClick?: (courseId: number) => void;
+    onModuleClick?: (moduleItem: any) => void;
+    onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
+    onConversationClick?: (conversationId: string) => void;
+}) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
         import('@/components/org/GroupDetailCanvas').then(mod => setComponent(() => mod.default));
     }, []);
     if (!Component) return <div className="p-10 text-center">Loading Group...</div>;
-    return <Component group={group} manageTrigger={manageTrigger} onBack={() => { }} onViewingMember={onViewingMember} />;
+    return (
+        <Component
+            group={group}
+            manageTrigger={manageTrigger}
+            onBack={() => { }}
+            onViewingMember={onViewingMember}
+            onDragStart={onDragStart}
+            onCourseClick={onCourseClick}
+            onModuleClick={onModuleClick}
+            onLessonClick={onLessonClick}
+            onConversationClick={onConversationClick}
+        />
+    );
 };
 
 // --- MAIN CANVAS COMPONENT ---
@@ -793,11 +823,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 const details = await mod.getGroupDetails(groupId);
                 setViewingGroup(details);
             });
-            // Clear any previously viewed member when switching groups
-            setViewingGroupMember(null);
         } else {
             setViewingGroup(null);
-            setViewingGroupMember(null);
         }
     }, [activeCollectionId]);
 
@@ -1325,6 +1352,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         setSelectedCourseId(prev => prev === null ? prev : null);
         setSelectedInstructorId(prev => prev === null ? prev : null);
         setIsPlayerActive(false);
+        // Clear viewing group member to prevent flash when switching collections
+        setViewingGroupMember(null);
     }, [activeCollectionId]);
 
     // Fetch help topics when navigating to Help collection
@@ -3315,7 +3344,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
 
                 {/* --- Header --- */}
                 {/* Always show header for Academy and most collections, hide only for specific full-screen views if needed */}
-                {activeCollectionId !== 'org-team' && (
+                {activeCollectionId !== 'org-team' && !viewingGroupMember && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div className="flex items-center gap-4">
                             {/* Back Button - appears when there's a previous page to navigate to */}
@@ -3709,7 +3738,16 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                 {
                     viewingGroup ? (
                         <div className="flex-1 w-full h-full bg-transparent overflow-y-auto relative z-10 custom-scrollbar">
-                            <GroupDetailCanvasWrapper group={viewingGroup} manageTrigger={groupManageTrigger} onViewingMember={setViewingGroupMember} />
+                            <GroupDetailCanvasWrapper
+                                group={viewingGroup}
+                                manageTrigger={groupManageTrigger}
+                                onViewingMember={setViewingGroupMember}
+                                onDragStart={handleDragStart}
+                                onCourseClick={handleCourseClick}
+                                onModuleClick={handleModuleClick}
+                                onLessonClick={handleLessonClick}
+                                onConversationClick={handleOpenConversation}
+                            />
                         </div>
                     ) :
                         activeCollectionId === 'prometheus' ? (
