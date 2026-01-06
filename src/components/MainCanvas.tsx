@@ -7,6 +7,8 @@ import CollectionSurface from './CollectionSurface';
 import TeamManagement from '@/components/org/TeamManagement';
 import UsersAndGroupsCanvas from '@/components/org/UsersAndGroupsCanvas';
 import AssignedLearningCanvas from '@/components/org/AssignedLearningCanvas';
+import GroupManagement from '@/components/org/GroupManagement';
+import DynamicGroupCriteriaPanel from '@/components/org/DynamicGroupCriteriaPanel';
 import AlertBox from './AlertBox';
 import CourseHomePage from './CourseHomePage'; // Import Course Page (legacy)
 import CoursePlayer from './CoursePlayer'; // (legacy)
@@ -1586,6 +1588,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // State for Group Management Trigger (Lifted Up)
     const [groupManageTrigger, setGroupManageTrigger] = useState(0);
+
+    // State for Dynamic Group Criteria Panel
+    const [showDynamicCriteriaPanel, setShowDynamicCriteriaPanel] = useState(false);
+    const [showGroupManagement, setShowGroupManagement] = useState(false);
 
     // --- EFFECT: Handle Keyboard Shortcuts ---
 
@@ -3432,10 +3438,16 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                         <div className="flex space-x-4 items-center">
                             {viewingGroup && !viewingGroupMember ? (
                                 <button
-                                    onClick={() => setGroupManageTrigger(prev => prev + 1)}
+                                    onClick={() => {
+                                        if (viewingGroup.is_dynamic) {
+                                            setShowDynamicCriteriaPanel(true);
+                                        } else {
+                                            setShowGroupManagement(true);
+                                        }
+                                    }}
                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                 >
-                                    <Settings size={14} /> Manage Group
+                                    <Settings size={14} /> {viewingGroup.is_dynamic ? 'Group Criteria' : 'Manage Group'}
                                 </button>
                             ) : viewingGroup && viewingGroupMember ? (
                                 null
@@ -4336,6 +4348,47 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     onSaveSuccess={handleNoteSaved}
                     onDeleteSuccess={handleNoteDeleted}
                 />
+
+                {/* --- Group Management Panels (Rendered at Root Level) --- */}
+                {viewingGroup && (
+                    <>
+                        <GroupManagement
+                            isOpen={showGroupManagement}
+                            onClose={() => setShowGroupManagement(false)}
+                            editGroup={viewingGroup}
+                            onSuccess={() => {
+                                window.dispatchEvent(new CustomEvent('groupsUpdated'));
+                                setViewingGroup(null); // Reload group data by clearing and re-selecting
+                                // Re-trigger group selection after brief delay
+                                setTimeout(() => {
+                                    import('@/app/actions/groups').then(async (mod) => {
+                                        const details = await mod.getGroupDetails(viewingGroup.id);
+                                        setViewingGroup(details);
+                                    });
+                                }, 100);
+                            }}
+                        />
+
+                        {viewingGroup.is_dynamic && (
+                            <DynamicGroupCriteriaPanel
+                                isOpen={showDynamicCriteriaPanel}
+                                onClose={() => setShowDynamicCriteriaPanel(false)}
+                                group={viewingGroup}
+                                onSuccess={() => {
+                                    window.dispatchEvent(new CustomEvent('groupsUpdated'));
+                                    setViewingGroup(null); // Reload group data by clearing and re-selecting
+                                    // Re-trigger group selection after brief delay
+                                    setTimeout(() => {
+                                        import('@/app/actions/groups').then(async (mod) => {
+                                            const details = await mod.getGroupDetails(viewingGroup.id);
+                                            setViewingGroup(details);
+                                        });
+                                    }, 100);
+                                }}
+                            />
+                        )}
+                    </>
+                )}
             </div >
         </div >
 

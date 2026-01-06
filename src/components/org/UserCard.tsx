@@ -16,7 +16,7 @@ export default function UserCard({ member, onClick, onAddToGroup }: UserCardProp
     return (
         <div
             onClick={onClick}
-            className="group relative w-full h-[340px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-[0_0_40px_rgba(120,192,240,0.2)] border border-white/5 hover:border-brand-blue-light/30 bg-[#0f172a]"
+            className="group relative w-full h-[340px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(120,192,240,0.2)] border border-white/5 hover:border-brand-blue-light/30 bg-[#0f172a]"
         >
             {/* Background Image / Avatar */}
             <div className="absolute inset-0">

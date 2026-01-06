@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { computeDynamicGroupMembers } from './dynamic-groups';
 
 export interface EmployeeGroup {
   id: string;
@@ -10,6 +11,9 @@ export interface EmployeeGroup {
   created_at: string;
   member_count?: number;
   members?: GroupMember[];
+  is_dynamic?: boolean;
+  dynamic_type?: 'recent_logins' | 'no_logins' | 'most_active' | 'top_learners' | 'most_talkative';
+  criteria?: any; // JSONB field - structure varies by dynamic_type
 }
 
 export interface GroupMember {
@@ -217,22 +221,36 @@ export async function getGroupDetails(groupId: string) {
     // Verify the group belongs to the user's org
     if (group.org_id !== profile.org_id) return null;
 
-    // Fetch members with profiles using admin client
-    const { data: members } = await supabaseAdmin
-        .from('employee_group_members')
-        .select(`
-            user_id,
-            profile:profiles(full_name, avatar_url, headline, role)
-        `)
-        .eq('group_id', groupId);
+    let memberIds: string[] = [];
 
-    const formattedMembers = members?.map(m => ({
-        user_id: m.user_id,
-        full_name: (m.profile as any)?.full_name || 'Unknown',
-        profile_image_url: (m.profile as any)?.avatar_url,
-        headline: (m.profile as any)?.headline,
-        role: (m.profile as any)?.role
-    })) || [];
+    // For dynamic groups, compute members
+    if (group.is_dynamic) {
+        memberIds = await computeDynamicGroupMembers(groupId);
+    } else {
+        // Fetch static members from employee_group_members
+        const { data: members } = await supabaseAdmin
+            .from('employee_group_members')
+            .select('user_id')
+            .eq('group_id', groupId);
+        memberIds = members?.map(m => m.user_id) || [];
+    }
+
+    // Fetch profiles for all members
+    let formattedMembers: GroupMember[] = [];
+    if (memberIds.length > 0) {
+        const { data: profiles } = await supabaseAdmin
+            .from('profiles')
+            .select('id, full_name, avatar_url, headline, role')
+            .in('id', memberIds);
+
+        formattedMembers = profiles?.map(p => ({
+            user_id: p.id,
+            full_name: p.full_name || 'Unknown',
+            profile_image_url: p.avatar_url,
+            headline: p.headline,
+            role: p.role
+        })) || [];
+    }
 
     return {
         ...group,
@@ -374,13 +392,28 @@ export async function getGroupStats(groupId: string): Promise<GroupStats | null>
 
     const supabaseAdmin = await createAdminClient();
 
-    // Get member IDs for this group
-    const { data: members } = await supabaseAdmin
-        .from('employee_group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
+    // Check if it's a dynamic group
+    const { data: group } = await supabaseAdmin
+        .from('employee_groups')
+        .select('is_dynamic')
+        .eq('id', groupId)
+        .single();
 
-    if (!members || members.length === 0) {
+    let memberIds: string[] = [];
+
+    if (group?.is_dynamic) {
+        // Compute dynamic members
+        memberIds = await computeDynamicGroupMembers(groupId);
+    } else {
+        // Get static members
+        const { data: members } = await supabaseAdmin
+            .from('employee_group_members')
+            .select('user_id')
+            .eq('group_id', groupId);
+        memberIds = members?.map(m => m.user_id) || [];
+    }
+
+    if (!memberIds || memberIds.length === 0) {
         return {
             totalLearningMinutes: 0,
             avgLearningMinutes: 0,
@@ -391,7 +424,6 @@ export async function getGroupStats(groupId: string): Promise<GroupStats | null>
         };
     }
 
-    const memberIds = members.map(m => m.user_id);
     const totalMembers = memberIds.length;
 
     // Fetch user_progress for these members
@@ -454,8 +486,13 @@ export interface GroupMemberWithStats {
 
 /**
  * Get group members with their individual stats (for UserCard display)
+ * @param groupId - The group ID
+ * @param memberIds - Optional pre-computed member IDs (for dynamic groups)
  */
-export async function getGroupMembersWithStats(groupId: string): Promise<GroupMemberWithStats[]> {
+export async function getGroupMembersWithStats(
+    groupId: string,
+    memberIds?: string[]
+): Promise<GroupMemberWithStats[]> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
@@ -472,15 +509,29 @@ export async function getGroupMembersWithStats(groupId: string): Promise<GroupMe
 
     const supabaseAdmin = await createAdminClient();
 
-    // Get member IDs for this group
-    const { data: groupMembers } = await supabaseAdmin
-        .from('employee_group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
+    // Get member IDs for this group if not provided
+    if (!memberIds) {
+        // Check if it's a dynamic group
+        const { data: group } = await supabaseAdmin
+            .from('employee_groups')
+            .select('is_dynamic')
+            .eq('id', groupId)
+            .single();
 
-    if (!groupMembers || groupMembers.length === 0) return [];
+        if (group?.is_dynamic) {
+            // Compute dynamic members
+            memberIds = await computeDynamicGroupMembers(groupId);
+        } else {
+            // Get static members
+            const { data: groupMembers } = await supabaseAdmin
+                .from('employee_group_members')
+                .select('user_id')
+                .eq('group_id', groupId);
+            memberIds = groupMembers?.map(m => m.user_id) || [];
+        }
+    }
 
-    const memberIds = groupMembers.map(m => m.user_id);
+    if (!memberIds || memberIds.length === 0) return [];
 
     // Fetch full profile data for members (including any email if stored in profiles)
     const { data: profiles } = await supabaseAdmin
