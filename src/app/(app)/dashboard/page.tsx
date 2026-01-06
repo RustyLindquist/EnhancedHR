@@ -264,6 +264,20 @@ function HomeContent() {
           await Promise.all(promises);
           await refreshCollectionCounts();
         }
+      } else if (modalItem.type === 'NOTE') {
+        // Notes use the addNoteToCollectionAction
+        if (user) {
+          const { addNoteToCollectionAction } = await import('@/app/actions/notes');
+
+          const promises = finalSelectionIds
+            .filter(id => id !== 'new')
+            .map(collectionId => {
+              return addNoteToCollectionAction(String(modalItem.id), collectionId);
+            });
+
+          await Promise.all(promises);
+          await refreshCollectionCounts();
+        }
       } else {
         // Other Context Items (AI_INSIGHT, CUSTOM_CONTEXT, FILE, etc.)
         if (user) {
