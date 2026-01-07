@@ -4,23 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
-import { BACKGROUND_THEMES, ADMIN_NAV_ITEMS } from '@/constants';
-import { BackgroundTheme, Course } from '@/types';
+import { ADMIN_NAV_ITEMS } from '@/constants';
+import { Course } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 import CanvasHeader from '@/components/CanvasHeader';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface AdminPageLayoutProps {
     children: React.ReactNode;
     activeNavId?: string;
-    onThemeChange?: (theme: BackgroundTheme) => void;
 }
 
-export default function AdminPageLayout({ children, activeNavId, onThemeChange }: AdminPageLayoutProps) {
+export default function AdminPageLayout({ children, activeNavId }: AdminPageLayoutProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const { currentTheme, setTheme } = useTheme();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(false); // Default closed for admin
-    const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
 
     // Determine active nav item from pathname if not provided
@@ -57,7 +57,7 @@ export default function AdminPageLayout({ children, activeNavId, onThemeChange }
                     isOpen={leftOpen}
                     setIsOpen={setLeftOpen}
                     currentTheme={currentTheme}
-                    onThemeChange={setCurrentTheme}
+                    onThemeChange={setTheme}
                     courses={courses}
                     activeCollectionId={currentActiveId}
                     onSelectCollection={handleSelectCollection}

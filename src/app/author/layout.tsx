@@ -18,12 +18,12 @@ export default async function AuthorLayout({
     // Verify Author Access
     const { data: profile } = await supabase
         .from('profiles')
-        .select('author_status')
+        .select('author_status, role')
         .eq('id', user.id)
         .single();
 
-    // Only approved experts can access
-    if (profile?.author_status !== 'approved') {
+    // Only approved experts and platform admins can access
+    if (profile?.author_status !== 'approved' && profile?.role !== 'admin') {
         redirect('/teach');
     }
 
