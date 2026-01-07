@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
-import { BACKGROUND_THEMES, EXPERT_NAV_ITEMS } from '@/constants';
-import { BackgroundTheme, Course } from '@/types';
+import { EXPERT_NAV_ITEMS } from '@/constants';
+import { Course } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 import CanvasHeader from '@/components/CanvasHeader';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ExpertPageLayoutProps {
     children: React.ReactNode;
@@ -18,8 +19,8 @@ interface ExpertPageLayoutProps {
 export default function ExpertPageLayout({ children, activeNavId, title = 'Expert Dashboard' }: ExpertPageLayoutProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const { currentTheme, setTheme } = useTheme();
     const [leftOpen, setLeftOpen] = useState(true);
-    const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
 
     // Determine active nav item from pathname if not provided
@@ -56,7 +57,7 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
                     isOpen={leftOpen}
                     setIsOpen={setLeftOpen}
                     currentTheme={currentTheme}
-                    onThemeChange={setCurrentTheme}
+                    onThemeChange={setTheme}
                     courses={courses}
                     activeCollectionId={currentActiveId}
                     onSelectCollection={handleSelectCollection}

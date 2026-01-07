@@ -20,11 +20,12 @@ export default async function AuthorDashboardPage() {
     // Get author profile
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, author_status')
+        .select('id, full_name, author_status, role')
         .eq('id', user.id)
         .single();
 
-    if (profile?.author_status !== 'approved') {
+    // Only approved experts and platform admins can access
+    if (profile?.author_status !== 'approved' && profile?.role !== 'admin') {
         redirect('/teach');
     }
 

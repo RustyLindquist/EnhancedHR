@@ -12,20 +12,18 @@ import {
   Menu,
   X,
   User,
-  ImageIcon,
   Flame,
   Briefcase,
   PenTool,
   Clock,
   ArrowLeft,
   Check,
-  Upload,
   Brain,
   Layers, // Added Layers icon for custom collections
   Building,
   Plus
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, BACKGROUND_THEMES, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 
 // Animated Count Badge with warm glow effect on count change
@@ -172,10 +170,9 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [menuView, setMenuView] = useState<'main' | 'backgrounds' | 'roles'>('main');
+  const [menuView, setMenuView] = useState<'main' | 'roles'>('main');
   const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -331,20 +328,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isProfileMenuOpen]);
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      onThemeChange({
-        id: 'custom-upload',
-        label: 'Custom',
-        type: 'custom',
-        value: imageUrl
-      });
-      setIsProfileMenuOpen(false);
-    }
-  };
 
   // Helper to count items in collections
   const getCollectionCount = (collectionId: string) => {
@@ -673,8 +656,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   Settings
                 </button>
 
-                {/* Expert Dashboard Link - Only for approved experts */}
-                {userProfile?.authorStatus === 'approved' && (
+                {/* Expert Dashboard Link - For approved experts and platform admins */}
+                {(userProfile?.authorStatus === 'approved' || userProfile?.role === 'admin') && (
                   <button
                     onClick={() => {
                       router.push('/author');
@@ -706,17 +689,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                     <ChevronRight size={14} className="text-slate-500" />
                   </button>
                 )}
-
-                <button
-                  onClick={() => setMenuView('backgrounds')}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex items-center">
-                    <ImageIcon size={16} className="mr-3 text-slate-400" />
-                    Backgrounds
-                  </div>
-                  <ChevronRight size={14} className="text-slate-500" />
-                </button>
 
                 {/* Admin Dashboard Link */}
                 {(userProfile?.role === 'admin' || isImpersonating) && (
@@ -764,54 +736,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   <LogOut size={16} className="mr-3" />
                   Log Out
                 </button>
-              </div>
-            ) : menuView === 'backgrounds' ? (
-              /* BACKGROUNDS SELECTION VIEW */
-              <div className="flex flex-col h-full max-h-[400px]">
-                <div className="flex items-center px-2 py-3 border-b border-white/5">
-                  <button
-                    onClick={() => setMenuView('main')}
-                    className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors mr-2"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <span className="text-sm font-bold text-white">Select Background</span>
-                </div>
-
-                <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                  {BACKGROUND_THEMES.map(theme => (
-                    <button
-                      key={theme.id}
-                      onClick={() => onThemeChange(theme)}
-                      className={`
-                               w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all border border-transparent
-                               ${currentTheme.id === theme.id
-                          ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/20'
-                          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                        }
-                            `}
-                    >
-                      <span>{theme.label}</span>
-                      {currentTheme.id === theme.id && <Check size={14} />}
-                    </button>
-                  ))}
-
-                  <div className="h-px bg-white/10 my-2"></div>
-
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white transition-colors"
-                  >
-                    <Upload size={14} className="mr-2" /> Upload Custom
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                  />
-                </div>
               </div>
             ) : (
               /* ROLES SELECTION VIEW */

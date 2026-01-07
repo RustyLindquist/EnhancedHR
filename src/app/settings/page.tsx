@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Brain, Settings as SettingsIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Brain, Palette, Check, Upload } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
 import { createClient } from '@/lib/supabase/client';
+import { useTheme } from '@/contexts/ThemeContext';
+import { BackgroundTheme } from '@/types';
 
 interface UserSettings {
     enable_insights: boolean;
@@ -88,6 +90,21 @@ export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
     const supabase = createClient();
+    const { currentTheme, setTheme, themes } = useTheme();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const imageUrl = URL.createObjectURL(file);
+            setTheme({
+                id: 'custom-upload',
+                label: 'Custom',
+                type: 'custom',
+                value: imageUrl
+            });
+        }
+    };
 
     // Fetch current settings
     useEffect(() => {
@@ -158,6 +175,57 @@ export default function SettingsPage() {
 
             <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
                 <div className="max-w-3xl mx-auto animate-fade-in">
+
+                    {/* Appearance Section */}
+                    <SettingsSection
+                        icon={<Palette size={24} />}
+                        title="Appearance"
+                    >
+                        <div>
+                            <h4 className="text-sm font-semibold text-white mb-1">Background Theme</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                                Choose a background theme for your workspace. Your selection will be saved and applied across all pages.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {themes.map(theme => (
+                                    <button
+                                        key={theme.id}
+                                        onClick={() => setTheme(theme)}
+                                        className={`
+                                            flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all border
+                                            ${currentTheme.id === theme.id
+                                                ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/30 shadow-[0_0_15px_rgba(120,192,240,0.1)]'
+                                                : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
+                                            }
+                                        `}
+                                    >
+                                        <span>{theme.label}</span>
+                                        {currentTheme.id === theme.id && <Check size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all"
+                                >
+                                    <Upload size={16} />
+                                    Upload Custom Background
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileUpload}
+                                />
+                                <p className="text-xs text-slate-500 mt-2 text-center">
+                                    Custom backgrounds are session-only and won&apos;t persist after refresh
+                                </p>
+                            </div>
+                        </div>
+                    </SettingsSection>
 
                     {/* Prometheus AI Section */}
                     <SettingsSection

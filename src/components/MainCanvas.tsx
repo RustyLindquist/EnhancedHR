@@ -4043,6 +4043,39 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 </div>
                                             ) : (
                                                 <div className="pb-20">
+                                                    {/* Category Quick Nav - Only show for Academy */}
+                                                    {activeCollectionId === 'academy' && (
+                                                        <div className="flex flex-wrap items-center gap-2 pb-10 px-8">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setPendingFilters(INITIAL_FILTERS);
+                                                                    setActiveFilters(INITIAL_FILTERS);
+                                                                }}
+                                                                className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === 'All'
+                                                                    ? 'bg-brand-blue text-white shadow-[0_0_15px_rgba(120,192,240,0.3)]'
+                                                                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                                                                    } `}
+                                                            >
+                                                                All
+                                                            </button>
+                                                            {COURSE_CATEGORIES.map((category) => (
+                                                                <button
+                                                                    key={category}
+                                                                    onClick={() => {
+                                                                        const newFilters = { ...INITIAL_FILTERS, category };
+                                                                        setPendingFilters(newFilters);
+                                                                        setActiveFilters(newFilters);
+                                                                    }}
+                                                                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${activeFilters.category === category
+                                                                        ? 'bg-brand-blue text-white shadow-[0_0_15px_rgba(120,192,240,0.3)]'
+                                                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/5'
+                                                                        } `}
+                                                                >
+                                                                    {category}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                                                         {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
                                                         {collectionItems.map((item) => (

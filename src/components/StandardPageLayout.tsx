@@ -6,9 +6,10 @@ import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import CollectionSurface from '@/components/CollectionSurface';
-import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
-import { BackgroundTheme, Course, Collection } from '@/types';
+import { DEFAULT_COLLECTIONS } from '@/constants';
+import { Course } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface StandardPageLayoutProps {
     children: React.ReactNode;
@@ -17,9 +18,9 @@ interface StandardPageLayoutProps {
 
 export default function StandardPageLayout({ children, activeNavId = 'dashboard' }: StandardPageLayoutProps) {
     const router = useRouter();
+    const { currentTheme, setTheme } = useTheme();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
-    const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
 
@@ -49,7 +50,7 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
                     isOpen={leftOpen}
                     setIsOpen={setLeftOpen}
                     currentTheme={currentTheme}
-                    onThemeChange={setCurrentTheme}
+                    onThemeChange={setTheme}
                     courses={courses}
                     activeCollectionId={activeNavId}
                     onSelectCollection={handleSelectCollection}
