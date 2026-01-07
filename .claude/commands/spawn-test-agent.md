@@ -1,5 +1,9 @@
 # Spawn Test Agent
 
+<!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->
+
+> **Cost**: ~4× token usage for single agent spawn. Use for comprehensive testing; for quick checks, use `/test` skill directly.
+
 This command spawns the Test Agent for comprehensive validation work.
 
 ## When to Use

@@ -1,15 +1,11 @@
 # Documentation Agent (Living Canon)
 
 ---
-## ⛔ CRITICAL: DATABASE SAFETY (READ FIRST) ⛔
+## ⛔ Safety Rules
 
-**NEVER run these commands — they DESTROY ALL DATA:**
-- `supabase db reset` — DESTROYS ENTIRE DATABASE
-- `DROP TABLE` / `DROP DATABASE` / `TRUNCATE`
-- `docker volume rm` (supabase volumes)
+**See `.claude/agents/SAFETY_RULES.md` for complete safety rules.**
 
-**If blocked by a database issue:** Use targeted SQL via `docker exec` or `createAdminClient()`. NEVER reset.
-**If tempted to reset:** STOP. Tell the user. There is ALWAYS a non-destructive alternative.
+Quick reminder: NEVER run `supabase db reset`, `DROP TABLE`, or any destructive database command.
 
 ---
 

@@ -104,9 +104,11 @@ If you're tempted to reset, STOP and tell the user first.
 
 ## 3) Multi-Agent Architecture
 
+> **TL;DR**: 7 specialized agents coordinate through the Main Agent. Spawn agents for their domains (Frontend→UI, Backend→API, Doc→knowledge, Research→exploration, Test→validation, Ops→optimization). Full protocol in `.claude/agents/AGENT_PROTOCOL.md`.
+
 This repo supports multi-agent coordination with specialized agents. The system is designed for **continuous self-improvement** — agents not only complete tasks but also identify opportunities to improve the system itself.
 
-IMPORTANT - Maximize context window and performance by actively leveraging and orchestrating subagents, following the Agent Protocol ('/.claude/agents/AGENT_PROTOCOL.md')
+**IMPORTANT**: Maximize context window and performance by actively leveraging and orchestrating subagents, following the Agent Protocol (`.claude/agents/AGENT_PROTOCOL.md`)
 
 Agent definitions and protocols live in:
 - `.claude/agents/` (agent prompts)
@@ -119,9 +121,10 @@ Agent definitions and protocols live in:
 | **Main Agent** | Orchestrator — receives requests, plans, coordinates | Always |
 | **Doc Agent** | Living Canon — authoritative doc source, validates plans | Spawned for complex tasks |
 | **Frontend Agent** | Design System Guardian — owns all UI implementation | Spawned for frontend work |
+| **Backend Agent** | API Guardian — owns server actions, RLS, migrations | Spawned for backend work |
+| **Research Agent** | Codebase Explorer — finds implementations, traces flows | Spawned for exploration |
 | **Test Agent** | Validation Specialist — systematic testing and verification | Spawned for comprehensive testing |
 | **Ops Agent** | System Optimizer — reviews and implements system improvements | Spawned for optimization |
-| **Sub-Agents** | Implementation — execute specific coding tasks | Spawned as needed |
 
 ### Documentation Agent (Living Canon)
 
@@ -458,6 +461,8 @@ Once the plan is approved:
 
 ## 5) Skills (Slash Commands)
 
+> **TL;DR**: Skills are pre-defined workflows for common tasks. Use `/pipeline/feature` for features, `/pipeline/bugfix` for bugs, `/supabase/*` for database safety. Session skills (`/compact`, `/checkpoint`, `/handoff`) manage context across long sessions.
+
 Skills are executable playbooks available via slash commands in `.claude/commands/`:
 
 | Command | Purpose |
@@ -467,7 +472,16 @@ Skills are executable playbooks available via slash commands in `.claude/command
 | `/doc-update` | Update docs after code changes |
 | `/drift-check` | Detect doc/code mismatches |
 | `/test-from-docs` | Generate test plan from feature docs |
+| `/context-status` | Check context usage and get recommendations |
+| `/compact` | Compress context for long sessions |
+| `/checkpoint` | Save mid-session state |
+| `/session-start` | Resume from previous session |
 | `/handoff` | Write handoff note for session end |
+| `/pipeline/feature` | End-to-end feature implementation workflow |
+| `/pipeline/bugfix` | Bug fix workflow with validation |
+| `/supabase/safe-sql` | Safe SQL execution guide |
+| `/supabase/migration` | Safe migration creation guide |
+| `/spawn-research-agent` | Spawn Research Agent for codebase exploration |
 
 ### Workflow with Doc Agent
 
@@ -569,6 +583,105 @@ Prefer data/write flows over component trees.
 - Keep code paths explicit in high-risk areas (auth/RLS/billing/AI).
 - When uncertain, add tests/checklists before optimizing.
 - Optimize for clarity, maintainability, and predictable behavior.
+
+---
+
+## 10.5) Extended Thinking
+
+Use these phrases to activate progressively deeper reasoning:
+
+| Phrase | Effect | Use When |
+|--------|--------|----------|
+| "think" | Baseline extended reasoning | Complex planning, debugging |
+| "think hard" | More computation time | Tricky architectural decisions |
+| "think harder" | Significantly more reasoning | Multi-feature coordination |
+| "ultrathink" | Maximum reasoning allocation | Critical decisions, complex debugging |
+
+Extended thinking is especially valuable for:
+- Planning multi-step implementations
+- Debugging complex issues
+- Architecture decisions affecting multiple features
+- Security-sensitive changes
+
+The user can request any level; use your judgment to request more thinking when a task warrants it.
+
+---
+
+## 10.6) Parallel Agent Orchestration
+
+For independent subtasks, spawn multiple agents in parallel to maximize throughput.
+
+### When to Parallelize
+
+| Scenario | Parallel? | Why |
+|----------|-----------|-----|
+| Multiple independent bugs | Yes | No dependencies |
+| Research across different features | Yes | Independent exploration |
+| Feature + its tests | No | Tests depend on feature |
+| Backend + Frontend for same feature | Maybe | If contracts are defined upfront |
+| Multiple file reads | Yes | Use Task tool for parallel exploration |
+
+### How to Parallelize
+
+1. **Single message, multiple Task tool calls** — The system runs them concurrently
+2. **Track in `.context/agents/active.yaml`** — Record spawned agents
+3. **Collect and synthesize** — Wait for results before combining
+
+### Cost Awareness
+
+| Configuration | Relative Token Cost |
+|---------------|-------------------|
+| Single chat interaction | 1× |
+| Single agent task | ~4× |
+| Multi-agent parallel | ~15× |
+
+Parallelize when:
+- Tasks are truly independent
+- Time savings justify token cost
+- Tasks are substantial enough to warrant separate context
+
+### Safety Reminder
+
+ALWAYS include the safety preamble when spawning subagents (see Section 2.4).
+
+---
+
+## 10.7) Context Management
+
+Your context window is finite. Manage it actively to maintain effectiveness in long sessions.
+
+### Context Signals
+
+| Signal | Context Level | Action |
+|--------|--------------|--------|
+| Responses still sharp and detailed | Low/Medium | Continue normally |
+| Starting to miss details mentioned earlier | Medium/High | Consider spawning subagents |
+| Forgetting recent decisions | High | Run `/compact` |
+| User mentions context seems full | Critical | Run `/compact` immediately |
+
+### Strategies for Long Sessions
+
+1. **Spawn subagents for exploration** — They return summaries, not raw content
+2. **Use Doc Agent lazily** — Load docs on demand, not upfront
+3. **Checkpoint regularly** — Run `/checkpoint` after major milestones
+4. **Compact proactively** — Don't wait until context is critical
+
+### Available Skills
+
+| Skill | Purpose |
+|-------|---------|
+| `/context-status` | Check context usage, get recommendations |
+| `/compact` | Compress context, write summary, continue |
+| `/checkpoint` | Save mid-session state for recovery |
+| `/session-start` | Resume from previous session context |
+| `/handoff` | End-of-session comprehensive summary |
+
+### Progressive Disclosure
+
+- Load docs lazily (Doc Agent pattern)
+- Return summaries from subagents, not raw data
+- Maintain identifiers (file paths, IDs) not full content
+- Query for details only when needed
 
 ---
 

@@ -1,5 +1,9 @@
 # Agent Protocol: Multi-Agent Coordination
 
+<!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->
+
+> **TL;DR**: 7 specialized agents coordinate through the Main Agent. Each agent has clear spawn criteria, workflows, and output formats. Safety rules are non-negotiable. Error handling follows categorization → recovery → escalation pattern.
+
 ---
 
 ## ⛔ CRITICAL SAFETY RULES — READ FIRST ⛔
@@ -70,11 +74,25 @@ This document defines how agents coordinate in the EnhancedHR.ai workspace.
 - Self-improving: documents patterns as it discovers them
 - See: `.claude/agents/frontend-agent.md`
 
-### 4. Implementation Agents (Sub-Agents)
-- Spawned for specific backend/logic tasks
+### 4. Backend Agent (API Guardian)
+- Owns ALL backend implementation work
+- Manages server actions, RLS policies, migrations
+- Ensures security and consistency in API patterns
+- Security-first: validates RLS and permissions before changes
+- See: `.claude/agents/backend-agent.md`
+
+### 5. Research Agent (Codebase Explorer)
+- Handles codebase exploration and understanding
+- Finds implementations, traces flows, answers "where/how/what" questions
+- Read-only: never modifies code, only explores
+- Returns summaries to preserve context efficiency
+- See: `.claude/agents/research-agent.md`
+
+### 6. Implementation Agents (Sub-Agents)
+- Spawned for specific tasks outside Frontend/Backend/Research scope
 - Query the Doc Agent as needed
 - Report back to Main Agent
-- Do NOT handle frontend work (that's the Frontend Agent's job)
+- Use Frontend Agent for UI, Backend Agent for server-side, Research Agent for exploration
 
 ## When to Spawn the Documentation Agent
 
@@ -397,6 +415,102 @@ The agents can query each other as needed during implementation.
 
 ---
 
+## When to Spawn the Backend Agent
+
+The Main Agent should spawn the Backend Agent for ANY backend/server-side work.
+
+### Spawn Criteria (ANY = spawn Backend Agent)
+
+| Criterion | Why |
+|-----------|-----|
+| Creating/modifying server actions | Need pattern consistency |
+| RLS policy changes | Security-critical, needs review |
+| Database migrations | High-risk, needs safety checks |
+| API route implementation | Need pattern compliance |
+| createAdminClient usage | Requires permission justification |
+| Edge function work | Backend domain |
+
+### Skip Criteria (ALL must be true to skip)
+
+| Criterion | Example |
+|-----------|---------|
+| Pure frontend work | UI components, styling |
+| Documentation only | Updating docs without code |
+| Simple config change | Env vars, feature flags |
+
+### Backend Agent Workflow
+
+```
+User Request (with backend work)
+            │
+            ▼
+Main Agent Identifies Backend Work
+            │
+            ▼
+Spawn Backend Agent
+            │
+            ▼
+┌───────────────────────────────────────────────────────────────┐
+│                  BACKEND AGENT WORKFLOW                        │
+│                                                                │
+│  1. PATTERN CHECK                                              │
+│     └─► Search for similar server actions                     │
+│     └─► Identify existing patterns to follow                  │
+│                                                                │
+│  2. RLS IMPACT ANALYSIS                                       │
+│     └─► Determine what RLS policies apply                     │
+│     └─► Verify security implications                          │
+│                                                                │
+│  3. EXECUTE                                                   │
+│     └─► Implement following patterns                          │
+│     └─► Apply security checks                                 │
+│                                                                │
+│  4. VALIDATE                                                  │
+│     └─► Security checklist                                    │
+│     └─► Verify RLS compliance                                 │
+│                                                                │
+│  5. DOCUMENT                                                  │
+│     └─► Update feature docs if needed                         │
+│     └─► Provide production SQL if migration                   │
+└───────────────────────────────────────────────────────────────┘
+            │
+            ▼
+Returns completed work with verification steps to Main Agent
+```
+
+### Backend Agent Query Format
+
+```
+@backend-agent: Create a server action for updating user settings
+```
+
+```
+@backend-agent: Add RLS policies for the new notes table
+```
+
+```
+@backend-agent: Create migration to add skills column to courses
+```
+
+### Backend + Frontend Coordination
+
+For full-stack features:
+
+```
+Main Agent: Evaluates task
+     │
+     ├─► Spawn Doc Agent (for feature invariants)
+     │
+     ├─► Spawn Backend Agent (for API/server work)
+     │
+     └─► Spawn Frontend Agent (for UI implementation)
+
+Backend Agent: Provides API contract to Frontend Agent
+Frontend Agent: Implements UI against the contract
+```
+
+---
+
 ## When to Spawn the Test Agent
 
 The Test Agent handles comprehensive validation work — systematic testing beyond what any single agent should do inline.
@@ -494,6 +608,136 @@ Test Agent returns structured report to Main Agent:
 - Screenshots as evidence
 - Issues found (if any)
 - Pass/Fail recommendation
+
+---
+
+## When to Spawn the Research Agent
+
+The Research Agent handles codebase exploration and understanding — finding implementations, tracing flows, and answering "where/how/what" questions about the code.
+
+### Spawn Criteria (ANY = spawn Research Agent)
+
+| Criterion | Why |
+|-----------|-----|
+| "Where is X implemented?" | Need codebase exploration |
+| "How does Y work?" | Need flow tracing |
+| "Find all places that use Z" | Need comprehensive search |
+| Tracing a bug to its source | Need systematic investigation |
+| Pre-implementation research | Need to understand existing patterns |
+| Understanding unfamiliar code | Need context-efficient exploration |
+
+### Skip Criteria (ALL must be true to skip)
+
+| Criterion | Example |
+|-----------|---------|
+| Simple file read | "Read this specific file" |
+| Documentation question | Use Doc Agent instead |
+| Known file location | Just use Read tool directly |
+| Testing needed | Use Test Agent instead |
+
+### Research Agent Workflow
+
+```
+Research Query
+         │
+         ▼
+Main Agent Evaluates
+         │
+         ├─ Know the answer? ────► Answer directly
+         │
+         └─ Need exploration? ──► Spawn Research Agent
+                                        │
+                                        ▼
+                                 Research Agent loads FEATURE_INDEX
+                                        │
+                                        ▼
+                                 Plans search strategy:
+                                 1. Glob for file patterns
+                                 2. Grep for code content
+                                 3. Read strategic files
+                                        │
+                                        ▼
+                                 Executes searches (parallel where possible)
+                                        │
+                                        ▼
+                                 Synthesizes findings into summary:
+                                 - Answer
+                                 - Key files
+                                 - Code flow (if applicable)
+                                 - Related features
+                                 - Notes
+```
+
+### Research Agent Query Format
+
+```
+@research-agent: Where is the addToCollection action implemented?
+```
+
+```
+@research-agent: How does course progress tracking work?
+```
+
+```
+@research-agent: Find all server actions that use createAdminClient()
+```
+
+```
+@research-agent: Trace the enrollment flow from button click to database
+```
+
+### Research + Other Agent Coordination
+
+Research Agent feeds findings to other agents:
+
+```
+Main Agent: Need to understand course progress before modifying
+     │
+     ├─► Spawn Research Agent: "How does course progress work?"
+     │
+     ▼
+Research Agent: Returns structured summary
+     │
+     ▼
+Main Agent: Uses findings to inform plan
+     │
+     ├─► Spawn Backend Agent (for server-side changes)
+     │
+     └─► Spawn Frontend Agent (for UI changes)
+```
+
+### Output Format
+
+The Research Agent returns structured summaries:
+
+```
+## Research Summary: [query]
+
+### Answer
+[Concise answer to the question]
+
+### Key Files
+- `path/to/file.ts` - [purpose]
+- `path/to/other.ts` - [purpose]
+
+### Code Flow (if applicable)
+1. Entry point → ...
+2. ... → ...
+3. ... → Final destination
+
+### Related Features
+- [feature name] - [relevance]
+
+### Notes
+- [any caveats or additional context]
+```
+
+### Key Characteristics
+
+- **Read-only** — Never modifies code, only explores
+- **Summary-focused** — Returns concise summaries, not raw content
+- **Context-efficient** — Uses smart search patterns to minimize token usage
+- **Pattern-aware** — Understands common code patterns in the codebase
 
 ---
 
@@ -682,6 +926,125 @@ If any agent evaluation returned YES:
 **Step 4: Proceed**
 
 Only after completing Steps 1-3 should implementation begin.
+
+---
+
+## Error Handling Protocol
+
+When agents encounter errors, follow this protocol to ensure graceful recovery and proper escalation.
+
+### Error Categories
+
+| Category | Examples | Retry? | Action |
+|----------|----------|--------|--------|
+| **Transient** | Rate limit, timeout, network | Yes (1x) | Wait briefly, retry once, then report |
+| **Recoverable** | File not found, build fail, missing dep | Maybe | Try safe alternative, report outcome |
+| **Non-Recoverable** | Permission denied, data corruption | No | Stop immediately, escalate to user |
+| **Safety Violation** | Forbidden command attempted | No | Block, log, alert user immediately |
+
+### Agent Failure Protocol
+
+When an agent encounters an error:
+
+```
+Error Encountered
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  1. CATEGORIZE                       │
+│  Is this transient, recoverable,     │
+│  non-recoverable, or safety?         │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│  2. ATTEMPT RECOVERY (if safe)       │
+│                                      │
+│  Transient: Wait, retry once         │
+│  Recoverable: Try alternative        │
+│  Non-recoverable: Skip to step 3     │
+│  Safety: Skip to step 3              │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│  3. REPORT TO MAIN AGENT             │
+│                                      │
+│  Include:                            │
+│  - Error type and category           │
+│  - Context (what was being attempted)│
+│  - Recovery action taken (if any)    │
+│  - Recommended next step             │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│  4. MAIN AGENT DECIDES               │
+│                                      │
+│  Options:                            │
+│  - Retry with different approach     │
+│  - Reassign to different agent       │
+│  - Escalate to user                  │
+│  - Abort task                        │
+└──────────────────────────────────────┘
+```
+
+### Circuit Breaker Pattern
+
+If the **same agent fails 3 times** in a session:
+
+1. **Pause** that agent type for this session
+2. **Alert user**: "[Agent] has failed 3 times. Options: investigate, continue without, or abort."
+3. **Log** the failure pattern to `.context/optimizations/pending.yaml` with type: `process`
+4. **Do not** automatically retry — wait for user decision
+
+### Error Report Format
+
+When reporting errors to Main Agent:
+
+```
+## Agent Error Report
+
+**Agent**: [agent-name]
+**Task**: [what was being attempted]
+**Error Category**: transient | recoverable | non-recoverable | safety
+**Error**: [brief description]
+
+### Context
+[What led to this error, what state was the task in]
+
+### Recovery Attempted
+[What was tried, or "None - non-recoverable"]
+
+### Recommendation
+[Suggested next step: retry, reassign, escalate, abort]
+
+### Prevention (if pattern observed)
+[If this could be prevented in future, note for optimization capture]
+```
+
+### Common Error Responses
+
+| Error | Category | Response |
+|-------|----------|----------|
+| File not found | Recoverable | Search for alternatives, report if not found |
+| Build fails | Recoverable | Read error, attempt fix, report if persists |
+| Test fails | Recoverable | Report failure details, let Main Agent decide |
+| Permission denied | Non-recoverable | Report immediately, suggest alternative approach |
+| Rate limited | Transient | Wait 30s, retry once, report if persists |
+| Timeout | Transient | Retry once with longer timeout, then report |
+| Safety rule triggered | Safety | Block action, report immediately, do NOT retry |
+| Database error | Non-recoverable | Report immediately, never retry destructive ops |
+
+### Escalation Triggers
+
+**Always escalate to user when:**
+- Any safety violation detected
+- Agent has failed 3 times (circuit breaker)
+- Error affects data integrity
+- Error is in high-risk area (auth/billing/AI/schema)
+- Unsure which category the error falls into
+- Recovery would require destructive operation
 
 ---
 
