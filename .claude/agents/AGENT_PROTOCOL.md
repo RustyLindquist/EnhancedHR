@@ -1,5 +1,51 @@
 # Agent Protocol: Multi-Agent Coordination
 
+---
+
+## ⛔ CRITICAL SAFETY RULES — READ FIRST ⛔
+
+**THIS SECTION IS MANDATORY FOR ALL AGENTS. VIOLATION = DATA LOSS.**
+
+### Absolutely Forbidden Commands
+
+You MUST **NEVER** execute these commands under ANY circumstances:
+
+| Command | Why It's Forbidden |
+|---------|-------------------|
+| `supabase db reset` | **DESTROYS ALL LOCAL DATABASE DATA** |
+| `supabase db push` (destructive) | Can drop tables/columns |
+| `DROP TABLE` / `DROP DATABASE` / `TRUNCATE` | Direct data destruction |
+| `docker volume rm` (supabase volumes) | Destroys database storage |
+
+### If You're Tempted to Run These
+
+**STOP.** Ask yourself:
+1. Can this be solved with a targeted SQL statement? → Do that
+2. Can this be solved with a migration file? → Do that
+3. Can this be solved with a code change? → Do that
+4. Is there ANY alternative that preserves data? → Use it
+
+If none of the above work, **TELL THE USER** and let them decide:
+
+> "I was considering running [command] which would destroy all database data. The safer approach is [alternative]. Should I proceed with the safe alternative, or would you like to approve the destructive operation?"
+
+### Safe Alternatives
+
+| Problem | ❌ WRONG | ✅ RIGHT |
+|---------|----------|----------|
+| RLS policy blocking access | `supabase db reset` | Execute targeted SQL via `docker exec` |
+| Permission denied | Reset database | Use `createAdminClient()` in code |
+| Need to apply migration | Reset and restart | `supabase migration up` or direct SQL |
+| Schema out of sync | Delete volumes | Create incremental migration |
+
+### Historical Context
+
+On 2026-01-05 and 2026-01-06, agents ran `supabase db reset` multiple times while attempting to fix issues. Each time destroyed the entire database including all users, groups, courses, and configurations. The actual fixes required only single SQL statements.
+
+**EVERY destructive database operation so far has had a simple, non-destructive alternative.**
+
+---
+
 This document defines how agents coordinate in the EnhancedHR.ai workspace.
 
 ## Agent Types

@@ -113,8 +113,81 @@ export async function promoteUser(userId: string, role: string) {
     throw new Error(`Failed to update profile: ${profileError.message}`);
   }
 
+  // 3. If promoting to platform admin, ensure they have an org for testing
+  if (role === 'admin') {
+    await ensurePlatformAdminOrgForUser(userId);
+  }
+
   revalidatePath('/admin/users');
   return { success: true };
+}
+
+/**
+ * Creates a personal organization for a platform admin (admin client version).
+ * Used when promoting a user to platform admin.
+ */
+async function ensurePlatformAdminOrgForUser(userId: string): Promise<void> {
+  const supabase = createAdminClient();
+
+  // Get user info
+  const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+  if (!user) {
+    console.error('[ensurePlatformAdminOrgForUser] User not found:', userId);
+    return;
+  }
+
+  // Get user's profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('org_id, full_name')
+    .eq('id', userId)
+    .single();
+
+  if (!profile) {
+    console.error('[ensurePlatformAdminOrgForUser] Profile not found:', userId);
+    return;
+  }
+
+  // If they already have an org, nothing to do
+  if (profile.org_id) {
+    console.log('[ensurePlatformAdminOrgForUser] User already has org:', profile.org_id);
+    return;
+  }
+
+  // Create a personal organization for this platform admin
+  const baseName = profile.full_name || user.email?.split('@')[0] || 'Admin';
+  const orgName = `${baseName}'s Organization`;
+  const slug = baseName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+  const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+  const inviteHash = Math.random().toString(36).substring(2, 18);
+
+  const { data: newOrg, error: orgError } = await supabase
+    .from('organizations')
+    .insert({
+      name: orgName,
+      slug: uniqueSlug,
+      invite_hash: inviteHash,
+    })
+    .select()
+    .single();
+
+  if (orgError) {
+    console.error('[ensurePlatformAdminOrgForUser] Error creating org:', orgError);
+    return;
+  }
+
+  // Update profile with the new org_id
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ org_id: newOrg.id, membership_status: 'org_admin' })
+    .eq('id', userId);
+
+  if (updateError) {
+    console.error('[ensurePlatformAdminOrgForUser] Error linking profile:', updateError);
+    return;
+  }
+
+  console.log(`[ensurePlatformAdminOrgForUser] Created org "${newOrg.name}" for user ${userId}`);
 }
 
 export async function createUser(prevState: any, formData: FormData) {

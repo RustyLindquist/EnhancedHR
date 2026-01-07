@@ -24,6 +24,7 @@ export async function getNotesAction(): Promise<Note[]> {
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at,
             courses (
@@ -46,6 +47,7 @@ export async function getNotesAction(): Promise<Note[]> {
         title: note.title,
         content: note.content,
         course_id: note.course_id,
+        tool_slug: note.tool_slug,
         course_title: note.courses?.title || null,
         created_at: note.created_at,
         updated_at: note.updated_at,
@@ -55,8 +57,9 @@ export async function getNotesAction(): Promise<Note[]> {
 /**
  * Fetch general notes (not associated with any course)
  * Used for tool pages where notes are standalone
+ * @param toolSlug - Optional tool slug to filter notes by tool (e.g., 'roleplay-dojo')
  */
-export async function getGeneralNotesAction(): Promise<Note[]> {
+export async function getGeneralNotesAction(toolSlug?: string): Promise<Note[]> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -64,7 +67,7 @@ export async function getGeneralNotesAction(): Promise<Note[]> {
 
     const admin = createAdminClient();
 
-    const { data: notes, error } = await admin
+    let query = admin
         .from('notes')
         .select(`
             id,
@@ -72,12 +75,22 @@ export async function getGeneralNotesAction(): Promise<Note[]> {
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at
         `)
         .eq('user_id', user.id)
-        .is('course_id', null)
-        .order('updated_at', { ascending: false });
+        .is('course_id', null);
+
+    // Filter by tool_slug if provided
+    if (toolSlug) {
+        query = query.eq('tool_slug', toolSlug);
+    } else {
+        // If no tool_slug provided, get notes that are not associated with any tool
+        query = query.is('tool_slug', null);
+    }
+
+    const { data: notes, error } = await query.order('updated_at', { ascending: false });
 
     if (error) {
         console.error('[getGeneralNotesAction] Error fetching general notes:', error);
@@ -91,6 +104,7 @@ export async function getGeneralNotesAction(): Promise<Note[]> {
         title: note.title,
         content: note.content,
         course_id: null,  // General notes have no course
+        tool_slug: note.tool_slug,
         course_title: undefined,  // No course title for general notes
         created_at: note.created_at,
         updated_at: note.updated_at,
@@ -116,6 +130,7 @@ export async function getNotesByCourseAction(courseId: number): Promise<Note[]> 
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at,
             courses (
@@ -138,6 +153,7 @@ export async function getNotesByCourseAction(courseId: number): Promise<Note[]> 
         title: note.title,
         content: note.content,
         course_id: note.course_id,
+        tool_slug: note.tool_slug,
         course_title: note.courses?.title || null,
         created_at: note.created_at,
         updated_at: note.updated_at,
@@ -163,6 +179,7 @@ export async function getNoteAction(noteId: string): Promise<Note | null> {
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at,
             courses (
@@ -185,6 +202,7 @@ export async function getNoteAction(noteId: string): Promise<Note | null> {
         title: note.title,
         content: note.content,
         course_id: note.course_id,
+        tool_slug: note.tool_slug,
         course_title: (note as any).courses?.title || null,
         created_at: note.created_at,
         updated_at: note.updated_at,
@@ -198,11 +216,18 @@ export async function createNoteAction(data: {
     title?: string;
     content?: string;
     course_id?: number;
+    tool_slug?: string;
 }): Promise<Note | null> {
+    console.log('[createNoteAction] Starting with data:', data);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    console.log('[createNoteAction] Auth result - user:', authData?.user?.id, 'error:', authError?.message);
 
-    if (!user) return null;
+    if (!authData?.user) {
+        console.error('[createNoteAction] No user found in auth');
+        return null;
+    }
+    const user = authData.user;
 
     const admin = createAdminClient();
 
@@ -213,6 +238,7 @@ export async function createNoteAction(data: {
             title: data.title || 'Untitled Note',
             content: data.content || '',
             course_id: data.course_id || null,
+            tool_slug: data.tool_slug || null,
         })
         .select(`
             id,
@@ -220,6 +246,7 @@ export async function createNoteAction(data: {
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at,
             courses (
@@ -242,6 +269,7 @@ export async function createNoteAction(data: {
         title: note.title,
         content: note.content,
         course_id: note.course_id,
+        tool_slug: note.tool_slug,
         course_title: (note as any).courses?.title || null,
         created_at: note.created_at,
         updated_at: note.updated_at,
@@ -279,6 +307,7 @@ export async function updateNoteAction(noteId: string, data: {
             title,
             content,
             course_id,
+            tool_slug,
             created_at,
             updated_at,
             courses (
@@ -299,6 +328,7 @@ export async function updateNoteAction(noteId: string, data: {
         title: note.title,
         content: note.content,
         course_id: note.course_id,
+        tool_slug: note.tool_slug,
         course_title: (note as any).courses?.title || null,
         created_at: note.created_at,
         updated_at: note.updated_at,

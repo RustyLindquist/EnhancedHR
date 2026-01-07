@@ -222,17 +222,36 @@ export default function OrgAnalyticsCanvas({ initialGroupId }: OrgAnalyticsCanva
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
+          const lines = chunk.split('\n');
 
-          // Strip any insight metadata tags
-          const cleanText = fullText.replace(/<!--__INSIGHT_META__:[\s\S]*?:__END_META__-->/, '');
-          setAnalyticsMessages(prev => {
-            const updated = [...prev];
-            if (updated.length > 0) {
-              updated[updated.length - 1] = { role: 'model', content: cleanText };
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullText += parsed.content;
+
+                  // Strip any insight metadata tags
+                  const cleanText = fullText.replace(/<!--__INSIGHT_META__:[\s\S]*?:__END_META__-->/, '');
+                  setAnalyticsMessages(prev => {
+                    const updated = [...prev];
+                    if (updated.length > 0) {
+                      updated[updated.length - 1] = { role: 'model', content: cleanText };
+                    }
+                    return updated;
+                  });
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            } else if (line.includes('<!--__INSIGHT_META__:')) {
+              // Capture metadata markers that come at the end
+              fullText += line;
             }
-            return updated;
-          });
+          }
         }
       }
     } catch (error) {

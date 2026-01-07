@@ -93,6 +93,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const lastProcessedPromptRef = useRef<string | undefined>(undefined);
     const [isPromptPanelOpen, setIsPromptPanelOpen] = useState(false);
 
@@ -107,6 +108,16 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
 
     // Ref to track if we just created the conversation to avoid race condition/overwriting state
     const justCreatedRef = useRef(false);
+
+    // Auto-resize textarea as content changes
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(textarea.scrollHeight, 240);
+            textarea.style.height = `${newHeight}px`;
+        }
+    }, [input]);
 
     // Handle Initial Prompt
     useEffect(() => {
@@ -326,18 +337,37 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     if (done) break;
 
                     const chunk = decoder.decode(value, { stream: true });
-                    fullText += chunk;
+                    const lines = chunk.split('\n');
 
-                    // Update the last message with accumulated text (cleaned for display)
-                    setMessages(prev => {
-                        const updated = [...prev];
-                        if (updated.length > 0) {
-                            // Display cleaned content while streaming
-                            const displayContent = stripInsightTags(fullText);
-                            updated[updated.length - 1] = { role: 'model', content: displayContent };
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.content) {
+                                    fullText += parsed.content;
+
+                                    // Update the last message with accumulated text (cleaned for display)
+                                    setMessages(prev => {
+                                        const updated = [...prev];
+                                        if (updated.length > 0) {
+                                            // Display cleaned content while streaming
+                                            const displayContent = stripInsightTags(fullText);
+                                            updated[updated.length - 1] = { role: 'model', content: displayContent };
+                                        }
+                                        return updated;
+                                    });
+                                }
+                            } catch {
+                                // Skip invalid JSON
+                            }
+                        } else if (line.includes('<!--__INSIGHT_META__:')) {
+                            // Capture metadata markers that come at the end
+                            fullText += line;
                         }
-                        return updated;
-                    });
+                    }
                 }
             }
 
@@ -566,24 +596,34 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                     {/* Glow Effect */}
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue opacity-20 group-focus-within/input:opacity-100 blur-xl transition-opacity duration-700 rounded-2xl"></div>
 
-                    <div className="relative bg-[#0f172a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex items-center p-2 overflow-hidden">
+                    <div className="relative bg-[#0f172a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex items-end p-2 overflow-hidden">
 
                         {/* More Prompts Toggle */}
                         <button
                             onClick={() => setIsPromptPanelOpen(!isPromptPanelOpen)}
-                            className="p-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors mr-2"
+                            className="p-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors mr-2 mb-0.5"
                             title="More Prompts"
                         >
                             <Sparkles size={20} />
                         </button>
 
-                        <input
-                            type="text"
+                        <textarea
+                            ref={textareaRef}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage(input);
+                                }
+                            }}
                             placeholder="Ask Prometheus anything..."
-                            className="flex-1 bg-transparent border-none outline-none text-lg text-white placeholder-slate-500 px-2 font-light h-12"
+                            rows={1}
+                            className="flex-1 bg-transparent border-none outline-none text-lg text-white placeholder-slate-500 px-3 py-3 font-light resize-none overflow-y-auto"
+                            style={{
+                                minHeight: '48px',
+                                maxHeight: '240px'
+                            }}
                             autoFocus
                         />
 
@@ -591,7 +631,7 @@ const PrometheusFullPage: React.FC<PrometheusFullPageProps> = ({
                             onClick={() => handleSendMessage(input)}
                             disabled={!input.trim() || isLoading}
                             className={`
-                                p-3 rounded-xl transition-all duration-300 flex items-center justify-center
+                                p-3 rounded-xl transition-all duration-300 flex items-center justify-center mb-0.5
                                 ${input.trim() && !isLoading
                                     ? 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.5)]'
                                     : 'bg-white/5 text-slate-600 cursor-not-allowed'}

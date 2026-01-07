@@ -31,8 +31,19 @@ const ToolChatInterface: React.FC<ToolChatInterfaceProps> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const justCreatedRef = useRef(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const supabase = createClient();
+
+    // Auto-resize textarea as content changes
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(textarea.scrollHeight, 240);
+            textarea.style.height = `${newHeight}px`;
+        }
+    }, [input]);
 
     // Fetch messages if we have a conversation ID
     useEffect(() => {
@@ -331,33 +342,36 @@ const ToolChatInterface: React.FC<ToolChatInterfaceProps> = ({
                 </div>
             </div>
 
-            {/* Input Area - positioned above CollectionSurface (h-28 = 112px) */}
-            <div className="absolute bottom-32 left-0 right-0 px-10 z-[70]">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex items-end gap-3 p-3 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10">
-                        <div className="flex-1 relative">
-                            <textarea
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyPress}
-                                placeholder={`Ask ${tool.title}...`}
-                                rows={1}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 resize-none focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 transition-all"
-                                style={{
-                                    minHeight: '48px',
-                                    maxHeight: '150px'
-                                }}
-                                disabled={isLoading}
-                            />
-                        </div>
+            {/* Input Area - positioned above CollectionSurface (h-28 = 112px + 50px padding) */}
+            <div className="absolute bottom-[178px] left-0 right-0 px-6 md:px-10 z-[70]">
+                <div className="max-w-4xl mx-auto relative group/input">
+                    {/* Glow Effect */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue opacity-20 group-focus-within/input:opacity-100 blur-xl transition-opacity duration-700 rounded-2xl"></div>
+
+                    <div className="relative bg-[#0f172a]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex items-end p-2 overflow-hidden">
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            placeholder={`Ask ${tool.title}...`}
+                            rows={1}
+                            className="flex-1 bg-transparent border-none outline-none text-lg text-white placeholder-slate-500 px-3 py-3 font-light resize-none overflow-y-auto"
+                            style={{
+                                minHeight: '48px',
+                                maxHeight: '240px'
+                            }}
+                            disabled={isLoading}
+                        />
                         <button
                             onClick={() => handleSendMessage(input)}
                             disabled={!input.trim() || isLoading}
-                            className={`p-3 rounded-xl transition-all flex-shrink-0 ${
-                                input.trim() && !isLoading
-                                    ? 'bg-[#0D9488] text-white hover:bg-[#0D9488]/80'
-                                    : 'bg-white/5 text-slate-500 cursor-not-allowed'
-                            }`}
+                            className={`
+                                p-3 rounded-xl transition-all duration-300 flex items-center justify-center flex-shrink-0 mb-0.5
+                                ${input.trim() && !isLoading
+                                    ? 'bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 shadow-[0_0_20px_rgba(120,192,240,0.5)]'
+                                    : 'bg-white/5 text-slate-600 cursor-not-allowed'}
+                            `}
                         >
                             {isLoading ? (
                                 <Loader2 className="animate-spin" size={20} />
