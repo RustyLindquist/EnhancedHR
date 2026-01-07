@@ -1,5 +1,9 @@
 # Spawn Documentation Agent
 
+<!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->
+
+> **Cost**: ~4× token usage for single agent spawn. Doc Agent is efficient—loads docs lazily and retains them for the session.
+
 Spawn the Documentation Agent (Living Canon) to serve as a persistent knowledge source for this work session.
 
 ## When to Use

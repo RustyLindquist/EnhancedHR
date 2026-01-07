@@ -1,5 +1,9 @@
 # Spawn Ops Agent
 
+<!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->
+
+> **Cost**: ~4× token usage for single agent spawn. Best used at end of sessions or when pending.yaml has 5+ items.
+
 Spawn the Ops Agent (System Optimizer) to review and implement system optimizations.
 
 ## When to Use
