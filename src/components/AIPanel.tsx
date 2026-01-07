@@ -349,18 +349,37 @@ const AIPanel: React.FC<AIPanelProps> = ({
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
+          const lines = chunk.split('\n');
 
-          // Update the last message with accumulated text (cleaned for display)
-          setMessages(prev => {
-            const updated = [...prev];
-            if (updated.length > 0) {
-              // Display cleaned content while streaming
-              const displayContent = stripInsightTags(fullText);
-              updated[updated.length - 1] = { role: 'model', content: displayContent };
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullText += parsed.content;
+
+                  // Update the last message with accumulated text (cleaned for display)
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    if (updated.length > 0) {
+                      // Display cleaned content while streaming
+                      const displayContent = stripInsightTags(fullText);
+                      updated[updated.length - 1] = { role: 'model', content: displayContent };
+                    }
+                    return updated;
+                  });
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            } else if (line.includes('<!--__INSIGHT_META__:')) {
+              // Capture metadata markers that come at the end
+              fullText += line;
             }
-            return updated;
-          });
+          }
         }
       }
 

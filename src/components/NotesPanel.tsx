@@ -13,6 +13,7 @@ interface NotesPanelProps {
     onAddNoteToCollection?: (item: { type: 'NOTE'; id: string; title: string }) => void;
     onNoteDragStart?: (item: { type: 'NOTE'; id: string; title: string }) => void;
     onOpenHelp?: (topicId: string) => void;
+    toolSlug?: string; // Optional tool slug to scope notes to a specific tool
 }
 
 type ViewMode = 'list' | 'editor';
@@ -22,7 +23,8 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
     setIsOpen,
     onAddNoteToCollection,
     onNoteDragStart,
-    onOpenHelp
+    onOpenHelp,
+    toolSlug
 }) => {
     // Panel resize state
     const [width, setWidth] = useState(384);
@@ -95,10 +97,10 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
     const fetchNotes = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch both: general notes for the list, all notes for dropdown navigation
+            // Fetch both: general notes for the list (filtered by tool if toolSlug provided), all notes for dropdown navigation
             const [generalData, allData] = await Promise.all([
-                getGeneralNotesAction(),  // Notes with course_id IS NULL
-                getNotesAction()           // All notes for dropdown
+                getGeneralNotesAction(toolSlug),  // Notes with course_id IS NULL, optionally filtered by tool_slug
+                getNotesAction()                   // All notes for dropdown
             ]);
             setNotes(generalData);
             setAllNotes(allData);
@@ -107,34 +109,43 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [toolSlug]);
 
     useEffect(() => {
         fetchNotes();
     }, [fetchNotes]);
 
-    // Create new note (not associated with any course)
+    // Create new note (not associated with any course, optionally scoped to a tool)
     const handleCreateNote = useCallback(async () => {
-        if (isCreating) return;
+        console.log('[NotesPanel] handleCreateNote called, isCreating:', isCreating, 'toolSlug:', toolSlug);
+        if (isCreating) {
+            console.log('[NotesPanel] Already creating, returning early');
+            return;
+        }
         setIsCreating(true);
         try {
+            console.log('[NotesPanel] Calling createNoteAction...');
             const newNote = await createNoteAction({
                 title: 'Untitled Note',
                 content: '',
-                course_id: undefined // Not associated with any course
+                course_id: undefined, // Not associated with any course
+                tool_slug: toolSlug   // Associate with tool if toolSlug is provided
             });
+            console.log('[NotesPanel] createNoteAction returned:', newNote);
             if (newNote) {
                 setSelectedNoteId(newNote.id);
                 setCurrentNoteTitle(newNote.title);
                 setViewMode('editor');
                 fetchNotes();
+            } else {
+                console.error('[NotesPanel] createNoteAction returned null - user may not be authenticated');
             }
         } catch (error) {
             console.error('[NotesPanel] Error creating note:', error);
         } finally {
             setIsCreating(false);
         }
-    }, [isCreating, fetchNotes]);
+    }, [fetchNotes, toolSlug, isCreating]);
 
     // Open existing note in editor
     const handleOpenNote = (note: Note) => {

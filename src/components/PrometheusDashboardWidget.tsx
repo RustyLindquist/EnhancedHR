@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Sparkles, ArrowRight } from 'lucide-react';
 import { PromptSuggestion, fetchPromptSuggestionsAction } from '@/app/actions/prompts';
 
@@ -23,6 +23,17 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
 }) => {
     const [aiPrompt, setAiPrompt] = useState('');
     const [heroPrompts, setHeroPrompts] = useState<PromptSuggestion[]>([]);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-resize textarea as content changes
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(textarea.scrollHeight, 160);
+            textarea.style.height = `${newHeight}px`;
+        }
+    }, [aiPrompt]);
 
     useEffect(() => {
         const loadPrompts = async () => {
@@ -75,25 +86,45 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
             </div>
 
             {/* Input Box */}
-            <div className="relative">
-                <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 focus-within:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
-                <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center p-1.5">
-                    <div className="p-2.5 text-brand-orange/60">
+            <div className="relative group/input">
+                <div className="absolute -inset-px bg-gradient-to-r from-brand-blue-light/20 via-brand-orange/20 to-brand-blue-light/20 opacity-0 group-focus-within/input:opacity-100 blur-xl transition-opacity duration-500 rounded-xl" />
+                <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-end p-1.5">
+                    <div className="p-2.5 text-brand-orange/60 mb-0.5">
                         <Flame size={18} />
                     </div>
-                    <form onSubmit={handleAiSubmit} className="flex-1 flex">
-                        <input
-                            type="text"
+                    <div className="flex-1 flex items-end">
+                        <textarea
+                            ref={textareaRef}
                             value={aiPrompt}
                             onChange={(e) => setAiPrompt(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (aiPrompt.trim()) {
+                                        onSetPrometheusPagePrompt(aiPrompt);
+                                        setAiPrompt('');
+                                    }
+                                }
+                            }}
                             placeholder="Ask anything..."
-                            className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-400 px-2 font-light h-11"
+                            rows={1}
+                            className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder-slate-400 px-2 py-2.5 font-light resize-none overflow-y-auto"
+                            style={{
+                                minHeight: '44px',
+                                maxHeight: '160px'
+                            }}
                         />
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={() => {
+                                if (aiPrompt.trim()) {
+                                    onSetPrometheusPagePrompt(aiPrompt);
+                                    setAiPrompt('');
+                                }
+                            }}
                             disabled={!aiPrompt.trim()}
                             className={`
-                                p-2.5 rounded-lg transition-all duration-300 mr-1
+                                p-2.5 rounded-lg transition-all duration-300 mr-1 mb-0.5
                                 ${aiPrompt.trim()
                                     ? 'bg-brand-blue-light text-brand-black hover:bg-white'
                                     : 'bg-white/[0.03] text-slate-700 cursor-not-allowed'}
@@ -101,7 +132,7 @@ const PrometheusDashboardWidget: React.FC<PrometheusDashboardWidgetProps> = ({
                         >
                             <ArrowRight size={18} />
                         </button>
-                    </form>
+                    </div>
                 </div>
             </div>
 

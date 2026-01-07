@@ -78,6 +78,28 @@ Any change touching ANY of the following must use the full 2-gate flow (Section 
 - Stripe billing or entitlements/credits
 - AI context assembly / embeddings / prompt orchestration
 
+### 2.4 Sub-Agent Safety Injection (MANDATORY)
+
+**When spawning ANY sub-agent via Task tool**, the Main Agent MUST include this safety preamble in the prompt:
+
+```
+⛔ CRITICAL SAFETY RULE ⛔
+NEVER run these commands — they DESTROY ALL DATA:
+- supabase db reset
+- DROP TABLE / DROP DATABASE / TRUNCATE
+- docker volume rm (supabase volumes)
+
+If blocked by a database issue, use targeted SQL or createAdminClient().
+NEVER reset the database. There is ALWAYS a non-destructive alternative.
+If you're tempted to reset, STOP and tell the user first.
+```
+
+**Why this is required:**
+- Sub-agents don't automatically see CLAUDE.md
+- On 2026-01-05/06, sub-agents ran `supabase db reset` multiple times, destroying all data
+- The actual fixes required only single SQL statements
+- This rule prevents future data loss disasters
+
 ---
 
 ## 3) Multi-Agent Architecture

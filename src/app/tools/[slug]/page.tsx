@@ -33,7 +33,7 @@ export default async function ToolPage({ params, searchParams }: ToolPageProps) 
     // Role Disruption Forecasting uses enhanced layout with NotesPanel
     if (slug === 'role-disruption-forecasting') {
         return (
-            <ToolPageLayout activeNavId="tools">
+            <ToolPageLayout activeNavId="tools" toolSlug={slug}>
                 <RoleDisruptionTool
                     tool={tool}
                     conversationId={conversationId}
@@ -46,7 +46,7 @@ export default async function ToolPage({ params, searchParams }: ToolPageProps) 
     // Roleplay Dojo uses enhanced layout with NotesPanel
     if (slug === 'roleplay-dojo') {
         return (
-            <ToolPageLayout activeNavId="tools">
+            <ToolPageLayout activeNavId="tools" toolSlug={slug}>
                 <RoleplayDojoTool
                     tool={tool}
                     conversationId={conversationId}

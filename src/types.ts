@@ -272,6 +272,7 @@ export interface Note {
   title: string;
   content: string;
   course_id: number | null;
+  tool_slug: string | null;
   course_title?: string;
   created_at: string;
   updated_at: string;

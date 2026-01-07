@@ -46,9 +46,10 @@ const NoteDragLayer: React.FC<{ item: NoteDragItem | null; x: number; y: number 
 interface ToolPageLayoutProps {
     children: React.ReactNode;
     activeNavId?: string;
+    toolSlug?: string; // Tool slug to scope notes to this tool
 }
 
-export default function ToolPageLayout({ children, activeNavId = 'tools' }: ToolPageLayoutProps) {
+export default function ToolPageLayout({ children, activeNavId = 'tools', toolSlug }: ToolPageLayoutProps) {
     const router = useRouter();
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
@@ -195,6 +196,7 @@ export default function ToolPageLayout({ children, activeNavId = 'tools' }: Tool
                     onAddNoteToCollection={handleAddNoteToCollection}
                     onNoteDragStart={handleNoteDragStart}
                     onOpenHelp={handleOpenHelp}
+                    toolSlug={toolSlug}
                 />
             </div>
 

@@ -414,7 +414,9 @@ export async function POST(req: NextRequest) {
                                 const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
                                 if (content) {
                                     fullResponse += content;
-                                    controller.enqueue(encoder.encode(content));
+                                    // Send in SSE format for client
+                                    const sseMessage = `data: ${JSON.stringify({ content })}\n\n`;
+                                    controller.enqueue(encoder.encode(sseMessage));
                                 }
                             } catch {
                                 // Skip invalid JSON
@@ -433,13 +435,16 @@ export async function POST(req: NextRequest) {
                     if (metadata) {
                         controller.enqueue(encoder.encode(metadata));
                     }
+
+                    // Send done signal
+                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 }
             });
 
             const stream = response.body?.pipeThrough(transformStream);
             return new Response(stream, {
                 headers: {
-                    'Content-Type': 'text/plain; charset=utf-8',
+                    'Content-Type': 'text/event-stream; charset=utf-8',
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive'
                 }
@@ -537,7 +542,9 @@ export async function POST(req: NextRequest) {
                             const content = parsed.choices?.[0]?.delta?.content;
                             if (content) {
                                 fullResponse += content;
-                                controller.enqueue(encoder.encode(content));
+                                // Send in SSE format for client
+                                const sseMessage = `data: ${JSON.stringify({ content })}\n\n`;
+                                controller.enqueue(encoder.encode(sseMessage));
                             }
                         } catch {
                             // Skip invalid JSON
@@ -556,13 +563,16 @@ export async function POST(req: NextRequest) {
                 if (metadata) {
                     controller.enqueue(encoder.encode(metadata));
                 }
+
+                // Send done signal
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
             }
         });
 
         const stream = response.body?.pipeThrough(transformStream);
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Type': 'text/event-stream; charset=utf-8',
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive'
             }
