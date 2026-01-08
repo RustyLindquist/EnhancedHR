@@ -54,7 +54,7 @@ export interface Course {
   isSaved: boolean; // True if in a custom collection
   collections: string[]; // IDs of collections this course belongs to
   dateAdded: string; // ISO 8601 Date String YYYY-MM-DD
-  status?: 'draft' | 'published' | 'archived';
+  status?: 'draft' | 'pending_review' | 'published' | 'archived';
 }
 
 export interface Collection {
