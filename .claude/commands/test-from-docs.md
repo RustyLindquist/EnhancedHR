@@ -1,6 +1,6 @@
-# Test from Docs
-
-Use documentation as the test blueprint. Run this skill to generate a focused test plan from feature and workflow docs.
+---
+description: Generate a focused test plan from feature and workflow docs
+---
 
 ## Steps
 

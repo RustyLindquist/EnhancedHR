@@ -1,3 +1,7 @@
+---
+description: Execute SQL safely against the local Supabase database without destroying data
+---
+
 # Safe SQL Execution Skill
 
 Execute SQL safely against the local Supabase database without destroying data.

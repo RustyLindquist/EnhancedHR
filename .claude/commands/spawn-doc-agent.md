@@ -1,3 +1,7 @@
+---
+description: Spawn the Documentation Agent (Living Canon) as a persistent knowledge source
+---
+
 # Spawn Documentation Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->

@@ -1,3 +1,7 @@
+---
+description: Create a handoff note at end of work session for session portability
+---
+
 # Handoff
 
 Make work portable across tools, workspaces, and sessions. Run this skill at the end of a work session to create a handoff note.

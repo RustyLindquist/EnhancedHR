@@ -1,3 +1,7 @@
+---
+description: Create and apply Supabase database migrations safely
+---
+
 # Safe Migration Skill
 
 Create and apply Supabase database migrations safely.

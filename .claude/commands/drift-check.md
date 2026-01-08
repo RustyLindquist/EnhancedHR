@@ -1,3 +1,7 @@
+---
+description: Detect documentation drift by comparing code changes to documented behavior
+---
+
 # Drift Check
 
 Detect documentation drift early by comparing code changes to documented behavior. Run this skill when changes touch multiple files or after significant refactoring.

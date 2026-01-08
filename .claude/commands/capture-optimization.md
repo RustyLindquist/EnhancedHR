@@ -1,3 +1,7 @@
+---
+description: Capture optimization opportunities for system improvement review by the Ops Agent
+---
+
 # Capture Optimization
 
 Structured template for capturing optimization opportunities during work. This skill ensures observations about system improvements are properly recorded for review by the Ops Agent.

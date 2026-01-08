@@ -1,3 +1,7 @@
+---
+description: Record discovered patterns in the style guide for reuse
+---
+
 # Style Documentation
 
 Record discovered patterns in the style guide. This skill ensures patterns are documented for reuse.

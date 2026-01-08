@@ -1,3 +1,7 @@
+---
+description: Load necessary documentation with minimal context bloat before planning or coding
+---
+
 # Doc Discovery
 
 Load only the necessary documentation with minimal context bloat before planning or coding.

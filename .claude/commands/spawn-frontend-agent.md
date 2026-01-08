@@ -1,3 +1,7 @@
+---
+description: Spawn the Frontend Agent (Design System Guardian) for UI implementation work
+---
+
 # Spawn Frontend Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->

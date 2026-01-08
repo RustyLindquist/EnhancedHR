@@ -1,3 +1,7 @@
+---
+description: Standardized workflow for implementing new features from start to finish
+---
+
 # Feature Implementation Pipeline
 
 A standardized workflow for implementing new features from start to finish, ensuring quality, consistency, and proper documentation.

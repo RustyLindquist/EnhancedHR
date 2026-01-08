@@ -1,3 +1,7 @@
+---
+description: Check context usage and decide whether to spawn subagents, compact, or continue inline
+---
+
 # Context Status
 
 This skill helps agents understand current context usage and make intelligent decisions about spawning subagents, compacting context, or continuing inline.

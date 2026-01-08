@@ -1,3 +1,7 @@
+---
+description: Compress working memory to continue long sessions when context is heavy
+---
+
 # Compact
 
 This skill triggers context compaction to compress working memory and continue long sessions. Use this when context is heavy but you want to stay in the current conversation rather than spawning a subagent.

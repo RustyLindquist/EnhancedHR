@@ -1,3 +1,7 @@
+---
+description: Find existing patterns in the codebase before creating anything new
+---
+
 # Style Discovery
 
 Find existing patterns in the codebase before creating anything new. This skill ensures you don't duplicate what already exists.

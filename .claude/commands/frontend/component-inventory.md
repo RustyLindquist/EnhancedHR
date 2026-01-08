@@ -1,3 +1,7 @@
+---
+description: Check existing components and patterns before starting any UI work
+---
+
 # Component Inventory
 
 Check what components and patterns already exist before starting any UI work. This is your FIRST step for every frontend task.
