@@ -1,844 +1,514 @@
-# CLAUDE.md - Critical Instructions for AI Agents
+# CLAUDE.md — EnhancedHR.ai Agent Instructions
 
 ---
 
-## 0) Project Context (fast orientation)
+## ⚡ CORE RULES — READ ON EVERY MESSAGE
+
+These rules apply to EVERY interaction. If unsure, refer back here.
+
+### You Are the ORCHESTRATOR
+
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║  YOUR ROLE: Plan, coordinate, synthesize                                  ║
+║  NOT YOUR ROLE: Write implementation code                                 ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  DELEGATE implementation to specialized agents:                           ║
+║                                                                           ║
+║  │ Work Type        │ Delegate To        │ Spawn Command              │  ║
+║  ├──────────────────┼────────────────────┼────────────────────────────┤  ║
+║  │ UI/Components    │ @frontend-agent    │ /spawn-frontend-agent      │  ║
+║  │ Server/DB/API    │ @backend-agent     │ /spawn-backend-agent       │  ║
+║  │ Code exploration │ @research-agent    │ /spawn-research-agent      │  ║
+║  │ Testing          │ @test-agent        │ /spawn-test-agent          │  ║
+║  │ Doc questions    │ @doc-agent         │ /spawn-doc-agent           │  ║
+║  │ System optimize  │ @ops-agent         │ /spawn-ops-agent           │  ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+DEFAULT: Spawn agents for implementation. You coordinate and synthesize.
+```
+
+### Tools You MUST Use
+
+| Trigger | Tool | Why |
+|---------|------|-----|
+| Any database question | **Supabase CLI** | Direct DB access, schema inspection |
+| After any UI change | **Chrome Extension** | Visual verification, console check |
+| Before any fix | **Research Agent** | Understand current state first |
+| Complex task | **Doc Agent** | Load invariants, validate plan |
+
+### Safety — Absolute Rules
+
+```
+⛔ FORBIDDEN — Data destruction commands:
+   • supabase db reset
+   • DROP TABLE / DROP DATABASE / TRUNCATE
+   • docker volume rm (supabase volumes)
+   • supabase db push (destructive changes)
+
+✓ ALWAYS use instead:
+   • Targeted SQL via docker exec
+   • createAdminClient() for permission issues
+   • Incremental migrations for schema changes
+```
+
+### Context Protection
+
+As sessions grow long, you WILL forget these rules. Watch for:
+- Doing work directly instead of delegating → Run `/remember`
+- Forgetting tools (Supabase CLI, Chrome extension) → Run `/remember`
+- Responses getting shorter/simpler → Run `/context-status`
+
+**When in doubt: `/remember`**
+
+---
+
+## 0) Project Context
 
 ### Product
-EnhancedHR.ai is an AI-enhanced learning platform for HR professionals and leaders, with:
-- courses and course player
-- AI course assistants + tutors
-- certifications/credits tracking (SHRM/HRCI)
-- org membership + seat billing
-- dashboards/ROI reporting
+EnhancedHR.ai — AI-enhanced learning platform for HR professionals:
+- Course player with AI assistants + tutors
+- SHRM/HRCI certification/credits tracking
+- Org membership + seat billing
+- Dashboards/ROI reporting
 
-### Technical Stack (strict)
-- Frontend: Next.js (App Router) + React
-- Styling: Tailwind CSS
-- Backend: Supabase (Auth, DB, Vector, Edge Functions)
-- Video: Mux (watch-time tracking)
-- Email: Resend
-- Payments: Stripe (per-seat / org billing)
-- Local: Supabase CLI (use this to autonomously modify the local database, and provide the user with SQL statements to run on Prod)
+### Tech Stack
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js (App Router) + React + Tailwind |
+| Backend | Supabase (Auth, DB, Vector, Edge Functions) |
+| Video | Mux (watch-time tracking) |
+| Email | Resend |
+| Payments | Stripe (per-seat / org billing) |
+| Local DB | Supabase CLI |
 
-### UX & Tone
+### UX Tone
 - Modern, clean, high-end consumer-tech feel
 - Avoid stale corporate LMS vibes
-- Favor clarity over jargon
+- Clarity over jargon
 
 ---
 
-## 1) Authority Order (avoid confusion)
+## 1) Context Management (CRITICAL for Long Sessions)
 
-When sources conflict, use this order:
+Your context window is finite. Actively manage it.
 
-1) **Code + runtime behavior** (source of truth)
-2) **DB schema / migrations / RLS policies** (binding constraints)
-3) **Feature docs** (`docs/features/*`) (canonical description of behavior)
-4) **Engine docs** (`docs/engine/*`) (protocol and schema)
-5) **PRDs** (`/docs/*.md`) (intent/history only; not authoritative for current behavior)
-6) **Legacy docs** (secondary reference only)
+### Warning Signs
 
-If PRDs differ from code, document current behavior and alert the user to determine resolution strategy.
+| Signal | Level | Action |
+|--------|-------|--------|
+| Responses still sharp | 🟢 Low | Continue normally |
+| Missing details mentioned earlier | 🟡 Medium | Spawn subagents more |
+| Forgetting recent decisions | 🟠 High | Run `/checkpoint`, then `/remember` |
+| Forgetting tools or delegation rules | 🔴 Critical | Run `/compact` immediately |
+
+### Strategies
+
+1. **Spawn subagents for work** — They return summaries, not raw content
+2. **Use Doc Agent lazily** — Query for answers, don't load full docs
+3. **Checkpoint regularly** — Every 30-45 minutes: `/checkpoint`
+4. **Refresh instructions** — When degraded: `/remember`
+5. **Compact proactively** — Don't wait until critical: `/compact`
+
+### Session Skills
+
+| Skill | When to Use |
+|-------|-------------|
+| `/session-start` | Beginning of session — restore previous context |
+| `/context-status` | Check context health |
+| `/remember` | Refresh core instructions when degraded |
+| `/checkpoint` | Save state at milestones |
+| `/compact` | Compress context when high/critical |
+| `/handoff` | End of session — comprehensive summary |
 
 ---
 
+## 2) Safety Rules (Non-Negotiable)
 
-## 2) Non-Negotiable Safety Rules
+### 2.1 Forbidden Commands
 
-### 2.1 ABSOLUTELY FORBIDDEN (without express user permission):
-- supabase db reset
-- supabase db push (with destructive changes)
-- docker volume rm (for supabase volumes)
-- DROP TABLE / DROP DATABASE / TRUNCATE
-- Any command that wipes, resets, or destroys database data
+**WITHOUT EXPRESS USER PERMISSION, NEVER RUN:**
+- `supabase db reset`
+- `supabase db push` (with destructive changes)
+- `docker volume rm` (for supabase volumes)
+- `DROP TABLE` / `DROP DATABASE` / `TRUNCATE`
+- Any command that wipes, resets, or destroys data
 
-### 2.2 No autonomous GitHub submissions (HARD RULE)
-Agents MUST NOT:
-- push commits
-- open pull requests
-- merge branches
-- tag releases
-- change GitHub settings
+**Historical context:** On 2026-01-05/06, subagents ran `supabase db reset` multiple times, destroying all data. The actual fixes required only single SQL statements.
 
-Agents MAY:
-- create local commits
-- prepare branch names
-- draft PR titles/descriptions
-- provide exact commands for the human to run
+### 2.2 Safe Alternatives
 
-If the user asks for a push/PR/merge, the agent can proceed autonomously
+| Problem | ❌ WRONG | ✅ RIGHT |
+|---------|----------|----------|
+| RLS blocking query | Reset DB | `docker exec ... psql` with targeted SQL |
+| Permission denied | Reset DB | Use `createAdminClient()` |
+| Schema out of sync | Delete volumes | Create incremental migration |
+| Need clean state | Reset DB | Truncate specific test data only |
 
-### 2.3 High-risk change discipline (HARD RULE)
-Any change touching ANY of the following must use the full 2-gate flow (Section 4) WITH a Doc Agent:
-- Supabase schema / migrations
-- RLS policies or permission logic
-- auth/session handling
-- `createAdminClient()` or service-role access paths
-- Stripe billing or entitlements/credits
-- AI context assembly / embeddings / prompt orchestration
+### 2.3 Sub-Agent Safety Injection (MANDATORY)
 
-### 2.4 Sub-Agent Safety Injection (MANDATORY)
-
-**When spawning ANY sub-agent via Task tool**, the Main Agent MUST include this safety preamble in the prompt:
+When spawning ANY sub-agent, ALWAYS include this preamble:
 
 ```
 ⛔ CRITICAL SAFETY RULE ⛔
-NEVER run these commands — they DESTROY ALL DATA:
-- supabase db reset
-- DROP TABLE / DROP DATABASE / TRUNCATE
-- docker volume rm (supabase volumes)
-
-If blocked by a database issue, use targeted SQL or createAdminClient().
-NEVER reset the database. There is ALWAYS a non-destructive alternative.
-If you're tempted to reset, STOP and tell the user first.
+NEVER run: supabase db reset, DROP TABLE, TRUNCATE, docker volume rm
+ALWAYS use: targeted SQL, createAdminClient(), incremental migrations
+If tempted to reset, STOP and ask the user first.
 ```
 
-**Why this is required:**
-- Sub-agents don't automatically see CLAUDE.md
-- On 2026-01-05/06, sub-agents ran `supabase db reset` multiple times, destroying all data
-- The actual fixes required only single SQL statements
-- This rule prevents future data loss disasters
+### 2.4 No Autonomous GitHub Submissions
+
+Agents MUST NOT: push commits, open PRs, merge branches, tag releases
+
+Agents MAY: create local commits, prepare branch names, draft PR descriptions, provide commands for human to run
+
+Exception: If user explicitly requests push/PR/merge, proceed.
+
+### 2.5 High-Risk Change Discipline
+
+Changes touching these areas MUST use full 2-gate flow WITH Doc Agent:
+- Schema / migrations / RLS policies
+- Auth / session handling
+- `createAdminClient()` or service-role paths
+- Billing / entitlements / credits
+- AI context assembly / embeddings / prompts
 
 ---
 
-## 3) Multi-Agent Architecture
+## 3) Tools & Capabilities
 
-> **TL;DR**: 7 specialized agents coordinate through the Main Agent. Spawn agents for their domains (Frontend→UI, Backend→API, Doc→knowledge, Research→exploration, Test→validation, Ops→optimization). Full protocol in `.claude/agents/AGENT_PROTOCOL.md`.
+### Database Tools
 
-This repo supports multi-agent coordination with specialized agents. The system is designed for **continuous self-improvement** — agents not only complete tasks but also identify opportunities to improve the system itself.
+**Supabase CLI** — Use for ALL database investigation:
+```bash
+# Query local database
+supabase db dump --schema-only
+supabase migration list
 
-**IMPORTANT**: Maximize context window and performance by actively leveraging and orchestrating subagents, following the Agent Protocol (`.claude/agents/AGENT_PROTOCOL.md`)
-
-Agent definitions and protocols live in:
-- `.claude/agents/` (agent prompts)
-- `.claude/commands/` (skill commands)
-
-### Agent Roles
-
-| Agent | Role | When Active |
-|-------|------|-------------|
-| **Main Agent** | Orchestrator — receives requests, plans, coordinates | Always |
-| **Doc Agent** | Living Canon — authoritative doc source, validates plans | Spawned for complex tasks |
-| **Frontend Agent** | Design System Guardian — owns all UI implementation | Spawned for frontend work |
-| **Backend Agent** | API Guardian — owns server actions, RLS, migrations | Spawned for backend work |
-| **Research Agent** | Codebase Explorer — finds implementations, traces flows | Spawned for exploration |
-| **Test Agent** | Validation Specialist — systematic testing and verification | Spawned for comprehensive testing |
-| **Ops Agent** | System Optimizer — reviews and implements system improvements | Spawned for optimization |
-
-### Documentation Agent (Living Canon)
-
-This repository uses **documentation as infrastructure**: a shared cognitive substrate that enables heterogeneous agents (across models/tools/IDEs) to safely understand, modify, test, and evolve the codebase without regressions.
-
-Authoritative engine + feature docs live in:
-- `docs/engine/DOCUMENTATION_ENGINE.md`
-- `docs/features/FEATURE_INDEX.md`
-- `docs/features/*.md`
-
-The Doc Agent serves as a persistent, queryable knowledge source:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        WORKSPACE                                 │
-│                                                                  │
-│   ┌──────────────┐         ┌──────────────────────────────┐     │
-│   │  Main Agent  │◄───────►│  Doc Agent (Living Canon)    │     │
-│   │              │         │                              │     │
-│   └──────┬───────┘         │  Lazily loads docs:          │     │
-│          │                 │  ✓ FEATURE_INDEX.md          │     │
-│          │                 │  ✓ collections.md (queried)  │     │
-│          │                 │  ○ prometheus.md (pending)   │     │
-│   ┌──────┴───────┐         └──────────────────────────────┘     │
-│   │  Sub-Agents  │────────────────────▲                         │
-│   └──────────────┘        can also query                        │
-└─────────────────────────────────────────────────────────────────┘
+# Direct psql access
+docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT ..."
 ```
 
-**Key behaviors:**
-- Loads `FEATURE_INDEX.md` immediately on spawn
-- Loads other docs lazily as queries require them
-- Retains loaded docs for the session (builds expertise)
-- Answers queries from Main Agent and any Sub-Agents
-- Validates plans against documented invariants
+**When to use:** Before ANY assumption about database state, schema, or data.
 
-**Full specification:** `.claude/agents/doc-agent.md`
+### Browser Tools
 
-### When to Spawn the Doc Agent
+**Chrome Extension** — Visual verification:
+- Navigate to routes
+- Inspect elements
+- Check console for errors
+- Take screenshots for evidence
 
-**Spawn if ANY of these are true:**
+**When to use:** After ANY UI change, before marking work complete.
 
-| Criterion | Reason |
-|-----------|--------|
-| Task touches server actions | May affect multiple features |
-| Task touches database/schema | High-risk, needs invariant check |
-| Task touches AI/context/prompts | Platform-wide impact |
-| Task is a bug fix (not styling) | Need to understand intended behavior |
-| Task spans 2+ features | Coupling analysis needed |
-| Task touches auth/RLS/permissions | Security-critical |
-| Task touches billing/payments | Business-critical |
-| Uncertain about scope | Doc Agent can clarify |
-| **New agent, skill, or command created** | System architecture must be documented |
-| **Process or protocol changes** | Workflow changes need documentation |
-| **AGENTS.md or agent prompts modified** | Meta-system changes need tracking |
-| **Task affects user-facing workflows** | Workflow impact analysis needed |
-| **New feature that affects how users accomplish tasks** | Workflow documentation needed |
-| **UI/UX changes to existing flows** | Must verify workflow steps still accurate |
+### Agent Tools
 
-**Skip if ALL of these are true:**
+| Agent | Purpose | Spawn |
+|-------|---------|-------|
+| **Doc Agent** | Authoritative knowledge, plan validation | `/spawn-doc-agent` |
+| **Frontend Agent** | All UI/component work | `/spawn-frontend-agent` |
+| **Backend Agent** | Server actions, DB, API | `/spawn-backend-agent` |
+| **Research Agent** | Code exploration, finding implementations | `/spawn-research-agent` |
+| **Test Agent** | Comprehensive validation | `/spawn-test-agent` |
+| **Ops Agent** | System optimization | `/spawn-ops-agent` |
 
-| Criterion | Example |
-|-----------|---------|
-| Pure styling/CSS change | "Make the button blue" |
-| Single-file, single-feature | "Add a tooltip to X button" |
-| No server/DB involvement | Frontend-only presentation |
-| No AI behavior changes | No prompts, no context |
+### Decision Matrix
 
-### Querying the Doc Agent
-
-Use clear, specific queries:
-
+Before doing work yourself, check:
 ```
-@doc-agent: What features does the addToCollectionAction touch?
-
-@doc-agent: What are the invariants for course-player-and-progress?
-
-@doc-agent: Does this plan violate any constraints?
-[plan details]
+Is this frontend/UI work?        → Spawn frontend-agent
+Is this backend/server/DB work?  → Spawn backend-agent
+Do I need to find something?     → Spawn research-agent
+Do I need to test thoroughly?    → Spawn test-agent
+Do I need doc validation?        → Spawn doc-agent
 ```
-
-The Doc Agent responds with structured output including features, invariants, and recommendations.
-
-**Full protocol:** `.claude/agents/AGENT_PROTOCOL.md`
-
-### Frontend Agent (Design System Guardian)
-
-The Frontend Agent owns all UI implementation work, ensuring visual consistency:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    FRONTEND AGENT                                │
-│                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    SKILLS                                │   │
-│   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │   │
-│   │  │ Component    │  │ Style        │  │ New Style    │  │   │
-│   │  │ Inventory    │  │ Discovery    │  │ Creation     │  │   │
-│   │  └──────────────┘  └──────────────┘  └──────────────┘  │   │
-│   │  ┌──────────────┐  ┌──────────────┐                     │   │
-│   │  │ Style        │  │ Style        │                     │   │
-│   │  │ Documentation│  │ Validation   │                     │   │
-│   │  └──────────────┘  └──────────────┘                     │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │  KNOWLEDGE BASE (grows over time)                        │   │
-│   │  docs/frontend/STYLE_GUIDE.md                            │   │
-│   │  docs/frontend/COMPONENT_INDEX.md                        │   │
-│   │  docs/frontend/components/*.md                           │   │
-│   │  docs/frontend/patterns/*.md                             │   │
-│   └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Key behaviors:**
-- Loads STYLE_GUIDE.md and COMPONENT_INDEX.md on spawn
-- Checks inventory before creating anything new
-- Discovers undocumented patterns and records them
-- Creates new components following the design system
-- Validates all work against design tokens
-- Documents as it goes — knowledge persists via docs
-
-**Full specification:** `.claude/agents/frontend-agent.md`
-
-### Ops Agent (System Optimizer)
-
-The Ops Agent is a meta-agent that operates on the agent system itself:
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         OPS AGENT                                    │
-│                                                                      │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    REVIEWS                                   │   │
-│   │  .context/optimizations/pending.yaml                         │   │
-│   │  (opportunities captured by other agents)                    │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                              │                                       │
-│                              ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    ACTIONS                                   │   │
-│   │  ├─► Assess impact and prioritize                           │   │
-│   │  ├─► Propose improvements to user                           │   │
-│   │  ├─► Implement approved changes                              │   │
-│   │  └─► Track effectiveness                                    │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                              │                                       │
-│                              ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    OUTPUTS                                   │   │
-│   │  New skills, updated agent prompts, protocol changes,       │   │
-│   │  documentation updates, process improvements                │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Key behaviors:**
-- Reviews optimization opportunities captured by other agents
-- Assesses impact, feasibility, and priority
-- Proposes high-value improvements with rationale
-- Implements approved changes across the system
-- Does NOT do task work — only system improvement work
-
-**Full specification:** `.claude/agents/ops-agent.md`
-
-### When to Spawn the Ops Agent
-
-**Spawn Triggers:**
-- End of significant work session (user requests system review)
-- `pending.yaml` has 5+ unreviewed items
-- User explicitly asks for system optimization
-- Major friction observed affecting multiple agents
-
-**Spawn Command:** `/spawn-ops-agent`
-
-### Test Agent (Validation Specialist)
-
-The Test Agent handles comprehensive validation and testing:
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         TEST AGENT                                   │
-│                                                                      │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    INPUTS                                    │   │
-│   │  - What changed (files, features)                           │   │
-│   │  - Workflow impact (from Doc Agent)                         │   │
-│   │  - Risk level assessment                                    │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                              │                                       │
-│                              ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    SKILLS                                    │   │
-│   │  ├─► Test Skill (.claude/commands/test.md)                  │   │
-│   │  └─► Browser Use Skill (.claude/commands/browser-use.md)    │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                              │                                       │
-│                              ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    OUTPUTS                                   │   │
-│   │  Test report with:                                          │   │
-│   │  - Static analysis results                                  │   │
-│   │  - Feature verification                                     │   │
-│   │  - Workflow validation                                      │   │
-│   │  - Screenshots & evidence                                   │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Key behaviors:**
-- Analyzes changes to determine appropriate test scope
-- Consults Doc Agent for workflow/feature impact
-- Creates systematic test plans based on risk
-- Uses browser control (Chrome Extension) for UI verification
-- Reports results with evidence (screenshots, console logs)
-- Does NOT fix issues — reports them for implementing agent
-
-**Full specification:** `.claude/agents/test-agent.md`
-
-### When to Spawn the Test Agent
-
-**Spawn Triggers:**
-- Multi-feature changes require verification
-- Workflow-impacting changes need validation
-- High-risk areas touched (auth/billing/AI/schema)
-- Pre-PR comprehensive validation requested
-- User explicitly asks for thorough testing
-- Complex bug fix with regression risk
-
-**Skip when:**
-- Single feature, low risk change
-- No workflow impact (styling only)
-- Simple verification any agent can do inline
-
-**Spawn Command:** `/spawn-test-agent`
-
-### When to Spawn the Frontend Agent
-
-**Spawn for ANY frontend work that involves:**
-- Creating new UI components
-- Modifying existing component styling
-- Building new pages or views
-- Fixing UI bugs (not just typos)
-- Layout changes
-
-**Skip only for:**
-- Pure text/content changes
-- Backend-only work
-- Simple typo fixes
-
-### Querying the Frontend Agent
-
-The Main Agent delegates frontend work entirely:
-
-```
-@frontend-agent: Build a new collection view for Bookmarks
-
-@frontend-agent: Fix the card hover states on the dashboard
-
-@frontend-agent: Create a modal for confirming deletions
-```
-
-The Frontend Agent:
-1. Checks existing components (inventory)
-2. Discovers similar patterns if needed
-3. Builds following the design system
-4. Documents any new components
-5. Returns completed, validated work
 
 ---
 
-## 4) Mandatory 2-Gate Flow (Doc-Informed Plan → Execute)
+## 4) Multi-Agent Architecture
 
-This repo uses a streamlined 2-gate flow where documentation review is integrated into planning.
+> **Full Protocol:** `.claude/agents/AGENT_PROTOCOL.md`
 
-### Gate 1 — Doc-Informed Plan (before coding)
+### Architecture Overview
 
-**Step 0: Spawn Doc Agent (if needed)**
-Evaluate the task against spawn criteria above. If complex, spawn the Doc Agent.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         MAIN AGENT                               │
+│                        (Orchestrator)                            │
+│                                                                  │
+│    ┌──────────────────────────────────────────────────────┐     │
+│    │                  SPECIALIZED AGENTS                   │     │
+│    │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │     │
+│    │  │   Doc   │ │Frontend │ │ Backend │ │Research │    │     │
+│    │  │  Agent  │ │  Agent  │ │  Agent  │ │  Agent  │    │     │
+│    │  └─────────┘ └─────────┘ └─────────┘ └─────────┘    │     │
+│    │  ┌─────────┐ ┌─────────┐                            │     │
+│    │  │  Test   │ │   Ops   │                            │     │
+│    │  │  Agent  │ │  Agent  │                            │     │
+│    │  └─────────┘ └─────────┘                            │     │
+│    └──────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### When to Spawn Doc Agent
+
+**Spawn if ANY are true:**
+- Task touches server actions, database, or schema
+- Task touches AI/context/prompts
+- Task is a bug fix (not just styling)
+- Task spans 2+ features
+- Task touches auth/RLS/permissions
+- Task touches billing/payments
+- Uncertain about scope
+
+**Skip only if ALL are true:**
+- Pure styling/CSS change
+- Single-file, single-feature
+- No server/DB involvement
+- No AI behavior changes
+
+### Agent Definitions
+
+Agent prompts and full specifications:
+- `.claude/agents/doc-agent.md`
+- `.claude/agents/frontend-agent.md`
+- `.claude/agents/backend-agent.md`
+- `.claude/agents/research-agent.md`
+- `.claude/agents/test-agent.md`
+- `.claude/agents/ops-agent.md`
+
+---
+
+## 5) 2-Gate Flow (Doc-Informed Plan → Execute)
+
+### Gate 1 — Plan (Before Coding)
 
 **Step 1: Doc Discovery**
-Query the Doc Agent or run `/doc-discovery`:
 ```
-@doc-agent: What features does [task description] touch?
-```
-
-The Doc Agent will:
-- Identify primary and impacted features
-- Load relevant feature docs
-- Extract key invariants
-
-**Step 2: Plan Creation**
-The plan MUST include:
-- **Primary feature** (from FEATURE_INDEX.md)
-- **Impacted features** (from coupling notes + Doc Agent analysis)
-- **User-facing change summary**
-- **Files/surfaces to touch** (routes/components/actions)
-- **Data impact** (tables/columns/RLS/migrations)
-- **Invariants to preserve** (from Doc Agent, at least 3 bullets)
-- **Test plan**: local checks + one workflow smoke test
-- **Docs to update after execution**
-
-**Step 3: Plan Validation**
-Query the Doc Agent or run `/plan-lint`:
-```
-@doc-agent: Does this plan violate any documented constraints?
-[plan]
+/doc-discovery
+# OR
+@doc-agent: What features does [task] touch?
 ```
 
-The Doc Agent will return PASS or WARN with specifics.
+**Step 2: Create Plan Including:**
+- Primary feature + impacted features
+- User-facing change summary
+- Files/surfaces to modify
+- Data impact (tables/RLS/migrations)
+- Invariants to preserve (minimum 3)
+- Test plan
+- Docs to update after
 
-### Gate 2 — Execute with Doc Updates
-
-Once the plan is approved:
-1. Implement the changes
-2. Query Doc Agent during implementation if uncertain:
-   ```
-   @doc-agent: Can I change X without breaking Y?
-   ```
-3. Run tests per the plan's test checklist
-4. Update documentation (run `/doc-update`)
-5. Run `/drift-check` if changes touched multiple features
-6. Write handoff note (run `/handoff`)
-
-**Definition of Done:**
-- Code change complete
-- Documentation updated (feature docs, FEATURE_INDEX if needed)
-- Tests executed per plan
-- If schema changes: migration + production-safe SQL script
-- Handoff note in `.context/handoff.md`
-
----
-
-## 5) Skills (Slash Commands)
-
-> **TL;DR**: Skills are pre-defined workflows for common tasks. Use `/pipeline/feature` for features, `/pipeline/bugfix` for bugs, `/supabase/*` for database safety. Session skills (`/compact`, `/checkpoint`, `/handoff`) manage context across long sessions.
-
-Skills are executable playbooks available via slash commands in `.claude/commands/`:
-
-| Command | Purpose |
-|---------|---------|
-| `/doc-discovery` | Load relevant docs before planning |
-| `/plan-lint` | Validate plan against doc constraints |
-| `/doc-update` | Update docs after code changes |
-| `/drift-check` | Detect doc/code mismatches |
-| `/test-from-docs` | Generate test plan from feature docs |
-| `/context-status` | Check context usage and get recommendations |
-| `/compact` | Compress context for long sessions |
-| `/checkpoint` | Save mid-session state |
-| `/session-start` | Resume from previous session |
-| `/handoff` | Write handoff note for session end |
-| `/pipeline/feature` | End-to-end feature implementation workflow |
-| `/pipeline/bugfix` | Bug fix workflow with validation |
-| `/supabase/safe-sql` | Safe SQL execution guide |
-| `/supabase/migration` | Safe migration creation guide |
-| `/spawn-research-agent` | Spawn Research Agent for codebase exploration |
-
-### Workflow with Doc Agent
-
+**Step 3: Validate Plan**
 ```
-Evaluate Task Complexity
-         │
-         ├─ Simple ──► /doc-discovery → Plan → Execute → /handoff
-         │
-         └─ Complex ──► Spawn Doc Agent
-                              │
-                              ▼
-                        @doc-agent: What features?
-                              │
-                              ▼
-                        Create Plan
-                              │
-                              ▼
-                        @doc-agent: Validate plan?
-                              │
-                              ▼
-                        Execute (query as needed)
-                              │
-                              ▼
-                        /doc-update → /test-from-docs → /handoff
+/plan-lint
+# OR
+@doc-agent: Does this plan violate any constraints?
 ```
 
----
+### Gate 2 — Execute (After Plan Approved)
 
-## 6) Documentation Lifecycle Hooks
+1. Implement changes (delegate to agents)
+2. Query Doc Agent during implementation if uncertain
+3. Run tests per plan
+4. Update documentation: `/doc-update`
+5. Check for drift: `/drift-check`
+6. Write handoff: `/handoff`
 
-Agents MUST consult docs (or Doc Agent) BEFORE changing:
-- server actions / API routes
-- AI context/prompting/embedding paths
-- auth/RLS/admin-client patterns
-- course progress/watch-time logic
-- billing/entitlements/credits
+### Definition of Done
 
-Agents MUST update docs AFTER changing:
-- any user-facing workflow/surface
-- any read/write path for a table
-- any AI scope, retrieval behavior, or prompts
-- any security/permission behavior
-- any integration point (Mux/Resend/Stripe)
-
-Agents MUST write a handoff note at end of a work session:
-- `.context/handoff.md` with:
-  - summary, files changed, docs updated, how to verify, what remains
+- [ ] Code complete
+- [ ] Docs updated
+- [ ] Tests executed
+- [ ] If schema: migration + prod SQL script
+- [ ] Handoff note written
 
 ---
 
-## 7) Modify vs Create Docs (feature overlap rules)
+## 6) Skills (Auto-Discovered)
 
-### Modify an existing feature doc when:
-- the capability already exists and you are changing its behavior, surfaces, data paths, invariants, permissions, or tests.
+Skills are auto-discovered from `.claude/skills/*/SKILL.md` at startup.
 
-### Create a new feature doc only when:
-- a genuinely new end-to-end capability exists with distinct invariants/data interactions,
-- and documenting it inside an existing feature doc would be confusing.
+See `.claude/skills/SKILLS_INDEX.md` for full list and workflows.
 
-### If new code overlaps another feature substantially:
-- do NOT create a new doc just because code is new.
-- document the overlap via:
-  - `Integration Points` in the relevant feature docs
-  - updated coupling notes in `FEATURE_INDEX.md`
-- only split into a new feature if invariants meaningfully differ.
-
----
-
-## 8) ASCII Diagram Policy (when to include)
-
-ASCII diagrams are optional. Include one only if it reduces regression risk.
-
-Include a small ASCII diagram (10–25 lines max) when:
-- a workflow crosses 3+ tables AND 2+ write paths, OR
-- a state machine exists (approval/billing/credits), OR
-- scope resolution is non-trivial (AI context scopes, org scoping, entitlements).
-
-Do NOT include diagrams for:
-- purely presentational UI
-- trivial single-table CRUD.
-
-Prefer data/write flows over component trees.
-
----
-
-## 9) PRDs & Legacy Architecture Docs (how to use safely)
-
-- PRDs (`/docs/*.md`) are **intent/history**; do not treat them as truth.
-- Legacy architecture docs (`/docs/architecture/*`) are **secondary reference**:
-  - may contain pitfalls and invariants not obvious in code
-  - never override code behavior
-- If you find mismatches, document current behavior and consider adding an ADR later.
-
----
-
-## 10) Style/Quality Defaults (practical)
-
-- Prefer small, safe changes over sweeping refactors.
-- Keep code paths explicit in high-risk areas (auth/RLS/billing/AI).
-- When uncertain, add tests/checklists before optimizing.
-- Optimize for clarity, maintainability, and predictable behavior.
-
----
-
-## 10.5) Extended Thinking
-
-Use these phrases to activate progressively deeper reasoning:
-
-| Phrase | Effect | Use When |
-|--------|--------|----------|
-| "think" | Baseline extended reasoning | Complex planning, debugging |
-| "think hard" | More computation time | Tricky architectural decisions |
-| "think harder" | Significantly more reasoning | Multi-feature coordination |
-| "ultrathink" | Maximum reasoning allocation | Critical decisions, complex debugging |
-
-Extended thinking is especially valuable for:
-- Planning multi-step implementations
-- Debugging complex issues
-- Architecture decisions affecting multiple features
-- Security-sensitive changes
-
-The user can request any level; use your judgment to request more thinking when a task warrants it.
-
----
-
-## 10.6) Parallel Agent Orchestration
-
-For independent subtasks, spawn multiple agents in parallel to maximize throughput.
-
-### When to Parallelize
-
-| Scenario | Parallel? | Why |
-|----------|-----------|-----|
-| Multiple independent bugs | Yes | No dependencies |
-| Research across different features | Yes | Independent exploration |
-| Feature + its tests | No | Tests depend on feature |
-| Backend + Frontend for same feature | Maybe | If contracts are defined upfront |
-| Multiple file reads | Yes | Use Task tool for parallel exploration |
-
-### How to Parallelize
-
-1. **Single message, multiple Task tool calls** — The system runs them concurrently
-2. **Track in `.context/agents/active.yaml`** — Record spawned agents
-3. **Collect and synthesize** — Wait for results before combining
-
-### Cost Awareness
-
-| Configuration | Relative Token Cost |
-|---------------|-------------------|
-| Single chat interaction | 1× |
-| Single agent task | ~4× |
-| Multi-agent parallel | ~15× |
-
-Parallelize when:
-- Tasks are truly independent
-- Time savings justify token cost
-- Tasks are substantial enough to warrant separate context
-
-### Safety Reminder
-
-ALWAYS include the safety preamble when spawning subagents (see Section 2.4).
-
----
-
-## 10.7) Context Management
-
-Your context window is finite. Manage it actively to maintain effectiveness in long sessions.
-
-### Context Signals
-
-| Signal | Context Level | Action |
-|--------|--------------|--------|
-| Responses still sharp and detailed | Low/Medium | Continue normally |
-| Starting to miss details mentioned earlier | Medium/High | Consider spawning subagents |
-| Forgetting recent decisions | High | Run `/compact` |
-| User mentions context seems full | Critical | Run `/compact` immediately |
-
-### Strategies for Long Sessions
-
-1. **Spawn subagents for exploration** — They return summaries, not raw content
-2. **Use Doc Agent lazily** — Load docs on demand, not upfront
-3. **Checkpoint regularly** — Run `/checkpoint` after major milestones
-4. **Compact proactively** — Don't wait until context is critical
-
-### Available Skills
+### Documentation Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `/context-status` | Check context usage, get recommendations |
-| `/compact` | Compress context, write summary, continue |
-| `/checkpoint` | Save mid-session state for recovery |
-| `/session-start` | Resume from previous session context |
-| `/handoff` | End-of-session comprehensive summary |
+| `doc-discovery` | Load relevant docs before planning |
+| `plan-lint` | Validate plan against doc constraints |
+| `doc-update` | Update docs after code changes |
+| `drift-check` | Detect doc/code mismatches |
+| `test-from-docs` | Generate test plan from feature docs |
 
-### Progressive Disclosure
+### Session Management Skills
 
-- Load docs lazily (Doc Agent pattern)
-- Return summaries from subagents, not raw data
-- Maintain identifiers (file paths, IDs) not full content
-- Query for details only when needed
+| Skill | Purpose |
+|-------|---------|
+| `session-start` | Resume from previous session context |
+| `context-status` | Check context usage, get recommendations |
+| `remember` | Refresh critical instructions mid-session |
+| `checkpoint` | Save mid-session state for recovery |
+| `compact` | Compress context, preserve state |
+| `handoff` | Write handoff note for session end |
 
 ---
 
-## 11) Meta-Cognitive Architecture (Self-Optimization)
+## 7) Documentation Protocol
 
-IMPORTANT - USE METACOGNITION TO ACTIVELY AND AUTONOMOUSLY IDENTIFY AND PROPOSE UPDATES TO AGENTS, PROCESSES, DOCUMENTATION, SKILLS, COMMANDS, ETC.
+### Authority Order (When Sources Conflict)
 
-This agent system is designed to **continuously improve itself**. All agents participate in identifying and capturing optimization opportunities.
+1. **Code + runtime behavior** (source of truth)
+2. **DB schema / migrations / RLS** (binding constraints)
+3. **Feature docs** (`docs/features/*`) (canonical description)
+4. **Engine docs** (`docs/engine/*`) (protocol and schema)
+5. **PRDs** (`docs/*.md`) (intent/history only)
+6. **Legacy docs** (secondary reference)
+
+### Documentation Locations
+
+| Type | Location |
+|------|----------|
+| Feature docs | `docs/features/*.md` |
+| Feature index | `docs/features/FEATURE_INDEX.md` |
+| Workflow docs | `docs/workflows/*.md` |
+| Engine docs | `docs/engine/*.md` |
+| Style guide | `docs/frontend/STYLE_GUIDE.md` |
+| Component index | `docs/frontend/COMPONENT_INDEX.md` |
+
+### Lifecycle Hooks
+
+**BEFORE changing:** server actions, AI context, auth/RLS, billing
+→ Consult docs or Doc Agent
+
+**AFTER changing:** user-facing workflows, data paths, permissions
+→ Update relevant docs
+
+**END of session:**
+→ Write handoff note to `.context/handoff.md`
+
+---
+
+## 8) Meta-Cognitive Architecture
+
+> **Full Protocol:** `.claude/agents/AGENT_PROTOCOL.md` (Meta-Cognitive Layer section)
 
 ### The Optimization Loop
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         TASK EXECUTION                               │
-│                                                                      │
-│  User Request → Main Agent → Sub-Agents → Work Complete              │
-│                                                │                     │
-│                                                ▼                     │
-│                                    Agents capture optimization       │
-│                                    signals during work               │
-│                                                │                     │
-│                                                ▼                     │
-│                               .context/optimizations/pending.yaml    │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      OPTIMIZATION CYCLE                              │
-│                                                                      │
-│  Ops Agent reviews → prioritizes → proposes → implements            │
-│                                                │                     │
-│                                                ▼                     │
-│         Agent prompts, skills, docs, protocols are improved         │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-                      System is now better for next task
+Task Execution → Agents capture optimization signals → pending.yaml
+                                    ↓
+              Ops Agent reviews → prioritizes → implements
+                                    ↓
+                        System improves for next task
 ```
 
-### What Agents Watch For
+### What to Watch For
 
-| Agent | Optimization Focus |
-|-------|-------------------|
-| **Main Agent** | Workflow patterns, coordination friction, missing agents |
-| **Doc Agent** | Documentation gaps, undocumented invariants, coupling patterns |
-| **Frontend Agent** | Design system gaps, repeated UI patterns, missing components |
-| **Ops Agent** | System-wide patterns, optimization effectiveness, process health |
+| Signal Type | Examples |
+|-------------|----------|
+| User statements implying rules | "we always...", "we never...", "from now on..." |
+| Repeated friction patterns | Same problem occurring multiple times |
+| Missing capabilities | "I wish the agent could..." |
+| Documentation gaps | Undocumented invariants discovered |
 
-### User Statement Detection
+### Capture Format
 
-All agents actively watch for user statements that imply rules:
-
-**Trigger phrases:**
-- "we always..." / "we never..."
-- "the rule is..." / "the pattern is..."
-- "from now on..." / "going forward..."
-- Any correction that implies a broader principle
-
-**Agent response:**
-1. Complete the immediate task
-2. Capture the optimization in `.context/optimizations/pending.yaml`
-3. Continue work (don't ask for permission to capture)
-
-### Optimization Types
-
-| Type | What Changes | Examples |
-|------|-------------|----------|
-| `skill` | New command file | Modal builder, API pattern |
-| `rule` | Doc update | Style guide rule, anti-pattern |
-| `doc` | Documentation | Component doc, feature doc |
-| `protocol` | Agent coordination | Spawn criteria, workflow |
-| `agent` | Agent modification | New agent, prompt update |
-| `process` | Tooling/workflow | Validation step, handoff |
-
-### Optimization Capture Format
-
-All opportunities are captured in `.context/optimizations/pending.yaml`:
-
+Opportunities go to `.context/optimizations/pending.yaml`:
 ```yaml
 - id: "OPT-YYYY-MM-DD-NNN"
   type: skill | rule | doc | protocol | agent | process
-  source_agent: frontend-agent | doc-agent | main-agent | ops-agent
-  timestamp: "ISO-8601"
+  source_agent: [agent name]
   trigger: "What prompted this"
-  observation: "What was noticed"
   proposal: "What should change"
   impact: "Why it matters"
-  frequency: one-time | occasional | frequent | constant
-  effort: trivial | small | medium | large
-  priority: null  # Set by Ops Agent
-  status: pending
 ```
 
-### The Goal
+### Goal
 
 Each task should:
 1. Complete the user's request
 2. Leave the system slightly better than before
 
-The more we work together, the better the system gets. This is **emergent optimization** — intelligence that grows from accumulated experience.
+---
 
-**Full protocol:** `.claude/agents/AGENT_PROTOCOL.md` (Meta-Cognitive Layer section)
+## 9) Parallel Agent Orchestration
+
+### When to Parallelize
+
+| Scenario | Parallel? |
+|----------|-----------|
+| Multiple independent bugs | ✅ Yes |
+| Research across different features | ✅ Yes |
+| Feature + its tests | ❌ No (dependency) |
+| Multiple file reads | ✅ Yes |
+
+### How
+
+1. Single message with multiple Task tool calls
+2. Track in `.context/agents/active.yaml`
+3. Collect and synthesize results
+
+### Cost Awareness
+
+| Config | Relative Cost |
+|--------|---------------|
+| Single chat | 1× |
+| Single agent | ~4× |
+| Multi-agent parallel | ~15× |
+
+Parallelize when tasks are truly independent and substantial.
 
 ---
 
-## 12) Workflow Documentation
+## 10) Extended Thinking
 
-This system maintains **workflow documentation** alongside feature documentation to ensure user journeys are preserved when features change.
+| Phrase | Effect | Use When |
+|--------|--------|----------|
+| "think" | Baseline reasoning | Complex planning |
+| "think hard" | More computation | Tricky architecture |
+| "think harder" | Significant reasoning | Multi-feature coordination |
+| "ultrathink" | Maximum reasoning | Critical decisions |
 
-### Feature vs Workflow Documentation
+---
 
-| Doc Type | Answers | Location |
-|----------|---------|----------|
-| Feature docs | "What does this feature do?" | `docs/features/*.md` |
-| Workflow docs | "How do users accomplish tasks?" | `docs/workflows/*.md` |
+## 11) Quick Reference
 
-A feature change can be technically "correct" but still break a user's workflow. Workflow docs ensure we preserve the user experience.
-
-### User Roles with Workflow Docs
-
-| Role | Workflow Doc |
-|------|--------------|
-| Platform Administrator | `docs/workflows/platform-admin-workflows.md` |
-| Organization Admin | `docs/workflows/org-admin-workflows.md` |
-| Employee | `docs/workflows/employee-workflows.md` |
-| Individual User | `docs/workflows/individual-user-workflows.md` |
-| Expert/Author | `docs/workflows/expert-author-workflows.md` |
-
-### When to Check Workflow Docs
-
-**Always check workflow docs when:**
-- A task affects user-facing features
-- Multiple features are involved in a change
-- New features are being added
-- UI/UX changes are proposed
-
-**Query the Doc Agent:**
+### Session Workflow
 ```
-@doc-agent: What workflows does this plan affect?
-[plan description]
+/session-start          ← Begin session
+  ↓
+/doc-discovery          ← Understand scope
+  ↓
+Create plan             ← Include invariants
+  ↓
+/plan-lint              ← Validate plan
+  ↓
+Delegate to agents      ← Implementation
+  ↓
+/test-from-docs         ← Verify
+  ↓
+/doc-update             ← Update docs
+  ↓
+/handoff                ← End session
 ```
 
-### Workflow Gap Detection (Meta-Cognition)
+### During Session
+```
+/checkpoint             ← Every 30-45 min
+/remember               ← If behaviors degrade
+/context-status         ← Check context health
+```
 
-All agents watch for workflow gaps during task execution:
+### Key Files
+```
+.claude/agents/AGENT_PROTOCOL.md   ← Full agent protocol
+.claude/skills/SKILLS_INDEX.md     ← All skills
+.context/handoff.md                ← Session handoff
+.context/optimizations/pending.yaml ← Captured improvements
+docs/features/FEATURE_INDEX.md     ← Feature map
+```
 
-| Signal | Action |
-|--------|--------|
-| Task affects user flow not in workflow docs | Document workflow before proceeding |
-| User describes how they use a feature | Capture as workflow documentation |
-| Feature change may break user's task path | Verify workflow impact, update if needed |
-| Bug report reveals undocumented workflow | Document as part of the fix |
+---
 
-### Workflow Index
-
-The master index is at `docs/workflows/WORKFLOW_INDEX.md`. This includes:
-- All user roles and their workflow docs
-- Workflow documentation schema
-- How agents use workflow docs
-- Gap detection protocol
+**Remember: You are the ORCHESTRATOR. Delegate work. Use tools. Protect context.**

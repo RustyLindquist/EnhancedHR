@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION';
 
 // Icon mapping for dynamic icon names
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
@@ -183,6 +183,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(13, 148, 136, 0.6)', // Teal glow
             bodyColor: 'bg-[#0D9488]/90'
+        },
+        ORG_COLLECTION: { // Org Collection Card - Blue/Corporate
+            headerColor: 'bg-[#1e3a5f]',
+            borderColor: 'border-blue-500/30',
+            labelColor: 'text-blue-200',
+            barColor: 'bg-[#1e3a5f]',
+            icon: Building,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(59, 130, 246, 0.5)', // Blue glow
+            bodyColor: 'bg-[#1e3a5f]/90'
         }
     }[type];
 
@@ -193,13 +203,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isMediaCard = ['COURSE', 'MODULE', 'LESSON'].includes(type);
 
     // Layout Tweaks:
-    // Conversation, Context, AI_Insight, Resource, Profile, Help, Note, Tool & Tool_Conversation need more text space (40% top / 60% bottom)
-    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION'].includes(type);
+    // Conversation, Context, AI_Insight, Resource, Profile, Help, Note, Tool, Tool_Conversation & Org_Collection need more text space (40% top / 60% bottom)
+    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION', 'ORG_COLLECTION'].includes(type);
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, and Tool_Conversation cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION';
+    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, and Org_Collection cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);

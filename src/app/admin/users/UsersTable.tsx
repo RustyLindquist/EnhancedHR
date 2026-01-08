@@ -121,7 +121,7 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                             onClick={() => handlePromote(user.id, user.role)}
                                             className="text-sm text-brand-blue-light hover:text-white transition-colors"
                                         >
-                                            {user.role === 'admin' ? 'Demote' : 'Promote'}
+                                            {user.role === 'admin' ? 'Remove Platform Admin' : 'Make Platform Admin'}
                                         </button>
                                         <button
                                             onClick={() => setUserToResetPassword(user)}

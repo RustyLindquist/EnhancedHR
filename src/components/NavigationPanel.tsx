@@ -21,7 +21,8 @@ import {
   Brain,
   Layers, // Added Layers icon for custom collections
   Building,
-  Plus
+  Plus,
+  Shield
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
@@ -540,58 +541,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
               {/* User Groups are now accessed through the Users and Groups collection */}
 
-              {/* Default Org Collection - show for all org members */}
+              {/* Org Collections - single link to the org collections view */}
               <div
-                onMouseEnter={(e) => handleItemHover({ id: 'company', label: 'Org Collection', icon: Building }, e, () => onSelectCollection('company'))}
+                onMouseEnter={(e) => handleItemHover({ id: 'org-collections', label: 'Org Collections', icon: Building }, e, () => onSelectCollection('org-collections'))}
                 onMouseLeave={handleItemLeave}
               >
                 <NavItem
-                  item={{ id: 'company', label: 'Org Collection', icon: Building, color: 'text-slate-400' }}
+                  item={{ id: 'org-collections', label: 'Org Collections', icon: Building, color: 'text-slate-400' }}
                   isOpen={isOpen}
-                  isActive={activeCollectionId === 'company'}
-                  onClick={() => onSelectCollection('company')}
+                  isActive={activeCollectionId === 'org-collections' || activeCollectionId === 'company' || activeCollectionId.startsWith('org-collection-')}
+                  count={orgCollections.length}
+                  onClick={() => onSelectCollection('org-collections')}
                 />
               </div>
-
-              {/* Custom Org Collections - show for all org members */}
-              {orgCollections.map((collection) => {
-                const navItem: NavItemConfig = {
-                  id: `org-collection-${collection.id}`,
-                  label: collection.label,
-                  icon: Building,
-                  color: 'text-slate-400'
-                };
-                return (
-                  <div
-                    key={`org-collection-${collection.id}`}
-                    onMouseEnter={(e) => handleItemHover(navItem, e, () => onSelectCollection(`org-collection-${collection.id}`))}
-                    onMouseLeave={handleItemLeave}
-                  >
-                    <NavItem
-                      item={navItem}
-                      isOpen={isOpen}
-                      isActive={activeCollectionId === `org-collection-${collection.id}`}
-                      count={collection.item_count}
-                      onClick={() => onSelectCollection(`org-collection-${collection.id}`)}
-                    />
-                  </div>
-                );
-              })}
-
-              {/* New Org Collection - only for org admins */}
-              {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && (
-                <div
-                  onMouseEnter={(e) => handleItemHover({ id: 'new-org-collection', label: 'New Org Collection', icon: Plus }, e, () => onSelectCollection('new-org-collection'))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={{ id: 'new-org-collection', label: 'New Org Collection', icon: Plus, color: 'text-brand-blue-light' }}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === 'new-org-collection'}
-                    onClick={() => onSelectCollection('new-org-collection')}
-                  />
-                </div>
-              )}
 
               {/* Assigned Learning - show for employees and org admins (at the end) */}
               {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
@@ -690,22 +652,35 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   </button>
                 )}
 
-                {/* Admin Dashboard Link */}
+                {/* Platform Dashboard Link - Always show for admins */}
                 {(userProfile?.role === 'admin' || isImpersonating) && (
                   <button
                     onClick={() => {
-                      if (pathname?.startsWith('/admin')) {
-                        router.push('/dashboard');
-                      } else {
-                        router.push('/admin');
-                      }
+                      router.push('/dashboard');
                       setIsProfileMenuOpen(false);
                     }}
                     className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
                   >
                     <div className="flex items-center">
-                      <LayoutDashboard size={16} className="mr-3 text-slate-400" />
-                      {pathname?.startsWith('/admin') ? 'Platform Dashboard' : 'Admin Console'}
+                      <LayoutDashboard size={16} className="mr-3 text-brand-blue-light" />
+                      Platform Dashboard
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500" />
+                  </button>
+                )}
+
+                {/* Admin Console Link - Always show for admins */}
+                {(userProfile?.role === 'admin' || isImpersonating) && (
+                  <button
+                    onClick={() => {
+                      router.push('/admin');
+                      setIsProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <Shield size={16} className="mr-3 text-brand-orange" />
+                      Admin Console
                     </div>
                     <ChevronRight size={14} className="text-slate-500" />
                   </button>

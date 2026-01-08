@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 import { Note } from '@/types';
 
 /**
- * Fetch all notes for the current user
+ * Fetch all PERSONAL notes for the current user.
+ * Excludes org notes (notes with org_id set).
+ * This is used for "All Notes" view which should only show personal notes.
  */
 export async function getNotesAction(): Promise<Note[]> {
     const supabase = await createClient();
@@ -21,6 +23,7 @@ export async function getNotesAction(): Promise<Note[]> {
         .select(`
             id,
             user_id,
+            org_id,
             title,
             content,
             course_id,
@@ -32,6 +35,7 @@ export async function getNotesAction(): Promise<Note[]> {
             )
         `)
         .eq('user_id', user.id)
+        .is('org_id', null)  // Only personal notes (no org_id)
         .order('updated_at', { ascending: false });
 
     if (error) {
@@ -55,8 +59,9 @@ export async function getNotesAction(): Promise<Note[]> {
 }
 
 /**
- * Fetch general notes (not associated with any course)
+ * Fetch general PERSONAL notes (not associated with any course)
  * Used for tool pages where notes are standalone
+ * Excludes org notes.
  * @param toolSlug - Optional tool slug to filter notes by tool (e.g., 'roleplay-dojo')
  */
 export async function getGeneralNotesAction(toolSlug?: string): Promise<Note[]> {
@@ -72,6 +77,7 @@ export async function getGeneralNotesAction(toolSlug?: string): Promise<Note[]> 
         .select(`
             id,
             user_id,
+            org_id,
             title,
             content,
             course_id,
@@ -80,6 +86,7 @@ export async function getGeneralNotesAction(toolSlug?: string): Promise<Note[]> 
             updated_at
         `)
         .eq('user_id', user.id)
+        .is('org_id', null)  // Only personal notes
         .is('course_id', null);
 
     // Filter by tool_slug if provided
@@ -112,7 +119,8 @@ export async function getGeneralNotesAction(toolSlug?: string): Promise<Note[]> 
 }
 
 /**
- * Fetch all notes for a specific course
+ * Fetch all PERSONAL notes for a specific course.
+ * Excludes org notes.
  */
 export async function getNotesByCourseAction(courseId: number): Promise<Note[]> {
     const supabase = await createClient();
@@ -127,6 +135,7 @@ export async function getNotesByCourseAction(courseId: number): Promise<Note[]> 
         .select(`
             id,
             user_id,
+            org_id,
             title,
             content,
             course_id,
@@ -138,6 +147,7 @@ export async function getNotesByCourseAction(courseId: number): Promise<Note[]> 
             )
         `)
         .eq('user_id', user.id)
+        .is('org_id', null)  // Only personal notes
         .eq('course_id', courseId)
         .order('updated_at', { ascending: false });
 
@@ -274,6 +284,164 @@ export async function createNoteAction(data: {
         created_at: note.created_at,
         updated_at: note.updated_at,
     };
+}
+
+/**
+ * Create a new ORG note (for org collections).
+ * Only org admins can create org notes.
+ * The note is created with org_id set, marking it as an org note.
+ */
+export async function createOrgNoteAction(data: {
+    title?: string;
+    content?: string;
+    org_id: string;
+    collection_id: string; // The org collection to add the note to
+}): Promise<Note | null> {
+    console.log('[createOrgNoteAction] Starting with data:', data);
+    const supabase = await createClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (!authData?.user) {
+        console.error('[createOrgNoteAction] No user found in auth');
+        return null;
+    }
+    const user = authData.user;
+
+    const admin = createAdminClient();
+
+    // Verify user is org admin for this org
+    const { data: profile } = await admin
+        .from('profiles')
+        .select('org_id, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile || profile.org_id !== data.org_id) {
+        console.error('[createOrgNoteAction] User not in this org');
+        return null;
+    }
+
+    if (profile.membership_status !== 'org_admin' && profile.membership_status !== 'platform_admin') {
+        console.error('[createOrgNoteAction] User is not an org admin');
+        return null;
+    }
+
+    // Create the note with org_id set
+    const { data: note, error } = await admin
+        .from('notes')
+        .insert({
+            user_id: user.id,
+            org_id: data.org_id,
+            title: data.title || 'Untitled Note',
+            content: data.content || '',
+        })
+        .select(`
+            id,
+            user_id,
+            org_id,
+            title,
+            content,
+            course_id,
+            tool_slug,
+            created_at,
+            updated_at
+        `)
+        .single();
+
+    if (error || !note) {
+        console.error('[createOrgNoteAction] Error creating note:', error);
+        return null;
+    }
+
+    // Add to the org collection
+    const { error: collectionError } = await admin
+        .from('collection_items')
+        .insert({
+            item_id: note.id,
+            item_type: 'NOTE',
+            collection_id: data.collection_id,
+        });
+
+    if (collectionError && collectionError.code !== '23505') {
+        console.error('[createOrgNoteAction] Error adding note to collection:', collectionError);
+        // Note created but not added to collection - still return note
+    }
+
+    revalidatePath('/dashboard');
+
+    return {
+        type: 'NOTE',
+        id: note.id,
+        user_id: note.user_id,
+        title: note.title,
+        content: note.content,
+        course_id: null,
+        tool_slug: null,
+        course_title: undefined,
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+    };
+}
+
+/**
+ * Fetch notes for an org collection.
+ * Returns notes that are in the specified org collection.
+ */
+export async function getOrgCollectionNotesAction(collectionId: string): Promise<Note[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const admin = createAdminClient();
+
+    // Get note IDs from collection_items
+    const { data: items, error: itemsError } = await admin
+        .from('collection_items')
+        .select('item_id')
+        .eq('collection_id', collectionId)
+        .eq('item_type', 'NOTE');
+
+    if (itemsError || !items || items.length === 0) {
+        return [];
+    }
+
+    const noteIds = items.map(item => item.item_id);
+
+    // Fetch the notes
+    const { data: notes, error } = await admin
+        .from('notes')
+        .select(`
+            id,
+            user_id,
+            org_id,
+            title,
+            content,
+            course_id,
+            tool_slug,
+            created_at,
+            updated_at
+        `)
+        .in('id', noteIds)
+        .order('updated_at', { ascending: false });
+
+    if (error) {
+        console.error('[getOrgCollectionNotesAction] Error fetching notes:', error);
+        return [];
+    }
+
+    return (notes || []).map((note: any) => ({
+        type: 'NOTE' as const,
+        id: note.id,
+        user_id: note.user_id,
+        title: note.title,
+        content: note.content,
+        course_id: note.course_id,
+        tool_slug: note.tool_slug,
+        course_title: undefined,
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+    }));
 }
 
 /**

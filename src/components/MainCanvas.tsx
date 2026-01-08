@@ -43,7 +43,9 @@ import PrometheusHelpContent from './PrometheusHelpContent';
 import HelpPanel from './help/HelpPanel';
 import { HelpTopicId } from './help/HelpContent';
 import ToolsCollectionView from './tools/ToolsCollectionView';
+import OrgCollectionsView from './org/OrgCollectionsView';
 import { fetchToolsAction } from '@/app/actions/tools';
+import { deleteOrgCollection } from '@/app/actions/org';
 
 // Org Collection type for display
 interface OrgCollectionInfo {
@@ -497,8 +499,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
     if (type === 'company') {
         return (
             <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>There are no Company Collections Yet</h2>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Company Collections</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass}`}>About Company Collections</h2>
 
                 <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
                     <p>
@@ -529,7 +530,7 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
                 </div>
 
                 <p className={`text-slate-400 text-lg italic border-t border-brand-blue-light/10 pt-6 mt-6 ${alignmentClass}`}>
-                    Company Collections give you lots of flexibility in how you expose and recommend content to a the people in your organization.
+                    Company Collections give you lots of flexibility in how you expose and recommend content to the people in your organization.
                 </p>
             </div>
         );
@@ -816,6 +817,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         name: string;
         items: any[];
         isOrgAdmin: boolean;
+        orgId: string | null;
     } | null>(null);
 
     // Effect to load group details when activeCollectionId changes to group-*
@@ -843,7 +845,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     id: collectionId,
                     name: result.collectionName,
                     items: result.items,
-                    isOrgAdmin: result.isOrgAdmin
+                    isOrgAdmin: result.isOrgAdmin,
+                    orgId: result.orgId
                 });
                 setCollectionItems(result.items as CollectionItemDetail[]);
                 setIsLoadingCollection(false);
@@ -1003,29 +1006,58 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const handleCreateNote = useCallback(async (collectionId?: string, courseId?: number) => {
         console.log('[MainCanvas.handleCreateNote] Called with collectionId:', collectionId, 'courseId:', courseId);
+        console.log('[MainCanvas.handleCreateNote] viewingOrgCollection:', viewingOrgCollection);
         try {
-            const note = await createNoteAction({
-                course_id: courseId
-            });
-            console.log('[MainCanvas.handleCreateNote] Created note:', note?.id);
+            let note: Note | null = null;
+
+            // Check if we're in an org collection and have org context
+            if (viewingOrgCollection && viewingOrgCollection.orgId && viewingOrgCollection.isOrgAdmin) {
+                // Create an ORG note - import the action dynamically
+                console.log('[MainCanvas.handleCreateNote] Creating ORG note for org:', viewingOrgCollection.orgId);
+                const { createOrgNoteAction } = await import('@/app/actions/notes');
+                note = await createOrgNoteAction({
+                    org_id: viewingOrgCollection.orgId,
+                    collection_id: viewingOrgCollection.id
+                });
+                console.log('[MainCanvas.handleCreateNote] Created ORG note:', note?.id);
+                // Note: Org notes should NOT be added to local notes state (personal notes)
+            } else {
+                // Create a PERSONAL note
+                note = await createNoteAction({
+                    course_id: courseId
+                });
+                console.log('[MainCanvas.handleCreateNote] Created personal note:', note?.id);
+
+                if (note) {
+                    const createdNote = note;
+                    setNotes(prev => [createdNote, ...prev]);
+
+                    // If creating in a specific collection, add it there
+                    console.log('[MainCanvas.handleCreateNote] Checking if should add to collection:', collectionId, 'condition:', collectionId && collectionId !== 'notes');
+                    if (collectionId && collectionId !== 'notes') {
+                        console.log('[MainCanvas.handleCreateNote] Calling addNoteToCollectionAction...');
+                        const result = await addNoteToCollectionAction(note.id, collectionId);
+                        console.log('[MainCanvas.handleCreateNote] addNoteToCollectionAction result:', result);
+                    }
+                }
+            }
 
             if (note) {
-                setNotes(prev => [note, ...prev]);
-
-                // If creating in a specific collection, add it there
-                console.log('[MainCanvas.handleCreateNote] Checking if should add to collection:', collectionId, 'condition:', collectionId && collectionId !== 'notes');
-                if (collectionId && collectionId !== 'notes') {
-                    console.log('[MainCanvas.handleCreateNote] Calling addNoteToCollectionAction...');
-                    const result = await addNoteToCollectionAction(note.id, collectionId);
-                    console.log('[MainCanvas.handleCreateNote] addNoteToCollectionAction result:', result);
-                }
-
                 // Open the editor for the new note
                 setEditingNoteId(note.id);
                 setIsNoteEditorOpen(true);
 
-                // Update counts
+                // Update counts and refresh org collection if needed
                 if (onCollectionUpdate) onCollectionUpdate();
+                if (viewingOrgCollection && onOrgCollectionsUpdate) onOrgCollectionsUpdate();
+
+                // Refresh org collection items to show the new note
+                if (viewingOrgCollection) {
+                    import('@/app/actions/org').then(async (mod) => {
+                        const result = await mod.getOrgCollectionItems(viewingOrgCollection.id);
+                        setCollectionItems(result.items as CollectionItemDetail[]);
+                    });
+                }
             } else {
                 alert('Failed to create note. The notes table may not exist yet. Please run the database migration.');
             }
@@ -1033,7 +1065,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             console.error('[MainCanvas] Error creating note:', error);
             alert('Error creating note: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
-    }, [onCollectionUpdate]);
+    }, [onCollectionUpdate, viewingOrgCollection, onOrgCollectionsUpdate]);
 
     const handleNoteDeleted = useCallback((noteId: string) => {
         setNotes(prev => prev.filter(n => n.id !== noteId));
@@ -2225,6 +2257,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
         if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
+        if (activeCollectionId === 'org-collections') return 'Company Collections';
         if (activeCollectionId === 'company') return 'Org Collection';
         if (activeCollectionId === 'assigned-learning') return 'Assigned Learning';
 
@@ -2249,6 +2282,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
         if (activeCollectionId === 'new-org-collection') return 'Create Collection';
+        if (activeCollectionId === 'org-collections') return 'Organization';
         if (activeCollectionId === 'company') return 'Org Collection';
         if (activeCollectionId === 'assigned-learning') return 'My Learning';
         if (viewingOrgCollection) return 'Org Collection';
@@ -2500,13 +2534,14 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     const renderCollectionContent = () => {
-        // Expanded to include 'research' (Workspace) and 'to_learn' (Watchlist) and 'conversations'
+        // Expanded to include 'research' (Workspace) and 'to_learn' (Watchlist) and 'conversations' and org collections
         const isUniversalCollection = activeCollectionId === 'favorites' ||
             activeCollectionId === 'research' ||
             activeCollectionId === 'to_learn' ||
             activeCollectionId === 'conversations' || // Added conversations
             activeCollectionId === 'notes' || // Added notes
             activeCollectionId === 'personal-context' ||
+            viewingOrgCollection || // Added org collections
             customCollections.some(c => c.id === activeCollectionId);
 
         if (isUniversalCollection) {
@@ -2617,6 +2652,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     // Even if only 1 profile, ensure it is FIRST in the list
                     displayItems = [profiles[0], ...others];
                 }
+            } else if (viewingOrgCollection) {
+                // For org collections, don't merge personal conversations - only show org items
+                displayItems = sourceItems;
             } else {
                 // For standard collections (Favorites, Custom), merge in relevant conversations
                 // Filter out conversations that are ALREADY in sourceItems (DB-backed) to prevent double display
@@ -3437,6 +3475,15 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                         </div>
 
                         <div className="flex space-x-2 items-center">
+                            {/* New Collection button for Org Collections view - only for org admins */}
+                            {activeCollectionId === 'org-collections' && isOrgAdmin && (
+                                <button
+                                    onClick={() => onSelectCollection('new-org-collection')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 border border-brand-blue-light/30 rounded-full text-xs font-bold uppercase tracking-wider text-brand-blue-light hover:bg-brand-blue-light/20 transition-all hover:scale-105"
+                                >
+                                    <Plus size={14} /> New Collection
+                                </button>
+                            )}
                             {viewingGroup && !viewingGroupMember ? (
                                 <button
                                     onClick={() => {
@@ -3654,6 +3701,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
+                                        activeCollectionId === 'org-collections' ||
                                         viewingOrgCollection ||
                                         activeCollectionId === 'instructors' ||
                                         activeCollectionId === 'dashboard' ||
@@ -3899,6 +3947,26 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     }}
                                 />
                             </div>
+                        ) : activeCollectionId === 'org-collections' ? (
+                            // --- ORG COLLECTIONS VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <OrgCollectionsView
+                                    collections={orgCollections || []}
+                                    isLoading={false}
+                                    onCollectionSelect={(collectionId) => {
+                                        onSelectCollection(collectionId);
+                                    }}
+                                    isOrgAdmin={isOrgAdmin}
+                                    onDelete={async (collectionId) => {
+                                        const result = await deleteOrgCollection(collectionId);
+                                        if (result.success) {
+                                            onOrgCollectionsUpdate?.();
+                                        } else {
+                                            console.error('Failed to delete org collection:', result.error);
+                                        }
+                                    }}
+                                />
+                            </div>
                         ) : (
                             <div className={`flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar transition-opacity duration-300 ${isDrawerOpen ? 'opacity-30 blur-sm overflow-hidden' : 'opacity-100'} `}>
                                 <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
@@ -4021,7 +4089,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 })}
                                             </div>
                                         ) : (
-                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Notes, Personal, Custom)
+                                            // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Notes, Personal, Custom, Org Collection)
                                             (activeCollectionId === 'favorites' ||
                                                 activeCollectionId === 'research' ||
                                                 activeCollectionId === 'to_learn' ||
@@ -4029,6 +4097,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                 activeCollectionId === 'notes' ||
                                                 activeCollectionId === 'personal-context' ||
                                                 activeCollectionId === 'org-collections' ||
+                                                viewingOrgCollection ||
                                                 customCollections.some(c => c.id === activeCollectionId)) ? (
                                                 <div className="relative z-10 w-full mx-auto px-4 pb-32">
                                                     {activeCollectionId === 'org-collections' ? (

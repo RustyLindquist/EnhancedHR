@@ -253,7 +253,7 @@ const RoleplayDojoTool: React.FC<RoleplayDojoToolProps> = ({
     };
 
     const handleBack = () => {
-        router.push('/');
+        router.push('/dashboard?collection=tools');
     };
 
     const handleNewSession = () => {

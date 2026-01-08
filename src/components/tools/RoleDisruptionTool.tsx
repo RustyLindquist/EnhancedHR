@@ -283,7 +283,7 @@ const RoleDisruptionTool: React.FC<RoleDisruptionToolProps> = ({
     };
 
     const handleBack = () => {
-        router.push('/');
+        router.push('/dashboard?collection=tools');
     };
 
     const handleNewAssessment = () => {
