@@ -1,3 +1,7 @@
+---
+description: Spawn the Backend Agent (API Guardian) for server-side implementation work
+---
+
 # Spawn Backend Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->

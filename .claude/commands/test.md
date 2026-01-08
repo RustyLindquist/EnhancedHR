@@ -1,6 +1,6 @@
-# Test Skill
-
-This skill provides a framework for testing changes. Any agent can use this skill for basic testing; the Test Agent uses it for comprehensive validation.
+---
+description: This skill provides a framework for testing changes. Any agent can use this skill for basic testing; the Test Agent uses it for comprehensive validation.
+---
 
 ## When to Use This Skill
 

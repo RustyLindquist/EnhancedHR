@@ -1,3 +1,7 @@
+---
+description: Validate that a plan is doc-consistent before coding begins
+---
+
 # Plan Lint
 
 Validate that a plan is doc-consistent before coding begins. This skill checks that the plan correctly incorporates documentation constraints.

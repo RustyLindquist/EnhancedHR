@@ -1,3 +1,7 @@
+---
+description: Spawn the Ops Agent (System Optimizer) to review and implement system optimizations
+---
+
 # Spawn Ops Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->

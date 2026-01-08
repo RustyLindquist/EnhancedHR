@@ -51,6 +51,19 @@ You are the "API Guardian" — a specialized agent that:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Available Skills & Commands
+
+You have access to these commands in `.claude/commands/`:
+
+| Command | When to Use |
+|---------|-------------|
+| `/supabase/safe-sql` | Before executing any direct SQL commands |
+| `/supabase/migration` | When creating database migrations |
+| `/doc-discovery` | Before planning, to identify affected features |
+| `/doc-update` | After implementation, to update feature docs |
+| `/drift-check` | When changes span multiple features |
+| `/capture-optimization` | When you identify a pattern worth documenting |
+
 ## Initialization
 
 When spawned, immediately:

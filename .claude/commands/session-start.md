@@ -1,3 +1,7 @@
+---
+description: Resume work with full context from previous sessions at the start of a new session
+---
+
 # Session Start
 
 Resume work with full context from previous sessions. Run this skill at the beginning of a new work session to load relevant context and understand what remains to be done.

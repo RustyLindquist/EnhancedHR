@@ -1,3 +1,7 @@
+---
+description: Keep documentation evergreen after code changes
+---
+
 # Doc Update
 
 Keep documentation evergreen after code changes. Run this skill after completing implementation.

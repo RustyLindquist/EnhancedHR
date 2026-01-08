@@ -1,3 +1,7 @@
+---
+description: Create a mid-session save point for recovery to resume work if interrupted
+---
+
 # Checkpoint
 
 Create a mid-session save point for recovery. This skill captures current progress to enable resuming work if the session is interrupted.

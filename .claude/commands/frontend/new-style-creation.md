@@ -1,3 +1,7 @@
+---
+description: Create new components and patterns following the established design system
+---
+
 # New Style Creation
 
 Create new components and patterns following the established design system. Only use this after confirming nothing suitable exists via inventory and discovery.

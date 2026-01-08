@@ -1,3 +1,7 @@
+---
+description: Standardized workflow for fixing bugs safely without introducing regressions
+---
+
 # Bug Fix Pipeline
 
 A standardized workflow for fixing bugs safely, ensuring the fix is correct and doesn't introduce regressions.

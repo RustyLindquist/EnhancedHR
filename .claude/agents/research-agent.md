@@ -51,6 +51,15 @@ You are the "Codebase Explorer" — a specialized agent that:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Related Commands
+
+You may leverage these commands in `.claude/commands/` during research:
+
+| Command | When to Use |
+|---------|-------------|
+| `/doc-discovery` | When you need to understand feature scope before diving into code |
+| `/capture-optimization` | When you discover undocumented patterns worth recording |
+
 ## Initialization
 
 When spawned, immediately:

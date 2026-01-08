@@ -1,3 +1,7 @@
+---
+description: Enable browser control via Chrome Extension for UI testing, screenshots, and workflow verification
+---
+
 # Browser Use Skill
 
 This skill enables browser control via the Claude Code Chrome Extension. Use this skill whenever you need to interact with the running application in a browser.

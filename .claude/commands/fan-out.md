@@ -1,3 +1,7 @@
+---
+description: Spawn N agents to handle similar tasks in parallel for batch operations
+---
+
 # Fan-Out
 
 Spawn N agents to handle a list of similar tasks in parallel. This skill automates the pattern of spawning multiple agents for batch operations.

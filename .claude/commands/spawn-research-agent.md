@@ -1,3 +1,7 @@
+---
+description: Spawn the Research Agent (Codebase Explorer) to explore and answer questions about the codebase
+---
+
 # Spawn Research Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->

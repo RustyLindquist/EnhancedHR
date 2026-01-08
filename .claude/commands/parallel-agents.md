@@ -1,3 +1,7 @@
+---
+description: Spawn and coordinate multiple agents working in parallel on independent tasks
+---
+
 # Parallel Agents
 
 Spawn and coordinate multiple agents working in parallel on independent tasks. This skill provides templates and guidelines for efficient parallel agent orchestration.

@@ -1,3 +1,7 @@
+---
+description: Validate frontend work against the design system for consistency
+---
+
 # Style Validation
 
 Validate frontend work against the design system. Run this AFTER completing any UI work to ensure consistency.

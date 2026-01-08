@@ -1,3 +1,7 @@
+---
+description: Spawn the Test Agent for comprehensive validation and testing work
+---
+
 # Spawn Test Agent
 
 <!-- Version: 1.0.0 | Last Updated: 2026-01-07 -->
