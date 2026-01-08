@@ -264,7 +264,7 @@ const ToolChatInterface: React.FC<ToolChatInterfaceProps> = ({
     };
 
     const handleBack = () => {
-        router.push('/');
+        router.push('/dashboard?collection=tools');
     };
 
     return (

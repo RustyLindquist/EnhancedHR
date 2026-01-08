@@ -57,7 +57,7 @@ export default function AdminAILogsPage() {
     const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
 
     // AI Analytics Panel state
-    const [isAnalyticsPanelOpen, setIsAnalyticsPanelOpen] = useState(false);
+    const [isAnalyticsPanelOpen, setIsAnalyticsPanelOpen] = useState(true);
     const [analyticsMessages, setAnalyticsMessages] = useState<Array<{ role: 'user' | 'model'; content: string }>>([]);
     const [analyticsInput, setAnalyticsInput] = useState('');
     const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
@@ -566,11 +566,11 @@ export default function AdminAILogsPage() {
             {/* AI Analytics Panel (Right Side) */}
             <div
                 className={`
-                    fixed right-0 top-0 h-full z-50
+                    h-full flex-shrink-0 overflow-hidden
                     bg-[#0A0D12] border-l border-white/10
                     flex flex-col
                     transition-all duration-300 ease-in-out
-                    ${isAnalyticsPanelOpen ? 'w-96 translate-x-0' : 'w-0 translate-x-full'}
+                    ${isAnalyticsPanelOpen ? 'w-96' : 'w-0 border-l-0'}
                 `}
             >
                 {isAnalyticsPanelOpen && (

@@ -246,6 +246,60 @@ export async function fetchToolConversationsBySlugAction(toolSlug: string): Prom
 }
 
 /**
+ * Delete a tool conversation
+ */
+export async function deleteToolConversationAction(conversationId: string): Promise<boolean> {
+    const admin = createAdminClient();
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    // First verify the conversation belongs to the user and is a tool conversation
+    const { data: conversation, error: fetchError } = await admin
+        .from('conversations')
+        .select('id, user_id, metadata')
+        .eq('id', conversationId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (fetchError || !conversation) {
+        console.error('Failed to find conversation:', fetchError);
+        return false;
+    }
+
+    if (!conversation.metadata?.is_tool_conversation) {
+        console.error('Not a tool conversation');
+        return false;
+    }
+
+    // Delete conversation messages first
+    const { error: messagesError } = await admin
+        .from('conversation_messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+    if (messagesError) {
+        console.error('Failed to delete conversation messages:', messagesError);
+        return false;
+    }
+
+    // Delete the conversation
+    const { error: deleteError } = await admin
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+        .eq('user_id', user.id);
+
+    if (deleteError) {
+        console.error('Failed to delete conversation:', deleteError);
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Fetch a specific tool conversation by ID
  */
 export async function fetchToolConversationByIdAction(conversationId: string): Promise<ToolConversation | null> {

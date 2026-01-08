@@ -590,12 +590,13 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
   items: any[];
   collectionName: string;
   isOrgAdmin: boolean;
+  orgId: string | null;
 }> {
   try {
     const orgContext = await getOrgContext();
 
     if (!orgContext?.orgId) {
-      return { items: [], collectionName: '', isOrgAdmin: false };
+      return { items: [], collectionName: '', isOrgAdmin: false, orgId: null };
     }
 
     const adminClient = createAdminClient();
@@ -611,7 +612,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
 
     if (colError || !collection) {
       console.error('Collection not found or not in org:', colError);
-      return { items: [], collectionName: '', isOrgAdmin: false };
+      return { items: [], collectionName: '', isOrgAdmin: false, orgId: null };
     }
 
     // Fetch collection items (courses)
@@ -629,7 +630,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
 
     if (courseError) {
       console.error('Error fetching collection items:', courseError);
-      return { items: [], collectionName: collection.label, isOrgAdmin: orgContext.isOrgAdmin || false };
+      return { items: [], collectionName: collection.label, isOrgAdmin: orgContext.isOrgAdmin || false, orgId: orgContext.orgId };
     }
 
     // Fetch course details for items
@@ -646,9 +647,9 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
       courses = courseData || [];
     }
 
-    // Fetch context items if any
+    // Fetch context items if any (exclude notes - handled separately)
     const contextItemIds = (courseItems || [])
-      .filter(item => item.item_type && item.item_id && !item.course_id)
+      .filter(item => item.item_type && item.item_id && !item.course_id && item.item_type !== 'NOTE')
       .map(item => item.item_id);
 
     let contextItems: any[] = [];
@@ -658,6 +659,20 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
         .select('*')
         .in('id', contextItemIds);
       contextItems = contextData || [];
+    }
+
+    // Fetch notes if any
+    const noteItemIds = (courseItems || [])
+      .filter(item => item.item_type === 'NOTE' && item.item_id)
+      .map(item => item.item_id);
+
+    let noteItems: any[] = [];
+    if (noteItemIds.length > 0) {
+      const { data: noteData } = await adminClient
+        .from('notes')
+        .select('*')
+        .in('id', noteItemIds);
+      noteItems = noteData || [];
     }
 
     // Map to display format
@@ -679,7 +694,21 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
             ...course
           };
         }
+      } else if (item.item_type === 'NOTE' && item.item_id) {
+        // Handle NOTE items
+        const noteItem = noteItems.find(n => n.id === item.item_id);
+        if (noteItem) {
+          return {
+            id: noteItem.id,
+            itemType: 'NOTE',
+            title: noteItem.title,
+            content: noteItem.content,
+            created_at: noteItem.created_at,
+            updated_at: noteItem.updated_at
+          };
+        }
       } else if (item.item_type && item.item_id) {
+        // Handle other context items
         const contextItem = contextItems.find(c => c.id === item.item_id);
         if (contextItem) {
           return {
@@ -697,11 +726,12 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
     return {
       items: mappedItems,
       collectionName: collection.label,
-      isOrgAdmin: orgContext.isOrgAdmin || orgContext.isPlatformAdmin || false
+      isOrgAdmin: orgContext.isOrgAdmin || orgContext.isPlatformAdmin || false,
+      orgId: orgContext.orgId
     };
   } catch (error) {
     console.error('getOrgCollectionItems exception:', error);
-    return { items: [], collectionName: '', isOrgAdmin: false };
+    return { items: [], collectionName: '', isOrgAdmin: false, orgId: null };
   }
 }
 
@@ -812,6 +842,70 @@ export async function renameOrgCollection(collectionId: string, newName: string)
     return { success: true };
   } catch (error: any) {
     console.error('renameOrgCollection exception:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Delete an org collection.
+ * Only org admins can delete org collections.
+ * This will also delete all items in the collection.
+ */
+export async function deleteOrgCollection(collectionId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const orgContext = await getOrgContext();
+
+    if (!orgContext?.orgId) {
+      return { success: false, error: 'You must be part of an organization' };
+    }
+
+    if (!orgContext.isOrgAdmin && !orgContext.isPlatformAdmin) {
+      return { success: false, error: 'Only org admins can delete company collections' };
+    }
+
+    const adminClient = createAdminClient();
+
+    // Verify the collection belongs to this org
+    const { data: collection, error: fetchError } = await adminClient
+      .from('user_collections')
+      .select('id, org_id, is_org_collection')
+      .eq('id', collectionId)
+      .single();
+
+    if (fetchError || !collection) {
+      return { success: false, error: 'Collection not found' };
+    }
+
+    if (collection.org_id !== orgContext.orgId || !collection.is_org_collection) {
+      return { success: false, error: 'Cannot delete this collection' };
+    }
+
+    // Delete collection items first
+    const { error: itemsError } = await adminClient
+      .from('collection_items')
+      .delete()
+      .eq('collection_id', collectionId);
+
+    if (itemsError) {
+      console.error('deleteOrgCollection items error:', itemsError);
+      return { success: false, error: 'Failed to delete collection items' };
+    }
+
+    // Delete the collection
+    const { error: deleteError } = await adminClient
+      .from('user_collections')
+      .delete()
+      .eq('id', collectionId);
+
+    if (deleteError) {
+      console.error('deleteOrgCollection error:', deleteError);
+      return { success: false, error: 'Failed to delete collection' };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    console.error('deleteOrgCollection exception:', error);
     return { success: false, error: error.message };
   }
 }

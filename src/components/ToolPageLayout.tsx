@@ -13,6 +13,8 @@ import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 import { addNoteToCollectionAction } from '@/app/actions/notes';
+import { getCollectionCountsAction } from '@/app/actions/collections';
+import { createClient } from '@/lib/supabase/client';
 
 // Drag item for notes
 interface NoteDragItem {
@@ -56,6 +58,7 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
+    const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
 
     // Help Panel State
     const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -68,11 +71,20 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
     const [flaringPortalId, setFlaringPortalId] = useState<string | null>(null);
 
     useEffect(() => {
-        async function loadCourses() {
+        async function loadData() {
+            // Load courses
             const { courses } = await fetchCoursesAction();
             setCourses(courses);
+
+            // Load collection counts
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const counts = await getCollectionCountsAction(user.id);
+                setCollectionCounts(counts);
+            }
         }
-        loadCourses();
+        loadData();
     }, []);
 
     // Track mouse position during drag
@@ -165,6 +177,7 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
                     courses={courses}
                     activeCollectionId={activeNavId}
                     onSelectCollection={handleSelectCollection}
+                    collectionCounts={collectionCounts}
                 />
 
                 {/* Center Content (The Canvas) */}

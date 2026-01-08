@@ -84,7 +84,7 @@ export default function AdminCourseBuilderClient({
     return (
         <div className="min-h-screen">
             {/* Course Builder Header Bar */}
-            <div className="sticky top-0 z-40 h-14 bg-white/5 backdrop-blur-sm border-b border-white/10 px-6 flex items-center justify-between">
+            <div className="sticky top-0 z-40 h-16 bg-transparent px-6 flex items-center justify-between">
                 {/* Left: Back Button and Course Title */}
                 <div className="flex items-center gap-4">
                     <Link

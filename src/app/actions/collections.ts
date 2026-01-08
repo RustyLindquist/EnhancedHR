@@ -474,6 +474,116 @@ export async function syncConversationCollectionsAction(userId: string, conversa
 }
 
 /**
+ * Add a tool conversation to a collection
+ */
+export async function addToolConversationToCollectionAction(conversationId: string, collectionId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const admin = createAdminClient();
+    const resolvedId = await resolveCollectionId(admin, collectionId, user.id);
+
+    if (!resolvedId) return { success: false, error: 'Collection not found' };
+
+    // 1. Update conversation metadata
+    const { data: conv } = await admin
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (!conv) return { success: false, error: 'Conversation not found' };
+
+    const currentCollections = conv.metadata?.collection_ids || [];
+    if (!currentCollections.includes(resolvedId)) {
+        const newMetadata = {
+            ...conv.metadata,
+            collection_ids: [...currentCollections, resolvedId],
+            collections: [...currentCollections, resolvedId]
+        };
+
+        await admin
+            .from('conversations')
+            .update({ metadata: newMetadata, updated_at: new Date().toISOString() })
+            .eq('id', conversationId);
+    }
+
+    // 2. Add to collection_items
+    const { error } = await admin
+        .from('collection_items')
+        .insert({
+            item_id: conversationId,
+            item_type: 'TOOL_CONVERSATION',
+            collection_id: resolvedId
+        });
+
+    if (error && error.code !== '23505') { // Ignore duplicate
+        console.error('Error adding tool conversation to collection:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true };
+}
+
+/**
+ * Remove a tool conversation from a collection
+ */
+export async function removeToolConversationFromCollectionAction(conversationId: string, collectionId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const admin = createAdminClient();
+    const resolvedId = await resolveCollectionId(admin, collectionId, user.id);
+
+    if (!resolvedId) return { success: false, error: 'Collection not found' };
+
+    // 1. Update conversation metadata
+    const { data: conv } = await admin
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (conv) {
+        const currentCollections = conv.metadata?.collection_ids || [];
+        const newCollections = currentCollections.filter((id: string) => id !== resolvedId);
+        const newMetadata = {
+            ...conv.metadata,
+            collection_ids: newCollections,
+            collections: newCollections
+        };
+
+        await admin
+            .from('conversations')
+            .update({ metadata: newMetadata, updated_at: new Date().toISOString() })
+            .eq('id', conversationId);
+    }
+
+    // 2. Remove from collection_items
+    const { error } = await admin
+        .from('collection_items')
+        .delete()
+        .eq('item_id', conversationId)
+        .eq('item_type', 'TOOL_CONVERSATION')
+        .eq('collection_id', resolvedId);
+
+    if (error) {
+        console.error('Error removing tool conversation from collection:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true };
+}
+
+/**
  * Cleanup duplicate collections for the current user.
  * - Moves items from duplicate collections to the primary (oldest) collection
  * - Deletes duplicate collections
