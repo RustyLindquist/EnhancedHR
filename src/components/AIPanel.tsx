@@ -295,7 +295,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
     let activeConvId = conversationId;
     if (!activeConvId) {
-      const title = contextScope.type === 'COURSE' ? 'Course Assistant Chat' : 'New Conversation';
+      const title = 'New Conversation';
       const newConv = await createConversation(title);
       if (newConv) {
         activeConvId = newConv.id;
@@ -407,8 +407,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
         saveMessage(activeConvId, 'model', parsedResponse.rawContent);
       }
 
-      // Generate title for new conversations (skip for course-specific chats which already have descriptive titles)
-      if (isNewConversation && activeConvId && fullText && contextScope.type !== 'COURSE') {
+      // Generate title for new conversations
+      if (isNewConversation && activeConvId && fullText) {
         try {
           // Clean the response text for title generation
           const cleanedResponse = stripInsightTags(fullText).substring(0, 200);
