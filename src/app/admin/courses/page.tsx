@@ -100,7 +100,6 @@ export default async function AdminCoursesPage() {
                                         <Link
                                             href={`/admin/experts/${course.author_id}`}
                                             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
                                                 {course.author?.charAt(0) || '?'}
@@ -165,8 +164,22 @@ function StatusBadge({ status }: { status: string }) {
             </span>
         );
     }
+    if (status === 'pending_review') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Pending Review
+            </span>
+        );
+    }
+    if (status === 'archived') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+                Archived
+            </span>
+        );
+    }
     return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase tracking-wider">
             Draft
         </span>
     );

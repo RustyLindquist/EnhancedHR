@@ -1,7 +1,7 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { BookOpen, Video, Users, Clock } from 'lucide-react';
+import { BookOpen, Video, Users, Clock, Plus, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -53,11 +53,20 @@ export default async function AuthorCoursesPage() {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-white mb-2">My Courses</h1>
-                <p className="text-slate-400">
-                    View your courses and track their performance.
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">My Courses</h1>
+                    <p className="text-slate-400">
+                        Create, edit, and track your courses.
+                    </p>
+                </div>
+                <Link
+                    href="/author/courses/new/builder"
+                    className="flex items-center gap-2 px-5 py-3 rounded-full bg-brand-blue-light text-brand-black font-bold hover:bg-brand-blue-light/90 transition-colors"
+                >
+                    <Plus size={18} />
+                    Add Course
+                </Link>
             </div>
 
             {/* Courses Grid */}
@@ -65,56 +74,79 @@ export default async function AuthorCoursesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {courses.map((course) => {
                         const stats = courseStats[course.id] || { totalMinutes: 0, uniqueStudents: new Set() };
+                        const isDraft = course.status === 'draft';
+                        const isPendingReview = course.status === 'pending_review';
+                        const isPublished = course.status === 'published';
+
                         return (
-                            <Link
+                            <div
                                 key={course.id}
-                                href={`/courses/${course.id}`}
-                                className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-colors group"
+                                className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-colors group relative"
                             >
-                                {/* Thumbnail */}
-                                <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
-                                    {course.thumbnail_url ? (
-                                        <img
-                                            src={course.thumbnail_url}
-                                            alt={course.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Video size={48} className="text-slate-600" />
+                                {/* Thumbnail - Link to course view */}
+                                <Link href={`/courses/${course.id}`} className="block">
+                                    <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
+                                        {course.thumbnail_url ? (
+                                            <img
+                                                src={course.thumbnail_url}
+                                                alt={course.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Video size={48} className="text-slate-600" />
+                                            </div>
+                                        )}
+                                        {/* Status Badge */}
+                                        <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${
+                                            isPublished
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                : isPendingReview
+                                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                                : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                        }`}>
+                                            {isPublished ? 'Published' : isPendingReview ? 'Pending Review' : 'Draft'}
                                         </div>
-                                    )}
-                                    <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${
-                                        course.status === 'published'
-                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                            : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                                    }`}>
-                                        {course.status === 'published' ? 'Published' : 'Draft'}
                                     </div>
-                                </div>
+                                </Link>
 
                                 {/* Content */}
                                 <div className="p-5">
-                                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">
-                                        {course.title}
-                                    </h3>
+                                    <Link href={`/courses/${course.id}`}>
+                                        <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">
+                                            {course.title}
+                                        </h3>
+                                    </Link>
                                     <p className="text-sm text-slate-400 mb-4 line-clamp-2">
                                         {course.description || 'No description'}
                                     </p>
 
-                                    {/* Stats */}
-                                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                                        <div className="flex items-center gap-1">
-                                            <Clock size={12} />
-                                            <span>{formatMinutes(stats.totalMinutes)} watched</span>
+                                    {/* Stats & Edit Button Row */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                                            <div className="flex items-center gap-1">
+                                                <Clock size={12} />
+                                                <span>{formatMinutes(stats.totalMinutes)} watched</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <Users size={12} />
+                                                <span>{stats.uniqueStudents.size} students</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <Users size={12} />
-                                            <span>{stats.uniqueStudents.size} students</span>
-                                        </div>
+
+                                        {/* Edit Button - Only for draft courses */}
+                                        {isDraft && (
+                                            <Link
+                                                href={`/author/courses/${course.id}/builder`}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light/20 transition-colors"
+                                            >
+                                                <Edit3 size={12} />
+                                                Edit
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         );
                     })}
                 </div>
@@ -122,9 +154,16 @@ export default async function AuthorCoursesPage() {
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
                     <BookOpen size={64} className="mx-auto text-slate-600 mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">No courses yet</h3>
-                    <p className="text-slate-400">
-                        Your courses will appear here once the platform administrator assigns them to you.
+                    <p className="text-slate-400 mb-6">
+                        Create your first course and share your expertise with learners.
                     </p>
+                    <Link
+                        href="/author/courses/new/builder"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-blue-light text-brand-black font-bold hover:bg-brand-blue-light/90 transition-colors"
+                    >
+                        <Plus size={18} />
+                        Create Your First Course
+                    </Link>
                 </div>
             )}
         </div>

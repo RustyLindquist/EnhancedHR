@@ -29,7 +29,7 @@ export async function updateCourseDetails(courseId: number, data: {
     title?: string;
     description?: string;
     category?: string;
-    status?: 'draft' | 'published' | 'archived';
+    status?: 'draft' | 'pending_review' | 'published' | 'archived';
     duration?: string;
 }) {
     const admin = await createAdminClient();

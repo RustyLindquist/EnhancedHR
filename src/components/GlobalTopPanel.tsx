@@ -1,4 +1,7 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface GlobalTopPanelProps {
@@ -16,12 +19,18 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     headerActions,
     children
 }) => {
-    return (
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const content = (
         <>
             {/* Backdrop */}
             <div
                 className={`
-                    fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] transition-opacity duration-500
+                    fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] transition-opacity duration-500
                     ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
                 `}
                 onClick={onClose}
@@ -30,7 +39,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
             {/* Panel */}
             <div
                 className={`
-               fixed left-0 w-full z-[100]
+               fixed left-0 w-full z-[210]
                bg-[#0f172a]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl
                transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[75vh]
             `}
@@ -65,6 +74,10 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
             </div>
         </>
     );
+
+    // Use portal to render at document body level, outside any stacking context
+    if (!mounted) return null;
+    return createPortal(content, document.body);
 };
 
 export default GlobalTopPanel;

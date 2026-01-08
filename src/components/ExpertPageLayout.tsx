@@ -51,7 +51,7 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
             <BackgroundSystem theme={currentTheme} />
 
             {/* Main Application Layer */}
-            <div className="flex w-full h-full relative z-10">
+            <div className="flex w-full h-full relative">
                 {/* Left Navigation - Expert Orange/Amber theme */}
                 <NavigationPanel
                     isOpen={leftOpen}
@@ -75,7 +75,7 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
                     />
 
                     {/* Main Content Area */}
-                    <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
+                    <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative custom-scrollbar">
                         {children}
                     </div>
                 </div>

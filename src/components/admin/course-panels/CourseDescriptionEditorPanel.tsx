@@ -30,7 +30,8 @@ const CATEGORIES = [
 ];
 
 const STATUSES = [
-    { value: 'draft', label: 'Draft', color: 'text-slate-400' },
+    { value: 'draft', label: 'Draft', color: 'text-yellow-400' },
+    { value: 'pending_review', label: 'Pending Review', color: 'text-blue-400' },
     { value: 'published', label: 'Published', color: 'text-green-400' },
     { value: 'archived', label: 'Archived', color: 'text-orange-400' }
 ];
@@ -87,7 +88,7 @@ export default function CourseDescriptionEditorPanel({
                 title: formData.title.trim(),
                 description: formData.description.trim(),
                 category: formData.category,
-                status: formData.status as 'draft' | 'published' | 'archived'
+                status: formData.status as 'draft' | 'pending_review' | 'published' | 'archived'
             });
 
             if (result.success) {
