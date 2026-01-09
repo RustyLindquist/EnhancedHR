@@ -29,7 +29,10 @@ const CourseInstructorCard: React.FC<CourseInstructorCardProps> = ({
     };
 
     return (
-        <div className={`bg-white/5 border border-white/10 rounded-2xl p-5 ${className}`}>
+        <div className={`group relative bg-white/5 border border-white/10 rounded-2xl p-5 transition-all duration-300 hover:border-white/20 ${className}`}>
+            {/* Animated rotating border */}
+            <div className="card-hover-border rounded-2xl" />
+
             <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light mb-4">
                 INSTRUCTOR
             </h3>

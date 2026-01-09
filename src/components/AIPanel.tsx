@@ -916,7 +916,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
                     {/* Inner container with glass effect */}
                     <div className={`
                       relative rounded-2xl overflow-hidden
-                      bg-gradient-to-b from-slate-900/95 to-brand-black/98
+                      bg-black
                       backdrop-blur-xl
                       border border-white/5
                       transition-all duration-300

@@ -62,11 +62,14 @@ const InsightPreviewCard: React.FC<InsightPreviewCardProps> = ({
       >
         {/* Card with gradient border inspired by AI Insight styling */}
         <div
-          className="p-[1px] rounded-xl"
+          className="group relative p-[1px] rounded-xl"
           style={{
             background: `linear-gradient(135deg, ${categoryColor}40, ${categoryColor}20, transparent)`,
           }}
         >
+          {/* Animated rotating border */}
+          <div className="card-hover-border rounded-xl" />
+
           <div className="bg-[#0A0D12]/90 backdrop-blur-xl rounded-xl p-4">
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">

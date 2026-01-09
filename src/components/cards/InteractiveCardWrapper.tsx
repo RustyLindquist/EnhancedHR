@@ -20,40 +20,10 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
     const cardRef = useRef<HTMLDivElement>(null);
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const [isHovered, setIsHovered] = useState(false);
-    const [borderGlowAngle, setBorderGlowAngle] = useState(0);
     const [isDragIntent, setIsDragIntent] = useState(false);
     const mouseDownTimeRef = useRef<number>(0);
     const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
     const dragIntentTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Continuous border animation
-    useEffect(() => {
-        if (!isHovered) return;
-
-        let animationFrameId: number;
-        let lastTimestamp = 0;
-        const rotationSpeed = 0.05; // Degrees per millisecond (adjust for speed)
-
-        const animate = (timestamp: number) => {
-            if (lastTimestamp === 0) {
-                lastTimestamp = timestamp;
-            }
-
-            const delta = timestamp - lastTimestamp;
-            lastTimestamp = timestamp;
-
-            setBorderGlowAngle((prevAngle) => (prevAngle + delta * rotationSpeed) % 360);
-            animationFrameId = requestAnimationFrame(animate);
-        };
-
-        animationFrameId = requestAnimationFrame(animate);
-
-        return () => {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-        };
-    }, [isHovered]);
 
     // Drag intent detection - defined before handleMouseMove
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -127,11 +97,6 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
     const tiltX = mousePosition.y * -3; // Inverted for natural feel
     const tiltY = mousePosition.x * 3;
 
-    // Generate conic gradient for animated border glow
-    const borderGradient = isHovered
-        ? `conic-gradient(from ${borderGlowAngle}deg, transparent 0deg, ${glowColor} 60deg, transparent 120deg)`
-        : 'none';
-
     return (
         <div
             ref={cardRef}
@@ -151,16 +116,17 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
                 transformStyle: 'preserve-3d',
             }}
         >
-            {/* Animated border glow overlay */}
+            {/* Animated border glow overlay using CSS animation */}
             <div
-                className="absolute inset-0 rounded-3xl pointer-events-none z-10 transition-opacity duration-300"
+                className={`absolute inset-0 rounded-3xl pointer-events-none transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                 style={{
-                    opacity: isHovered ? 1 : 0,
-                    background: borderGradient,
-                    padding: '1px',
+                    padding: '2px',
+                    background: `conic-gradient(from var(--gradient-angle), transparent 0%, ${glowColor} 10%, transparent 20%, transparent 100%)`,
                     WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                     WebkitMaskComposite: 'xor',
                     maskComposite: 'exclude',
+                    animation: 'gradient-rotate 4s linear infinite',
+                    zIndex: 50,
                 }}
             />
 

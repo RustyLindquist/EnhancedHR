@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users, UserPlus, Layers } from 'lucide-react';
 import { getOrgGroups, EmployeeGroup } from '@/app/actions/groups';
 import GroupCard from './GroupCard';
@@ -50,6 +51,7 @@ const AllUsersCard: React.FC<{ onClick: () => void; memberCount: number }> = ({ 
 );
 
 export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup }: UsersAndGroupsCanvasProps) {
+    const router = useRouter();
     const [groups, setGroups] = useState<EmployeeGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
@@ -104,6 +106,8 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup }
                 <CanvasHeader
                     context="manage your"
                     title="Users and Groups"
+                    onBack={() => router.push('/dashboard')}
+                    backLabel="Back to Dashboard"
                 >
                     <div className="flex items-center space-x-4">
                         <button

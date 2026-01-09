@@ -72,6 +72,8 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
                     <CanvasHeader
                         context="Expert Portal"
                         title={title}
+                        onBack={() => router.push('/dashboard')}
+                        backLabel="Back to Dashboard"
                     />
 
                     {/* Main Content Area */}

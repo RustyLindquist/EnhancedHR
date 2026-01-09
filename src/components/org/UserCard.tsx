@@ -16,8 +16,11 @@ export default function UserCard({ member, onClick, onAddToGroup }: UserCardProp
     return (
         <div
             onClick={onClick}
-            className="group relative w-full h-[340px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(120,192,240,0.2)] border border-white/5 hover:border-brand-blue-light/30 bg-[#0f172a]"
+            className="group relative w-full h-[340px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ease-out bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] hover:bg-white/[0.06] hover:border-white/20 hover:shadow-[0_15px_40px_0_rgba(120,192,240,0.15)]"
         >
+            {/* Animated rotating border */}
+            <div className="card-hover-border rounded-2xl" />
+
             {/* Background Image / Avatar */}
             <div className="absolute inset-0">
                 {member.avatar_url ? (
@@ -32,8 +35,8 @@ export default function UserCard({ member, onClick, onAddToGroup }: UserCardProp
                         <span className="text-6xl font-bold text-white/20">{initials}</span>
                     </div>
                 )}
-                {/* Gradient Overlay - Only at bottom for text readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/60 to-transparent opacity-90" />
+                {/* Gradient Overlay - Subtle glass-compatible overlay for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
             </div>
 
             {/* Content Container */}
