@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { getUserAggregateAssignments, ContentAssignment } from '@/app/actions/assignments';
 import { createClient } from '@/lib/supabase/client';
 import { BookOpen, AlertCircle, Loader2, ClipboardList } from 'lucide-react';
 import UniversalCard from '@/components/cards/UniversalCard';
-import CanvasHeader from '@/components/CanvasHeader';
 
 const AssignedLearningCanvas: React.FC = () => {
-    const router = useRouter();
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -66,15 +63,7 @@ const AssignedLearningCanvas: React.FC = () => {
 
     return (
         <div className="flex flex-col w-full relative">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-50">
-                <CanvasHeader
-                    context="your"
-                    title="Assigned Learning"
-                    onBack={() => router.back()}
-                    backLabel="Back"
-                />
-            </div>
+            {/* Note: Header is provided by MainCanvas */}
             {/* Scrollable Content */}
             <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pl-20 pt-8 custom-scrollbar">
                 {assignments.length === 0 ? (
