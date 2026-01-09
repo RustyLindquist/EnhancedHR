@@ -83,20 +83,28 @@ export interface OrgContext {
  */
 export async function getOrgContext(): Promise<OrgContext | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  console.log('[getOrgContext] User lookup:', user?.id, 'error:', userError?.message);
 
   if (!user) {
+    console.log('[getOrgContext] No user found, returning null');
     return null;
   }
 
   // Get user's profile
-  const { data: profile } = await supabase
+  // Note: Use organizations!org_id to specify which FK relationship to use
+  // (there are two: profiles.org_id and organizations.owner_id)
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('org_id, role, membership_status, full_name, organizations(id, name)')
+    .select('org_id, role, membership_status, full_name, organizations!org_id(id, name)')
     .eq('id', user.id)
     .single();
 
+  console.log('[getOrgContext] Profile lookup:', profile?.role, 'org_id:', profile?.org_id, 'error:', profileError?.message);
+
   if (!profile) {
+    console.log('[getOrgContext] No profile found, returning null');
     return null;
   }
 

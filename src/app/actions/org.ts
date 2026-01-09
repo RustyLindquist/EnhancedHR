@@ -164,17 +164,25 @@ export async function switchPlatformAdminOrg(orgId: string): Promise<{ success: 
 
 export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInfo: InviteInfo | null, error?: string }> {
   try {
+    console.log('[getOrgMembers] Starting...');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    console.log('[getOrgMembers] User:', user?.id, 'error:', userError?.message);
 
     if (!user) {
+        console.log('[getOrgMembers] No user, returning Unauthorized');
         return { members: [], inviteInfo: null, error: 'Unauthorized' };
     }
 
     // Use org context to get the effective org ID (handles platform admin org selection)
+    console.log('[getOrgMembers] Calling getOrgContext...');
     const orgContext = await getOrgContext();
 
+    console.log('[getOrgMembers] OrgContext result:', orgContext);
+
     if (!orgContext) {
+        console.log('[getOrgMembers] No org context, returning error');
         return { members: [], inviteInfo: null, error: 'No Organization Found' };
     }
 
