@@ -80,6 +80,7 @@ interface MainCanvasProps {
     orgCollections?: OrgCollectionInfo[]; // Organization collections
     isOrgAdmin?: boolean; // Whether user can edit org collections
     onOrgCollectionsUpdate?: () => void; // Callback when org collections change
+    onViewingGroupChange?: (groupName: string | null) => void; // Callback when viewing a group (passes group name for AI panel)
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -798,7 +799,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onExposeDragStart,
     orgCollections = [],
     isOrgAdmin = false,
-    onOrgCollectionsUpdate
+    onOrgCollectionsUpdate,
+    onViewingGroupChange
 }) => {
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -835,6 +837,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             setViewingGroup(null);
         }
     }, [activeCollectionId]);
+
+    // Effect to notify parent when viewing group changes (for AI Panel title)
+    useEffect(() => {
+        onViewingGroupChange?.(viewingGroup?.name || null);
+    }, [viewingGroup, onViewingGroupChange]);
 
     // Effect to load org collection when activeCollectionId changes to org-collection-*
     useEffect(() => {

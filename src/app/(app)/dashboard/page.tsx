@@ -69,6 +69,7 @@ function HomeContent() {
   const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
   const [user, setUser] = useState<any>(null); // Track user for DB ops
   const [isOrgAdmin, setIsOrgAdmin] = useState<boolean>(false); // Track if user is org admin
+  const [viewingGroupName, setViewingGroupName] = useState<string | null>(null); // Current group name for AI Panel title
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -531,15 +532,48 @@ function HomeContent() {
   // Get the title of the active collection for the AI Panel header
   const contextTitle = useMemo(() => {
     if (activeCourseId) return undefined; // Course scope doesn't use contextTitle
-    if (['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)) return undefined; // Platform scope
+    if (activeCollectionId === 'dashboard') return undefined; // Dashboard uses platform assistant
+
+    // Map system collection IDs to display names
+    const systemCollectionTitles: Record<string, string> = {
+      'academy': 'Academy',
+      'personal-context': 'Personal Context',
+      'tools': 'Tools',
+      'help': 'Help',
+      'conversations': 'Conversations',
+      'notes': 'Notes',
+      'favorites': 'Favorites',
+      'research': 'Workspace',
+      'to_learn': 'Watchlist',
+      'users-and-groups': 'Users and Groups',
+      'org-team': 'Team',
+      'org-analytics': 'Analytics',
+      'org-collections': 'Company Collections',
+      'assigned-learning': 'Assigned Learning',
+      'recents': 'Recent Activity',
+    };
+
+    // Check system collections first
+    if (systemCollectionTitles[activeCollectionId]) {
+      return systemCollectionTitles[activeCollectionId];
+    }
+
+    // Check for group view (group-{id})
+    if (activeCollectionId.startsWith('group-')) {
+      // Use actual group name from MainCanvas callback
+      return viewingGroupName || 'Group';
+    }
+
     // Find in custom collections
     const customCollection = customCollections.find(c => c.id === activeCollectionId);
     if (customCollection) return customCollection.label;
+
     // Find in org collections
     const orgCollection = orgCollections.find(c => c.id === activeCollectionId);
     if (orgCollection) return orgCollection.label;
+
     return undefined;
-  }, [activeCourseId, activeCollectionId, customCollections, orgCollections]);
+  }, [activeCourseId, activeCollectionId, customCollections, orgCollections, viewingGroupName]);
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
@@ -622,6 +656,7 @@ function HomeContent() {
             const updated = await getOrgCollections();
             setOrgCollections(updated);
           }}
+          onViewingGroupChange={setViewingGroupName}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
@@ -633,7 +668,7 @@ function HomeContent() {
             agentType={
               activeCourseId
                 ? 'course_assistant'
-                : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
+                : activeCollectionId === 'dashboard'
                   ? 'platform_assistant'
                   : 'collection_assistant'
             }
