@@ -24,6 +24,7 @@ Read these files in order (if they exist):
 .context/session-summary.md  # Compacted context from multiple sessions
 .context/checkpoint.md       # Mid-session state (if session was interrupted)
 .context/agents/active.yaml  # Agent states and work items
+CLAUDE.md                    # Agent Instructions
 ```
 
 ### 2. Evaluate Context State
