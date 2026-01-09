@@ -614,191 +614,242 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         {isProfileMenuOpen && (
           <div className={`
              absolute bottom-full mb-4 z-[120]
-             bg-[#0f141c]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl overflow-hidden
-             transition-all duration-200 animate-fade-in
-             ${isOpen ? 'left-4 w-64' : 'left-20 w-64'}
+             transition-all duration-300 animate-fade-in
+             ${isOpen ? 'left-4 w-72' : 'left-20 w-72'}
           `}>
-            {menuView === 'main' ? (
-              /* MAIN MENU VIEW */
-              <div className="py-2">
-                <div className="px-4 py-3 border-b border-white/5 mb-1">
-                  <p className="text-sm font-bold text-white">{userProfile?.fullName || 'Loading...'}</p>
-                  <p className="text-xs text-slate-400">{userProfile?.email}</p>
-                </div>
+            {/* Outer glow effect */}
+            <div className="absolute -inset-1 bg-gradient-to-b from-brand-blue-light/20 via-brand-blue-light/5 to-transparent rounded-3xl blur-xl opacity-60" />
 
-                <button
-                  onClick={() => router.push('/settings/account')}
-                  className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <User size={16} className="mr-3 text-slate-400" />
-                  My Account
-                </button>
+            {/* Main container with glassmorphism */}
+            <div className="relative bg-gradient-to-b from-slate-800/95 to-slate-900/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_-10px_rgba(120,192,240,0.15)] overflow-hidden">
+              {/* Subtle top accent line */}
+              <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-brand-blue-light/40 to-transparent" />
 
-                <button
-                  onClick={() => {
-                    router.push('/settings');
-                    setIsProfileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <Settings size={16} className="mr-3 text-slate-400" />
-                  Settings
-                </button>
-
-                {/* Expert Dashboard Link - For approved experts and platform admins */}
-                {(userProfile?.authorStatus === 'approved' || userProfile?.role === 'admin') && (
-                  <button
-                    onClick={() => {
-                      router.push('/author');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <PenTool size={16} className="mr-3 text-brand-orange" />
-                      Expert Dashboard
-                    </div>
-                    <ChevronRight size={14} className="text-slate-500" />
-                  </button>
-                )}
-
-                {/* Platform Dashboard Link - Show when in Expert Dashboard */}
-                {pathname?.startsWith('/author') && (
-                  <button
-                    onClick={() => {
-                      router.push('/dashboard');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <LayoutDashboard size={16} className="mr-3 text-brand-blue-light" />
-                      Platform Dashboard
-                    </div>
-                    <ChevronRight size={14} className="text-slate-500" />
-                  </button>
-                )}
-
-                {/* Platform Dashboard Link - Always show for admins */}
-                {(userProfile?.role === 'admin' || isImpersonating) && (
-                  <button
-                    onClick={() => {
-                      router.push('/dashboard');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <LayoutDashboard size={16} className="mr-3 text-brand-blue-light" />
-                      Platform Dashboard
-                    </div>
-                    <ChevronRight size={14} className="text-slate-500" />
-                  </button>
-                )}
-
-                {/* Admin Console Link - Always show for admins */}
-                {(userProfile?.role === 'admin' || isImpersonating) && (
-                  <button
-                    onClick={() => {
-                      router.push('/admin');
-                      setIsProfileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <Shield size={16} className="mr-3 text-brand-orange" />
-                      Admin Console
-                    </div>
-                    <ChevronRight size={14} className="text-slate-500" />
-                  </button>
-                )}
-
-
-
-                {/* Admin Role Switcher Entry */}
-                {(userProfile?.role === 'admin' || isImpersonating) && (
-                  <button
-                    onClick={() => setMenuView('roles')}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <Flame size={16} className={`mr-3 ${isImpersonating ? 'text-brand-red animate-pulse' : 'text-slate-400'}`} />
-                      Switch Role
-                    </div>
-                    <ChevronRight size={14} className="text-slate-500" />
-                  </button>
-                )}
-
-                <div className="h-px bg-white/5 my-1 mx-2"></div>
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center px-4 py-2.5 text-sm text-brand-red hover:bg-brand-red/10 transition-colors"
-                >
-                  <LogOut size={16} className="mr-3" />
-                  Log Out
-                </button>
-              </div>
-            ) : (
-              /* ROLES SELECTION VIEW */
-              <div className="flex flex-col h-full max-h-[400px]">
-                <div className="flex items-center px-2 py-3 border-b border-white/5">
-                  <button
-                    onClick={() => setMenuView('main')}
-                    className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors mr-2"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <span className="text-sm font-bold text-white">Switch Role</span>
-                </div>
-
-                <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                  {/* Platform Admin (Exit) */}
-                  <button
-                    onClick={handleExitView}
-                    className={`
-                                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all border border-transparent
-                                ${!isImpersonating
-                        ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/20'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}
-                            `}
-                  >
-                    <div className="p-1 rounded bg-brand-red/10 text-brand-red">
-                      <Flame size={14} />
-                    </div>
-                    <span className="flex-1 text-left">Platform Administrator</span>
-                    {!isImpersonating && <Check size={14} />}
-                  </button>
-
-                  <div className="h-px bg-white/10 my-2 mx-2"></div>
-                  <p className="px-2 text-[10px] text-slate-500 uppercase tracking-widest mb-1">Demo Accounts</p>
-
-                  {DEMO_ACCOUNTS.map(account => {
-                    const Icon = account.icon;
-                    const isActive = userProfile?.email === account.email;
-                    return (
-                      <button
-                        key={account.id}
-                        onClick={() => handleSwitchUser(account.email)}
-                        className={`
-                                        w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all border border-transparent
-                                        ${isActive
-                            ? 'bg-brand-blue-light/10 text-brand-blue-light border-brand-blue-light/20'
-                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                          }
-                                    `}
-                      >
-                        <div className={`p-1 rounded bg-white/5 ${account.color}`}>
-                          <Icon size={14} />
+              {menuView === 'main' ? (
+                /* MAIN MENU VIEW */
+                <div>
+                  {/* User Info Section */}
+                  <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-4">
+                      {/* Avatar with ring */}
+                      <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-br from-brand-blue-light/50 to-brand-blue/30 rounded-full blur-sm" />
+                        <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border-2 border-white/20 flex items-center justify-center text-sm font-bold text-white shadow-lg overflow-hidden ring-2 ring-brand-blue-light/30 ring-offset-2 ring-offset-slate-900">
+                          {userProfile?.avatarUrl ? (
+                            <img
+                              src={userProfile.avatarUrl}
+                              alt={userProfile.fullName || 'Profile'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-base">{userProfile?.initials || '...'}</span>
+                          )}
                         </div>
-                        <span className="flex-1 text-left">{account.label}</span>
-                        {isActive && <Check size={14} />}
+                      </div>
+                      {/* Name and email */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-semibold text-white truncate">{userProfile?.fullName || 'Loading...'}</p>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{userProfile?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-2 px-2">
+                    <button
+                      onClick={() => router.push('/settings/account')}
+                      className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center mr-3 group-hover:bg-brand-blue-light/20 transition-colors">
+                        <User size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
+                      </div>
+                      My Account
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        router.push('/settings');
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center mr-3 group-hover:bg-brand-blue-light/20 transition-colors">
+                        <Settings size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
+                      </div>
+                      Settings
+                    </button>
+
+                    {/* Expert Dashboard Link - For approved experts and platform admins */}
+                    {(userProfile?.authorStatus === 'approved' || userProfile?.role === 'admin') && (
+                      <button
+                        onClick={() => {
+                          router.push('/author');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-brand-orange/10 flex items-center justify-center mr-3 group-hover:bg-brand-orange/20 transition-colors">
+                            <PenTool size={16} className="text-brand-orange" />
+                          </div>
+                          Expert Dashboard
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
                       </button>
-                    )
-                  })}
+                    )}
+
+                    {/* Platform Dashboard Link - Show when in Expert Dashboard */}
+                    {pathname?.startsWith('/author') && (
+                      <button
+                        onClick={() => {
+                          router.push('/dashboard');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-brand-blue-light/10 flex items-center justify-center mr-3 group-hover:bg-brand-blue-light/20 transition-colors">
+                            <LayoutDashboard size={16} className="text-brand-blue-light" />
+                          </div>
+                          Platform Dashboard
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                      </button>
+                    )}
+
+                    {/* Platform Dashboard Link - Always show for admins */}
+                    {(userProfile?.role === 'admin' || isImpersonating) && (
+                      <button
+                        onClick={() => {
+                          router.push('/dashboard');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-brand-blue-light/10 flex items-center justify-center mr-3 group-hover:bg-brand-blue-light/20 transition-colors">
+                            <LayoutDashboard size={16} className="text-brand-blue-light" />
+                          </div>
+                          Platform Dashboard
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                      </button>
+                    )}
+
+                    {/* Admin Console Link - Always show for admins */}
+                    {(userProfile?.role === 'admin' || isImpersonating) && (
+                      <button
+                        onClick={() => {
+                          router.push('/admin');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-brand-orange/10 flex items-center justify-center mr-3 group-hover:bg-brand-orange/20 transition-colors">
+                            <Shield size={16} className="text-brand-orange" />
+                          </div>
+                          Admin Console
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                      </button>
+                    )}
+
+                    {/* Admin Role Switcher Entry */}
+                    {(userProfile?.role === 'admin' || isImpersonating) && (
+                      <button
+                        onClick={() => setMenuView('roles')}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-colors ${isImpersonating ? 'bg-brand-red/20' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                            <Flame size={16} className={`${isImpersonating ? 'text-brand-red animate-pulse' : 'text-slate-400 group-hover:text-white'} transition-colors`} />
+                          </div>
+                          Switch Role
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sign Out Section */}
+                  <div className="px-2 pb-3 pt-1">
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-2" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center px-3 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all duration-200 group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center mr-3 group-hover:bg-red-500/20 transition-colors">
+                        <LogOut size={16} className="text-red-400 group-hover:text-red-300 transition-colors" />
+                      </div>
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                /* ROLES SELECTION VIEW */
+                <div className="flex flex-col h-full max-h-[420px]">
+                  {/* Header with back button */}
+                  <div className="flex items-center px-4 py-4 border-b border-white/10">
+                    <button
+                      onClick={() => setMenuView('main')}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all mr-3"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                    <span className="text-base font-semibold text-white">Switch Role</span>
+                  </div>
+
+                  <div className="overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
+                    {/* Platform Admin (Exit) */}
+                    <button
+                      onClick={handleExitView}
+                      className={`
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                        ${!isImpersonating
+                          ? 'bg-brand-blue-light/15 text-brand-blue-light border border-brand-blue-light/30'
+                          : 'text-slate-300 hover:bg-white/10 border border-transparent hover:border-white/10'}
+                      `}
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${!isImpersonating ? 'bg-brand-red/20' : 'bg-brand-red/10'}`}>
+                        <Flame size={18} className="text-brand-red" />
+                      </div>
+                      <span className="flex-1 text-left">Platform Administrator</span>
+                      {!isImpersonating && <Check size={16} className="text-brand-blue-light" />}
+                    </button>
+
+                    <div className="py-2">
+                      <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    </div>
+                    <p className="px-3 text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-2">Demo Accounts</p>
+
+                    {DEMO_ACCOUNTS.map(account => {
+                      const Icon = account.icon;
+                      const isActive = userProfile?.email === account.email;
+                      return (
+                        <button
+                          key={account.id}
+                          onClick={() => handleSwitchUser(account.email)}
+                          className={`
+                            w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                            ${isActive
+                              ? 'bg-brand-blue-light/15 text-brand-blue-light border border-brand-blue-light/30'
+                              : 'text-slate-300 hover:bg-white/10 border border-transparent hover:border-white/10'
+                            }
+                          `}
+                        >
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/10' : 'bg-white/5'} ${account.color}`}>
+                            <Icon size={18} />
+                          </div>
+                          <span className="flex-1 text-left">{account.label}</span>
+                          {isActive && <Check size={16} className="text-brand-blue-light" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

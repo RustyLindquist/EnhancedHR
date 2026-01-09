@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download, StickyNote } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download, StickyNote, Send } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
@@ -20,6 +20,7 @@ interface AIPanelProps {
   // New Props for Context Engineering
   agentType?: AgentType; // Default agent to load
   contextScope?: ContextScope; // Scope for RAG
+  contextTitle?: string; // Title for collection (e.g., "Favorites" -> "Favorites Assistant")
   initialPrompt?: string;
   conversationId?: string | null;
   onConversationIdChange?: (id: string) => void;
@@ -37,6 +38,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
   setIsOpen,
   agentType = 'platform_assistant',
   contextScope = { type: 'PLATFORM' },
+  contextTitle,
   initialPrompt,
   conversationId: propConversationId,
   onConversationIdChange,
@@ -71,6 +73,13 @@ const AIPanel: React.FC<AIPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const hasInitialPromptRun = useRef(false);
+
+  // Input animation states
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showSubmitGlow, setShowSubmitGlow] = useState(false);
+  const [isSnapback, setIsSnapback] = useState(false);
+  const [textareaHeight, setTextareaHeight] = useState<number | 'auto'>('auto');
 
   // Insight metadata from the last AI response
   const [insightMetadata, setInsightMetadata] = useState<StreamInsightMetadata | null>(null);
@@ -282,6 +291,41 @@ const AIPanel: React.FC<AIPanelProps> = ({
     }
   };
 
+  // Handle textarea auto-resize
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      // Let textarea grow to fit content - CSS maxHeight handles the viewport limit
+      const newHeight = textarea.scrollHeight;
+      textarea.style.height = `${newHeight}px`;
+      setTextareaHeight(newHeight);
+    }
+  };
+
+  // Handle submit with animation
+  const handleSubmitWithAnimation = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    // Trigger submit glow animation
+    setShowSubmitGlow(true);
+    setTimeout(() => setShowSubmitGlow(false), 600);
+
+    // Reset textarea and trigger snapback animation
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      setTextareaHeight('auto');
+      setIsSnapback(true);
+      setTimeout(() => setIsSnapback(false), 400);
+    }
+
+    // Call the actual send message
+    await handleSendMessage(text);
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
@@ -447,7 +491,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
     switch (effectiveAgentType) {
       case 'course_assistant': return { name: 'Course Assistant', icon: Bot, color: 'text-brand-blue-light', themeColor: 'bg-brand-blue-light' };
       case 'course_tutor': return { name: 'Prometheus Tutor', icon: GraduationCap, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
-      case 'collection_assistant': return { name: 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
+      case 'collection_assistant': return { name: contextTitle ? `${contextTitle} Assistant` : 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
       case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
       default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
     }
@@ -526,13 +570,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
             ) : (
               // Original agent name display for non-Course scopes
               <div className="flex flex-col justify-center">
-                <span className={`font-bold text-sm tracking-widest uppercase ${agentInfo.color} drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] truncate leading-none`}>
+                <span className={`font-bold text-sm tracking-widest uppercase ${agentInfo.color} drop-shadow-[0_0_5px_rgba(255,147,0,0.5)] leading-none`}>
                   {agentInfo.name}
                 </span>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider">Online</span>
-                </div>
               </div>
             )}
             {/* Action Buttons - always show in Course scope for consistent header layout */}
@@ -656,8 +696,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
               </div>
             ) : (
             <>
-            {/* Chat Messages - pb-32 prevents overlap with input area */}
-            <div ref={messagesContainerRef} className="flex-1 px-6 pt-8 pb-32 space-y-6 overflow-y-auto no-scrollbar">
+            {/* Chat Messages - pb-40 prevents overlap with expanding input area */}
+            <div ref={messagesContainerRef} className="flex-1 px-6 pt-8 pb-40 space-y-6 overflow-y-auto no-scrollbar">
 
               {messages.length === 0 ? (
                 <>
@@ -805,60 +845,142 @@ const AIPanel: React.FC<AIPanelProps> = ({
                       </div>
                     </div>
                   )}
+                  {/* Hint text shown under messages */}
+                  {!isLoading && messages.length > 0 && (
+                    <div className="flex justify-center pt-4">
+                      <span className="text-xs text-slate-500 opacity-70">
+                        Press Enter to send, Shift+Enter for new line
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Input Area (Footer) */}
-            <div className="h-28 flex-shrink-0 p-6 border-t border-white/5 bg-gradient-to-t from-black/40 to-transparent backdrop-blur-md flex flex-col justify-center">
-              <div className="relative group w-full">
+            {/* Input Area (Footer) - FIXED at bottom, never moves */}
+            <div className={`
+              flex-shrink-0 relative h-28 overflow-visible
+              ${isSnapback ? 'ai-textarea-snapback' : ''}
+            `}>
+              {/* Background layer - fixed height, matches CollectionSurface footer styling */}
+              <div className="absolute inset-0 border-t border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_-10px_30px_rgba(0,0,0,0.2)]"></div>
 
-                {/* --- GLOW EFFECTS --- */}
-                <div
-                  className={`
-                    absolute -top-4 -left-4 w-16 h-16 
-                    ${effectiveAgentType === 'course_tutor' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'} rounded-full blur-[20px] 
-                    opacity-20 
-                    group-hover:opacity-60 group-hover:w-32 group-hover:h-32 group-hover:-top-10 group-hover:-left-10 group-hover:blur-[40px]
-                    group-focus-within:opacity-100 group-focus-within:w-48 group-focus-within:h-48 group-focus-within:-top-12 group-focus-within:-left-12 group-focus-within:blur-[60px]
-                    transition-all duration-700 ease-out pointer-events-none mix-blend-screen
-                  `}
-                ></div>
+              {/* Textarea wrapper - absolute from bottom, grows UPWARD, vertically centered when small */}
+              <div className="absolute bottom-0 left-0 right-0 px-6 pb-[34px] z-20">
+                <div className="relative group w-full">
 
-                {/* Input Container */}
-                <div className={`relative rounded-xl p-[1px] bg-gradient-to-br transition-all duration-500 shadow-lg z-10 ${effectiveAgentType === 'course_tutor' ? 'from-[#FF9300]/30 via-white/10 to-[#78C0F0]/10' : 'from-[#78C0F0]/30 via-white/10 to-[#FF9300]/10'}`}>
-                  <div className="relative bg-[#0A0D12] rounded-xl overflow-hidden">
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(input)}
-                      placeholder={effectiveAgentType === 'course_tutor' ? "Start tutoring session..." : "Ask a question..."}
-                      className="
-                        w-full bg-transparent
-                        rounded-xl py-3.5 px-5 pr-12 
-                        text-sm text-white 
-                        placeholder-slate-500 
-                        focus:outline-none 
-                        transition-all duration-300
-                      "
-                    />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+                  {/* --- CENTERED GLOW EFFECTS --- */}
+                  {/* Main ambient glow - centered below input */}
+                  <div
+                    className={`
+                      absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-4
+                      w-3/4 h-24 rounded-full blur-[40px] mix-blend-screen
+                      transition-all duration-700 ease-out pointer-events-none
+                      ${effectiveAgentType === 'course_tutor' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'}
+                      ${isInputFocused ? 'opacity-50 scale-110' : 'opacity-20 scale-100'}
+                    `}
+                  ></div>
+
+                  {/* Secondary top glow for depth */}
+                  <div
+                    className={`
+                      absolute left-1/2 -translate-x-1/2 -top-8
+                      w-1/2 h-16 rounded-full blur-[30px] mix-blend-screen
+                      transition-all duration-500 ease-out pointer-events-none
+                      ${effectiveAgentType === 'course_tutor' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'}
+                      ${isInputFocused ? 'opacity-40' : 'opacity-0'}
+                    `}
+                  ></div>
+
+                  {/* Submit Glow Burst Effect */}
+                  {showSubmitGlow && (
+                    <div
+                      className={`
+                        absolute inset-0 rounded-2xl pointer-events-none z-30
+                        ${effectiveAgentType === 'course_tutor' ? 'bg-[#FF9300]' : 'bg-[#78C0F0]'}
+                        ai-submit-glow blur-xl
+                      `}
+                    ></div>
+                  )}
+
+                  {/* Animated Border Container */}
+                  <div className={`
+                    relative rounded-2xl p-[2px] z-10
+                    transition-all duration-300
+                    ${showSubmitGlow ? 'ai-submit-pulse' : ''}
+                    ${isInputFocused
+                      ? (effectiveAgentType === 'course_tutor' ? 'ai-prompt-border-focused-tutor' : 'ai-prompt-border-focused')
+                      : (effectiveAgentType === 'course_tutor' ? 'ai-prompt-border-tutor' : 'ai-prompt-border')
+                    }
+                  `}>
+                    {/* Inner container with glass effect */}
+                    <div className={`
+                      relative rounded-2xl overflow-hidden
+                      bg-gradient-to-b from-slate-900/95 to-brand-black/98
+                      backdrop-blur-xl
+                      border border-white/5
+                      transition-all duration-300
+                      ${isInputFocused ? 'shadow-[0_0_30px_rgba(120,192,240,0.15)]' : 'shadow-lg'}
+                    `}>
+                      {/* Subtle inner top highlight */}
+                      <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+
+                      {/* Textarea with auto-grow */}
+                      <textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={handleInputChange}
+                        onFocus={() => setIsInputFocused(true)}
+                        onBlur={() => setIsInputFocused(false)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSubmitWithAnimation(input);
+                          }
+                        }}
+                        placeholder={effectiveAgentType === 'course_tutor' ? "Start a tutoring session..." : "Ask Prometheus anything..."}
+                        rows={1}
+                        className="
+                          w-full bg-transparent resize-none
+                          py-3 pl-5 pr-14
+                          text-sm text-white leading-relaxed
+                          placeholder-slate-500
+                          focus:outline-none
+                          transition-colors duration-300
+                          no-scrollbar
+                        "
+                        style={{
+                          minHeight: '44px',
+                          maxHeight: 'calc(100vh - 200px)',
+                        }}
+                      />
+
+                      {/* Send Button - positioned within input container */}
                       <button
-                        onClick={() => handleSendMessage(input)}
+                        onClick={() => handleSubmitWithAnimation(input)}
+                        disabled={!input.trim() || isLoading}
                         className={`
-                          p-2 rounded-lg 
-                          bg-white/5 border border-white/10
-                          text-slate-400
-                          group-hover:text-white 
-                          transition-all duration-300 
-                          shadow-sm
-                          ${effectiveAgentType === 'course_tutor' ? 'group-hover:bg-[#FF9300] group-hover:border-[#FF9300]' : 'group-hover:bg-[#78C0F0] group-hover:border-[#78C0F0] group-hover:text-black'}
-                        `}>
-                        <MessageSquare size={16} />
+                          absolute right-3 bottom-3 z-20
+                          p-2 rounded-xl
+                          transition-all duration-300
+                          shadow-lg
+                          ${input.trim() && !isLoading
+                            ? effectiveAgentType === 'course_tutor'
+                              ? 'bg-gradient-to-br from-[#FF9300] to-[#FF7A00] text-brand-black hover:shadow-[0_0_20px_rgba(255,147,0,0.5)] hover:scale-105 active:scale-95'
+                              : 'bg-gradient-to-br from-[#78C0F0] to-[#5694C7] text-brand-black hover:shadow-[0_0_20px_rgba(120,192,240,0.5)] hover:scale-105 active:scale-95'
+                            : 'bg-white/5 text-slate-600 cursor-not-allowed border border-white/5'
+                          }
+                        `}
+                      >
+                        {isLoading ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Send size={16} />
+                        )}
                       </button>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>

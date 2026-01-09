@@ -528,6 +528,19 @@ function HomeContent() {
         : { type: 'COLLECTION', id: activeCollectionId }
     , [activeCourseId, activeCollectionId]);
 
+  // Get the title of the active collection for the AI Panel header
+  const contextTitle = useMemo(() => {
+    if (activeCourseId) return undefined; // Course scope doesn't use contextTitle
+    if (['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)) return undefined; // Platform scope
+    // Find in custom collections
+    const customCollection = customCollections.find(c => c.id === activeCollectionId);
+    if (customCollection) return customCollection.label;
+    // Find in org collections
+    const orgCollection = orgCollections.find(c => c.id === activeCollectionId);
+    if (orgCollection) return orgCollection.label;
+    return undefined;
+  }, [activeCourseId, activeCollectionId, customCollections, orgCollections]);
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden font-sans selection:bg-brand-blue-light/30 selection:text-white bg-[#0A0D12]">
 
@@ -625,6 +638,7 @@ function HomeContent() {
                   : 'collection_assistant'
             }
             contextScope={contextScope}
+            contextTitle={contextTitle}
             conversationId={activeConversationId}
             onConversationIdChange={setActiveConversationId}
             onAddConversationToCollection={handleAddConversationToCollection}
