@@ -18,7 +18,7 @@ import {
     getAllOrganizations,
     getOrgMembersForTransfer
 } from '@/app/actions/users';
-import { User, Shield, Plus, Search, Check, X, Trash2, AlertTriangle, Key, ChevronDown, Mail } from 'lucide-react';
+import { User, Shield, Plus, Search, Check, X, Trash2, AlertTriangle, Key, ChevronDown, Mail, KeyRound, UserCog, Building2, CreditCard } from 'lucide-react';
 
 interface UsersTableProps {
     initialUsers: AdminUser[];
@@ -306,173 +306,235 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                 {expandedUserId === user.id && (
                                     <tr>
                                         <td colSpan={5} className="p-0">
-                                            <div className="bg-white/[0.02] border-t border-white/5 p-6 animate-fade-in">
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                    {/* Left Column */}
-                                                    <div className="space-y-6">
-                                                        {/* Section 1: Reset Password */}
-                                                        <div>
-                                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Reset Password</h4>
-                                                            <div className="flex gap-3">
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleEmailTempPassword(user); }}
-                                                                    disabled={actionLoading === 'email-password'}
-                                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 transition-colors disabled:opacity-50"
-                                                                >
-                                                                    <Mail size={16} />
-                                                                    Email Temporary Password
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setUserToResetPassword(user); }}
-                                                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 transition-colors"
-                                                                >
-                                                                    <Key size={16} />
-                                                                    Set Password Manually
-                                                                </button>
+                                            <div className="bg-slate-900/50 border-t border-white/5 px-6 py-8 animate-fade-in">
+                                                {/* Two Column Grid for Main Sections */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                                                    {/* Card 1: Reset Password */}
+                                                    <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] p-5 hover:border-white/[0.12] transition-colors">
+                                                        <div className="flex items-center gap-2.5 mb-4">
+                                                            <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center">
+                                                                <KeyRound size={16} className="text-brand-blue-light" />
                                                             </div>
+                                                            <h4 className="text-sm font-semibold text-white">Reset Password</h4>
                                                         </div>
-
-                                                        {/* Section 2: Roles */}
-                                                        <div>
-                                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Roles</h4>
-                                                            <div className="space-y-3">
-                                                                {/* Instructor Status - Dropdown */}
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-sm text-slate-400">Instructor</span>
-                                                                    <select
-                                                                        value={user.authorStatus}
-                                                                        onChange={(e) => handleUpdateAuthorStatus(user.id, e.target.value)}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-blue-light/50"
-                                                                    >
-                                                                        <option value="none">None</option>
-                                                                        <option value="pending">Pending</option>
-                                                                        <option value="approved">Approved</option>
-                                                                        <option value="rejected">Rejected</option>
-                                                                    </select>
+                                                        <div className="space-y-3">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleEmailTempPassword(user); }}
+                                                                disabled={actionLoading === 'email-password'}
+                                                                className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-slate-300 hover:bg-white/[0.08] hover:border-white/[0.12] transition-all disabled:opacity-50 group"
+                                                            >
+                                                                <Mail size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
+                                                                <div className="text-left">
+                                                                    <div className="font-medium">Email Temporary Password</div>
+                                                                    <div className="text-xs text-slate-500 mt-0.5">Send a secure reset link to user's email</div>
                                                                 </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setUserToResetPassword(user); }}
+                                                                className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-slate-300 hover:bg-white/[0.08] hover:border-white/[0.12] transition-all group"
+                                                            >
+                                                                <Key size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
+                                                                <div className="text-left">
+                                                                    <div className="font-medium">Set Password Manually</div>
+                                                                    <div className="text-xs text-slate-500 mt-0.5">Create a new password for this user</div>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                                                {/* Org Admin Toggle - Only if user has org */}
-                                                                {user.orgId && (
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-sm text-slate-400">Org Admin</span>
-                                                                        <ToggleSwitch
-                                                                            checked={user.membershipStatus === 'org_admin'}
-                                                                            onChange={(checked) => handleUpdateOrgAdmin(user.id, checked)}
-                                                                            disabled={user.isOrgOwner}
-                                                                        />
+                                                    {/* Card 2: Roles */}
+                                                    <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] p-5 hover:border-white/[0.12] transition-colors">
+                                                        <div className="flex items-center gap-2.5 mb-4">
+                                                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                                                <UserCog size={16} className="text-purple-400" />
+                                                            </div>
+                                                            <h4 className="text-sm font-semibold text-white">Roles & Permissions</h4>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            {/* Instructor Status - Dropdown */}
+                                                            <div className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors">
+                                                                <div>
+                                                                    <span className="text-sm text-slate-300">Instructor Status</span>
+                                                                    <p className="text-xs text-slate-500 mt-0.5">Can create and publish courses</p>
+                                                                </div>
+                                                                <select
+                                                                    value={user.authorStatus}
+                                                                    onChange={(e) => handleUpdateAuthorStatus(user.id, e.target.value)}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-blue-light/50 focus:ring-1 focus:ring-brand-blue-light/20"
+                                                                >
+                                                                    <option value="none">None</option>
+                                                                    <option value="pending">Pending</option>
+                                                                    <option value="approved">Approved</option>
+                                                                    <option value="rejected">Rejected</option>
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Org Admin Toggle - Only if user has org */}
+                                                            {user.orgId && (
+                                                                <div className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors">
+                                                                    <div>
+                                                                        <span className="text-sm text-slate-300">Organization Admin</span>
+                                                                        <p className="text-xs text-slate-500 mt-0.5">Manage org members and settings</p>
                                                                     </div>
-                                                                )}
-
-                                                                {/* Platform Admin Toggle */}
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-sm text-slate-400">Platform Admin</span>
                                                                     <ToggleSwitch
-                                                                        checked={user.role === 'admin'}
-                                                                        onChange={() => handlePromote(user.id, user.role)}
+                                                                        checked={user.membershipStatus === 'org_admin'}
+                                                                        onChange={(checked) => handleUpdateOrgAdmin(user.id, checked)}
+                                                                        disabled={user.isOrgOwner}
                                                                     />
                                                                 </div>
-                                                            </div>
-                                                        </div>
+                                                            )}
 
-                                                        {/* Section 4: Billing */}
-                                                        <div>
-                                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Billing</h4>
-                                                            <div className="flex items-center justify-between">
+                                                            {/* Platform Admin Toggle */}
+                                                            <div className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors">
                                                                 <div>
-                                                                    <span className="text-sm text-slate-400">Billing Disabled</span>
-                                                                    <p className="text-xs text-slate-500 mt-0.5">When enabled, user is exempt from all charges</p>
+                                                                    <span className="text-sm text-slate-300">Platform Admin</span>
+                                                                    <p className="text-xs text-slate-500 mt-0.5">Full access to admin dashboard</p>
                                                                 </div>
                                                                 <ToggleSwitch
-                                                                    checked={user.billingDisabled}
-                                                                    onChange={(checked) => handleUpdateBillingDisabled(user.id, checked)}
+                                                                    checked={user.role === 'admin'}
+                                                                    onChange={() => handlePromote(user.id, user.role)}
                                                                 />
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    {/* Right Column */}
-                                                    <div className="space-y-6">
-                                                        {/* Section 3: Accounts & Membership */}
-                                                        <div>
-                                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Accounts & Membership</h4>
+                                                    {/* Card 3: Accounts & Membership */}
+                                                    <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] p-5 hover:border-white/[0.12] transition-colors">
+                                                        <div className="flex items-center gap-2.5 mb-4">
+                                                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                                                <Building2 size={16} className="text-emerald-400" />
+                                                            </div>
+                                                            <h4 className="text-sm font-semibold text-white">Organization Membership</h4>
+                                                        </div>
 
-                                                            {/* Individual Account */}
-                                                            {!user.orgId && (
+                                                        {/* Individual Account */}
+                                                        {!user.orgId && (
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-300 border border-slate-500/20">
+                                                                        Individual Account
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-slate-500">This user is not part of any organization.</p>
+                                                                <select
+                                                                    onChange={(e) => e.target.value && handleAddToOrg(user.id, e.target.value)}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="w-full bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue-light/50"
+                                                                    defaultValue=""
+                                                                >
+                                                                    <option value="" disabled>Add to Organization...</option>
+                                                                    {organizations.map(org => (
+                                                                        <option key={org.id} value={org.id}>{org.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Employee */}
+                                                        {user.orgId && !user.isOrgOwner && (
+                                                            <div className="space-y-4">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className="text-sm text-slate-400">Individual Account</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                                                                            Employee
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <span className="text-slate-400">Organization:</span>
+                                                                    <span className="text-white font-medium">{user.orgName}</span>
+                                                                </div>
+                                                                <div className="flex gap-2">
                                                                     <select
-                                                                        onChange={(e) => e.target.value && handleAddToOrg(user.id, e.target.value)}
+                                                                        onChange={(e) => e.target.value && handleChangeOrg(user.id, e.target.value)}
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white"
+                                                                        className="flex-1 bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue-light/50"
                                                                         defaultValue=""
                                                                     >
-                                                                        <option value="" disabled>Add to Organization...</option>
-                                                                        {organizations.map(org => (
+                                                                        <option value="" disabled>Change Organization...</option>
+                                                                        {organizations.filter(o => o.id !== user.orgId).map(org => (
                                                                             <option key={org.id} value={org.id}>{org.name}</option>
                                                                         ))}
                                                                     </select>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleRemoveFromOrg(user.id); }}
+                                                                        className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 hover:bg-red-500/20 transition-colors whitespace-nowrap"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
                                                                 </div>
-                                                            )}
+                                                            </div>
+                                                        )}
 
-                                                            {/* Employee */}
-                                                            {user.orgId && !user.isOrgOwner && (
-                                                                <div className="space-y-2">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-sm text-slate-400">Employee at <span className="text-white">{user.orgName}</span></span>
-                                                                    </div>
-                                                                    <div className="flex gap-2">
-                                                                        <select
-                                                                            onChange={(e) => e.target.value && handleChangeOrg(user.id, e.target.value)}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white"
-                                                                            defaultValue=""
-                                                                        >
-                                                                            <option value="" disabled>Change Organization...</option>
-                                                                            {organizations.filter(o => o.id !== user.orgId).map(org => (
-                                                                                <option key={org.id} value={org.id}>{org.name}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveFromOrg(user.id); }}
-                                                                            className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 hover:bg-red-500/20"
-                                                                        >
-                                                                            Remove from Org
-                                                                        </button>
-                                                                    </div>
+                                                        {/* Org Owner */}
+                                                        {user.isOrgOwner && (
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-brand-orange/20 text-brand-orange border border-brand-orange/30">
+                                                                        Owner
+                                                                    </span>
                                                                 </div>
-                                                            )}
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <span className="text-slate-400">Organization:</span>
+                                                                    <span className="text-white font-medium">{user.orgName}</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleTransferOwnershipClick(user); }}
+                                                                    className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-slate-300 hover:bg-white/[0.08] transition-colors"
+                                                                >
+                                                                    Transfer Ownership...
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
 
-                                                            {/* Org Owner */}
-                                                            {user.isOrgOwner && (
-                                                                <div className="space-y-2">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-sm text-slate-400">Owner of <span className="text-white">{user.orgName}</span></span>
-                                                                        <span className="text-xs bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded">Owner</span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); handleTransferOwnershipClick(user); }}
-                                                                            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10"
-                                                                        >
-                                                                            Transfer Ownership...
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                                    {/* Card 4: Billing */}
+                                                    <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] p-5 hover:border-white/[0.12] transition-colors">
+                                                        <div className="flex items-center gap-2.5 mb-4">
+                                                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                                                <CreditCard size={16} className="text-amber-400" />
+                                                            </div>
+                                                            <h4 className="text-sm font-semibold text-white">Billing Settings</h4>
                                                         </div>
-
-                                                        {/* Section 5: Danger Zone */}
-                                                        <div className="pt-4 border-t border-white/5">
-                                                            <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest mb-3">Danger Zone</h4>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setUserToDelete(user); }}
-                                                                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 hover:bg-red-500/20 transition-colors"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                                Delete Account
-                                                            </button>
+                                                        <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                                                            <div>
+                                                                <span className="text-sm text-slate-300">Billing Disabled</span>
+                                                                <p className="text-xs text-slate-500 mt-0.5">Exempts user from all platform charges</p>
+                                                            </div>
+                                                            <ToggleSwitch
+                                                                checked={user.billingDisabled}
+                                                                onChange={(checked) => handleUpdateBillingDisabled(user.id, checked)}
+                                                            />
                                                         </div>
+                                                        {user.billingDisabled && (
+                                                            <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                                                <AlertTriangle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                                                                <p className="text-xs text-amber-300/80">This user will not be charged for any platform services.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Full Width Danger Zone Card */}
+                                                <div className="bg-red-500/[0.05] rounded-xl border border-red-500/20 p-5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                                                <AlertTriangle size={16} className="text-red-400" />
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-sm font-semibold text-red-400">Danger Zone</h4>
+                                                                <p className="text-xs text-red-400/60 mt-0.5">Permanently delete this account and all associated data</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setUserToDelete(user); }}
+                                                            className="flex items-center gap-2 px-4 py-2.5 bg-red-500/20 border border-red-500/30 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/30 hover:border-red-500/40 transition-all"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                            Delete Account
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
