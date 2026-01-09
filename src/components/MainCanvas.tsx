@@ -732,6 +732,7 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
 const GroupDetailCanvasWrapper = ({
     group,
     manageTrigger,
+    onBack,
     onViewingMember,
     onDragStart,
     onCourseClick,
@@ -741,6 +742,7 @@ const GroupDetailCanvasWrapper = ({
 }: {
     group: any;
     manageTrigger: number;
+    onBack: () => void;
     onViewingMember?: (member: any) => void;
     onDragStart?: (item: DragItem) => void;
     onCourseClick?: (courseId: number) => void;
@@ -757,7 +759,7 @@ const GroupDetailCanvasWrapper = ({
         <Component
             group={group}
             manageTrigger={manageTrigger}
-            onBack={() => { }}
+            onBack={onBack}
             onViewingMember={onViewingMember}
             onDragStart={onDragStart}
             onCourseClick={onCourseClick}
@@ -3784,6 +3786,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                             <GroupDetailCanvasWrapper
                                 group={viewingGroup}
                                 manageTrigger={groupManageTrigger}
+                                onBack={() => onSelectCollection('users-and-groups')}
                                 onViewingMember={setViewingGroupMember}
                                 onDragStart={handleDragStart}
                                 onCourseClick={handleCourseClick}

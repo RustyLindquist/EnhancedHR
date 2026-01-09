@@ -620,10 +620,12 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
             {/* Outer glow effect */}
             <div className="absolute -inset-1 bg-gradient-to-b from-brand-blue-light/20 via-brand-blue-light/5 to-transparent rounded-3xl blur-xl opacity-60" />
 
-            {/* Main container with glassmorphism */}
-            <div className="relative bg-gradient-to-b from-slate-800/95 to-slate-900/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_-10px_rgba(120,192,240,0.15)] overflow-hidden">
-              {/* Subtle top accent line */}
-              <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-brand-blue-light/40 to-transparent" />
+            {/* Animated Border Container */}
+            <div className="relative rounded-2xl p-[2px] ai-prompt-border">
+              {/* Main container with glassmorphism */}
+              <div className="relative bg-gradient-to-b from-slate-800/95 to-slate-900/98 backdrop-blur-2xl border border-white/5 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_-10px_rgba(120,192,240,0.15)] overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-brand-blue-light/40 to-transparent" />
 
               {menuView === 'main' ? (
                 /* MAIN MENU VIEW */
@@ -717,8 +719,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       </button>
                     )}
 
-                    {/* Platform Dashboard Link - Always show for admins */}
-                    {(userProfile?.role === 'admin' || isImpersonating) && (
+                    {/* Platform Dashboard Link - Always show for admins (except when already shown above) */}
+                    {(userProfile?.role === 'admin' || isImpersonating) && !pathname?.startsWith('/author') && (
                       <button
                         onClick={() => {
                           router.push('/dashboard');
@@ -849,6 +851,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
         )}

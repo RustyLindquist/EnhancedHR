@@ -105,16 +105,19 @@ const CardStack: React.FC<CardStackProps> = ({
         className="
           relative w-full h-full z-20
           bg-[#0f172a]/70
-          backdrop-blur-2xl 
+          backdrop-blur-2xl
           border border-white/10
           rounded-2xl flex flex-col
           shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)]
-          transition-all duration-300 group-hover:-translate-y-2 
+          transition-all duration-300 group-hover:-translate-y-2
           group-hover:shadow-[0_30px_70px_-12px_rgba(120,192,240,0.15)]
           group-hover:border-white/20
           overflow-hidden
         "
       >
+        {/* Animated rotating border */}
+        <div className="card-hover-border rounded-2xl" />
+
         {/* --- Flashlight Effects --- */}
         <div
           className="absolute inset-0 z-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none mix-blend-overlay"

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Brain, Palette, Check, Upload } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
@@ -83,6 +84,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ icon, title, children
 };
 
 export default function SettingsPage() {
+    const router = useRouter();
     const [settings, setSettings] = useState<UserSettings>({
         enable_insights: true,
         auto_insights: false
@@ -161,7 +163,12 @@ export default function SettingsPage() {
     if (isLoading) {
         return (
             <StandardPageLayout activeNavId="settings">
-                <CanvasHeader context="Settings" title="Settings" />
+                <CanvasHeader
+                    context="Settings"
+                    title="Settings"
+                    onBack={() => router.push('/dashboard')}
+                    backLabel="Back to Dashboard"
+                />
                 <div className="flex-1 flex items-center justify-center">
                     <div className="w-8 h-8 border-2 border-brand-blue-light border-t-transparent rounded-full animate-spin" />
                 </div>
@@ -171,7 +178,12 @@ export default function SettingsPage() {
 
     return (
         <StandardPageLayout activeNavId="settings">
-            <CanvasHeader context="Settings" title="Settings" />
+            <CanvasHeader
+                context="Settings"
+                title="Settings"
+                onBack={() => router.push('/dashboard')}
+                backLabel="Back to Dashboard"
+            />
 
             <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
                 <div className="max-w-3xl mx-auto animate-fade-in">

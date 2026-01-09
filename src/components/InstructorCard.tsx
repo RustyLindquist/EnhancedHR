@@ -13,6 +13,9 @@ const InstructorCard: React.FC<InstructorCardProps> = ({ instructor, onClick }) 
             onClick={() => onClick(instructor.id)}
             className="group relative w-full h-[400px] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:shadow-[0_0_40px_rgba(120,192,240,0.2)] border border-white/5 hover:border-brand-blue-light/30 bg-[#0f172a]"
         >
+            {/* Animated rotating border */}
+            <div className="card-hover-border rounded-2xl" />
+
             {/* Background Image (Portrait) */}
             <div className="absolute inset-0">
                 <img

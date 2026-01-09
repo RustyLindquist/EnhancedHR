@@ -42,8 +42,11 @@ export default function GroupCard({ group, onClick, isDynamic = false }: GroupCa
     return (
         <div
             onClick={onClick}
-            className={`group relative bg-[#131b2c] border border-white/5 rounded-3xl overflow-hidden ${hoverBorderColor} transition-all duration-300 cursor-pointer shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] min-h-[200px] flex flex-col`}
+            className={`group relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden ${hoverBorderColor} transition-all duration-500 ease-out cursor-pointer shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] hover:bg-white/[0.06] hover:shadow-[0_15px_40px_0_rgba(0,0,0,0.4)] min-h-[200px] flex flex-col`}
         >
+            {/* Animated rotating border */}
+            <div className="card-hover-border rounded-3xl" />
+
             {/* Dynamic Badge - positioned at top right */}
             {isDynamic && (
                 <div className="absolute top-4 right-4 z-10">
@@ -59,7 +62,7 @@ export default function GroupCard({ group, onClick, isDynamic = false }: GroupCa
                 <div className="flex items-center space-x-4">
                     {/* Icon - only show for non-dynamic groups */}
                     {!isDynamic && (
-                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center border border-white/10`}>
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradientClass} backdrop-blur-sm flex items-center justify-center border border-white/15`}>
                             <Users size={24} className={iconColor} />
                         </div>
                     )}
@@ -74,7 +77,7 @@ export default function GroupCard({ group, onClick, isDynamic = false }: GroupCa
 
             {/* Members Count */}
             <div className="px-6 pb-6 flex-1 flex flex-col justify-end">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5 group-hover:bg-white/10 transition-colors">
+                <div className="bg-white/[0.02] backdrop-blur-sm rounded-xl p-4 border border-white/[0.08] group-hover:bg-white/[0.06] group-hover:border-white/15 transition-all duration-300">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Users size={16} className="text-slate-400" />
@@ -84,6 +87,9 @@ export default function GroupCard({ group, onClick, isDynamic = false }: GroupCa
                     </div>
                 </div>
             </div>
+
+            {/* Subtle gradient overlay for glass effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
 
             {/* Subtle hover glow effect */}
             <div className={`absolute inset-0 bg-gradient-to-t ${hoverGlowColor} to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />

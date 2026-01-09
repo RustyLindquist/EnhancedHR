@@ -21,6 +21,9 @@ const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', hoverEf
                 ${className}
             `}
         >
+            {/* Animated rotating border - only when hover effect is enabled */}
+            {hoverEffect && <div className="card-hover-border rounded-2xl" />}
+
             {/* Liquid Shine Effect */}
             {hoverEffect && (
                 <div

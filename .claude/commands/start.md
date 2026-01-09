@@ -215,16 +215,6 @@ Into a single initialization flow.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Usage
+## Get Ready To Build
 
-Simply type:
-```
-/start
-```
-
-Or for continuation:
-```
-/start --continue
-```
-
-This prepares the session for productive work while protecting against context degradation.
+Lastly, please start the web server, install dependencies, and let me know when you're ready to start building.

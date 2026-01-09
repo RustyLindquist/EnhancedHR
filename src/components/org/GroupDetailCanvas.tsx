@@ -118,6 +118,7 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
 
     return (
         <div className="flex flex-col h-full bg-transparent overflow-y-auto pb-36 animate-fade-in custom-scrollbar">
+            {/* Note: Header is provided by MainCanvas when viewing a group */}
 
             {/* Section 1: Platform Usage Stats */}
             <div className="px-8 py-6">

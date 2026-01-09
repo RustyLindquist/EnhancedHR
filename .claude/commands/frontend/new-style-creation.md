@@ -197,3 +197,5 @@ export function ComponentName({
 - Don't use inline styles
 - Don't forget to document
 - Don't create one-off variants (make it a prop)
+
+IMPORTANT: If you create a new style, be sure to document it using the style-documentation skill.

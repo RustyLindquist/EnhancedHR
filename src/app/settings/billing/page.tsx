@@ -6,7 +6,7 @@ import SeatManager from '@/components/settings/SeatManager';
 import { stripe } from '@/lib/stripe';
 import { CheckCircle, Shield, Clock } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
-import CanvasHeader from '@/components/CanvasHeader';
+import BillingHeader from '@/components/settings/BillingHeader';
 
 export default async function BillingPage() {
     const supabase = await createClient();
@@ -60,7 +60,7 @@ export default async function BillingPage() {
 
     return (
         <StandardPageLayout activeNavId="settings">
-            <CanvasHeader context="Settings" title="Billing & Membership" />
+            <BillingHeader />
 
             {/* Content Area - Matches MainCanvas content area styles */}
             <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">

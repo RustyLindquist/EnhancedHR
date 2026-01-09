@@ -72,6 +72,8 @@ export default function AdminPageLayout({ children, activeNavId }: AdminPageLayo
                     <CanvasHeader
                         context="Platform Administration"
                         title="Admin Console"
+                        onBack={() => router.push('/dashboard')}
+                        backLabel="Back to Dashboard"
                     />
 
                     {/* Main Content Area */}

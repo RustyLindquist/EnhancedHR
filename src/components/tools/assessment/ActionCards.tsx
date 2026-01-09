@@ -32,12 +32,15 @@ const ActionCards: React.FC<ActionCardsProps> = ({
                         return (
                             <div
                                 key={index}
-                                className="bg-slate-900/50 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20"
+                                className="group relative bg-slate-900/50 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/20"
                                 style={{
                                     borderLeftWidth: '4px',
                                     borderLeftColor: color
                                 }}
                             >
+                                {/* Animated rotating border */}
+                                <div className="card-hover-border rounded-xl" />
+
                                 <button
                                     onClick={() => setExpandedImmediate(isExpanded ? null : index)}
                                     className="w-full p-4 text-left"
@@ -91,8 +94,11 @@ const ActionCards: React.FC<ActionCardsProps> = ({
                         return (
                             <div
                                 key={index}
-                                className="bg-slate-900/50 backdrop-blur-sm rounded-xl border border-teal-500/20 overflow-hidden transition-all duration-300 hover:border-teal-500/40"
+                                className="group relative bg-slate-900/50 backdrop-blur-sm rounded-xl border border-teal-500/20 overflow-hidden transition-all duration-300 hover:border-teal-500/40"
                             >
+                                {/* Animated rotating border */}
+                                <div className="card-hover-border rounded-xl" />
+
                                 <button
                                     onClick={() => setExpandedStrategic(isExpanded ? null : index)}
                                     className="w-full p-4 text-left"

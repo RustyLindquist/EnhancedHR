@@ -97,6 +97,9 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
             draggable
             onDragStart={handleDragStart}
         >
+            {/* Animated rotating border - only show when not active */}
+            {!isActive && <div className="card-hover-border rounded-xl" />}
+
             {/* NOW PLAYING Badge */}
             {isActive && (
                 <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-brand-blue-light text-brand-black text-[8px] font-bold uppercase tracking-wider rounded-full shadow-lg z-20 whitespace-nowrap">

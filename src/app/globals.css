@@ -594,3 +594,42 @@ body {
   background-size: 200% 100%;
   animation: border-shimmer 3s linear infinite;
 }
+
+/* =====================================================
+   Card Hover Border Animation
+   Reuses the gradient-rotate animation from AI Panel
+   ===================================================== */
+
+/* Card hover border - base styles */
+.card-hover-border {
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+  animation: gradient-rotate 4s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Default hidden state and background for CSS-controlled cards (non-InteractiveCardWrapper) */
+.card-hover-border:not([style*="background"]) {
+  opacity: 0;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    transparent 0%,
+    rgba(120, 192, 240, 0.6) 10%,
+    transparent 20%,
+    transparent 100%
+  );
+}
+
+/* Show border on group hover for CSS-controlled cards */
+.group:hover > .card-hover-border:not([style*="background"]),
+.group:hover .card-hover-border:not([style*="background"]) {
+  opacity: 1;
+}
