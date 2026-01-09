@@ -10,6 +10,13 @@ export interface AdminUser {
   role: string;
   lastSignIn: string | null;
   createdAt: string;
+  // Extended fields for edit panel
+  authorStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  membershipStatus: string;
+  orgId: string | null;
+  orgName: string | null;
+  isOrgOwner: boolean;
+  billingDisabled: boolean;
 }
 
 import { Pool } from 'pg';
@@ -30,19 +37,46 @@ export async function getUsers(): Promise<AdminUser[]> {
     }
   }
 
-  // Fetch Profiles
-  const { data: profiles } = await supabase.from('profiles').select('id, full_name, role');
+  // Fetch Profiles with organization info
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      full_name,
+      role,
+      author_status,
+      membership_status,
+      org_id,
+      billing_disabled,
+      organizations:org_id (
+        id,
+        name,
+        owner_id
+      )
+    `);
+
   const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
   return data.users.map(user => {
     const profile = profileMap.get(user.id);
+    // Handle Supabase join which can return array or single object
+    const orgData = profile?.organizations;
+    const org = (Array.isArray(orgData) ? orgData[0] : orgData) as { id: string; name: string; owner_id: string | null } | null | undefined;
+
     return {
       id: user.id,
       email: user.email || '',
       fullName: profile?.full_name || user.user_metadata?.full_name || 'N/A',
       role: profile?.role || user.user_metadata?.role || 'user',
       lastSignIn: user.last_sign_in_at || null,
-      createdAt: user.created_at
+      createdAt: user.created_at,
+      // Extended fields
+      authorStatus: (profile?.author_status as AdminUser['authorStatus']) || 'none',
+      membershipStatus: profile?.membership_status || 'trial',
+      orgId: profile?.org_id || null,
+      orgName: org?.name || null,
+      isOrgOwner: org?.owner_id === user.id,
+      billingDisabled: profile?.billing_disabled || false
     };
   });
 }
@@ -50,24 +84,31 @@ export async function getUsers(): Promise<AdminUser[]> {
 async function getUsersDirect(): Promise<AdminUser[]> {
     // Fallback connection string for local dev if env var missing
     const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
-    
+
     // Create a new pool for this request (safe for server actions, though caching pool globally is better for high load)
     const pool = new Pool({ connectionString, connectionTimeoutMillis: 5000 }); // 5s timeout
-    
+
     try {
         const client = await pool.connect();
-        // Join auth.users with profiles to get complete data
+        // Join auth.users with profiles and organizations to get complete data
         const query = `
-            SELECT 
-                au.id, 
-                au.email, 
-                au.created_at, 
+            SELECT
+                au.id,
+                au.email,
+                au.created_at,
                 au.last_sign_in_at,
                 au.raw_user_meta_data,
                 p.full_name as profile_name,
-                p.role as profile_role
+                p.role as profile_role,
+                p.author_status,
+                p.membership_status,
+                p.org_id,
+                p.billing_disabled,
+                o.name as org_name,
+                o.owner_id as org_owner_id
             FROM auth.users au
             LEFT JOIN public.profiles p ON au.id = p.id
+            LEFT JOIN public.organizations o ON p.org_id = o.id
             ORDER BY au.created_at DESC
         `;
         const res = await client.query(query);
@@ -81,7 +122,14 @@ async function getUsersDirect(): Promise<AdminUser[]> {
             fullName: row.profile_name || row.raw_user_meta_data?.full_name || 'N/A',
             role: row.profile_role || row.raw_user_meta_data?.role || 'user',
             lastSignIn: row.last_sign_in_at ? new Date(row.last_sign_in_at).toISOString() : null,
-            createdAt: new Date(row.created_at).toISOString()
+            createdAt: new Date(row.created_at).toISOString(),
+            // Extended fields
+            authorStatus: (row.author_status as AdminUser['authorStatus']) || 'none',
+            membershipStatus: row.membership_status || 'trial',
+            orgId: row.org_id || null,
+            orgName: row.org_name || null,
+            isOrgOwner: row.org_owner_id === row.id,
+            billingDisabled: row.billing_disabled || false
         }));
     } catch (e) {
         await pool.end(); // Ensure pool is closed
@@ -285,4 +333,355 @@ export async function resetUserPassword(userId: string, newPassword: string) {
     }
 
     return { success: true };
+}
+
+// =============================================================================
+// Admin Edit Panel Server Actions
+// =============================================================================
+
+import { sendTemporaryPasswordEmail } from '@/lib/email';
+
+/**
+ * Update a user's author status
+ */
+export async function updateAuthorStatus(
+  userId: string,
+  status: 'none' | 'pending' | 'approved' | 'rejected'
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ author_status: status })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error updating author status:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Update a user's org admin status
+ * Only works if user has org_id
+ */
+export async function updateOrgAdmin(
+  userId: string,
+  isOrgAdmin: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  // First verify user has an org
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('org_id')
+    .eq('id', userId)
+    .single();
+
+  if (!profile?.org_id) {
+    return { success: false, error: 'User must be in an organization to update org admin status' };
+  }
+
+  const newStatus = isOrgAdmin ? 'org_admin' : 'employee';
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ membership_status: newStatus })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error updating org admin status:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Add a user to an organization
+ */
+export async function addUserToOrg(
+  userId: string,
+  orgId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      org_id: orgId,
+      membership_status: 'employee'
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error adding user to org:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Remove a user from their organization
+ */
+export async function removeUserFromOrg(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  // Check if user has an active subscription to determine fallback status
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('stripe_subscription_id')
+    .eq('id', userId)
+    .single();
+
+  const newStatus = profile?.stripe_subscription_id ? 'active' : 'trial';
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      org_id: null,
+      membership_status: newStatus
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error removing user from org:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Change a user's organization
+ */
+export async function changeUserOrg(
+  userId: string,
+  newOrgId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      org_id: newOrgId,
+      membership_status: 'employee'
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error changing user org:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Transfer organization ownership to a new user
+ * New owner must already be in the org
+ */
+export async function transferOrgOwnership(
+  orgId: string,
+  newOwnerId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  // Verify new owner is in the org
+  const { data: newOwnerProfile } = await supabase
+    .from('profiles')
+    .select('org_id')
+    .eq('id', newOwnerId)
+    .single();
+
+  if (newOwnerProfile?.org_id !== orgId) {
+    return { success: false, error: 'New owner must be a member of the organization' };
+  }
+
+  // Update organization owner
+  const { error: orgError } = await supabase
+    .from('organizations')
+    .update({ owner_id: newOwnerId })
+    .eq('id', orgId);
+
+  if (orgError) {
+    console.error('Error transferring org ownership:', orgError);
+    return { success: false, error: orgError.message };
+  }
+
+  // Set new owner's membership_status to org_admin
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({ membership_status: 'org_admin' })
+    .eq('id', newOwnerId);
+
+  if (profileError) {
+    console.error('Error updating new owner status:', profileError);
+    // Don't return error - ownership was transferred, status update is secondary
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Update a user's billing disabled status
+ */
+export async function updateBillingDisabled(
+  userId: string,
+  disabled: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ billing_disabled: disabled })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Error updating billing disabled:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
+/**
+ * Generate a temporary password, update the user's password, and send email
+ */
+export async function emailTemporaryPassword(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
+  // Generate random secure password (12 chars, mixed case + numbers)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let tempPassword = '';
+  for (let i = 0; i < 12; i++) {
+    tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  // Get user info
+  const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+
+  if (userError || !user) {
+    return { success: false, error: 'User not found' };
+  }
+
+  // Get profile for full name
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .single();
+
+  const fullName = profile?.full_name || user.user_metadata?.full_name || 'User';
+
+  // Update user's password
+  const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+    password: tempPassword
+  });
+
+  if (updateError) {
+    console.error('Error setting temporary password:', updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Send email
+  const emailResult = await sendTemporaryPasswordEmail(
+    user.email!,
+    tempPassword,
+    fullName
+  );
+
+  if (!emailResult.success) {
+    // Password was changed but email failed - log but still return success
+    // Admin can manually communicate the password if needed
+    console.error('Password updated but email failed:', emailResult.error);
+    return { success: true, error: 'Password updated but email failed to send' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Get all organizations for selector dropdowns
+ */
+export async function getAllOrganizations(): Promise<{
+  data: { id: string; name: string; slug: string }[];
+  error?: string;
+}> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name, slug')
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching organizations:', error);
+    return { data: [], error: error.message };
+  }
+
+  return { data: data || [] };
+}
+
+/**
+ * Get org members eligible for ownership transfer (excludes current owner)
+ */
+export async function getOrgMembersForTransfer(
+  orgId: string
+): Promise<{
+  data: { id: string; fullName: string; email: string }[];
+  error?: string;
+}> {
+  const supabase = createAdminClient();
+
+  // Get current owner
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', orgId)
+    .single();
+
+  // Get all members of the org
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .eq('org_id', orgId);
+
+  if (error) {
+    console.error('Error fetching org members:', error);
+    return { data: [], error: error.message };
+  }
+
+  // Get emails from auth for these users
+  const result: { id: string; fullName: string; email: string }[] = [];
+
+  for (const profile of profiles || []) {
+    // Skip current owner
+    if (org?.owner_id === profile.id) continue;
+
+    const { data: { user } } = await supabase.auth.admin.getUserById(profile.id);
+    if (user) {
+      result.push({
+        id: profile.id,
+        fullName: profile.full_name || 'Unknown',
+        email: user.email || ''
+      });
+    }
+  }
+
+  return { data: result };
 }
