@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Loader2, Library, Plus, Download, StickyNote, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, MessageSquare, Sparkles, GraduationCap, Bot, User, Users, Loader2, Library, Plus, Download, StickyNote, Send } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import { getAgentResponse } from '@/lib/ai/engine';
 import { AgentType, ContextScope } from '@/lib/ai/types';
@@ -493,6 +493,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       case 'course_tutor': return { name: 'Prometheus Tutor', icon: GraduationCap, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
       case 'collection_assistant': return { name: contextTitle ? `${contextTitle} Assistant` : 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
       case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
+      case 'team_analytics_assistant': return { name: 'Team Analytics', icon: Users, color: 'text-purple-400', bgColor: 'bg-purple-500/10', themeColor: 'bg-purple-400' };
       default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
     }
   };

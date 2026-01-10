@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateOpenRouterResponse } from '@/app/actions/ai';
 import { generateQueryEmbedding } from '@/lib/ai/embedding';
+import { getTeamContextForScope } from '@/lib/ai/user-context-builder';
 
 /**
  * Format RAG context items for the AI prompt
@@ -151,7 +152,19 @@ export async function POST(req: NextRequest) {
         }
 
         // Organize context by source type for better AI understanding
-        const contextText = formatContextForPrompt(contextItems || []);
+        let contextText = formatContextForPrompt(contextItems || []);
+
+        // Inject team data context for USER scopes (team analytics)
+        if (ragScope.includeUserDataContext && ragScope.userDataScopeId) {
+            try {
+                const teamContext = await getTeamContextForScope(user.id, ragScope.userDataScopeId);
+                if (teamContext) {
+                    contextText = `${contextText}\n\n=== TEAM DATA CONTEXT ===\n${teamContext}`;
+                }
+            } catch (teamError) {
+                console.error('[Chat API] Error fetching team context:', teamError);
+            }
+        }
 
         // 4. Construct Prompt
         let fullPrompt = `
