@@ -739,8 +739,7 @@ const GroupDetailCanvasWrapper = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick,
-    onNavigateToAnalytics
+    onConversationClick
 }: {
     group: any;
     manageTrigger: number;
@@ -751,7 +750,6 @@ const GroupDetailCanvasWrapper = ({
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
-    onNavigateToAnalytics?: (groupId: string) => void;
 }) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
@@ -769,7 +767,6 @@ const GroupDetailCanvasWrapper = ({
             onModuleClick={onModuleClick}
             onLessonClick={onLessonClick}
             onConversationClick={onConversationClick}
-            onNavigateToAnalytics={onNavigateToAnalytics}
         />
     );
 };
@@ -1305,27 +1302,64 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 }
 
                 // --- AUTO MIGRATION LOGIC (Client-Side) ---
-                // 1. Instantiate Profile Card
                 // 1. Instantiate Profile Card (and simplify/dedupe)
+                // First, get the personal-context collection ID
+                const { data: personalContextCollection } = await supabase
+                    .from('user_collections')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('label', 'Personal Context')
+                    .maybeSingle();
+
+                const personalContextId = personalContextCollection?.id || null;
+
                 const { data: existingProfiles } = await supabase
                     .from('user_context_items')
-                    .select('id, content')
+                    .select('id, content, collection_id')
                     .eq('user_id', user.id)
                     .eq('type', 'PROFILE');
 
                 if (existingProfiles && existingProfiles.length > 0) {
                     if (existingProfiles.length > 1) {
                         console.log('Migrator: Cleaning up duplicate profiles...');
-                        const [keep, ...remove] = existingProfiles;
+                        // Score profiles by content richness (more filled fields = higher score)
+                        // Also prefer profiles with a proper collection_id over null
+                        const scoreProfile = (p: any) => {
+                            const content = p.content || {};
+                            let score = Object.keys(content).filter(k => content[k] && content[k] !== '').length;
+                            // Bonus for having proper collection_id
+                            if (p.collection_id) score += 10;
+                            return score;
+                        };
+                        // Sort by score descending (best profile first)
+                        const sorted = [...existingProfiles].sort((a, b) => scoreProfile(b) - scoreProfile(a));
+                        const [keep, ...remove] = sorted;
+                        console.log('Migrator: Keeping profile with score', scoreProfile(keep), 'removing', remove.length, 'duplicates');
                         await supabase.from('user_context_items').delete().in('id', remove.map(i => i.id));
+
+                        // If the kept profile has null collection_id, update it to personal-context
+                        if (!keep.collection_id && personalContextId) {
+                            console.log('Migrator: Fixing profile collection_id...');
+                            await supabase.from('user_context_items')
+                                .update({ collection_id: personalContextId })
+                                .eq('id', keep.id);
+                        }
                     } else {
-                        // Check for bad data "Verified Final V2"
+                        // Single profile exists
                         const profile = existingProfiles[0];
+                        // Check for bad data "Verified Final V2"
                         if (profile.content && (profile.content as any).role === 'Verified Final V2') {
                             console.log('Migrator: Cleaning up "Verified Final V2"...');
                             await supabase.from('user_context_items').update({
                                 content: { ...(profile.content as any), role: 'HR Professional' }
                             }).eq('id', profile.id);
+                        }
+                        // Fix null collection_id if needed
+                        if (!profile.collection_id && personalContextId) {
+                            console.log('Migrator: Fixing profile collection_id...');
+                            await supabase.from('user_context_items')
+                                .update({ collection_id: personalContextId })
+                                .eq('id', profile.id);
                         }
                         console.log('Migrator: Profile Card Exists.');
                     }
@@ -1333,7 +1367,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     console.log('Migrator: Instantiating Profile Card...');
                     await supabase.from('user_context_items').insert({
                         user_id: user.id,
-                        collection_id: null,
+                        collection_id: personalContextId,
                         type: 'PROFILE',
                         title: 'My Profile',
                         content: { role: 'HR Professional' }
@@ -3498,18 +3532,33 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 </button>
                             )}
                             {viewingGroup && !viewingGroupMember ? (
-                                <button
-                                    onClick={() => {
-                                        if (viewingGroup.is_dynamic) {
-                                            setShowDynamicCriteriaPanel(true);
-                                        } else {
-                                            setShowGroupManagement(true);
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
-                                >
-                                    <Settings size={14} /> {viewingGroup.is_dynamic ? 'Group Criteria' : 'Manage Group'}
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    {/* Full Analysis Button with Animated Border */}
+                                    <div className="relative rounded-full p-[1.5px] ai-analysis-border transition-all hover:scale-105">
+                                        <button
+                                            onClick={() => {
+                                                setAnalyticsGroupId(viewingGroup.id);
+                                                onSelectCollection('org-analytics');
+                                            }}
+                                            className="relative flex items-center gap-2 px-4 py-2 bg-[#0c1117] rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-colors"
+                                        >
+                                            <TrendingUp size={14} /> Full Analysis
+                                        </button>
+                                    </div>
+                                    {/* Manage Group / Group Criteria Button */}
+                                    <button
+                                        onClick={() => {
+                                            if (viewingGroup.is_dynamic) {
+                                                setShowDynamicCriteriaPanel(true);
+                                            } else {
+                                                setShowGroupManagement(true);
+                                            }
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
+                                    >
+                                        <Settings size={14} /> {viewingGroup.is_dynamic ? 'Group Criteria' : 'Manage Group'}
+                                    </button>
+                                </div>
                             ) : viewingGroup && viewingGroupMember ? (
                                 null
                             ) : (
@@ -3804,10 +3853,6 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 onModuleClick={handleModuleClick}
                                 onLessonClick={handleLessonClick}
                                 onConversationClick={handleOpenConversation}
-                                onNavigateToAnalytics={(groupId) => {
-                                    setAnalyticsGroupId(groupId);
-                                    onSelectCollection('org-analytics');
-                                }}
                             />
                         </div>
                     ) :
