@@ -469,8 +469,13 @@ function HomeContent() {
         setActiveCourseId(scope.id);
         setActiveCollectionId('academy');
       } else if (scope.type === 'COLLECTION') {
-        // Navigate to the originating custom collection
-        setActiveCollectionId(scope.id);
+        // Navigate to the originating collection
+        // Special handling for 'academy' which is a pseudo-collection
+        if (scope.id === 'academy') {
+          setActiveCollectionId('academy');
+        } else {
+          setActiveCollectionId(scope.id);
+        }
         setActiveCourseId(null);
       } else if (scope.type === 'TOOL') {
         // Redirect to the tool page - this handles edge cases where a tool conversation
@@ -521,13 +526,24 @@ function HomeContent() {
     }
   }, [collectionParam]);
 
-  const contextScope = useMemo<ContextScope>(() =>
-    activeCourseId
-      ? { type: 'COURSE', id: activeCourseId }
-      : ['dashboard', 'academy', 'favorites', 'recents'].includes(activeCollectionId)
-        ? { type: 'PLATFORM' }
-        : { type: 'COLLECTION', id: activeCollectionId }
-    , [activeCourseId, activeCollectionId]);
+  const contextScope = useMemo<ContextScope>(() => {
+    if (activeCourseId) {
+      return { type: 'COURSE', id: activeCourseId };
+    }
+    if (['dashboard', 'favorites', 'recents'].includes(activeCollectionId)) {
+      return { type: 'PLATFORM' };
+    }
+    if (activeCollectionId === 'academy') {
+      return { type: 'COLLECTION', id: 'academy' };
+    }
+    if (['users-and-groups', 'org-team'].includes(activeCollectionId)) {
+      return { type: 'USER', id: 'all-users' };
+    }
+    if (activeCollectionId.startsWith('group-')) {
+      return { type: 'USER', id: activeCollectionId.replace('group-', '') };
+    }
+    return { type: 'COLLECTION', id: activeCollectionId };
+  }, [activeCourseId, activeCollectionId]);
 
   // Get the title of the active collection for the AI Panel header
   const contextTitle = useMemo(() => {
@@ -670,7 +686,9 @@ function HomeContent() {
                 ? 'course_assistant'
                 : activeCollectionId === 'dashboard'
                   ? 'platform_assistant'
-                  : 'collection_assistant'
+                  : ['users-and-groups', 'org-team'].includes(activeCollectionId)
+                    ? 'team_analytics_assistant'
+                    : 'collection_assistant'
             }
             contextScope={contextScope}
             contextTitle={contextTitle}

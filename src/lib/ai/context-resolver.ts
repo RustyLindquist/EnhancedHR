@@ -28,10 +28,14 @@ export interface RAGScope {
 
     // Legacy/special
     isAllConversations?: boolean;
+
+    // User data context (for org admin views)
+    includeUserDataContext?: boolean;
+    userDataScopeId?: string; // 'all-users' or group ID
 }
 
 export interface PageContext {
-    type: 'COLLECTION' | 'COURSE' | 'PAGE' | 'PLATFORM' | 'DASHBOARD';
+    type: 'COLLECTION' | 'COURSE' | 'PAGE' | 'PLATFORM' | 'DASHBOARD' | 'USER';
     id?: string;
     collectionId?: string;
     agentType?: string;
@@ -111,6 +115,30 @@ export class ContextResolver {
             return {
                 ...baseScope,
                 includeAllUserContext: true
+            };
+        }
+
+        // 5.5 User/Group Scope (Team Analytics)
+        // For viewing team member data in Users/Groups collections
+        if (context.type === 'USER' && context.id) {
+            return {
+                ...baseScope,
+                isPlatformScope: true,  // Allow searching all content for general questions
+                includeUserDataContext: true,
+                userDataScopeId: context.id  // 'all-users' or group ID
+            };
+        }
+
+        // 5.6 Assigned Learning Scope
+        // For viewing assigned content - includes all courses/modules/lessons assigned to user
+        if (context.collectionId === 'assigned-learning' || context.id === 'assigned-learning') {
+            const assignedCourseIds = await this.getAssignedCourseIds(supabase, userId);
+
+            return {
+                ...baseScope,
+                allowedCourseIds: assignedCourseIds.length > 0 ? assignedCourseIds : undefined,
+                // If no assigned courses, fall back to personal context only
+                // Personal context already included via baseScope
             };
         }
 
@@ -224,5 +252,59 @@ export class ContextResolver {
         userId: string
     ): Promise<string | null> {
         return this.resolveCollectionId(supabase, userId, 'personal-context');
+    }
+
+    /**
+     * Get course IDs assigned to a user via content_assignments.
+     * Includes assignments via:
+     * 1. Direct user assignments
+     * 2. Group assignments (if user is in those groups)
+     * 3. Org-wide assignments
+     */
+    private static async getAssignedCourseIds(
+        supabase: SupabaseClient,
+        userId: string
+    ): Promise<number[]> {
+        // Get user's org_id
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', userId)
+            .single();
+
+        if (!profile?.org_id) return [];
+
+        // Get user's group memberships
+        const { data: memberships } = await supabase
+            .from('employee_group_members')
+            .select('group_id')
+            .eq('user_id', userId);
+
+        const groupIds = memberships?.map(m => m.group_id) || [];
+
+        // Build the OR filter for content_assignments
+        // Query for: direct user assignments, group assignments, org-wide assignments
+        let orFilter = `assignee_type.eq.user,assignee_id.eq.${userId}`;
+
+        // Add org-wide assignments
+        orFilter += `,and(assignee_type.eq.org,org_id.eq.${profile.org_id})`;
+
+        // Add group assignments if user belongs to any groups
+        if (groupIds.length > 0) {
+            orFilter += `,and(assignee_type.eq.group,assignee_id.in.(${groupIds.join(',')}))`;
+        }
+
+        const { data: assignments } = await supabase
+            .from('content_assignments')
+            .select('content_type, content_id')
+            .or(orFilter);
+
+        // Extract course IDs (content_type = 'course')
+        const courseIds = (assignments || [])
+            .filter(a => a.content_type === 'course')
+            .map(a => parseInt(a.content_id))
+            .filter(id => !isNaN(id));
+
+        return [...new Set(courseIds)]; // Deduplicate
     }
 }

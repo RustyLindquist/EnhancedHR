@@ -6,6 +6,7 @@ import { extractInsights, stripInsightTags } from '@/lib/ai/insight-analyzer';
 import { processInsight, getInsightSettings } from '@/app/actions/insights';
 import { generateFollowUpSuggestions } from '@/lib/ai/quick-ai';
 import { getCachedPricing, calculateCost } from '@/app/actions/cost-analytics';
+import { getTeamContextForScope } from '@/lib/ai/user-context-builder';
 import type { ExtractedInsight, PendingInsight, InsightFollowUp } from '@/types/insights';
 
 /**
@@ -185,7 +186,19 @@ export async function POST(req: NextRequest) {
         }
 
         // Format context for the prompt with proper organization
-        const contextString = formatContextForPrompt(contextItems || []);
+        let contextString = formatContextForPrompt(contextItems || []);
+
+        // Inject team data context for USER scopes (team analytics)
+        if (ragScope.includeUserDataContext && ragScope.userDataScopeId) {
+            try {
+                const teamContext = await getTeamContextForScope(user.id, ragScope.userDataScopeId);
+                if (teamContext) {
+                    contextString = `${contextString}\n\n=== TEAM DATA CONTEXT ===\n${teamContext}`;
+                }
+            } catch (teamError) {
+                console.error('[Stream API] Error fetching team context:', teamError);
+            }
+        }
 
         const encoder = new TextEncoder();
         let fullResponse = '';
