@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Users, UserPlus, Layers } from 'lucide-react';
 import { getOrgGroups, EmployeeGroup } from '@/app/actions/groups';
 import GroupCard from './GroupCard';
@@ -9,6 +8,7 @@ import CanvasHeader from '../CanvasHeader';
 interface UsersAndGroupsCanvasProps {
     onSelectAllUsers: () => void;
     onSelectGroup: (groupId: string) => void;
+    onBack?: () => void;
 }
 
 // Special card for "All Users" that leads to the existing user management view
@@ -50,8 +50,7 @@ const AllUsersCard: React.FC<{ onClick: () => void; memberCount: number }> = ({ 
     </div>
 );
 
-export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup }: UsersAndGroupsCanvasProps) {
-    const router = useRouter();
+export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, onBack }: UsersAndGroupsCanvasProps) {
     const [groups, setGroups] = useState<EmployeeGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
@@ -106,8 +105,8 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup }
                 <CanvasHeader
                     context="manage your"
                     title="Users and Groups"
-                    onBack={() => router.push('/dashboard')}
-                    backLabel="Back to Dashboard"
+                    onBack={onBack}
+                    backLabel="Go Back"
                 >
                     <div className="flex items-center space-x-4">
                         <button

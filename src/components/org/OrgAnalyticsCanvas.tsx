@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Loader2, TrendingUp, TrendingDown, Users, BookOpen, Brain,
   Award, Target, Clock, BarChart3, MessageSquare, Zap,
@@ -115,10 +114,10 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, subtext, icon, color 
 
 interface OrgAnalyticsCanvasProps {
   initialGroupId?: string;
+  onBack?: () => void;
 }
 
-export default function OrgAnalyticsCanvas({ initialGroupId }: OrgAnalyticsCanvasProps) {
-  const router = useRouter();
+export default function OrgAnalyticsCanvas({ initialGroupId, onBack }: OrgAnalyticsCanvasProps) {
 
   // Calculate default date range (30 days ago to today)
   const getDefaultDates = () => {
@@ -307,8 +306,8 @@ export default function OrgAnalyticsCanvas({ initialGroupId }: OrgAnalyticsCanva
           <CanvasHeader
             context="organization"
             title="Analytics"
-            onBack={() => router.push('/dashboard')}
-            backLabel="Back to Dashboard"
+            onBack={onBack}
+            backLabel="Go Back"
           >
             <div className="h-10 bg-white/10 rounded-xl w-32 animate-pulse"></div>
           </CanvasHeader>
@@ -325,8 +324,8 @@ export default function OrgAnalyticsCanvas({ initialGroupId }: OrgAnalyticsCanva
         <CanvasHeader
           context="organization"
           title="Analytics"
-          onBack={() => router.push('/dashboard')}
-          backLabel="Back to Dashboard"
+          onBack={onBack}
+          backLabel="Go Back"
         >
           <button
             onClick={() => setIsAnalyticsPanelOpen(true)}
