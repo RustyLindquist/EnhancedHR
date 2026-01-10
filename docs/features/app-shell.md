@@ -85,6 +85,22 @@ Read paths:
 - Modifying drag/drop: keep onDrop handlers consistent with collection action signatures.
 - If refactoring layout, preserve event wiring for collection refresh and active collection state.
 
+## Implementation Guidance
+
+**Primary Agent**: Frontend Agent (layout, navigation, MainCanvas, drag-drop, collection events)
+
+**Skills to Use**:
+- `/doc-discovery` — Load collections-and-context and dashboard docs before modifying shell behavior
+- `/plan-lint` — Validate collection alias consistency across nav and canvas
+- `/test-from-docs` — Verify navigation, drag-drop, and collection refresh events
+
+**Key Invariants**:
+- MainCanvas is the hub rendering collection views; activeCollectionId must be propagated from nav/query
+- System collection aliases must stay in sync with collections feature
+- collection:refresh must be fired after any collection mutation to keep nav counts correct
+
+**Related Workflows**: docs/workflows/navigation-flow.md (if exists)
+
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/dashboard.md

@@ -78,6 +78,22 @@ Read paths:
 - If adding seats/org billing, extend profiles/org tables and RLS accordingly.
 - Keep membership_status enum in sync across schema, UI checks, and docs.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (Stripe webhooks, profile updates, subscription state)
+
+**Skills to Use**:
+- `/doc-discovery` — Load auth-accounts and organization-membership docs before modifying billing logic
+- `/plan-lint` — Validate changes to profiles schema or membership_status handling
+- `/test-from-docs` — Verify access gating based on membership_status values
+
+**Key Invariants**:
+- profiles contains Stripe identifiers and membership_status; these are the single source of truth for access gating
+- billing_period_end must be maintained on subscription updates to enforce expirations
+- membership_status enum values: trial, active, inactive, employee, org_admin; UI must gate by these values
+
+**Related Workflows**: docs/workflows/subscription-lifecycle.md (if exists)
+
 ## Related Docs
 - docs/features/auth-accounts.md
 - docs/features/organization-membership.md

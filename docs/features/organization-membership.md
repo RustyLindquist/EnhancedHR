@@ -99,6 +99,23 @@ Read paths:
 - Changing collection RLS: adjust policies in schema and mirror in docs; regression-test org vs personal collections.
 - If adding org-level billing, ensure org_id is enforced in all admin/service-role operations.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (org RLS, profiles.org_id, org collections, groups, assignments)
+**Secondary Agent**: Frontend Agent (org UI, collection editors, join flow)
+
+**Skills to Use**:
+- `/doc-discovery` — Load membership-billing and collections-and-context docs before modifying org access
+- `/plan-lint` — Validate RLS policies for org_id scoping and membership_status checks
+- `/test-from-docs` — Verify org collection visibility and cross-org isolation
+
+**Key Invariants**:
+- org_id consistency across profiles, collections, groups, and assignments; cross-org access must not be allowed
+- is_org_collection must be set for org-scoped collections; otherwise RLS may block members
+- membership_status must be set to employee/org_admin for org access
+
+**Related Workflows**: docs/workflows/org-onboarding.md (if exists)
+
 ## Related Docs
 - docs/features/membership-billing.md
 - docs/features/collections-and-context.md

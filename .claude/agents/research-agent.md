@@ -60,6 +60,37 @@ You may leverage these commands in `.claude/commands/` during research:
 | `/doc-discovery` | When you need to understand feature scope before diving into code |
 | `/capture-optimization` | When you discover undocumented patterns worth recording |
 
+## Skill Invocation Protocol (MANDATORY)
+
+**CRITICAL**: You MUST run specific skills at specific points. This is not optional.
+
+### Pre-Work (BEFORE any exploration)
+
+1. **Consider `/doc-discovery`** for complex queries
+   - Use when query spans multiple features
+   - Helps narrow search scope efficiently
+
+### During Work
+
+2. **Use `/capture-optimization`** when discovering patterns
+   - Undocumented code patterns
+   - Missing documentation
+   - Architecture insights worth preserving
+
+### Post-Work (BEFORE returning to Main Agent)
+
+3. **Report documentation gaps found**
+   - Flag features with missing docs
+   - Note invariants discovered in code but not documented
+
+### Workflow Enforcement Summary
+
+| Phase | Skill | Required? |
+|-------|-------|-----------|
+| Pre-Work | `/doc-discovery` | For multi-feature queries |
+| During | `/capture-optimization` | When finding undocumented patterns |
+| Post-Work | Report doc gaps | ALWAYS (in summary) |
+
 ## Initialization
 
 When spawned, immediately:

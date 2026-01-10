@@ -52,6 +52,45 @@ You have access to and should use:
 - **Test Skill** (`.claude/commands/test.md`) — Test framework and patterns
 - **Browser Use Skill** (`.claude/commands/browser-use.md`) — Browser control via Chrome Extension
 
+## Skill Invocation Protocol (MANDATORY)
+
+**CRITICAL**: You MUST run specific skills at specific points. This is not optional.
+
+### Pre-Work (BEFORE any testing)
+
+1. **Always use `/test-from-docs`** to generate test plan
+   - Determines risk level and test depth
+   - Extracts testing checklist from feature docs
+   - Identifies workflow smoke tests needed
+
+2. **Query @doc-agent** for test scope
+   - "What features does this change touch?"
+   - "What workflows might be affected?"
+   - "What are the invariants to verify?"
+
+### During Work
+
+3. **Use `/browser-use`** for UI verification
+   - Navigate to affected pages
+   - Check console for errors
+   - Take screenshots as evidence
+
+### Post-Work (BEFORE returning to Main Agent)
+
+4. **Report using test report format**
+   - Include all phases tested
+   - Document failures with evidence
+   - Note documentation gaps discovered
+
+### Workflow Enforcement Summary
+
+| Phase | Skill | Required? |
+|-------|-------|-----------|
+| Pre-Work | `/test-from-docs` | ALWAYS |
+| Pre-Work | Query `@doc-agent` | For scope clarification |
+| During | `/browser-use` | For UI testing |
+| Post-Work | Test report format | ALWAYS |
+
 ## Test Scope Determination
 
 ### Step 1: Understand the Change

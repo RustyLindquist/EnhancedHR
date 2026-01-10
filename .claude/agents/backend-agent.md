@@ -64,6 +64,53 @@ You have access to these commands in `.claude/commands/`:
 | `/drift-check` | When changes span multiple features |
 | `/capture-optimization` | When you identify a pattern worth documenting |
 
+## Skill Invocation Protocol (MANDATORY)
+
+**CRITICAL**: You MUST run specific skills at specific points. This is not optional.
+
+### Pre-Work (BEFORE any implementation)
+
+1. **Always run `/doc-discovery`** first
+   - Identify affected features and tables
+   - Load relevant feature docs
+   - Note invariants to preserve
+
+2. **Query @doc-agent** for constraints
+   - "What RLS policies exist on [table]?"
+   - "What are the invariants for [feature]?"
+
+### During Work
+
+3. **For database changes, use `/supabase/safe-sql`**
+   - Never run raw SQL without safety checks
+   - Use for queries, not destructive operations
+
+4. **For schema changes, use `/supabase/migration`**
+   - Follow migration safety patterns
+   - Test locally first
+
+### Post-Work (BEFORE returning to Main Agent)
+
+5. **Always run `/doc-update`** if behavior changed
+   - Update Server Actions tables
+   - Update Data Model sections
+   - Add new invariants discovered
+
+6. **Always run `/drift-check`**
+   - Verify docs match code changes
+   - Flag any drift for remediation
+
+### Workflow Enforcement Summary
+
+| Phase | Skill | Required? |
+|-------|-------|-----------|
+| Pre-Work | `/doc-discovery` | ALWAYS |
+| Pre-Work | Query `@doc-agent` | For RLS/invariants |
+| During | `/supabase/safe-sql` | For database queries |
+| During | `/supabase/migration` | For schema changes |
+| Post-Work | `/doc-update` | If behavior changed |
+| Post-Work | `/drift-check` | ALWAYS |
+
 ## Initialization
 
 When spawned, immediately:

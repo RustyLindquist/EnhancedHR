@@ -4,36 +4,36 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 
 ## Feature Index
 
-| Feature Name | Feature ID / Slug | Primary Surfaces | Core Responsibility | Risk Level | Coupling Notes | Doc Status |
+| Feature Name | Feature ID / Slug | Risk | Primary Agent | Key Skills | Coupling Notes | Doc Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| App Shell & Navigation | app-shell | In-app left navigation + main canvas (collection views); global dropdown panels | Owns the “single app” experience: navigation, view switching, and global panels | High | Touches nearly every feature; small UI/state changes can break multiple flows | Exists |
-| User Accounts & Authentication | auth-accounts | `/login`; `/auth/callback`; `/auth/join-org`; account settings | Owns login/signup, session establishment, and account-level settings entry points | High | Coupled to roles/RLS, org membership, and admin gating | Missing |
-| Dashboard (Learning Hub) | dashboard | `/dashboard`; in-app Dashboard collection views (user/employee/org-admin variants) | Owns the user’s home base: next steps, stats, and jump points into learning | Medium | Coupled to progress/credits, courses, conversations, and AI quick starts | Missing |
-| Academy (Course Catalog) | academy | In-app Academy collection view; `/features` (marketing) references | Owns course discovery: browse/search/filter and course entry points | Medium | Coupled to course detail/player and enrollment/progress | Exists |
-| Courses & Lesson Player (Progress) | course-player-and-progress | Course detail & lesson player UI; dynamic content routes; progress indicators | Owns course consumption and progress tracking while learning | High | Coupled to Mux tracking, credits/certificates, notes, and course AI | Exists |
-| Course AI (Assistant & Tutor) | course-ai | Right-side AI panel while inside a course; Tutor/Assistant modes | Owns course-aware AI help and tutoring behavior | High | Coupled to AI context engine, personal context, and course content retrieval | Exists |
-| Prometheus Chat & Conversations | prometheus-chat | Prometheus full-screen experience; right-side AI panel; Conversations collection | Owns AI chat UX, persistence, and resuming conversations across the platform | High | Coupled to AI context engine, personal context/insights, tools, and collections | Exists |
-| Collections & Context Organization | collections-and-context | Collections views (Favorites/Workspace/Watchlist/custom); drag-and-drop collection surface | Owns organizing learning items (courses, conversations, notes, etc.) into collections | High | Coupled to almost all content types; changes can break saving/organization broadly | Exists |
-| Personal Context & AI Insights | personal-context-insights | Personal Context collection; AI Insight capture/management; settings toggles | Owns user-specific context that personalizes AI behavior over time | Medium | Coupled to AI chat and course AI; depends on stable data/permissions | Exists |
-| Prompt Library | prompt-library | In-app prompt drawer/library; admin prompt management (`/admin/prompts`) | Owns reusable prompt templates and quick-start conversations | Medium | Coupled to Prometheus chat, tools, and onboarding UX | Exists |
-| Notes | notes | Notes inside courses (right panel); Notes collection | Owns learner note-taking and note retrieval across courses | Medium | Coupled to course player, collections organization, and export/share behaviors | Exists |
-| Tools (AI Workflows) | tools | `/tools`; `/tools/[slug]`; Tools collection view; tool-created conversations | Owns structured AI workflows and tool-specific conversation flows | High | Coupled to conversations, AI context engine, collections, and permissions | Exists |
-| Certifications, Credits & Certificates | certifications-and-credits | Certifications UI surfaces; dashboard stats; certificates/badges endpoints | Owns tracking and surfacing certification eligibility and earned outcomes | High | Coupled to progress tracking and ledger/certificate generation; business-critical | Exists |
-| Experts (Instructor Profiles) | experts | `/experts`; `/experts/[id]` | Owns expert discovery, profiles, and linking experts to courses | Low | Coupled mainly to courses/catalog presentation | Missing |
-| Help System (Help Collection) | help-collection | Help collection view; help dropdown panel; Help collection assistant | Owns end-user help content discovery and “ask the platform” guidance | Medium | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
-| Organization Membership (Employee Experience) | organization-membership | `/org/*`; team surfaces; employee dashboard | Owns org membership flows and employee vs individual experience shaping | High | Coupled to auth/roles, billing/seats, and admin gating | Exists |
-| Dynamic Groups | dynamic-groups | Users & Groups collection (Groups tab); DynamicGroupCriteriaPanel | Owns auto-populated employee segments based on real-time activity criteria | Medium | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
-| Author Portal (Course Creation) | author-portal | `/author/*`; `/teach`; course builder surfaces | Owns author workflows for creating and managing course content | Medium | Coupled to courses schema, assets, and admin review/approval flows | Exists |
-| Platform Admin Portal | admin-portal | `/admin/*` (users, courses, payouts, system, AI logs) | Owns platform operations: user/course management and administrative tools | High | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |
-| Membership & Billing | membership-billing | `/settings/billing`; Stripe checkout/portal flows | Owns subscription/access gating and billing lifecycle | High | Coupled to org membership, roles, and access across the app | Exists |
+| App Shell & Navigation | app-shell | High | Frontend | doc-discovery, style-validation | Touches nearly every feature; small UI/state changes can break multiple flows | Exists |
+| User Accounts & Authentication | auth-accounts | High | Backend | doc-discovery, plan-lint | Coupled to roles/RLS, org membership, and admin gating | Missing |
+| Dashboard (Learning Hub) | dashboard | Medium | Frontend + Backend | doc-discovery, test-from-docs | Coupled to progress/credits, courses, conversations, and AI quick starts | Missing |
+| Academy (Course Catalog) | academy | Medium | Frontend | doc-discovery, component-inventory | Coupled to course detail/player and enrollment/progress | Exists |
+| Courses & Lesson Player (Progress) | course-player-and-progress | High | Backend + Frontend | doc-discovery, plan-lint, test-from-docs | Coupled to Mux tracking, credits/certificates, notes, and course AI | Exists |
+| Course AI (Assistant & Tutor) | course-ai | High | Backend | doc-discovery, plan-lint | Coupled to AI context engine, personal context, and course content retrieval | Exists |
+| Prometheus Chat & Conversations | prometheus-chat | High | Backend + Frontend | doc-discovery, plan-lint | Coupled to AI context engine, personal context/insights, tools, and collections | Exists |
+| Collections & Context Organization | collections-and-context | High | Backend | doc-discovery, plan-lint, drift-check | Coupled to almost all content types; changes can break saving/organization broadly | Exists |
+| Personal Context & AI Insights | personal-context-insights | Medium | Backend | doc-discovery | Coupled to AI chat and course AI; depends on stable data/permissions | Exists |
+| Prompt Library | prompt-library | Medium | Frontend + Backend | doc-discovery | Coupled to Prometheus chat, tools, and onboarding UX | Exists |
+| Notes | notes | Medium | Frontend + Backend | doc-discovery | Coupled to course player, collections organization, and export/share behaviors | Exists |
+| Tools (AI Workflows) | tools | High | Backend | doc-discovery, plan-lint | Coupled to conversations, AI context engine, collections, and permissions | Exists |
+| Certifications, Credits & Certificates | certifications-and-credits | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to progress tracking and ledger/certificate generation; business-critical | Exists |
+| Experts (Instructor Profiles) | experts | Low | Frontend | doc-discovery | Coupled mainly to courses/catalog presentation | Missing |
+| Help System (Help Collection) | help-collection | Medium | Frontend + Backend | doc-discovery | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
+| Organization Membership (Employee Experience) | organization-membership | High | Backend | doc-discovery, plan-lint | Coupled to auth/roles, billing/seats, and admin gating | Exists |
+| Dynamic Groups | dynamic-groups | Medium | Backend | doc-discovery | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
+| Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, and admin review/approval flows | Exists |
+| Platform Admin Portal | admin-portal | High | Backend | doc-discovery, plan-lint | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |
+| Membership & Billing | membership-billing | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to org membership, roles, and access across the app | Exists |
 
 ## Meta / Development Infrastructure
 
 These are not user-facing features. They define how the system is built and maintained.
 
-| Feature Name | Feature ID / Slug | Primary Surfaces | Core Responsibility | Risk Level | Coupling Notes | Doc Status |
+| Feature Name | Feature ID / Slug | Risk | Primary Agent | Key Skills | Coupling Notes | Doc Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Agent Architecture | agent-architecture | AGENTS.md; .claude/agents/*; .claude/commands/*; .context/optimizations/* | Owns multi-agent coordination, skills, and self-optimization system | Medium | Meta-system; changes affect development workflow, not application behavior | Exists |
+| Agent Architecture | agent-architecture | Medium | Ops | doc-update, handoff | Meta-system; changes affect development workflow, not application behavior | Exists |
 
 ## Cross‑Cutting / Foundation Features
 
