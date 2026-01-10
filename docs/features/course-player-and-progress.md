@@ -105,6 +105,23 @@ Read paths:
 - Course schema changes: update fetchers and player components; keep FK cascade behavior intact.
 - Integrate progress into course cards: add server/client mapping from user_progress aggregates; document in this feature and Collections doc.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (progress writes, RLS, Mux tracking)
+**Secondary Agent**: Frontend Agent (player UI, progress indicators)
+
+**Skills to Use**:
+- `/doc-discovery` — Understand coupling with credits, certificates, collections
+- `/plan-lint` — Validate progress model changes
+- `/test-from-docs` — Generate regression tests for progress tracking
+
+**Key Invariants**:
+- Progress writes are authoritative; never delete without migration plan
+- Unique constraint on (user_id, lesson_id) must be respected
+- Assessment attempts belong to authenticated user only
+
+**Related Workflows**: `docs/workflows/individual-user-workflows.md` (Course Completion)
+
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/ai-context-engine.md

@@ -106,6 +106,23 @@ Read paths:
 - Schema changes to tools: update RLS policies and actions fetches; supply migration + prod SQL script.
 - If introducing tool-specific embeddings, extend match_unified_embeddings filters and ContextResolver to include tool scope.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (tools table, tool conversations, RLS, agent_type mapping)
+**Secondary Agent**: Frontend Agent (tools UI, conversation history, tool detail pages)
+
+**Skills to Use**:
+- `/doc-discovery` — Load prometheus-chat and ai-context-engine docs before modifying tool flows
+- `/plan-lint` — Validate tool metadata persistence and agent_type consistency
+- `/test-from-docs` — Verify tool conversation creation, resume, and collection sync
+
+**Key Invariants**:
+- tools.slug is unique and the canonical identifier for /tools/[slug] routing
+- Tool conversations must set metadata.is_tool_conversation=true and carry tool_slug/tool_id/tool_title/agent_type
+- Only active tools (`is_active=true`) are listed; RLS allows read only when is_active
+
+**Related Workflows**: docs/workflows/tool-conversation.md (if exists)
+
 ## Related Docs
 - docs/features/prometheus-chat.md
 - docs/features/ai-context-engine.md

@@ -34,6 +34,48 @@ You serve as the knowledge source for these commands in `.claude/commands/`:
 
 When other agents invoke these commands, they may query you. Understand the command workflows to provide accurate responses.
 
+## Skill Invocation Protocol (MANDATORY)
+
+**CRITICAL**: You serve as the knowledge hub. Other agents depend on you for these skills.
+
+### When Queried (Respond with skill output)
+
+1. **For `/doc-discovery` queries**
+   - Load relevant feature docs lazily
+   - Return feature scope, coupling, and risk level
+   - Recommend docs to load next
+
+2. **For `/plan-lint` queries**
+   - Validate plan against loaded docs
+   - Check invariants are preserved
+   - Return PASS/WARN/FAIL with specifics
+
+3. **For `/test-from-docs` queries**
+   - Extract testing checklists from feature docs
+   - Include workflow smoke tests
+   - Note cross-feature test requirements
+
+### Proactive Actions
+
+4. **Always capture optimization opportunities**
+   - Undocumented features queried about
+   - Missing invariants discovered
+   - Documentation gaps identified
+
+5. **Flag workflow impacts**
+   - When changes affect documented workflows
+   - When workflows are missing from docs
+
+### Workflow Enforcement Summary
+
+| Query Type | Your Response |
+|------------|---------------|
+| doc-discovery | Feature scope + risk + coupling |
+| plan-lint | PASS/WARN/FAIL + specifics |
+| invariants | Extract from feature doc |
+| workflow impact | List affected workflows |
+| test scope | Testing checklist from docs |
+
 ## Initialization
 
 When spawned, immediately:

@@ -146,6 +146,23 @@ Collections let users and org admins organize heterogeneous learning objects (co
 - Deleting or renaming collections: ensure context items are migrated or deleted, then run counts refresh; avoid changing system labels.
 - Remember to update `docs/features/FEATURE_INDEX.md` doc status and this doc when adding surfaces or schema changes.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (collection CRUD, context items, embeddings, RLS policies)
+**Secondary Agent**: Frontend Agent (collection UI, drag-drop, context panels)
+
+**Skills to Use**:
+- `/doc-discovery` — Load ai-context-engine and Object Oriented Context Engineering docs before modifying scope logic
+- `/plan-lint` — Validate changes to collection_items, user_context_items, or unified_embeddings
+- `/test-from-docs` — Verify collection membership, context item creation, and AI retrieval
+
+**Key Invariants**:
+- System collection labels must not change: `Favorites`, `Workspace`, `Watchlist`, `Personal Context`
+- Collection membership is canonical in `collection_items`; legacy fields are hints only
+- Personal context must always remain accessible to AI; ContextResolver sets `includePersonalContext=true` by default
+
+**Related Workflows**: docs/workflows/collection-lifecycle.md (if exists)
+
 ## Related Docs
 - docs/engine/DOCUMENTATION_ENGINE.md
 - docs/features/FEATURE_INDEX.md

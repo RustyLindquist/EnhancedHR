@@ -87,6 +87,22 @@ Read paths:
 - Automating issuance: wire progress completion to call award_course_credits and certificates insert.
 - If badges schema changes (text[] to jsonb), update counts logic in collection counts action.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (credit ledger, certificates, award function, RLS)
+
+**Skills to Use**:
+- `/doc-discovery` — Load course-player-and-progress docs before modifying completion/award logic
+- `/plan-lint` — Validate changes to user_credits_ledger or certificates schema
+- `/test-from-docs` — Verify idempotent credit awards and certificate uniqueness
+
+**Key Invariants**:
+- No duplicate ledger row per user/course/credit_type (enforced by award_course_credits function)
+- Certificates unique per user/course
+- credit_type must be SHRM or HRCI; changing requires schema update
+
+**Related Workflows**: docs/workflows/course-completion.md (if exists)
+
 ## Related Docs
 - docs/features/course-player-and-progress.md
 - docs/features/collections-and-context.md

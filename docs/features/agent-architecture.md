@@ -206,6 +206,30 @@ When detected:
 - [ ] Coordinates with Doc Agent for documentation
 - [ ] Moves completed items to implemented.yaml
 
+## Implementation Guidance
+
+**Primary Agent**: Ops Agent (system changes, optimization)
+**Secondary Agent**: Doc Agent (documentation coordination)
+
+**Skills to Use**:
+- `/doc-update` — Update agent and skill documentation
+- `/handoff` — Document system changes at session end
+- `/capture-optimization` — Record improvement opportunities
+
+**Key Invariants**:
+- Every system change must be documented
+- Ops Agent coordinates with Doc Agent for documentation
+- User general statements must be captured as potential rules
+
+**Optimization Guide**: `docs/engine/AGENT_SYSTEM_OPTIMIZATION.md`
+
+For comprehensive optimization sessions (analysis, restructuring, verification), consult the optimization guide. It contains:
+- Full system architecture overview
+- Optimization methodology and verification procedures
+- Skill system architecture patterns
+- Agent prompt architecture requirements
+- Success metrics and measurement procedures
+
 ## Related Documentation
 
 - `AGENTS.md` — Root agent protocol
@@ -214,3 +238,4 @@ When detected:
 - `.claude/agents/frontend-agent.md` — Frontend Agent prompt
 - `.claude/agents/ops-agent.md` — Ops Agent prompt
 - `.context/optimizations/README.md` — Optimization capture guide
+- `docs/engine/AGENT_SYSTEM_OPTIMIZATION.md` — System optimization guide

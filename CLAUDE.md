@@ -228,6 +228,7 @@ Do I need doc validation?        → Spawn doc-agent
 ## 4) Multi-Agent Architecture
 
 > **Full Protocol:** `.claude/agents/AGENT_PROTOCOL.md`
+> **Optimization Guide:** `docs/engine/AGENT_SYSTEM_OPTIMIZATION.md`
 
 ### Architecture Overview
 
@@ -507,6 +508,7 @@ Delegate to agents      ← Implementation
 .context/handoff.md                ← Session handoff
 .context/optimizations/pending.yaml ← Captured improvements
 docs/features/FEATURE_INDEX.md     ← Feature map
+docs/engine/AGENT_SYSTEM_OPTIMIZATION.md ← System optimization guide
 ```
 
 ---

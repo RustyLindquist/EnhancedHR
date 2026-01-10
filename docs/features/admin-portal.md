@@ -87,6 +87,23 @@ Read paths:
 - Changing prompt schema: update ai_system_prompts table, SystemPromptManager, and related actions.
 - If introducing granular admin roles, extend profiles.role and RLS policies accordingly.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (admin RLS, service-role usage, system prompts, admin actions)
+**Secondary Agent**: Frontend Agent (admin UI, route guards)
+
+**Skills to Use**:
+- `/doc-discovery` — Load tools and ai-context-engine docs before modifying admin functionality
+- `/plan-lint` — Validate admin role checks and service-role scoping
+- `/test-from-docs` — Verify admin access control and prompt editing
+
+**Key Invariants**:
+- Admin access determined by profiles.role='admin'; RLS and UI gating must enforce this
+- ai_system_prompts rows unique by agent_type; admin edits must preserve uniqueness
+- Service-role usage in admin actions must be scoped to admin users to avoid cross-tenant leakage
+
+**Related Workflows**: docs/workflows/admin-management.md (if exists)
+
 ## Related Docs
 - docs/features/tools.md
 - docs/features/ai-context-engine.md

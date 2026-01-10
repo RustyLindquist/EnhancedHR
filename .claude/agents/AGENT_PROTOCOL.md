@@ -1161,3 +1161,18 @@ Don't capture:
 - Implementation details without broader applicability
 
 **Focus on observed friction and repeated patterns.**
+
+---
+
+## Related Documentation
+
+| Document | Purpose |
+|----------|---------|
+| `CLAUDE.md` | Orchestrator instructions and quick reference |
+| `AGENTS.md` | Root agent protocol overview |
+| `.claude/agents/*.md` | Individual agent prompts |
+| `.claude/skills/SKILLS_INDEX.md` | Skill discovery and decision tree |
+| `docs/features/FEATURE_INDEX.md` | Feature routing with agent assignments |
+| `docs/features/agent-architecture.md` | Agent architecture feature documentation |
+| `docs/engine/AGENT_SYSTEM_OPTIMIZATION.md` | **System optimization guide** (methodology, verification, metrics) |
+| `.context/optimizations/pending.yaml` | Captured optimization opportunities |

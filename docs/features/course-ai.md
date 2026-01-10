@@ -89,6 +89,22 @@ Read paths:
 - Migrating fully to unified_embeddings: remove match_course_embeddings usage once all courses embedded.
 - Adding tutor diagnostics: extend metadata in chat request and prompts; keep scope logic unchanged.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (AI context assembly, RAG scope logic, system prompts)
+
+**Skills to Use**:
+- `/doc-discovery` — Load ai-context-engine and course-player docs before modifying scope logic
+- `/plan-lint` — Validate changes to ContextResolver or match_unified_embeddings filters
+- `/test-from-docs` — Verify course content retrieval and mode switching
+
+**Key Invariants**:
+- COURSE scope must include allowedCourseIds; without it, AI may pull unrelated content
+- course embeddings must have course_id set; otherwise scope filter fails
+- Personal context inclusion should remain default to personalize responses
+
+**Related Workflows**: docs/workflows/ai-context-resolution.md (if exists)
+
 ## Related Docs
 - docs/features/course-player-and-progress.md
 - docs/features/ai-context-engine.md

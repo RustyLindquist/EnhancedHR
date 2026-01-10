@@ -111,6 +111,23 @@ Read paths:
 - Altering AI models/prompts: update ai_system_prompts rows and ensure agentType mapping in chat endpoints/tool metadata stays aligned.
 - Schema changes to conversations/messages require corresponding Supabase migration and production SQL script.
 
+## Implementation Guidance
+
+**Primary Agent**: Backend Agent (conversation persistence, chat API, context resolution)
+**Secondary Agent**: Frontend Agent (chat UI, conversation list, tool conversation surfaces)
+
+**Skills to Use**:
+- `/doc-discovery` — Load collections-and-context and tools docs before modifying conversation flows
+- `/plan-lint` — Validate RLS policies and user_id filtering for conversation queries
+- `/test-from-docs` — Verify conversation creation, resume, and collection sync
+
+**Key Invariants**:
+- Conversations must always be queried with user_id; admin queries without filter are forbidden
+- collection_items is the source of truth for collection membership; metadata.collection_ids is for compatibility only
+- Tool conversations must carry agent_type in metadata to restore correct prompt/model
+
+**Related Workflows**: docs/workflows/conversation-lifecycle.md (if exists)
+
 ## Related Docs
 - docs/engine/DOCUMENTATION_ENGINE.md
 - docs/features/collections-and-context.md

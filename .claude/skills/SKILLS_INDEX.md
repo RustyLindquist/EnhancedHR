@@ -6,40 +6,51 @@ This directory contains all skills for the EnhancedHR.ai agent system.
 
 ```
 .claude/skills/
-├── SKILLS_INDEX.md          ← This file
+├── SKILLS_INDEX.md              ← This file
 │
 ├── doc-discovery/
-│   └── SKILL.md             ← Load relevant docs before planning
+│   ├── SKILL.md                 ← Load relevant docs before planning
+│   └── reference/               ← Examples and high-risk area guide
 │
 ├── plan-lint/
-│   └── SKILL.md             ← Validate plan against docs
+│   ├── SKILL.md                 ← Validate plan against docs
+│   └── reference/               ← Output templates and failure patterns
 │
 ├── doc-update/
-│   └── SKILL.md             ← Update docs after code changes
+│   ├── SKILL.md                 ← Update docs after code changes
+│   └── reference/               ← Section templates and update patterns
 │
 ├── drift-check/
-│   └── SKILL.md             ← Detect doc/code mismatches
+│   ├── SKILL.md                 ← Detect doc/code mismatches
+│   └── reference/               ← Check procedures and remediation templates
 │
 ├── test-from-docs/
-│   └── SKILL.md             ← Generate tests from documentation
+│   ├── SKILL.md                 ← Generate tests from documentation
+│   └── reference/               ← Test phases and browser testing guide
 │
 ├── handoff/
-│   └── SKILL.md             ← Write session handoff notes
+│   ├── SKILL.md                 ← Write session handoff notes
+│   └── reference/               ← Full and compact handoff templates
 │
 ├── context-status/
-│   └── SKILL.md             ← Check context window health
+│   ├── SKILL.md                 ← Check context window health
+│   └── reference/               ← Recommendations matrix
 │
 ├── compact/
-│   └── SKILL.md             ← Compress context for long sessions
+│   ├── SKILL.md                 ← Compress context for long sessions
+│   └── reference/               ← Emergency procedures
 │
 ├── checkpoint/
-│   └── SKILL.md             ← Save mid-session state
+│   ├── SKILL.md                 ← Save mid-session state
+│   └── reference/               ← Full, pre-risk, and recovery templates
 │
 ├── session-start/
-│   └── SKILL.md             ← Resume from previous session
+│   ├── SKILL.md                 ← Resume from previous session
+│   └── reference/               ← Recovery procedures
 │
 └── remember/
-    └── SKILL.md             ← Refresh critical instructions
+    ├── SKILL.md                 ← Refresh critical instructions
+    └── reference/               ← Degradation fixes and decision guide
 ```
 
 ## Skill Categories
@@ -66,6 +77,71 @@ This directory contains all skills for the EnhancedHR.ai agent system.
 | **checkpoint** | Save mid-session state | After milestones, periodically |
 | **session-start** | Resume from previous session | Beginning of new session |
 | **remember** | Refresh critical instructions | When behaviors degrade |
+
+## Skill Decision Tree
+
+### Starting a Task
+```
+"I'm beginning work on a feature"
+    └─► /doc-discovery
+
+"I need to plan implementation"
+    └─► /plan-lint (after doc-discovery)
+
+"I'm returning to previous work"
+    └─► /session-start
+```
+
+### During Implementation
+```
+"I need to change database"
+    └─► /supabase/safe-sql or /supabase/migration
+
+"I'm creating UI components"
+    └─► /frontend/component-inventory first
+
+"I found an undocumented pattern"
+    └─► /capture-optimization
+```
+
+### Finishing Work
+```
+"I modified feature behavior"
+    └─► /doc-update
+
+"I want to verify doc accuracy"
+    └─► /drift-check
+
+"I'm ending my session"
+    └─► /handoff
+```
+
+### Context Management
+```
+"My responses seem degraded"
+    └─► /remember
+
+"It's been 30+ minutes"
+    └─► /checkpoint
+
+"Context is getting full"
+    └─► /compact
+```
+
+### Quick Decision Matrix
+
+| Situation | Skill |
+|-----------|-------|
+| Starting complex task | `/doc-discovery` |
+| Validating plan | `/plan-lint` |
+| After code changes | `/doc-update` |
+| Checking doc accuracy | `/drift-check` |
+| Generating tests | `/test-from-docs` |
+| Session ending | `/handoff` |
+| Responses degraded | `/remember` |
+| 30-45 min milestone | `/checkpoint` |
+| Context high/critical | `/compact` |
+| New session | `/session-start` |
 
 ## Skill Workflow
 
@@ -186,3 +262,14 @@ Some skills have corresponding commands:
 - Skill: `handoff` → Command: `/handoff`
 
 Commands can invoke skills, and skills can reference commands.
+
+## Optimizing Skills
+
+For guidance on skill architecture and optimization:
+- See `docs/engine/AGENT_SYSTEM_OPTIMIZATION.md`
+
+Key principles:
+- SKILL.md < 500 lines (minimize always-loaded tokens)
+- Detailed content in `/reference` subdirectory
+- Third-person descriptions with trigger keywords
+- One level deep references (never A→B→C)
