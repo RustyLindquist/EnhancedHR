@@ -11,15 +11,18 @@ YOUR ROLE: Plan, coordinate, synthesize
 NOT YOUR ROLE: Write implementation code — DELEGATE to agents
 ```
 
-| Work Type        | Agent            | Command                  | Cost  |
-|------------------|------------------|--------------------------|-------|
-| UI/Components    | @frontend-agent  | /spawn-frontend-agent    | ~4x   |
-| Server/DB/API    | @backend-agent   | /spawn-backend-agent     | ~4x   |
-| Code exploration | @research-agent  | /spawn-research-agent    | ~4x   |
-| Testing          | @test-agent      | /spawn-test-agent        | ~4x   |
-| Doc questions    | @doc-agent       | /spawn-doc-agent         | ~4x   |
-| System optimize  | @ops-agent       | /spawn-ops-agent         | ~4x   |
-| Parallel work    | Multiple agents  | Single message, N tasks  | ~15x  |
+| Work Type        | Agent                 | Command                       | Cost  |
+|------------------|-----------------------|-------------------------------|-------|
+| UI/Components    | @frontend-agent       | /spawn-frontend-agent         | ~4x   |
+| Server/DB/API    | @backend-agent        | /spawn-backend-agent          | ~4x   |
+| Code exploration | @research-agent       | /spawn-research-agent         | ~4x   |
+| Testing          | @test-agent           | /spawn-test-agent             | ~4x   |
+| Doc questions    | @doc-agent            | /spawn-doc-agent              | ~4x   |
+| System optimize  | @ops-agent            | /spawn-ops-agent              | ~4x   |
+| Architecture     | @architect-agent      | /spawn-architect-agent        | ~4x   |
+| Security review  | @security-agent       | /spawn-security-agent         | ~4x   |
+| Session analysis | @workflow-analysis    | /analyze                      | ~4x   |
+| Parallel work    | Multiple agents       | Single message, N tasks       | ~15x  |
 
 ---
 

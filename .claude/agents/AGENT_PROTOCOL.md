@@ -113,6 +113,14 @@ This document defines how agents coordinate in the EnhancedHR.ai workspace.
 - Maintains agent health and coordination
 - See: `.claude/agents/ops-agent.md`
 
+### 10. Workflow Analysis Agent (Process Optimizer)
+- Analyzes session performance holistically
+- Identifies friction points and improvement opportunities
+- Creates evidence-based improvement plans
+- Documents all changes in `.context/workflow-analysis/`
+- Triggered via `/analyze` at session end
+- See: `.claude/agents/workflow-analysis-agent.md`
+
 ## Model Tiering Strategy
 
 Agents use different models based on task criticality:
@@ -127,6 +135,7 @@ Agents use different models based on task criticality:
 | Architect Agent | `opus` | Critical decisions |
 | Security Agent | `opus` | Security-critical |
 | Ops Agent | `inherit` | User-controlled |
+| Workflow Analysis Agent | `opus` | Deep analysis |
 
 This tiering reduces costs by 2-2.5× while maintaining quality where it matters.
 
