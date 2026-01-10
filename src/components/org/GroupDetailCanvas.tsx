@@ -21,6 +21,7 @@ interface GroupDetailCanvasProps {
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
+    onNavigateToAnalytics?: (groupId: string) => void;
 }
 
 const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
@@ -32,7 +33,8 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick
+    onConversationClick,
+    onNavigateToAnalytics
 }) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
@@ -100,8 +102,12 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     };
 
     const navigateToGroupAnalysis = (groupId: string) => {
-        // Navigate to Org Dashboard with group pre-selected
-        window.location.href = `/org/analytics?groupId=${groupId}`;
+        if (onNavigateToAnalytics) {
+            onNavigateToAnalytics(groupId);
+        } else {
+            // Fallback to old behavior
+            window.location.href = `/org/analytics?groupId=${groupId}`;
+        }
     };
 
     if (!fullGroup) return null;

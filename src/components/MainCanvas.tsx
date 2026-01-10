@@ -739,7 +739,8 @@ const GroupDetailCanvasWrapper = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick
+    onConversationClick,
+    onNavigateToAnalytics
 }: {
     group: any;
     manageTrigger: number;
@@ -750,6 +751,7 @@ const GroupDetailCanvasWrapper = ({
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
+    onNavigateToAnalytics?: (groupId: string) => void;
 }) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
@@ -767,6 +769,7 @@ const GroupDetailCanvasWrapper = ({
             onModuleClick={onModuleClick}
             onLessonClick={onLessonClick}
             onConversationClick={onConversationClick}
+            onNavigateToAnalytics={onNavigateToAnalytics}
         />
     );
 };
@@ -814,6 +817,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [viewingGroup, setViewingGroup] = useState<any | null>(null);
     const [viewingGroupMember, setViewingGroupMember] = useState<any | null>(null);
+    const [analyticsGroupId, setAnalyticsGroupId] = useState<string | null>(null);
 
     // Org collection viewing state
     const [viewingOrgCollection, setViewingOrgCollection] = useState<{
@@ -3800,6 +3804,10 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 onModuleClick={handleModuleClick}
                                 onLessonClick={handleLessonClick}
                                 onConversationClick={handleOpenConversation}
+                                onNavigateToAnalytics={(groupId) => {
+                                    setAnalyticsGroupId(groupId);
+                                    onSelectCollection('org-analytics');
+                                }}
                             />
                         </div>
                     ) :
@@ -3866,11 +3874,12 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 <UsersAndGroupsCanvas
                                     onSelectAllUsers={() => onSelectCollection('org-team')}
                                     onSelectGroup={(groupId) => onSelectCollection(`group-${groupId}`)}
+                                    onBack={onGoBack}
                                 />
                             </div>
                         ) : activeCollectionId === 'org-team' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
-                                <TeamManagement />
+                                <TeamManagement onBack={onGoBack} />
                             </div>
                         ) : activeCollectionId === 'assigned-learning' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
@@ -3878,7 +3887,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                             </div>
                         ) : activeCollectionId === 'org-analytics' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
-                                <OrgAnalyticsCanvas />
+                                <OrgAnalyticsCanvas initialGroupId={analyticsGroupId || undefined} onBack={onGoBack} />
                             </div>
                         ) : activeCollectionId === 'help' ? (
                             // --- HELP COLLECTION VIEW ---

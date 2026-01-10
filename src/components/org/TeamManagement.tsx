@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { getOrgMembers, OrgMember, InviteInfo, getOrgSelectorData, switchPlatformAdminOrg } from '@/app/actions/org';
 import InviteMemberPanel from './InviteMemberPanel';
 import GroupManagement from './GroupManagement';
@@ -17,8 +16,11 @@ interface OrgSelectorData {
     organizations: { id: string; name: string; slug: string; memberCount: number }[];
 }
 
-export default function TeamManagement() {
-    const router = useRouter();
+interface TeamManagementProps {
+    onBack?: () => void;
+}
+
+export default function TeamManagement({ onBack }: TeamManagementProps) {
     const [members, setMembers] = useState<OrgMember[]>([]);
     const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
     const [loading, setLoading] = useState(true);
@@ -126,8 +128,8 @@ export default function TeamManagement() {
                 <CanvasHeader
                     context={orgSelectorData?.isPlatformAdmin ? "Platform Admin View" : "My Organization"}
                     title="Manage Users"
-                    onBack={() => router.push('/dashboard')}
-                    backLabel="Back to Dashboard"
+                    onBack={onBack}
+                    backLabel="Go Back"
                 >
                     <div className="flex items-center space-x-4">
                         {/* Platform Admin Org Selector */}
