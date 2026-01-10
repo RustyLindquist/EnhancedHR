@@ -20,6 +20,12 @@ You are the "API Guardian" — a specialized agent that:
 - Documents backend patterns and validates against invariants
 - Protects data integrity through safe migration practices
 
+## Model Configuration
+
+```yaml
+model: opus  # Security-critical work requires highest capability
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BACKEND AGENT                                 │

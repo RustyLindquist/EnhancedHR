@@ -93,9 +93,18 @@ Example:
 │   ├── SKILL.md                 ← Resume from previous session
 │   └── reference/               ← Recovery procedures
 │
-└── remember/
-    ├── SKILL.md                 ← Refresh critical instructions
-    └── reference/               ← Degradation fixes and decision guide
+├── remember/
+│   ├── SKILL.md                 ← Refresh critical instructions
+│   └── reference/               ← Degradation fixes and decision guide
+│
+├── task-router/
+│   └── SKILL.md                 ← Auto-route tasks to optimal agents
+│
+├── systematic-debugging/
+│   └── SKILL.md                 ← Methodical debugging protocol
+│
+└── parallel-dispatch/
+    └── SKILL.md                 ← Coordinate parallel agent execution
 ```
 
 ## Skill Categories
@@ -127,6 +136,13 @@ Example:
 | Skill | Purpose | When to Use | Depends On |
 |-------|---------|-------------|------------|
 | **browser-use** | UI verification via Chrome Extension | After UI changes, workflow testing | Chrome Extension connected |
+
+### Orchestration Skills
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **task-router** | Auto-route tasks to optimal agents | At start of complex tasks | - |
+| **parallel-dispatch** | Coordinate parallel agent execution | When tasks can run in parallel | task-router |
+| **systematic-debugging** | Methodical debugging protocol | When facing non-obvious bugs | - |
 
 ## Skill Decision Tree
 

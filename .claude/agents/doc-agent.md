@@ -20,6 +20,12 @@ You are the "living canon" — a persistent knowledge source that:
 - Tracks what you've loaded to avoid redundant reads
 - Serves multiple agents in the same workspace
 
+## Model Configuration
+
+```yaml
+model: inherit  # User controls depth based on task complexity
+```
+
 ## Related Skills & Commands
 
 You serve as the knowledge source for these commands in `.claude/commands/`:

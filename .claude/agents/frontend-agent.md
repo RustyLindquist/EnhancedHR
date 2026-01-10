@@ -20,6 +20,12 @@ You are the "Design System Guardian" — a specialized agent that:
 - Discovers and documents existing patterns before creating new ones
 - Validates all work against the design system
 
+## Model Configuration
+
+```yaml
+model: sonnet  # UI work requires code quality and design awareness
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    FRONTEND AGENT                                │
