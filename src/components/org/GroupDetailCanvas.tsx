@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupDetails, getGroupStats, getGroupMembersWithStats, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
 import { ContentAssignment, getDirectAssignments, removeAssignment } from '@/app/actions/assignments';
-import { Users, BookOpen, BarChart3, Plus, Sparkles, TrendingUp } from 'lucide-react';
+import { Users, BookOpen, BarChart3, Plus, Sparkles } from 'lucide-react';
 import ContentPickerModal from './ContentPickerModal';
 import UserCard from './UserCard';
 import UserDetailDashboard from './UserDetailDashboard';
@@ -21,7 +21,6 @@ interface GroupDetailCanvasProps {
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
-    onNavigateToAnalytics?: (groupId: string) => void;
 }
 
 const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
@@ -33,8 +32,7 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick,
-    onNavigateToAnalytics
+    onConversationClick
 }) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
@@ -101,15 +99,6 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
         }
     };
 
-    const navigateToGroupAnalysis = (groupId: string) => {
-        if (onNavigateToAnalytics) {
-            onNavigateToAnalytics(groupId);
-        } else {
-            // Fallback to old behavior
-            window.location.href = `/org/analytics?groupId=${groupId}`;
-        }
-    };
-
     if (!fullGroup) return null;
 
     // Show employee detail view when a member is selected
@@ -133,13 +122,6 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                         <BarChart3 size={16} className="text-brand-blue-light" />
                         Platform Usage
                     </h3>
-                    <button
-                        onClick={() => navigateToGroupAnalysis(group.id)}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-400 text-xs font-semibold uppercase tracking-wider hover:bg-purple-500/20 hover:border-purple-500/50 transition-all"
-                    >
-                        <TrendingUp size={14} />
-                        Full Analysis
-                    </button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <StatCard

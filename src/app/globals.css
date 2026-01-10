@@ -513,6 +513,34 @@ body {
   );
 }
 
+/* Analysis button animated border - default state (slow, subtle) */
+.ai-analysis-border {
+  animation: gradient-rotate 4s linear infinite;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    transparent 0%,
+    rgba(120, 192, 240, 0.6) 10%,
+    transparent 20%,
+    transparent 100%
+  );
+}
+
+/* Analysis button animated border - hover state (faster, more vibrant) */
+.ai-analysis-border:hover {
+  animation: gradient-rotate 2s linear infinite;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    rgba(120, 192, 240, 0.3) 0%,
+    rgba(120, 192, 240, 0.8) 15%,
+    rgba(255, 147, 0, 0.6) 30%,
+    transparent 45%,
+    transparent 55%,
+    rgba(255, 147, 0, 0.6) 70%,
+    rgba(120, 192, 240, 0.8) 85%,
+    rgba(120, 192, 240, 0.3) 100%
+  );
+}
+
 /* Submit pulse animation */
 @keyframes submit-pulse {
   0% {
