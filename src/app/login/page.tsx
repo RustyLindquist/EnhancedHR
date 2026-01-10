@@ -89,7 +89,8 @@ function LoginPageContent() {
     const handleOAuthSignIn = async (provider: 'google') => {
         setOauthLoading(provider)
         setError(null)
-        const result = await signInWithOAuth(provider)
+        const next = searchParams.get('next') || undefined
+        const result = await signInWithOAuth(provider, next)
         if (result?.error) {
             setError(result.error)
             setOauthLoading(null)
@@ -192,6 +193,8 @@ function LoginPageContent() {
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
+                            {/* Hidden field for redirect after login */}
+                            <input type="hidden" name="next" value={searchParams.get('next') || ''} />
 
                             {/* VERIFICATION VIEW */}
                             {view === 'verify' && (

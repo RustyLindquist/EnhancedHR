@@ -6,15 +6,20 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { trackLoginEvent } from '@/app/actions/org-dashboard'
 
-export async function signInWithOAuth(provider: 'google' | 'apple') {
+export async function signInWithOAuth(provider: 'google' | 'apple', next?: string) {
     const supabase = await createClient()
     const headersList = await headers()
     const origin = headersList.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
+    // Include 'next' param in callback URL if provided
+    const redirectTo = next && next.startsWith('/')
+        ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+        : `${origin}/auth/callback`
+
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-            redirectTo: `${origin}/auth/callback`,
+            redirectTo,
             queryParams: provider === 'google' ? {
                 access_type: 'offline',
                 prompt: 'consent',
@@ -38,6 +43,7 @@ export async function login(formData: FormData) {
 
     const email = formData.get('email') as string
     const password = formData.get('password') as string
+    const next = formData.get('next') as string
 
     const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -53,7 +59,10 @@ export async function login(formData: FormData) {
     await trackLoginEvent(headersList.get('user-agent') || undefined)
 
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+
+    // Redirect to the 'next' URL if provided, otherwise dashboard
+    const redirectUrl = next && next.startsWith('/') ? next : '/dashboard'
+    redirect(redirectUrl)
 }
 
 export async function signup(formData: FormData) {
