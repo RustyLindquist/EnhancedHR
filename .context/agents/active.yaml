@@ -1,0 +1,21 @@
+# Active Agent Registry
+# Tracks spawned agents for session resumption and audit trail
+#
+# Updated by Main Agent when spawning/completing agents
+# Read by /session-start to understand previous session state
+
+session_start: null
+session_description: null
+
+agents: []
+
+# Example entry:
+# - id: "abc123"
+#   type: "frontend-agent"
+#   purpose: "Build course card component"
+#   spawned_at: "2026-01-10T10:30:00Z"
+#   status: "active"  # active | completed | failed
+#   related_tasks:
+#     - "Create responsive card layout"
+#     - "Add hover animations"
+#   notes: "Used existing CardBase pattern"
