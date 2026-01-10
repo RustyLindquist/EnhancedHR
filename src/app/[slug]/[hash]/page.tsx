@@ -94,7 +94,7 @@ export default async function JoinPage({ params }: { params: Promise<{ slug: str
                                     Log In to Join
                                 </Link>
                                 <Link
-                                    href={`/signup?next=/${slug}/${hash}`}
+                                    href={`/login?view=signup&next=/${slug}/${hash}`}
                                     className="block w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white font-bold uppercase tracking-wider text-center hover:bg-white/10 transition-all"
                                 >
                                     Create Account

@@ -141,6 +141,7 @@ export async function verifyEmail(formData: FormData) {
 
     const email = formData.get('email') as string
     const token = formData.get('code') as string
+    const next = formData.get('next') as string
 
     const { data, error } = await supabase.auth.verifyOtp({
         email,
@@ -182,7 +183,10 @@ export async function verifyEmail(formData: FormData) {
     }
 
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+
+    // Redirect to the 'next' URL if provided, otherwise dashboard
+    const redirectUrl = next && next.startsWith('/') ? next : '/dashboard'
+    redirect(redirectUrl)
 }
 
 export async function resendVerification(formData: FormData) {
