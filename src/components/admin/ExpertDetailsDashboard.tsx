@@ -10,8 +10,15 @@ import {
     User, Mail, Phone, Linkedin, Calendar, Clock, Award, BookOpen,
     TrendingUp, Users, MessageSquare, CheckCircle, XCircle, AlertCircle,
     ExternalLink, Trash2, FileText, ChevronDown, ChevronRight, ArrowLeft,
-    Edit3, Save, Loader2, Briefcase
+    Edit3, Save, Loader2, Briefcase, Globe
 } from 'lucide-react';
+
+// Custom X (formerly Twitter) icon
+const XIcon = ({ size = 14 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="text-slate-500">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 
 interface ExpertDetailsDashboardProps {
     expert: ExpertProfile;
@@ -36,6 +43,10 @@ export default function ExpertDetailsDashboard({
     const [editedBio, setEditedBio] = useState(expert.author_bio || '');
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(expert.expert_title || '');
+    const [isEditingSocialLinks, setIsEditingSocialLinks] = useState(false);
+    const [editedLinkedIn, setEditedLinkedIn] = useState(expert.linkedin_url || '');
+    const [editedTwitter, setEditedTwitter] = useState(expert.twitter_url || '');
+    const [editedWebsite, setEditedWebsite] = useState(expert.website_url || '');
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionNotes, setRejectionNotes] = useState('');
     const [showProposalRejectModal, setShowProposalRejectModal] = useState<string | null>(null);
@@ -163,6 +174,31 @@ export default function ExpertDetailsDashboard({
         setIsEditingTitle(false);
     };
 
+    const handleSaveSocialLinks = async () => {
+        if (isPending) return;
+
+        startTransition(async () => {
+            const result = await updateExpertProfile(expert.id, {
+                linkedin_url: editedLinkedIn,
+                twitter_url: editedTwitter,
+                website_url: editedWebsite,
+            });
+            if (result.success) {
+                setIsEditingSocialLinks(false);
+                router.refresh();
+            } else {
+                alert(result.error || 'Failed to save social links');
+            }
+        });
+    };
+
+    const handleCancelSocialLinksEdit = () => {
+        setEditedLinkedIn(expert.linkedin_url || '');
+        setEditedTwitter(expert.twitter_url || '');
+        setEditedWebsite(expert.website_url || '');
+        setIsEditingSocialLinks(false);
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'approved':
@@ -256,6 +292,30 @@ export default function ExpertDetailsDashboard({
                                 <ExternalLink size={12} />
                             </a>
                         )}
+                        {expert.twitter_url && (
+                            <a
+                                href={expert.twitter_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-2 px-4 py-2 bg-slate-500/10 border border-slate-500/20 rounded-full text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-500/20 transition-all"
+                            >
+                                <XIcon size={14} />
+                                <span>X</span>
+                                <ExternalLink size={12} />
+                            </a>
+                        )}
+                        {expert.website_url && (
+                            <a
+                                href={expert.website_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-full text-xs font-bold uppercase tracking-wider text-purple-400 hover:bg-purple-500/20 transition-all"
+                            >
+                                <Globe size={14} />
+                                <span>Website</span>
+                                <ExternalLink size={12} />
+                            </a>
+                        )}
                     </div>
                 </div>
 
@@ -322,26 +382,120 @@ export default function ExpertDetailsDashboard({
                         {/* Divider */}
                         <div className="hidden md:block w-px bg-white/10"></div>
 
-                        {/* Contact Info */}
-                        <div className="flex flex-col justify-center gap-2">
+                        {/* Contact & Social Links */}
+                        <div className="flex flex-col justify-center gap-2 min-w-[200px]">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-slate-500 uppercase tracking-wider">Contact & Social</span>
+                                {isEditingSocialLinks ? (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleCancelSocialLinksEdit}
+                                            disabled={isPending}
+                                            className="text-xs text-slate-400 hover:text-white disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleSaveSocialLinks}
+                                            disabled={isPending}
+                                            className="text-xs text-brand-orange hover:text-brand-orange/80 disabled:opacity-50"
+                                        >
+                                            {isPending ? 'Saving...' : 'Save'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setIsEditingSocialLinks(true)}
+                                        className="text-xs text-brand-blue-light hover:text-white"
+                                    >
+                                        <Edit3 size={10} />
+                                    </button>
+                                )}
+                            </div>
                             {expert.phone_number && (
                                 <div className="flex items-center gap-2 text-slate-400 text-sm">
                                     <Phone size={14} className="text-slate-500" />
                                     <span>{expert.phone_number}</span>
                                 </div>
                             )}
-                            {expert.linkedin_url && (
-                                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                                    <Linkedin size={14} className="text-slate-500" />
-                                    <a
-                                        href={expert.linkedin_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-brand-blue-light hover:underline"
-                                    >
-                                        {expert.linkedin_url.replace('https://www.linkedin.com/in/', '').replace('/', '')}
-                                    </a>
-                                </div>
+                            {isEditingSocialLinks ? (
+                                <>
+                                    <div className="flex items-center gap-2">
+                                        <Linkedin size={14} className="text-slate-500 flex-shrink-0" />
+                                        <input
+                                            type="url"
+                                            value={editedLinkedIn}
+                                            onChange={(e) => setEditedLinkedIn(e.target.value)}
+                                            placeholder="LinkedIn URL..."
+                                            className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-sm text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 flex-1"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <XIcon size={14} />
+                                        <input
+                                            type="url"
+                                            value={editedTwitter}
+                                            onChange={(e) => setEditedTwitter(e.target.value)}
+                                            placeholder="X (Twitter) URL..."
+                                            className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-sm text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 flex-1"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Globe size={14} className="text-slate-500 flex-shrink-0" />
+                                        <input
+                                            type="url"
+                                            value={editedWebsite}
+                                            onChange={(e) => setEditedWebsite(e.target.value)}
+                                            placeholder="Website URL..."
+                                            className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-sm text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 flex-1"
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {expert.linkedin_url && (
+                                        <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                            <Linkedin size={14} className="text-slate-500" />
+                                            <a
+                                                href={expert.linkedin_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-brand-blue-light hover:underline"
+                                            >
+                                                {expert.linkedin_url.replace('https://www.linkedin.com/in/', '').replace('https://linkedin.com/in/', '').replace('/', '')}
+                                            </a>
+                                        </div>
+                                    )}
+                                    {expert.twitter_url && (
+                                        <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                            <XIcon size={14} />
+                                            <a
+                                                href={expert.twitter_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-brand-blue-light hover:underline"
+                                            >
+                                                {expert.twitter_url.replace('https://x.com/', '@').replace('https://twitter.com/', '@')}
+                                            </a>
+                                        </div>
+                                    )}
+                                    {expert.website_url && (
+                                        <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                            <Globe size={14} className="text-slate-500" />
+                                            <a
+                                                href={expert.website_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-brand-blue-light hover:underline"
+                                            >
+                                                {expert.website_url.replace('https://', '').replace('http://', '').replace(/\/$/, '')}
+                                            </a>
+                                        </div>
+                                    )}
+                                    {!expert.linkedin_url && !expert.twitter_url && !expert.website_url && (
+                                        <span className="text-slate-600 text-sm italic">No social links set</span>
+                                    )}
+                                </>
                             )}
                         </div>
 

@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { Phone, Linkedin, Award, Loader2, CheckCircle, Save, Briefcase } from 'lucide-react';
+import { Phone, Linkedin, Globe, Award, Loader2, CheckCircle, Save, Briefcase } from 'lucide-react';
+
+// Custom X (formerly Twitter) icon
+const XIcon = ({ size = 16 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="text-slate-400">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 import { updateExpertProfileAction } from '@/app/actions/profile';
 import CredentialsEditor from '@/components/CredentialsEditor';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -9,6 +16,8 @@ import { ExpertCredential } from '@/app/actions/credentials';
 interface ExpertProfileSectionProps {
     phoneNumber: string | null;
     linkedinUrl: string | null;
+    twitterUrl: string | null;
+    websiteUrl: string | null;
     credentials: ExpertCredential[];
     authorBio: string | null;
     expertTitle: string | null;
@@ -17,6 +26,8 @@ interface ExpertProfileSectionProps {
 export default function ExpertProfileSection({
     phoneNumber,
     linkedinUrl,
+    twitterUrl,
+    websiteUrl,
     credentials,
     authorBio,
     expertTitle,
@@ -29,6 +40,8 @@ export default function ExpertProfileSection({
     const [formData, setFormData] = useState({
         phone_number: phoneNumber || '',
         linkedin_url: linkedinUrl || '',
+        twitter_url: twitterUrl || '',
+        website_url: websiteUrl || '',
         author_bio: authorBio || '',
         expert_title: expertTitle || '',
     });
@@ -51,6 +64,8 @@ export default function ExpertProfileSection({
         setFormData({
             phone_number: phoneNumber || '',
             linkedin_url: linkedinUrl || '',
+            twitter_url: twitterUrl || '',
+            website_url: websiteUrl || '',
             author_bio: authorBio || '',
             expert_title: expertTitle || '',
         });
@@ -169,6 +184,80 @@ export default function ExpertProfileSection({
                                         className="text-brand-blue-light hover:underline"
                                     >
                                         {formData.linkedin_url.replace('https://www.linkedin.com/in/', '').replace('https://linkedin.com/in/', '').replace('/', '')}
+                                    </a>
+                                ) : (
+                                    <span>Not set</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* X (Twitter) URL */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        X (Twitter) Profile
+                    </label>
+                    {isEditing ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                            <XIcon size={16} />
+                            <input
+                                type="url"
+                                value={formData.twitter_url}
+                                onChange={(e) => setFormData({ ...formData, twitter_url: e.target.value })}
+                                placeholder="https://x.com/your-handle"
+                                className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                            <div className="flex items-center gap-3">
+                                <XIcon size={16} />
+                                {formData.twitter_url ? (
+                                    <a
+                                        href={formData.twitter_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-blue-light hover:underline"
+                                    >
+                                        {formData.twitter_url.replace('https://x.com/', '@').replace('https://twitter.com/', '@')}
+                                    </a>
+                                ) : (
+                                    <span>Not set</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Website URL */}
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        Website
+                    </label>
+                    {isEditing ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                            <Globe size={16} className="text-slate-400" />
+                            <input
+                                type="url"
+                                value={formData.website_url}
+                                onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                                placeholder="https://your-website.com"
+                                className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                            <div className="flex items-center gap-3">
+                                <Globe size={16} className="text-slate-400" />
+                                {formData.website_url ? (
+                                    <a
+                                        href={formData.website_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-blue-light hover:underline"
+                                    >
+                                        {formData.website_url.replace('https://', '').replace('http://', '').replace(/\/$/, '')}
                                     </a>
                                 ) : (
                                     <span>Not set</span>

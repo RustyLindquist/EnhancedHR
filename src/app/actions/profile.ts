@@ -123,10 +123,12 @@ export async function skipOnboardingAction(): Promise<{ success: boolean; error?
     return { success: true };
 }
 
-// Update expert profile fields (phone, linkedin, credentials, author_bio, expert_title)
+// Update expert profile fields (phone, linkedin, twitter, website, credentials, author_bio, expert_title)
 export async function updateExpertProfileAction(data: {
     phone_number?: string;
     linkedin_url?: string;
+    twitter_url?: string;
+    website_url?: string;
     credentials?: string;
     author_bio?: string;
     expert_title?: string;
@@ -159,6 +161,8 @@ export async function updateExpertProfileAction(data: {
         .update({
             phone_number: data.phone_number,
             linkedin_url: data.linkedin_url,
+            twitter_url: data.twitter_url,
+            website_url: data.website_url,
             credentials: data.credentials,
             author_bio: data.author_bio,
             expert_title: data.expert_title,
