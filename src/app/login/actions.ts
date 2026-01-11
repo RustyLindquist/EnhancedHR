@@ -71,10 +71,55 @@ export async function signup(formData: FormData) {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
     const fullName = formData.get('fullName') as string
+    const next = formData.get('next') as string
 
     const accountType = formData.get('accountType') as string
     const orgName = formData.get('orgName') as string
 
+    // Check if this is an org join flow (skip email verification for org invites)
+    // Org join URLs match pattern: /{slug}/{hash} (two path segments, not a known route)
+    const isOrgJoinFlow = next && /^\/[^/]+\/[^/]+$/.test(next) &&
+        !next.startsWith('/login') && !next.startsWith('/dashboard') &&
+        !next.startsWith('/settings') && !next.startsWith('/org')
+
+    if (isOrgJoinFlow) {
+        // Use admin client to create user with auto-confirmed email for org join flow
+        const { createAdminClient } = await import('@/lib/supabase/server')
+        const adminClient = await createAdminClient()
+
+        const { data: adminData, error: adminError } = await adminClient.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true, // Auto-confirm email for org join flow
+            user_metadata: {
+                full_name: fullName,
+                account_type: accountType,
+            },
+        })
+
+        if (adminError) {
+            if (adminError.message.includes('already been registered') || adminError.message.includes('already exists')) {
+                return { error: 'An account with this email already exists. Please sign in instead.' }
+            }
+            return { error: adminError.message }
+        }
+
+        // Sign in the newly created user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        })
+
+        if (signInError) {
+            return { error: 'Account created but sign-in failed. Please try logging in.' }
+        }
+
+        // Redirect to org join page
+        revalidatePath('/', 'layout')
+        redirect(next)
+    }
+
+    // Standard signup flow with email verification
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
