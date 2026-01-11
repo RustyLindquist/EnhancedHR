@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { login, signup, resetPassword, verifyEmail, resendVerification, signInWithOAuth } from './actions'
-import { Mail, Lock, User, ArrowRight, Loader2, Building } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Building, Eye, EyeOff } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
 import { useSearchParams } from 'next/navigation'
@@ -22,6 +22,7 @@ function LoginPageContent() {
     const [membershipType, setMembershipType] = useState<'free' | 'pro'>('free')
     const [accountType, setAccountType] = useState<'individual' | 'org'>('individual')
     const [oauthLoading, setOauthLoading] = useState<'google' | null>(null)
+    const [showPassword, setShowPassword] = useState(false)
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -344,12 +345,20 @@ function LoginPageContent() {
                                             <Lock size={16} className="text-slate-500 mr-3" />
                                             <input
                                                 name="password"
-                                                type="password"
+                                                type={showPassword ? "text" : "password"}
                                                 placeholder="••••••••••••"
                                                 required
                                                 minLength={6}
                                                 className="bg-transparent border-none outline-none text-white placeholder-slate-700 w-full text-sm font-medium"
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="ml-2 text-slate-500 hover:text-white transition-colors"
+                                                tabIndex={-1}
+                                            >
+                                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
