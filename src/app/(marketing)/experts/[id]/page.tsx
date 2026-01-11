@@ -47,7 +47,7 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
     // Fetch their published courses
     const { data: courses } = await supabase
         .from('courses')
-        .select('id, title, description, image, category, duration, badges')
+        .select('id, title, description, image_url, category, duration, badges')
         .eq('author_id', id)
         .eq('status', 'published');
 
@@ -180,9 +180,9 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
                             >
                                 {/* Course Image */}
                                 <div className="aspect-video relative bg-slate-800">
-                                    {course.image ? (
+                                    {course.image_url ? (
                                         <Image
-                                            src={course.image}
+                                            src={course.image_url}
                                             alt={course.title}
                                             fill
                                             className="object-cover"
