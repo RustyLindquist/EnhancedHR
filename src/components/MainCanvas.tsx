@@ -1814,6 +1814,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         onOpenAIPanel();
     };
 
+    // Handler for viewing expert page
+    const handleViewExpert = (expertId: string) => {
+        window.location.href = `/experts/${expertId}`;
+    };
+
     // Navigate to a module within its course
     const handleModuleClick = async (moduleItem: any) => {
         const courseId = moduleItem.course_id;
@@ -2540,6 +2545,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         onOpenModal(item as any);
                     }}
                     onAskPrometheus={handleAskPrometheus}
+                    onViewExpert={handleViewExpert}
                     userId={user?.id || ''}
                     initialLessonId={resumeLessonId}
                     initialModuleId={resumeModuleId}

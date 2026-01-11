@@ -4,10 +4,11 @@ import { Course, Module } from '@/types';
 export async function fetchCourses(): Promise<Course[]> {
     const supabase = createClient();
 
-    // 1. Fetch raw courses
+    // 1. Fetch raw courses (only published courses for regular users)
     const { data: coursesData, error } = await supabase
         .from('courses')
         .select('*')
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
     if (error) {

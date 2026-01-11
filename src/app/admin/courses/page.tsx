@@ -1,30 +1,98 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { Plus, Search, Filter, MoreHorizontal, FileText, Video, Eye } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Eye, ChevronDown, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
-export default async function AdminCoursesPage() {
-    const supabase = await createClient();
+interface Course {
+    id: string;
+    title: string;
+    author: string | null;
+    author_id: string | null;
+    category: string | null;
+    status: string | null;
+    created_at: string;
+    image_url: string | null;
+}
 
-    // Fetch courses with minimal fields for list view
-    // Try with author_id first, fallback without it if column doesn't exist
-    let courses: any[] | null = null;
+export default function AdminCoursesPage() {
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
-    const result = await supabase
-        .from('courses')
-        .select('id, title, author, author_id, category, status, created_at, image_url')
-        .order('created_at', { ascending: false });
+    useEffect(() => {
+        async function fetchCourses() {
+            const supabase = createClient();
+            const { data, error } = await supabase
+                .from('courses')
+                .select('id, title, author, author_id, category, status, created_at, image_url')
+                .order('created_at', { ascending: false });
 
-    if (result.error?.message?.includes('author_id')) {
-        // Fallback query without author_id
-        const fallbackResult = await supabase
-            .from('courses')
-            .select('id, title, author, category, status, created_at, image_url')
-            .order('created_at', { ascending: false });
-        courses = fallbackResult.data?.map(c => ({ ...c, author_id: null })) || [];
-    } else {
-        courses = result.data;
-    }
+            if (!error && data) {
+                setCourses(data);
+            }
+            setLoading(false);
+        }
+        fetchCourses();
+    }, []);
+
+    // Get unique categories and statuses for filter dropdowns
+    const categories = useMemo(() => {
+        const cats = new Set(courses.map(c => c.category).filter(Boolean));
+        return Array.from(cats).sort();
+    }, [courses]);
+
+    const statuses = useMemo(() => {
+        const stats = new Set(courses.map(c => c.status || 'draft').filter(Boolean));
+        return Array.from(stats).sort();
+    }, [courses]);
+
+    // Filter courses based on search and filters
+    const filteredCourses = useMemo(() => {
+        return courses.filter(course => {
+            // Search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const matchesTitle = course.title?.toLowerCase().includes(query);
+                const matchesAuthor = course.author?.toLowerCase().includes(query);
+                const matchesCategory = course.category?.toLowerCase().includes(query);
+                if (!matchesTitle && !matchesAuthor && !matchesCategory) {
+                    return false;
+                }
+            }
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                const courseStatus = course.status || 'draft';
+                if (courseStatus !== statusFilter) {
+                    return false;
+                }
+            }
+
+            // Category filter
+            if (categoryFilter !== 'all') {
+                if (course.category !== categoryFilter) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [courses, searchQuery, statusFilter, categoryFilter]);
+
+    const clearFilters = () => {
+        setSearchQuery('');
+        setStatusFilter('all');
+        setCategoryFilter('all');
+    };
+
+    const hasActiveFilters = searchQuery || statusFilter !== 'all' || categoryFilter !== 'all';
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -44,113 +112,241 @@ export default async function AdminCoursesPage() {
 
             {/* Filters / Search Bar */}
             <div className="flex items-center gap-4 mb-6 bg-white/5 p-2 rounded-xl border border-white/10 w-fit">
+                {/* Search Input */}
                 <div className="relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input
                         type="text"
                         placeholder="Search courses..."
-                        className="bg-transparent border-none pl-10 pr-4 py-2 text-sm text-white focus:ring-0 placeholder:text-slate-600 w-64"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-transparent border-none pl-10 pr-4 py-2 text-sm text-white focus:ring-0 focus:outline-none placeholder:text-slate-600 w-64"
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
+
                 <div className="h-6 w-px bg-white/10"></div>
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
-                    <Filter size={14} /> Status: All
-                </button>
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
-                    <Filter size={14} /> Category: All
-                </button>
+
+                {/* Status Filter Dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => {
+                            setStatusDropdownOpen(!statusDropdownOpen);
+                            setCategoryDropdownOpen(false);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                            statusFilter !== 'all'
+                                ? 'text-brand-blue-light bg-brand-blue-light/10'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <Filter size={14} />
+                        Status: {statusFilter === 'all' ? 'All' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1).replace('_', ' ')}
+                        <ChevronDown size={12} className={`transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {statusDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 min-w-[150px] py-1">
+                            <button
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    setStatusDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 ${
+                                    statusFilter === 'all' ? 'text-brand-blue-light' : 'text-slate-300'
+                                }`}
+                            >
+                                All Statuses
+                            </button>
+                            {statuses.map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => {
+                                        setStatusFilter(status);
+                                        setStatusDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 capitalize ${
+                                        statusFilter === status ? 'text-brand-blue-light' : 'text-slate-300'
+                                    }`}
+                                >
+                                    {status.replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Category Filter Dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => {
+                            setCategoryDropdownOpen(!categoryDropdownOpen);
+                            setStatusDropdownOpen(false);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                            categoryFilter !== 'all'
+                                ? 'text-brand-blue-light bg-brand-blue-light/10'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <Filter size={14} />
+                        Category: {categoryFilter === 'all' ? 'All' : categoryFilter}
+                        <ChevronDown size={12} className={`transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {categoryDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 min-w-[150px] py-1 max-h-64 overflow-y-auto">
+                            <button
+                                onClick={() => {
+                                    setCategoryFilter('all');
+                                    setCategoryDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 ${
+                                    categoryFilter === 'all' ? 'text-brand-blue-light' : 'text-slate-300'
+                                }`}
+                            >
+                                All Categories
+                            </button>
+                            {categories.map(category => (
+                                <button
+                                    key={category}
+                                    onClick={() => {
+                                        setCategoryFilter(category as string);
+                                        setCategoryDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 ${
+                                        categoryFilter === category ? 'text-brand-blue-light' : 'text-slate-300'
+                                    }`}
+                                >
+                                    {category}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Clear Filters */}
+                {hasActiveFilters && (
+                    <>
+                        <div className="h-6 w-px bg-white/10"></div>
+                        <button
+                            onClick={clearFilters}
+                            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                        >
+                            <X size={14} /> Clear
+                        </button>
+                    </>
+                )}
             </div>
+
+            {/* Results Count */}
+            {hasActiveFilters && (
+                <p className="text-sm text-slate-500 mb-4">
+                    Showing {filteredCourses.length} of {courses.length} courses
+                </p>
+            )}
 
             {/* Course List Table */}
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-white/10 bg-white/5">
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Course</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Author</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {courses?.map((course) => (
-                            <tr key={course.id} className="group hover:bg-white/[0.02] transition-colors">
-                                <td className="p-5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
-                                            {course.image_url ? (
-                                                <img src={course.image_url} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                                    <FileText size={20} />
+                {loading ? (
+                    <div className="p-12 text-center text-slate-500">
+                        Loading courses...
+                    </div>
+                ) : (
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-white/10 bg-white/5">
+                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Course</th>
+                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Author</th>
+                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {filteredCourses.map((course) => (
+                                <tr key={course.id} className="group hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+                                                {course.image_url ? (
+                                                    <img src={course.image_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                        <FileText size={20} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-white text-sm group-hover:text-brand-blue-light transition-colors">
+                                                    {course.title}
+                                                </h3>
+                                                <p className="text-xs text-slate-500">ID: {course.id}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-5">
+                                        {course.author_id ? (
+                                            <Link
+                                                href={`/admin/experts/${course.author_id}`}
+                                                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                            >
+                                                <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                                                    {course.author?.charAt(0) || '?'}
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-white text-sm group-hover:text-brand-blue-light transition-colors">
-                                                {course.title}
-                                            </h3>
-                                            <p className="text-xs text-slate-500">ID: {course.id}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-5">
-                                    {course.author_id ? (
-                                        <Link
-                                            href={`/admin/experts/${course.author_id}`}
-                                            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                                        >
-                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-                                                {course.author?.charAt(0) || '?'}
+                                                <span className="text-sm text-brand-blue-light hover:underline">{course.author || 'Unknown'}</span>
+                                            </Link>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                                                    {course.author?.charAt(0) || '?'}
+                                                </div>
+                                                <span className="text-sm text-slate-300">{course.author || 'Unknown'}</span>
                                             </div>
-                                            <span className="text-sm text-brand-blue-light hover:underline">{course.author || 'Unknown'}</span>
-                                        </Link>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-                                                {course.author?.charAt(0) || '?'}
-                                            </div>
-                                            <span className="text-sm text-slate-300">{course.author || 'Unknown'}</span>
+                                        )}
+                                    </td>
+                                    <td className="p-5">
+                                        <span className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            {course.category}
+                                        </span>
+                                    </td>
+                                    <td className="p-5">
+                                        <StatusBadge status={course.status || 'draft'} />
+                                    </td>
+                                    <td className="p-5 text-right">
+                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Link
+                                                href={`/?courseId=${course.id}`}
+                                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                                title="View Public Page"
+                                            >
+                                                <Eye size={16} />
+                                            </Link>
+                                            <Link
+                                                href={`/admin/courses/${course.id}/builder`}
+                                                className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/20 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light hover:text-brand-black transition-colors"
+                                            >
+                                                Edit
+                                            </Link>
                                         </div>
-                                    )}
-                                </td>
-                                <td className="p-5">
-                                    <span className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                        {course.category}
-                                    </span>
-                                </td>
-                                <td className="p-5">
-                                    <StatusBadge status={course.status || 'draft'} />
-                                </td>
-                                <td className="p-5 text-right">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Link
-                                            href={`/?courseId=${course.id}`}
-                                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                                            title="View Public Page"
-                                        >
-                                            <Eye size={16} />
-                                        </Link>
-                                        <Link
-                                            href={`/admin/courses/${course.id}/builder`}
-                                            className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/20 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light hover:text-brand-black transition-colors"
-                                        >
-                                            Edit
-                                        </Link>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {(!courses || courses.length === 0) && (
-                            <tr>
-                                <td colSpan={5} className="p-12 text-center text-slate-500">
-                                    No courses found. Create your first one!
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredCourses.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={5} className="p-12 text-center text-slate-500">
+                                        {hasActiveFilters ? 'No courses match your filters.' : 'No courses found. Create your first one!'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );
