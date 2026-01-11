@@ -2,6 +2,51 @@
 
 This directory contains all skills for the EnhancedHR.ai agent system.
 
+## Skill Dependency Graph
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        SESSION LIFECYCLE                                  │
+│                                                                          │
+│   /session-start ─────────────────────────────────────────────────────┐ │
+│         │                                                              │ │
+│         ▼                                                              │ │
+│   /doc-discovery ──► /plan-lint ──► [IMPLEMENTATION] ──► /test-from-docs │
+│         │                                │                      │      │ │
+│         │                                ▼                      │      │ │
+│         │                    ┌──────────────────────┐           │      │ │
+│         │                    │ Agent Skills         │           │      │ │
+│         │                    │ /supabase/safe-sql   │           │      │ │
+│         │                    │ /supabase/migration  │           │      │ │
+│         │                    │ /frontend/*          │           │      │ │
+│         │                    └──────────────────────┘           │      │ │
+│         │                                                       │      │ │
+│         └────────────────────────────────────────────────────────┘      │ │
+│                                                                          │
+│   /test-from-docs ──► /doc-update ──► /drift-check ──► /handoff ────────┘
+│                                                                          │
+│                                                                          │
+│   RECOVERY LOOP (as needed):                                            │
+│                                                                          │
+│   /context-status ──► /checkpoint ──► /compact ──► /remember            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Skills vs Commands
+
+| Component | Location | Purpose | Loading |
+|-----------|----------|---------|---------|
+| **Skills** | `.claude/skills/*/SKILL.md` | Auto-discovered capabilities with detailed reference docs | At startup |
+| **Commands** | `.claude/commands/*.md` | Slash command invocations (thin wrappers) | On invocation |
+
+**Relationship**: Commands invoke skills. Skills contain the full logic with validation checklists and reference materials. Commands are user-facing entry points.
+
+Example:
+- User runs `/doc-discovery` (command)
+- Command content guides the agent through the skill workflow
+- Skill provides detailed reference materials in `/reference` subdirectory
+
 ## Directory Structure
 
 ```
@@ -48,35 +93,56 @@ This directory contains all skills for the EnhancedHR.ai agent system.
 │   ├── SKILL.md                 ← Resume from previous session
 │   └── reference/               ← Recovery procedures
 │
-└── remember/
-    ├── SKILL.md                 ← Refresh critical instructions
-    └── reference/               ← Degradation fixes and decision guide
+├── remember/
+│   ├── SKILL.md                 ← Refresh critical instructions
+│   └── reference/               ← Degradation fixes and decision guide
+│
+├── task-router/
+│   └── SKILL.md                 ← Auto-route tasks to optimal agents
+│
+├── systematic-debugging/
+│   └── SKILL.md                 ← Methodical debugging protocol
+│
+└── parallel-dispatch/
+    └── SKILL.md                 ← Coordinate parallel agent execution
 ```
 
 ## Skill Categories
 
 ### Documentation Skills
-| Skill | Purpose | When to Use |
-|-------|---------|-------------|
-| **doc-discovery** | Load relevant docs before planning | Start of any complex task |
-| **plan-lint** | Validate plan against constraints | After creating plan, before coding |
-| **doc-update** | Update docs after code changes | After implementation complete |
-| **drift-check** | Detect doc/code mismatches | Periodically, after changes |
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **doc-discovery** | Load relevant docs before planning | Start of any complex task | - |
+| **plan-lint** | Validate plan against constraints | After creating plan, before coding | doc-discovery |
+| **doc-update** | Update docs after code changes | After implementation complete | test-from-docs |
+| **drift-check** | Detect doc/code mismatches | Periodically, after changes | doc-update |
 
 ### Testing Skills
-| Skill | Purpose | When to Use |
-|-------|---------|-------------|
-| **test-from-docs** | Generate test plans from docs | After implementation, before merge |
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **test-from-docs** | Generate test plans from docs | After implementation, before merge | Implementation |
 
 ### Session Management Skills
-| Skill | Purpose | When to Use |
-|-------|---------|-------------|
-| **handoff** | Write comprehensive session summary | End of session |
-| **context-status** | Check context window health | When responses degrade |
-| **compact** | Compress context, preserve state | When context is high/critical |
-| **checkpoint** | Save mid-session state | After milestones, periodically |
-| **session-start** | Resume from previous session | Beginning of new session |
-| **remember** | Refresh critical instructions | When behaviors degrade |
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **session-start** | Resume from previous session | Beginning of new session | - |
+| **context-status** | Check context window health | When responses degrade | - |
+| **checkpoint** | Save mid-session state | After milestones, periodically | - |
+| **compact** | Compress context, preserve state | When context is high/critical | checkpoint |
+| **remember** | Refresh critical instructions | When behaviors degrade | - |
+| **handoff** | Write comprehensive session summary | End of session | drift-check |
+
+### Browser Skills
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **browser-use** | UI verification via Chrome Extension | After UI changes, workflow testing | Chrome Extension connected |
+
+### Orchestration Skills
+| Skill | Purpose | When to Use | Depends On |
+|-------|---------|-------------|------------|
+| **task-router** | Auto-route tasks to optimal agents | At start of complex tasks | - |
+| **parallel-dispatch** | Coordinate parallel agent execution | When tasks can run in parallel | task-router |
+| **systematic-debugging** | Methodical debugging protocol | When facing non-obvious bugs | - |
 
 ## Skill Decision Tree
 
@@ -99,6 +165,9 @@ This directory contains all skills for the EnhancedHR.ai agent system.
 
 "I'm creating UI components"
     └─► /frontend/component-inventory first
+
+"I need to verify UI changes"
+    └─► /browser-use (Chrome Extension)
 
 "I found an undocumented pattern"
     └─► /capture-optimization
@@ -137,6 +206,7 @@ This directory contains all skills for the EnhancedHR.ai agent system.
 | After code changes | `/doc-update` |
 | Checking doc accuracy | `/drift-check` |
 | Generating tests | `/test-from-docs` |
+| Verify UI changes | `/browser-use` |
 | Session ending | `/handoff` |
 | Responses degraded | `/remember` |
 | 30-45 min milestone | `/checkpoint` |
@@ -201,6 +271,7 @@ DURING SESSION (as needed):
 /checkpoint          # Save state (every 30-45 min)
 /remember            # Refresh if degraded
 /context-status      # Check context health
+/browser-use         # Verify UI via Chrome Extension
 ```
 
 ### Finish Work
@@ -238,30 +309,19 @@ Skills should appear under "Loaded Skills" with green checkmarks.
    description: What this skill does. When to use it.
    allowed-tools: Read, Write, Bash  # optional
    ---
-   
+
    # Skill Name
-   
+
    ## Purpose
    ...
-   
+
    ## When to Use
    ...
-   
+
    ## Process
    ...
    ```
 3. Restart Claude Code to load new skill
-
-## Relationship to Slash Commands
-
-Skills (`.claude/skills/`) are auto-discovered capabilities.
-Commands (`.claude/commands/`) are explicit slash invocations.
-
-Some skills have corresponding commands:
-- Skill: `doc-discovery` → Command: `/doc-discovery`
-- Skill: `handoff` → Command: `/handoff`
-
-Commands can invoke skills, and skills can reference commands.
 
 ## Optimizing Skills
 
@@ -273,3 +333,14 @@ Key principles:
 - Detailed content in `/reference` subdirectory
 - Third-person descriptions with trigger keywords
 - One level deep references (never A→B→C)
+
+## Agent Cost Awareness
+
+| Action | Relative Cost |
+|--------|---------------|
+| Inline work (no agent) | 1x |
+| Single subagent spawn | ~4x |
+| Parallel agents (2-3) | ~8-12x |
+| Multi-agent parallel (4+) | ~15x+ |
+
+**Best practice**: Parallelize only when tasks are truly independent AND substantial.

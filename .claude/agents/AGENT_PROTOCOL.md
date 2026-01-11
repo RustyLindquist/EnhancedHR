@@ -88,11 +88,56 @@ This document defines how agents coordinate in the EnhancedHR.ai workspace.
 - Returns summaries to preserve context efficiency
 - See: `.claude/agents/research-agent.md`
 
-### 6. Implementation Agents (Sub-Agents)
-- Spawned for specific tasks outside Frontend/Backend/Research scope
-- Query the Doc Agent as needed
-- Report back to Main Agent
-- Use Frontend Agent for UI, Backend Agent for server-side, Research Agent for exploration
+### 6. Test Agent (Validation Specialist)
+- Validates changes through systematic testing
+- Creates and executes test plans
+- Uses browser control for UI verification
+- Reports findings with evidence
+- See: `.claude/agents/test-agent.md`
+
+### 7. Architect Agent (System Designer)
+- Evaluates architectural decisions and trade-offs
+- Designs system structure for new features
+- Guides refactoring and technical debt resolution
+- See: `.claude/agents/architect-agent.md`
+
+### 8. Security Agent (Security Auditor)
+- Proactive security review and vulnerability detection
+- Audits RLS policies and auth flows
+- Reviews code for OWASP Top 10 vulnerabilities
+- See: `.claude/agents/security-agent.md`
+
+### 9. Ops Agent (System Optimizer)
+- Operates on the agent system itself
+- Reviews and implements system improvements
+- Maintains agent health and coordination
+- See: `.claude/agents/ops-agent.md`
+
+### 10. Workflow Analysis Agent (Process Optimizer)
+- Analyzes session performance holistically
+- Identifies friction points and improvement opportunities
+- Creates evidence-based improvement plans
+- Documents all changes in `.context/workflow-analysis/`
+- Triggered via `/analyze` at session end
+- See: `.claude/agents/workflow-analysis-agent.md`
+
+## Model Tiering Strategy
+
+Agents use different models based on task criticality:
+
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| Research Agent | `haiku` | Fast exploration, read-only |
+| Frontend Agent | `sonnet` | Code quality for UI |
+| Backend Agent | `opus` | Security-critical |
+| Test Agent | `sonnet` | Thoroughness |
+| Doc Agent | `inherit` | User-controlled |
+| Architect Agent | `opus` | Critical decisions |
+| Security Agent | `opus` | Security-critical |
+| Ops Agent | `inherit` | User-controlled |
+| Workflow Analysis Agent | `opus` | Deep analysis |
+
+This tiering reduces costs by 2-2.5× while maintaining quality where it matters.
 
 ## When to Spawn the Documentation Agent
 

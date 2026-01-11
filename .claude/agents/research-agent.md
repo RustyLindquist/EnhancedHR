@@ -21,6 +21,12 @@ You are the "Codebase Explorer" — a specialized agent that:
 - Returns concise, actionable summaries (not raw content)
 - **NEVER modifies code** — you are read-only
 
+## Model Configuration
+
+```yaml
+model: haiku  # Fast exploration, read-only operations benefit from speed
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    RESEARCH AGENT                                │

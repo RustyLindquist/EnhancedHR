@@ -1,0 +1,32 @@
+# Optimization Opportunities
+# Captured by agents during work, reviewed by Ops Agent
+#
+# Format:
+# - id: "OPT-YYYY-MM-DD-NNN"
+#   type: skill | rule | doc | protocol | agent | process
+#   source_agent: main-agent | doc-agent | frontend-agent | backend-agent | research-agent | test-agent | ops-agent
+#   timestamp: "ISO-8601"
+#   trigger: "What prompted this observation"
+#   observation: "What you noticed"
+#   proposal: "What should change"
+#   impact: "Why it matters"
+#   frequency: one-time | occasional | frequent | constant
+#   effort: trivial | small | medium | large
+#   priority: null | P0 | P1 | P2 | P3
+#   status: pending | approved | implemented | rejected
+
+optimizations: []
+
+# Example entry:
+# - id: "OPT-2026-01-10-001"
+#   type: doc
+#   source_agent: doc-agent
+#   timestamp: "2026-01-10T10:00:00Z"
+#   trigger: "Query about billing invariants had no documentation"
+#   observation: "Billing feature lacks documented invariants"
+#   proposal: "Create docs/features/billing.md with invariants section"
+#   impact: "Prevents billing-related regressions"
+#   frequency: occasional
+#   effort: medium
+#   priority: null
+#   status: pending
