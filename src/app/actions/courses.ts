@@ -16,7 +16,7 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    // 1. Fetch raw courses with author profile data
+    // 1. Fetch raw courses with author profile data (only published courses)
     const { data: coursesData, error } = await supabase
         .from('courses')
         .select(`
@@ -30,6 +30,7 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
                 credentials
             )
         `)
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -157,7 +158,7 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
 
     const supabase = await createClient();
 
-    // Search lessons with course info via nested join through modules
+    // Search lessons with course info via nested join through modules (only from published courses)
     const { data, error } = await supabase
         .from('lessons')
         .select(`
@@ -166,18 +167,20 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
             duration,
             type,
             module_id,
-            modules (
+            modules!inner (
                 id,
                 course_id,
-                courses (
+                courses!inner (
                     id,
                     title,
                     image_url,
-                    author
+                    author,
+                    status
                 )
             )
         `)
         .ilike('title', `%${query.trim()}%`)
+        .eq('modules.courses.status', 'published')
         .limit(50);
 
     if (error) {
