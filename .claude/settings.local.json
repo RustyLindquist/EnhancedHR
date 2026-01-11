@@ -1,13 +1,25 @@
 {
   "$schema": "https://claude.ai/schemas/settings.json",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-destructive.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[Hook] File modified - consider /checkpoint if significant'",
+            "command": ".claude/hooks/track-context.sh",
             "timeout": 5000
           }
         ]
@@ -19,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[Hook] Session stopping - consider /handoff if ending work'",
+            "command": ".claude/hooks/check-handoff.sh",
             "timeout": 5000
           }
         ]
@@ -31,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[Hook] Subagent completed - synthesize results'",
+            "command": "echo '[Hook] Subagent completed - synthesize results and check for optimization opportunities'",
             "timeout": 5000
           }
         ]

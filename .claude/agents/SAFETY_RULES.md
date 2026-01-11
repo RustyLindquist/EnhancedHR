@@ -125,3 +125,42 @@ If you're tempted to reset, STOP and tell the user first.
 ```
 
 This is mandatory because sub-agents don't automatically see CLAUDE.md or these safety rules.
+
+---
+
+## Sensitive Data Protection
+
+**NEVER output these in responses, logs, or files:**
+
+| Data Type | Examples | How to Reference |
+|-----------|----------|------------------|
+| API Keys | `sk-...`, `pk_live_...` | "the API key in .env" |
+| Passwords | User passwords, DB passwords | "the password from config" |
+| Tokens | Session tokens, JWTs | "the auth token" |
+| PII | SSN, full credit cards | Mask: `***-**-1234` |
+| Secrets | Webhook secrets, signing keys | "the secret in .env.local" |
+
+**If you encounter sensitive data:**
+1. **Mask it**: `sk-...XXXX` (show only last 4 chars)
+2. **Reference it**: "the value stored in .env"
+3. **Never echo**: Don't repeat the full value back
+
+**In error messages:**
+- BAD: "Invalid API key: sk-abc123def456..."
+- GOOD: "Invalid API key (check .env for correct value)"
+
+---
+
+## Automated Safety Enforcement
+
+The following hooks provide automated protection:
+
+| Hook | Purpose | Location |
+|------|---------|----------|
+| `block-destructive.sh` | Blocks dangerous Bash commands | PreToolUse |
+| `inject-safety.sh` | Injects safety rules into subagents | PreToolUse (Task) |
+| `track-context.sh` | Monitors session length | PostToolUse |
+| `check-handoff.sh` | Reminds about handoff | Stop |
+
+These hooks are configured in `.claude/settings.local.json`.
+
