@@ -499,3 +499,159 @@ export async function updateExpertProfile(
     revalidatePath(`/admin/experts/${expertId}`);
     return { success: true };
 }
+
+// Interface for expert card display (Academy > Experts view)
+export interface ExpertWithPublishedCourses {
+    id: string;
+    name: string;
+    role: string;
+    bio: string;
+    avatar: string | null;
+    credentials: string[];
+    publishedCourseCount: number;
+}
+
+// Fetch experts with published courses for Academy view
+// This does NOT require admin access - it's a public-facing list
+export async function getExpertsWithPublishedCourses(): Promise<{
+    experts: ExpertWithPublishedCourses[];
+    error?: string;
+}> {
+    const supabase = await createClient();
+
+    // Fetch experts/admins (approved authors or admins)
+    const { data: expertsData, error: expertsError } = await supabase
+        .from('profiles')
+        .select(`
+            id,
+            full_name,
+            expert_title,
+            avatar_url,
+            author_bio,
+            credentials,
+            role,
+            author_status
+        `)
+        .or('author_status.eq.approved,role.eq.admin');
+
+    if (expertsError) {
+        console.error('Error fetching experts:', expertsError);
+        return { experts: [], error: expertsError.message };
+    }
+
+    // Fetch published courses grouped by author
+    const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('author_id')
+        .eq('status', 'published')
+        .not('author_id', 'is', null);
+
+    if (coursesError) {
+        console.error('Error fetching courses:', coursesError);
+        return { experts: [], error: coursesError.message };
+    }
+
+    // Count published courses per author
+    const courseCountByAuthor: Record<string, number> = {};
+    coursesData?.forEach(course => {
+        if (course.author_id) {
+            courseCountByAuthor[course.author_id] = (courseCountByAuthor[course.author_id] || 0) + 1;
+        }
+    });
+
+    // Filter to only experts with published courses and transform data
+    const expertsWithPublishedCourses: ExpertWithPublishedCourses[] = (expertsData || [])
+        .filter(expert => courseCountByAuthor[expert.id] > 0)
+        .map(expert => {
+            // Parse credentials - it may be a JSON string array or a plain string
+            let credentialsArray: string[] = [];
+            if (expert.credentials) {
+                try {
+                    const parsed = JSON.parse(expert.credentials);
+                    credentialsArray = Array.isArray(parsed) ? parsed : [expert.credentials];
+                } catch {
+                    // If not valid JSON, treat as a comma-separated string or single credential
+                    credentialsArray = expert.credentials.includes(',')
+                        ? expert.credentials.split(',').map((c: string) => c.trim())
+                        : [expert.credentials];
+                }
+            }
+
+            return {
+                id: expert.id,
+                name: expert.full_name || 'Expert',
+                role: expert.expert_title || '',
+                bio: expert.author_bio || '',
+                avatar: expert.avatar_url,
+                credentials: credentialsArray,
+                publishedCourseCount: courseCountByAuthor[expert.id]
+            };
+        })
+        .sort((a, b) => b.publishedCourseCount - a.publishedCourseCount);
+
+    return { experts: expertsWithPublishedCourses };
+}
+
+// Fetch a single expert by ID for public viewing (course page expert button)
+// Returns the same format as getExpertsWithPublishedCourses for consistency
+export async function getExpertById(expertId: string): Promise<{
+    expert: ExpertWithPublishedCourses | null;
+    error?: string;
+}> {
+    const supabase = await createClient();
+
+    // Fetch the expert profile (must be admin or approved)
+    const { data: expertData, error: expertError } = await supabase
+        .from('profiles')
+        .select(`
+            id,
+            full_name,
+            expert_title,
+            avatar_url,
+            author_bio,
+            credentials,
+            role,
+            author_status
+        `)
+        .eq('id', expertId)
+        .or('author_status.eq.approved,role.eq.admin')
+        .single();
+
+    if (expertError || !expertData) {
+        return { expert: null, error: expertError?.message || 'Expert not found' };
+    }
+
+    // Fetch published courses count for this expert
+    const { data: coursesData } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('author_id', expertId)
+        .eq('status', 'published');
+
+    const publishedCourseCount = coursesData?.length || 0;
+
+    // Parse credentials
+    let credentialsArray: string[] = [];
+    if (expertData.credentials) {
+        try {
+            const parsed = JSON.parse(expertData.credentials);
+            credentialsArray = Array.isArray(parsed) ? parsed : [expertData.credentials];
+        } catch {
+            credentialsArray = expertData.credentials.includes(',')
+                ? expertData.credentials.split(',').map((c: string) => c.trim())
+                : [expertData.credentials];
+        }
+    }
+
+    const expert: ExpertWithPublishedCourses = {
+        id: expertData.id,
+        name: expertData.full_name || 'Expert',
+        role: expertData.expert_title || '',
+        bio: expertData.author_bio || '',
+        avatar: expertData.avatar_url,
+        credentials: credentialsArray,
+        publishedCourseCount
+    };
+
+    return { expert };
+}

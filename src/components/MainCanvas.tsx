@@ -33,7 +33,7 @@ import ConversationCard from './ConversationCard';
 import DeleteConfirmationModal from './DeleteConfirmationModal'; // Updated import
 import InstructorCard from './InstructorCard';
 import InstructorPage from './InstructorPage';
-import { MOCK_INSTRUCTORS } from '../constants';
+import { getExpertsWithPublishedCourses, getExpertById, ExpertWithPublishedCourses } from '@/app/actions/experts';
 import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
 import TopContextPanel from './TopContextPanel';
@@ -540,36 +540,51 @@ const CollectionInfo: React.FC<CollectionInfoProps> = ({ type, isEmptyState, onS
     if (type === 'instructors') {
         return (
             <div className={`max-w-3xl animate-fade-in mx-auto ${isEmptyState ? 'text-center' : ''}`}>
-                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Meet Our World-Class Experts</h2>
+                <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${!isEmptyState && "hidden"}`}>Expert Directory Coming Soon</h2>
                 <h2 className={`text-3xl font-light text-white mb-6 ${headerClass} ${isEmptyState && "hidden"}`}>About Our Experts</h2>
 
                 <div className={`text-slate-400 text-lg space-y-6 leading-relaxed font-light mb-10 ${alignmentClass}`}>
-                    <p>
-                        Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
-                    </p>
-                    <p>
-                        Each instructor brings real-world experience, practical frameworks, and a unique perspective to their courses. You can follow specific instructors to get notified when they release new content.
-                    </p>
+                    {isEmptyState ? (
+                        <>
+                            <p>
+                                Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. Experts will appear here once they publish their first course.
+                            </p>
+                            <p>
+                                Check back soon to discover the professionals shaping the future of HR education.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p>
+                                Our academy is built on the expertise of industry leaders, seasoned HR executives, and renowned authors. We don't just hire trainers; we partner with the people who are shaping the future of work.
+                            </p>
+                            <p>
+                                Each instructor brings real-world experience, practical frameworks, and a unique perspective to their courses. You can follow specific instructors to get notified when they release new content.
+                            </p>
+                        </>
+                    )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
-                        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                            <Award size={16} className="text-brand-orange" /> Vetted Experts
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                            Every instructor is rigorously vetted for both subject matter expertise and teaching ability.
-                        </p>
+                {!isEmptyState && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                        <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
+                            <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                                <Award size={16} className="text-brand-orange" /> Vetted Experts
+                            </h3>
+                            <p className="text-xs text-slate-400">
+                                Every instructor is rigorously vetted for both subject matter expertise and teaching ability.
+                            </p>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
+                            <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                                <MessageSquare size={16} className="text-brand-blue-light" /> Direct Access
+                            </h3>
+                            <p className="text-xs text-slate-400">
+                                Many instructors host live Q&A sessions and participate in community discussions.
+                            </p>
+                        </div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm">
-                        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                            <MessageSquare size={16} className="text-brand-blue-light" /> Direct Access
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                            Many instructors host live Q&A sessions and participate in community discussions.
-                        </p>
-                    </div>
-                </div>
+                )}
             </div>
         );
     }
@@ -1172,6 +1187,30 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Instructor State
     const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
+    const [experts, setExperts] = useState<ExpertWithPublishedCourses[]>([]);
+    const [isLoadingExperts, setIsLoadingExperts] = useState(false);
+    const [directViewExpert, setDirectViewExpert] = useState<ExpertWithPublishedCourses | null>(null); // For viewing expert from course page
+
+    // Fetch experts when navigating to instructors collection
+    useEffect(() => {
+        if (activeCollectionId === 'instructors') {
+            const fetchExperts = async () => {
+                setIsLoadingExperts(true);
+                try {
+                    const { experts: fetchedExperts, error } = await getExpertsWithPublishedCourses();
+                    if (error) {
+                        console.error('[MainCanvas] Error fetching experts:', error);
+                    }
+                    setExperts(fetchedExperts);
+                } catch (error) {
+                    console.error('[MainCanvas] Error fetching experts:', error);
+                } finally {
+                    setIsLoadingExperts(false);
+                }
+            };
+            fetchExperts();
+        }
+    }, [activeCollectionId]);
 
     // --- HELP COLLECTION STATE ---
     const [helpTopics, setHelpTopics] = useState<HelpTopic[]>([]);
@@ -1773,6 +1812,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const handleBackToCollection = () => {
         setSelectedCourseId(null);
         setSelectedInstructorId(null);
+        setDirectViewExpert(null); // Clear direct view expert when going back
     };
 
     const handlePrometheusPagePrompt = (prompt: string) => {
@@ -1814,9 +1854,25 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         onOpenAIPanel();
     };
 
-    // Handler for viewing expert page
-    const handleViewExpert = (expertId: string) => {
-        window.location.href = `/experts/${expertId}`;
+    // Handler for viewing expert page (in-platform)
+    const handleViewExpert = async (expertId: string) => {
+        // First check if expert is already in the experts array
+        const existingExpert = experts.find(e => e.id === expertId);
+        if (existingExpert) {
+            setSelectedInstructorId(expertId);
+            return;
+        }
+
+        // Otherwise fetch the expert data
+        const { expert, error } = await getExpertById(expertId);
+        if (error || !expert) {
+            console.error('[MainCanvas] Error fetching expert:', error);
+            return;
+        }
+
+        // Store the expert for direct viewing and select them
+        setDirectViewExpert(expert);
+        setSelectedInstructorId(expertId);
     };
 
     // Navigate to a module within its course
@@ -2430,14 +2486,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const isCollectionEmpty =
         activeCollectionId !== 'academy' &&
         activeCollectionId !== 'dashboard' &&
-        courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 && // Courses might still use string alias if not updated? ACTUALLY Courses use 'isSaved' mainly or IDs.. check standard behavior.
-        // Wait, standard courses use 'isSaved' boolean for Favorites usually? 
-        // Or do they use collections array? 
-        // In 'courses' definition: collections: string[]? 
-        // Let's check MainCanvas:955: if (!course.collections.includes(activeCollectionId)) return false;
-        // If courses ALSO use UUIDs now, we need to fix course filtering too!
-        // But for now, user issue is CONVERSATIONS.
-        visibleConversations.length === 0;
+        // For instructors collection, check if we have any experts
+        (activeCollectionId === 'instructors' ? experts.length === 0 :
+            (courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 && // Courses might still use string alias if not updated? ACTUALLY Courses use 'isSaved' mainly or IDs.. check standard behavior.
+                // Wait, standard courses use 'isSaved' boolean for Favorites usually?
+                // Or do they use collections array?
+                // In 'courses' definition: collections: string[]?
+                // Let's check MainCanvas:955: if (!course.collections.includes(activeCollectionId)) return false;
+                // If courses ALSO use UUIDs now, we need to fix course filtering too!
+                // But for now, user issue is CONVERSATIONS.
+                visibleConversations.length === 0));
 
     const isAcademyView = activeCollectionId === 'academy' && activeFilterCount === 0;
 
@@ -2500,7 +2558,27 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // --- Determine Content to Render ---
     const selectedCourse = selectedCourseId ? courses.find(c => c.id === selectedCourseId) : null;
-    const selectedInstructor = selectedInstructorId ? MOCK_INSTRUCTORS.find(i => i.id === selectedInstructorId) : null;
+
+    // Map expert data to Instructor type for InstructorPage
+    // Check both the experts array (from collection) and directViewExpert (from course page)
+    const selectedExpert = selectedInstructorId
+        ? (experts.find(e => e.id === selectedInstructorId) || (directViewExpert?.id === selectedInstructorId ? directViewExpert : null))
+        : null;
+    const selectedInstructor: Instructor | null = selectedExpert ? {
+        type: 'INSTRUCTOR',
+        id: selectedExpert.id,
+        name: selectedExpert.name,
+        role: selectedExpert.role,
+        bio: selectedExpert.bio || '',
+        avatar: selectedExpert.avatar || '',
+        image: selectedExpert.avatar || '', // Use avatar for both since we don't have separate image
+        credentials: selectedExpert.credentials,
+        stats: {
+            courses: selectedExpert.publishedCourseCount,
+            students: 0, // We don't track student count yet
+            rating: 0 // We don't have ratings yet
+        }
+    } : null;
 
     if (selectedInstructor) {
         return (
@@ -4318,11 +4396,11 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             </div>
                                                         ))}
 
-                                                        {/* Render Instructors */}
-                                                        {activeCollectionId === 'instructors' && MOCK_INSTRUCTORS.map((instructor, index) => (
-                                                            <div key={instructor.id} className="animate-fade-in" style={{ animationDelay: `${index * 50} ms` }}>
+                                                        {/* Render Instructors/Experts */}
+                                                        {activeCollectionId === 'instructors' && experts.map((expert, index) => (
+                                                            <div key={expert.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                                                                 <InstructorCard
-                                                                    instructor={instructor}
+                                                                    instructor={expert}
                                                                     onClick={setSelectedInstructorId}
                                                                 />
                                                             </div>
