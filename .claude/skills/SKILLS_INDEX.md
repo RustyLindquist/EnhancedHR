@@ -97,6 +97,9 @@ Example:
 │   ├── SKILL.md                 ← Refresh critical instructions
 │   └── reference/               ← Degradation fixes and decision guide
 │
+├── infer-intent/
+│   └── SKILL.md                 ← Analyze user requests for structured intent
+│
 ├── task-router/
 │   └── SKILL.md                 ← Auto-route tasks to optimal agents
 │
@@ -140,7 +143,8 @@ Example:
 ### Orchestration Skills
 | Skill | Purpose | When to Use | Depends On |
 |-------|---------|-------------|------------|
-| **task-router** | Auto-route tasks to optimal agents | At start of complex tasks | - |
+| **infer-intent** | Analyze user request for structured intent | Ambiguous or complex requests | - |
+| **task-router** | Auto-route tasks to optimal agents | At start of complex tasks | infer-intent (optional) |
 | **parallel-dispatch** | Coordinate parallel agent execution | When tasks can run in parallel | task-router |
 | **systematic-debugging** | Methodical debugging protocol | When facing non-obvious bugs | - |
 
@@ -148,6 +152,9 @@ Example:
 
 ### Starting a Task
 ```
+"User request is ambiguous or complex"
+    └─► /infer-intent → /task-router
+
 "I'm beginning work on a feature"
     └─► /doc-discovery
 
@@ -156,6 +163,9 @@ Example:
 
 "I'm returning to previous work"
     └─► /session-start
+
+"I'm unsure which agent to spawn"
+    └─► /task-router (or /infer-intent first)
 ```
 
 ### During Implementation
@@ -201,6 +211,8 @@ Example:
 
 | Situation | Skill |
 |-----------|-------|
+| Unclear user request | `/infer-intent` |
+| Which agent to spawn | `/task-router` |
 | Starting complex task | `/doc-discovery` |
 | Validating plan | `/plan-lint` |
 | After code changes | `/doc-update` |
