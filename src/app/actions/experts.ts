@@ -13,6 +13,8 @@ export interface ExpertProfile {
     author_bio: string | null;
     expert_title: string | null;
     linkedin_url: string | null;
+    twitter_url: string | null;
+    website_url: string | null;
     credentials: string | null;
     course_proposal_title: string | null;
     course_proposal_description: string | null;
@@ -99,6 +101,8 @@ export async function getExpertDetails(expertId: string): Promise<{
             author_bio,
             expert_title,
             linkedin_url,
+            twitter_url,
+            website_url,
             credentials,
             course_proposal_title,
             course_proposal_description,
@@ -123,6 +127,8 @@ export async function getExpertDetails(expertId: string): Promise<{
                 author_bio,
                 expert_title,
                 linkedin_url,
+                twitter_url,
+                website_url,
                 credentials,
                 course_proposal_title,
                 course_proposal_description,
@@ -456,6 +462,9 @@ export async function updateExpertProfile(
         credentials?: string;
         author_bio?: string;
         expert_title?: string;
+        linkedin_url?: string;
+        twitter_url?: string;
+        website_url?: string;
     }
 ): Promise<{
     success: boolean;
@@ -485,6 +494,9 @@ export async function updateExpertProfile(
     if (data.credentials !== undefined) updateData.credentials = data.credentials;
     if (data.author_bio !== undefined) updateData.author_bio = data.author_bio;
     if (data.expert_title !== undefined) updateData.expert_title = data.expert_title;
+    if (data.linkedin_url !== undefined) updateData.linkedin_url = data.linkedin_url;
+    if (data.twitter_url !== undefined) updateData.twitter_url = data.twitter_url;
+    if (data.website_url !== undefined) updateData.website_url = data.website_url;
 
     const { error } = await admin
         .from('profiles')

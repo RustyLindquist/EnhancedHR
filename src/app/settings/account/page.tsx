@@ -19,7 +19,7 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, application_status, application_submitted_at, rejection_notes, course_proposal_title, course_proposal_description, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, phone_number, linkedin_url, credentials, author_bio, expert_title, organizations(name)')
+        .select('membership_status, role, author_status, application_status, application_submitted_at, rejection_notes, course_proposal_title, course_proposal_description, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, phone_number, linkedin_url, twitter_url, website_url, credentials, author_bio, expert_title, organizations!profiles_org_id_fkey(name)')
         .eq('id', user.id)
         .single();
 
@@ -126,6 +126,8 @@ export default async function AccountPage() {
                         <ExpertProfileSection
                             phoneNumber={profile?.phone_number || null}
                             linkedinUrl={profile?.linkedin_url || null}
+                            twitterUrl={profile?.twitter_url || null}
+                            websiteUrl={profile?.website_url || null}
                             credentials={credentials}
                             authorBio={profile?.author_bio || null}
                             expertTitle={profile?.expert_title || null}

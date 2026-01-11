@@ -1,6 +1,13 @@
 import React from 'react';
 import { Instructor, Course } from '../types';
-import { ArrowLeft, BookOpen, Users, Star, Globe, Linkedin, Twitter, Award, CheckCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Star, Globe, Linkedin, Award, CheckCircle } from 'lucide-react';
+
+// Custom X (formerly Twitter) icon
+const XIcon = ({ size = 20 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 import CardStack from './CardStack';
 
 interface InstructorPageProps {
@@ -123,8 +130,8 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                             <button className="p-3 rounded-lg bg-white/5 hover:bg-[#0077b5] hover:text-white text-slate-400 transition-colors">
                                 <Linkedin size={20} />
                             </button>
-                            <button className="p-3 rounded-lg bg-white/5 hover:bg-[#1DA1F2] hover:text-white text-slate-400 transition-colors">
-                                <Twitter size={20} />
+                            <button className="p-3 rounded-lg bg-white/5 hover:bg-black hover:text-white text-slate-400 transition-colors">
+                                <XIcon size={20} />
                             </button>
                             <button className="p-3 rounded-lg bg-white/5 hover:bg-brand-blue-light hover:text-brand-black text-slate-400 transition-colors">
                                 <Globe size={20} />
