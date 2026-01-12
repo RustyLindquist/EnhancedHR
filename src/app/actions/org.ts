@@ -656,6 +656,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
     }
 
     // Fetch context items if any (exclude notes - handled separately)
+    // First, get context items referenced in collection_items
     const contextItemIds = (courseItems || [])
       .filter(item => item.item_type && item.item_id && !item.course_id && item.item_type !== 'NOTE')
       .map(item => item.item_id);
@@ -667,6 +668,22 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
         .select('*')
         .in('id', contextItemIds);
       contextItems = contextData || [];
+    }
+
+    // Also fetch context items stored directly with collection_id (like createContextItem does)
+    const { data: directContextItems } = await adminClient
+      .from('user_context_items')
+      .select('*')
+      .eq('collection_id', collectionId);
+
+    // Merge direct context items (avoiding duplicates)
+    if (directContextItems && directContextItems.length > 0) {
+      const existingIds = new Set(contextItems.map(c => c.id));
+      directContextItems.forEach(item => {
+        if (!existingIds.has(item.id)) {
+          contextItems.push(item);
+        }
+      });
     }
 
     // Fetch notes if any
@@ -731,8 +748,23 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
       return null;
     }).filter(Boolean);
 
+    // Add direct context items (those stored with collection_id, not via collection_items)
+    // These won't be in mappedItems yet since they don't have collection_items entries
+    const mappedItemIds = new Set(mappedItems.map((m: any) => m.id));
+    const directContextMapped = (directContextItems || [])
+      .filter(item => !mappedItemIds.has(item.id))
+      .map(item => ({
+        id: item.id,
+        type: item.type,
+        itemType: item.type,
+        title: item.title,
+        content: item.content,
+        created_at: item.created_at,
+        ...item
+      }));
+
     return {
-      items: mappedItems,
+      items: [...mappedItems, ...directContextMapped],
       collectionName: collection.label,
       isOrgAdmin: orgContext.isOrgAdmin || orgContext.isPlatformAdmin || false,
       orgId: orgContext.orgId
