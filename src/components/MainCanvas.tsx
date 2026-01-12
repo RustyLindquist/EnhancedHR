@@ -2365,7 +2365,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
         if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
-        if (activeCollectionId === 'org-collections') return 'Company Collections';
+        if (activeCollectionId === 'org-collections') return 'Org Collections';
         if (activeCollectionId === 'company') return 'Org Collection';
         if (activeCollectionId === 'assigned-learning') return 'Assigned Learning';
 
@@ -2430,6 +2430,12 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             // Guard: Don't fetch for system pages that aren't collections
             if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy') {
                 setCollectionItems([]);
+                return;
+            }
+
+            // Guard: Don't overwrite collectionItems for org collections - they handle their own data loading
+            if (activeCollectionId.startsWith('org-collection-')) {
+                console.log('[MainCanvas loadMixedItems] Skipping fetch for org collection - using dedicated effect');
                 return;
             }
 
@@ -2751,6 +2757,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             }
 
             // Determine items source
+            console.log('[MainCanvas Render] collectionItems:', collectionItems?.length, 'viewingOrgCollection:', !!viewingOrgCollection);
             let sourceItems = collectionItems;
             if (activeCollectionId === 'conversations') {
                 sourceItems = conversations.map(c => ({
@@ -2786,6 +2793,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             } else if (viewingOrgCollection) {
                 // For org collections, don't merge personal conversations - only show org items
                 displayItems = sourceItems;
+                console.log('[MainCanvas Render] Org collection displayItems:', displayItems?.length, displayItems?.map((i: any) => ({ id: i.id, title: i.title })));
             } else {
                 // For standard collections (Favorites, Custom), merge in relevant conversations
                 // Filter out conversations that are ALREADY in sourceItems (DB-backed) to prevent double display

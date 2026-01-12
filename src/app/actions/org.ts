@@ -609,7 +609,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
 
     const adminClient = createAdminClient();
 
-    // First verify this collection belongs to the user's org
+    // Verify this collection belongs to the user's org
     const { data: collection, error: colError } = await adminClient
       .from('user_collections')
       .select('id, label, org_id, is_org_collection')
@@ -619,7 +619,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
       .single();
 
     if (colError || !collection) {
-      console.error('Collection not found or not in org:', colError);
+      console.error('[getOrgCollectionItems] Collection not found or not in org:', colError);
       return { items: [], collectionName: '', isOrgAdmin: false, orgId: null };
     }
 
@@ -627,12 +627,11 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
     const { data: courseItems, error: courseError } = await adminClient
       .from('collection_items')
       .select(`
-        id,
         collection_id,
         course_id,
         item_id,
         item_type,
-        created_at
+        added_at
       `)
       .eq('collection_id', collectionId);
 
@@ -671,10 +670,17 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
     }
 
     // Also fetch context items stored directly with collection_id (like createContextItem does)
-    const { data: directContextItems } = await adminClient
+    console.log('[getOrgCollectionItems] Fetching direct context items for collection:', collectionId);
+    const { data: directContextItems, error: directError } = await adminClient
       .from('user_context_items')
       .select('*')
       .eq('collection_id', collectionId);
+
+    console.log('[getOrgCollectionItems] Direct context items query result:', {
+      count: directContextItems?.length || 0,
+      error: directError,
+      items: directContextItems?.map(i => ({ id: i.id, title: i.title }))
+    });
 
     // Merge direct context items (avoiding duplicates)
     if (directContextItems && directContextItems.length > 0) {
@@ -685,6 +691,8 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
         }
       });
     }
+
+    console.log('[getOrgCollectionItems] Total contextItems after merge:', contextItems.length);
 
     // Fetch notes if any
     const noteItemIds = (courseItems || [])
@@ -763,8 +771,10 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
         ...item
       }));
 
+    const finalItems = [...mappedItems, ...directContextMapped];
+
     return {
-      items: [...mappedItems, ...directContextMapped],
+      items: finalItems,
       collectionName: collection.label,
       isOrgAdmin: orgContext.isOrgAdmin || orgContext.isPlatformAdmin || false,
       orgId: orgContext.orgId
