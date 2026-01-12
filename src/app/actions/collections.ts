@@ -376,14 +376,32 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
     const cid = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
     if (isNaN(cid)) return { success: false, error: 'Invalid course ID' };
 
-    // 2. Fetch Existing (only for this user's collections)
-    // First get user's collection IDs
+    // 2. Fetch Existing (for this user's personal + org collections)
+    // First get user's personal collection IDs
     const { data: userCollections } = await admin
         .from('user_collections')
         .select('id')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .or('is_org_collection.is.null,is_org_collection.eq.false');
     const userCollectionIds = userCollections?.map(c => c.id) || [];
-    console.log('[syncCourseCollectionsAction] User collection IDs:', userCollectionIds);
+
+    // Also get org collection IDs if user belongs to an org
+    const { data: profile } = await admin
+        .from('profiles')
+        .select('org_id')
+        .eq('id', userId)
+        .single();
+
+    if (profile?.org_id) {
+        const { data: orgCollections } = await admin
+            .from('user_collections')
+            .select('id')
+            .eq('org_id', profile.org_id)
+            .eq('is_org_collection', true);
+
+        orgCollections?.forEach(c => userCollectionIds.push(c.id));
+    }
+    console.log('[syncCourseCollectionsAction] User + Org collection IDs:', userCollectionIds);
 
     const { data: existing } = await admin
         .from('collection_items')
@@ -617,14 +635,33 @@ export async function getCollectionsForItemAction(itemId: string, itemType: stri
 
     const admin = createAdminClient();
 
-    // Get all user collections to filter results
+    // Get user's personal collections
     const { data: userCollections } = await admin
         .from('user_collections')
         .select('id')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .or('is_org_collection.is.null,is_org_collection.eq.false');
 
     const userCollectionIds = new Set(userCollections?.map(c => c.id) || []);
-    console.log('[getCollectionsForItemAction] User collections:', Array.from(userCollectionIds));
+    console.log('[getCollectionsForItemAction] User personal collections:', Array.from(userCollectionIds));
+
+    // Get user's org collections (if they belong to an org)
+    const { data: profile } = await admin
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single();
+
+    if (profile?.org_id) {
+        const { data: orgCollections } = await admin
+            .from('user_collections')
+            .select('id')
+            .eq('org_id', profile.org_id)
+            .eq('is_org_collection', true);
+
+        orgCollections?.forEach(c => userCollectionIds.add(c.id));
+        console.log('[getCollectionsForItemAction] Added org collections, total:', Array.from(userCollectionIds));
+    }
 
     // Get collection memberships from collection_items table
     let collectionIds: string[] = [];
