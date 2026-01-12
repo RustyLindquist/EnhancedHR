@@ -360,33 +360,47 @@ export async function removeFromCollectionAction(itemId: string, collectionIdOrA
 }
 
 export async function syncCourseCollectionsAction(userId: string, courseId: string | number, targetIds: string[]) {
+    console.log('[syncCourseCollectionsAction] Called with:', { userId, courseId, targetIds });
     const admin = createAdminClient();
-    
+
     // 1. Resolve Targets
     const resolvedTargetIds: string[] = [];
     for (const id of targetIds) {
         if (id === 'new') continue;
         const resolved = await resolveCollectionId(admin, id, userId);
+        console.log('[syncCourseCollectionsAction] Resolved', id, '→', resolved);
         if (resolved) resolvedTargetIds.push(resolved);
     }
-    
+    console.log('[syncCourseCollectionsAction] Resolved target IDs:', resolvedTargetIds);
+
     const cid = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
     if (isNaN(cid)) return { success: false, error: 'Invalid course ID' };
 
-    // 2. Fetch Existing
+    // 2. Fetch Existing (only for this user's collections)
+    // First get user's collection IDs
+    const { data: userCollections } = await admin
+        .from('user_collections')
+        .select('id')
+        .eq('user_id', userId);
+    const userCollectionIds = userCollections?.map(c => c.id) || [];
+    console.log('[syncCourseCollectionsAction] User collection IDs:', userCollectionIds);
+
     const { data: existing } = await admin
         .from('collection_items')
         .select('collection_id')
         .eq('course_id', cid)
-        .eq('item_type', 'COURSE'); 
-        
+        .eq('item_type', 'COURSE')
+        .in('collection_id', userCollectionIds.length > 0 ? userCollectionIds : ['__none__']);
+    console.log('[syncCourseCollectionsAction] Existing items (filtered by user):', existing);
+
     const existingSet = new Set(existing?.map((i:any) => i.collection_id) || []);
     const targetSet = new Set(resolvedTargetIds);
-    
+
     // 3. Diff
     const toAdd = resolvedTargetIds.filter(id => !existingSet.has(id));
     const toRemove = [...existingSet].filter(id => !targetSet.has(id as string));
-    
+    console.log('[syncCourseCollectionsAction] Diff:', { toAdd, toRemove });
+
     // 4. Execute
     if (toAdd.length > 0) {
         const rows = toAdd.map(rid => ({
@@ -395,10 +409,13 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
             item_id: courseId,
             course_id: cid
         }));
-        await admin.from('collection_items').insert(rows);
+        console.log('[syncCourseCollectionsAction] Inserting rows:', rows);
+        const { error: insertError } = await admin.from('collection_items').insert(rows);
+        if (insertError) console.error('[syncCourseCollectionsAction] Insert error:', insertError);
     }
-    
+
     if (toRemove.length > 0) {
+        console.log('[syncCourseCollectionsAction] Removing from collections:', toRemove);
          await admin
             .from('collection_items')
             .delete()
@@ -406,8 +423,9 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
             .eq('item_type', 'COURSE')
             .in('collection_id', toRemove);
     }
-    
+
     revalidatePath('/dashboard');
+    console.log('[syncCourseCollectionsAction] Done');
     return { success: true };
 }
 
@@ -581,6 +599,85 @@ export async function removeToolConversationFromCollectionAction(conversationId:
 
     revalidatePath('/dashboard');
     return { success: true };
+}
+
+/**
+ * Get the collection IDs that an item belongs to.
+ * Used by AddCollectionModal to show correct checkbox state.
+ */
+export async function getCollectionsForItemAction(itemId: string, itemType: string): Promise<{ success: boolean; collectionIds: string[]; error?: string }> {
+    console.log('[getCollectionsForItemAction] Called with:', { itemId, itemType });
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    console.log('[getCollectionsForItemAction] User:', user?.id);
+
+    if (!user) return { success: false, collectionIds: [], error: 'Unauthorized' };
+
+    const admin = createAdminClient();
+
+    // Get all user collections to filter results
+    const { data: userCollections } = await admin
+        .from('user_collections')
+        .select('id')
+        .eq('user_id', user.id);
+
+    const userCollectionIds = new Set(userCollections?.map(c => c.id) || []);
+    console.log('[getCollectionsForItemAction] User collections:', Array.from(userCollectionIds));
+
+    // Get collection memberships from collection_items table
+    let collectionIds: string[] = [];
+
+    if (itemType === 'COURSE') {
+        // For courses, we need to check both by item_id and course_id
+        const courseIdNum = parseInt(itemId, 10);
+        const { data: items } = await admin
+            .from('collection_items')
+            .select('collection_id')
+            .eq('item_type', 'COURSE')
+            .or(`item_id.eq.${itemId},course_id.eq.${isNaN(courseIdNum) ? -1 : courseIdNum}`);
+
+        console.log('[getCollectionsForItemAction] Raw collection_items for course:', items);
+        const allCollectionIds = items?.map(i => i.collection_id) || [];
+        console.log('[getCollectionsForItemAction] All collection IDs before filter:', allCollectionIds);
+        collectionIds = allCollectionIds.filter(id => userCollectionIds.has(id));
+        console.log('[getCollectionsForItemAction] Filtered collection IDs:', collectionIds);
+    } else if (itemType === 'CONVERSATION' || itemType === 'TOOL_CONVERSATION') {
+        // For conversations, also check metadata for legacy data
+        const { data: items } = await admin
+            .from('collection_items')
+            .select('collection_id')
+            .eq('item_id', itemId)
+            .in('item_type', ['CONVERSATION', 'TOOL_CONVERSATION']);
+
+        const fromCollectionItems = items?.map(i => i.collection_id).filter(id => userCollectionIds.has(id)) || [];
+
+        // Also check conversation metadata for legacy collection_ids
+        const { data: conv } = await admin
+            .from('conversations')
+            .select('metadata')
+            .eq('id', itemId)
+            .eq('user_id', user.id)
+            .single();
+
+        const fromMetadata = (conv?.metadata?.collection_ids || []).filter((id: string) => userCollectionIds.has(id));
+
+        // Combine and dedupe
+        collectionIds = [...new Set([...fromCollectionItems, ...fromMetadata])];
+    } else {
+        // Generic lookup for other item types (MODULE, LESSON, etc.)
+        const { data: items } = await admin
+            .from('collection_items')
+            .select('collection_id')
+            .eq('item_id', itemId)
+            .eq('item_type', itemType);
+
+        collectionIds = items?.map(i => i.collection_id).filter(id => userCollectionIds.has(id)) || [];
+    }
+
+    console.log('[getCollectionsForItemAction] Final result:', { success: true, collectionIds });
+    return { success: true, collectionIds };
 }
 
 /**

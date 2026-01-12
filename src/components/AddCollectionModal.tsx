@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Plus, Check, FolderPlus, Layers, Building } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Check, FolderPlus, Layers, Building, Loader2 } from 'lucide-react';
 import { Collection, ContextCard } from '../types';
+import { getCollectionsForItemAction } from '@/app/actions/collections';
 
 // Org Collection type
 interface OrgCollectionInfo {
@@ -35,11 +36,49 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
   onClose,
   onSave
 }) => {
-  const [selectedIds, setSelectedIds] = useState<string[]>(item?.collections || []);
+  // Start with empty array - will be populated by useEffect
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   // If no item is provided, default to "Creating New" mode, otherwise "Adding" mode
   const [isCreatingNew, setIsCreatingNew] = useState(!item);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [newCollectionColor, setNewCollectionColor] = useState(COLORS[6]); // Default to Brand Blue Light
+
+  // Fetch actual collection memberships from server when modal opens with an item
+  useEffect(() => {
+    console.log('[AddCollectionModal] useEffect triggered, item:', item?.id, item?.type);
+    if (!item) return;
+
+    const fetchCollections = async () => {
+      setIsLoadingCollections(true);
+      try {
+        // Get the item ID - handle different item types
+        const itemId = String(item.id);
+        console.log('[AddCollectionModal] Fetching collections for item:', itemId, item.type);
+
+        const result = await getCollectionsForItemAction(itemId, item.type);
+        console.log('[AddCollectionModal] Server action result:', result);
+        console.log('[AddCollectionModal] Available collections:', availableCollections.map(c => ({ id: c.id, label: c.label })));
+
+        if (result.success) {
+          console.log('[AddCollectionModal] Setting selectedIds to:', result.collectionIds);
+          setSelectedIds(result.collectionIds);
+        } else {
+          // Fall back to item.collections if fetch fails
+          console.log('[AddCollectionModal] Falling back to item.collections:', item.collections);
+          setSelectedIds(item.collections || []);
+        }
+      } catch (error) {
+        console.error('Error fetching collections for item:', error);
+        // Fall back to item.collections if fetch fails
+        setSelectedIds(item.collections || []);
+      } finally {
+        setIsLoadingCollections(false);
+      }
+    };
+
+    fetchCollections();
+  }, [item]);
 
   const toggleCollection = (id: string) => {
     setSelectedIds(prev =>
@@ -87,7 +126,10 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({
           {/* Existing Collections List - Only show if we have an item or we are not in create-only mode */}
           {item && (
             <div className="space-y-3 mb-6">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Your Collections</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                Your Collections
+                {isLoadingCollections && <Loader2 size={12} className="animate-spin text-brand-blue-light" />}
+              </h3>
               {availableCollections.map(col => (
                 <div
                   key={col.id}

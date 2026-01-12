@@ -443,9 +443,10 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
     if (grouped.courses.length > 0) {
         promises.push(
             admin.from('courses').select('*').in('id', grouped.courses)
-                .then(({ data }) => data?.map((c: any) => ({ 
-                    ...c, 
-                    itemType: 'COURSE', 
+                .then(({ data }) => data?.map((c: any) => ({
+                    ...c,
+                    type: 'COURSE',     // Used by modal and save handlers
+                    itemType: 'COURSE', // Legacy - kept for backwards compatibility
                     isSaved: true,
                     image: c.image_url // Map DB column to frontend prop
                 })) || [])
@@ -469,6 +470,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .in('id', grouped.modules)
                 .then(({ data }) => data?.map((m: any) => ({
                     ...m,
+                    type: 'MODULE',
                     itemType: 'MODULE',
                     // Enrich with Course Data if missing on Module
                     image: m.courses?.image_url,
@@ -501,6 +503,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .in('id', grouped.lessons)
                 .then(({ data }) => data?.map((l: any) => ({
                     ...l,
+                    type: 'LESSON',
                     itemType: 'LESSON',
                     moduleTitle: l.modules?.title,
                     courseTitle: l.modules?.courses?.title,
@@ -521,6 +524,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .in('id', grouped.conversations)
                 .then(({ data }) => data?.map((cov: any) => ({
                     ...cov,
+                    type: 'CONVERSATION',
                     itemType: 'CONVERSATION',
                     title: cov.title || 'Untitled Conversation',
                     // Map last message or similar if needed for card
