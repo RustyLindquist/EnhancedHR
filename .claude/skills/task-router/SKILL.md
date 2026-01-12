@@ -5,21 +5,44 @@ description: Automatically analyze tasks and route to optimal agent(s). Use when
 
 # Task Router
 
+<!-- Version: 1.1.0 | Last Updated: 2026-01-11 -->
+
 Intelligent routing skill that analyzes user requests and determines optimal agent dispatch.
 
 ## Purpose
 
 Reduce orchestrator cognitive load by automatically:
-1. Classifying task type and complexity
-2. Identifying required agent(s)
-3. Detecting parallelization opportunities
-4. Recommending model tier per agent
+1. Inferring user intent (via `/infer-intent`)
+2. Classifying task type and complexity
+3. Identifying required agent(s)
+4. Detecting parallelization opportunities
+5. Recommending model tier per agent
+
+## Integrated Workflow
+
+```
+User Request
+     │
+     ▼
+┌─────────────────┐
+│  /infer-intent  │ ← Step 0: Understand what user wants
+└────────┬────────┘
+         │ Intent Summary (YAML)
+         ▼
+┌─────────────────┐
+│  /task-router   │ ← This skill: Route to agents
+└────────┬────────┘
+         │ Dispatch Plan
+         ▼
+    Execute Plan
+```
 
 ## When to Use
 
 - At the start of any non-trivial task
 - When uncertain which agent(s) to spawn
 - Before spawning multiple agents (to optimize parallelization)
+- **Automatically invoked by /infer-intent for complex tasks**
 
 ## Routing Process
 
@@ -140,3 +163,64 @@ After routing, spawn agents using:
 - `/spawn-ops-agent`
 
 For parallel dispatch, use `/parallel-agents` with the routing analysis.
+
+## Intent-Aware Routing
+
+When `/infer-intent` provides an intent summary, use it to enhance routing:
+
+### Using Intent Summary
+
+If intent summary is available:
+
+```yaml
+# From /infer-intent
+intent:
+  primary: create
+  secondary: [modify]
+scope:
+  level: cross-cutting
+  domains: [frontend, backend]
+complexity:
+  score: 7
+agents:
+  primary: architect-agent
+  supporting: [backend-agent, frontend-agent]
+  parallel_possible: false
+routing:
+  recommended_flow: 2-gate
+```
+
+Map directly to dispatch plan:
+
+```markdown
+### Agent Dispatch Plan
+
+| Order | Agent | Model | Task |
+|-------|-------|-------|------|
+| 1 | architect-agent | opus | Design system architecture |
+| 2 | backend-agent | opus | Implement server-side |
+| 2 | frontend-agent | sonnet | Implement UI (parallel with backend if disjoint) |
+| 3 | test-agent | sonnet | Verify complete flow |
+```
+
+### Without Intent Summary
+
+If no intent summary provided, run the full routing process (Steps 1-4 above).
+
+## Quick Reference
+
+See `.claude/agents/AGENT_INVENTORY.md` for:
+- Complete agent profiles and capabilities
+- Model selection guide
+- Parallel agent patterns
+- Decision tree for agent selection
+- Cost optimization strategies
+
+## Related Skills
+
+| Skill | Purpose | When to Chain |
+|-------|---------|---------------|
+| `/infer-intent` | Understand user request | Before routing |
+| `/parallel-dispatch` | Execute parallel agents | After routing identifies parallelization |
+| `/doc-discovery` | Load feature context | For complexity >= 7 |
+| `/plan-lint` | Validate plan | Before implementation

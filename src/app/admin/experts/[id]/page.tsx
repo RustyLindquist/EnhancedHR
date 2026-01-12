@@ -6,6 +6,8 @@ import { getExpertProposals } from '@/app/actions/proposals';
 import { adminGetExpertCredentials } from '@/app/actions/credentials';
 import ExpertDetailsDashboard from '@/components/admin/ExpertDetailsDashboard';
 
+export const dynamic = 'force-dynamic';
+
 interface ExpertDetailsPageProps {
     params: Promise<{
         id: string;
