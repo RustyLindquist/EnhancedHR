@@ -310,6 +310,12 @@ function HomeContent() {
       }
     }
 
+    // Dispatch global event to refresh MainCanvas collection items
+    // This ensures the item appears in the target collection when viewing it
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('collection:refresh'));
+    }
+
     setIsAddModalOpen(false);
     setModalItem(null);
   };
