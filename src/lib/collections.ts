@@ -2,14 +2,15 @@
 import { createClient } from '@/lib/supabase/client';
 import { Collection } from '@/types';
 
-// Fetch all collections for a user
+// Fetch all personal collections for a user (excludes org collections)
 export async function fetchUserCollections(userId: string): Promise<Collection[]> {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from('user_collections')
     .select('*')
     .eq('user_id', userId)
+    .or('is_org_collection.is.null,is_org_collection.eq.false') // Exclude org collections
     .order('created_at', { ascending: true });
 
   if (error) {
