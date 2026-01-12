@@ -378,6 +378,13 @@ async function resolveCollectionId(supabase: any, collectionId: string | undefin
         return newData.id;
     }
 
+    // Handle org collection prefix (e.g., 'org-collection-{uuid}' -> '{uuid}')
+    if (collectionId.startsWith('org-collection-')) {
+        const orgCollectionId = collectionId.replace('org-collection-', '');
+        console.log(`[resolveCollectionId] Stripped org-collection prefix: ${orgCollectionId}`);
+        return orgCollectionId;
+    }
+
     // Is it a UUID? (Custom Collection)
     return collectionId;
 }

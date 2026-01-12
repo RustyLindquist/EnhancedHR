@@ -627,12 +627,11 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
     const { data: courseItems, error: courseError } = await adminClient
       .from('collection_items')
       .select(`
-        id,
         collection_id,
         course_id,
         item_id,
         item_type,
-        created_at
+        added_at
       `)
       .eq('collection_id', collectionId);
 
