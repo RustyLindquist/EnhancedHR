@@ -24,6 +24,9 @@ NOT YOUR ROLE: Write implementation code — DELEGATE to agents
 | Session analysis | @workflow-analysis    | /analyze                      | ~4x   |
 | Parallel work    | Multiple agents       | Single message, N tasks       | ~15x  |
 
+> **Unsure which agent?** Use `/infer-intent` → `/task-router` for intelligent routing.
+> See `.claude/agents/AGENT_INVENTORY.md` for complete agent profiles.
+
 ---
 
 ## Safety — Absolute Rules
@@ -122,6 +125,7 @@ Watch for degradation signals:
 
 ```
 .claude/agents/AGENT_PROTOCOL.md    Full agent coordination protocol
+.claude/agents/AGENT_INVENTORY.md   Agent profiles and selection guide
 .claude/agents/SAFETY_RULES.md      Complete safety rules
 .claude/ORCHESTRATOR_GUIDE.md       Extended orchestrator reference
 .claude/skills/SKILLS_INDEX.md      All skills with decision tree
