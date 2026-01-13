@@ -15,12 +15,17 @@ interface ExpertDetailsPageProps {
 }
 
 export default async function ExpertDetailsPage({ params }: ExpertDetailsPageProps) {
+    console.log('[ExpertDetailsPage] Route matched, starting render');
     const { id: expertId } = await params;
+    console.log('[ExpertDetailsPage] Expert ID from params:', expertId);
+
     const supabase = await createClient();
 
     // Check authentication
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('[ExpertDetailsPage] Auth check - user:', user?.id || 'null');
     if (!user) {
+        console.log('[ExpertDetailsPage] No user, redirecting to login');
         redirect('/login');
     }
 
@@ -31,11 +36,14 @@ export default async function ExpertDetailsPage({ params }: ExpertDetailsPagePro
         .eq('id', user.id)
         .single();
 
+    console.log('[ExpertDetailsPage] User role:', profile?.role || 'null');
     if (profile?.role !== 'admin') {
+        console.log('[ExpertDetailsPage] Not admin, redirecting to dashboard');
         redirect('/dashboard');
     }
 
     // Fetch all expert data in parallel
+    console.log('[ExpertDetailsPage] Fetching expert data...');
     const [expertResult, proposalsResult, coursesResult, performanceResult, credentials] = await Promise.all([
         getExpertDetails(expertId),
         getExpertProposals(expertId),
@@ -44,9 +52,14 @@ export default async function ExpertDetailsPage({ params }: ExpertDetailsPagePro
         adminGetExpertCredentials(expertId)
     ]);
 
+    console.log('[ExpertDetailsPage] Expert result:', {
+        hasExpert: !!expertResult.expert,
+        error: expertResult.error || 'none'
+    });
+
     // Handle errors
     if (expertResult.error || !expertResult.expert) {
-        console.error('Error fetching expert:', expertResult.error);
+        console.error('[ExpertDetailsPage] Error fetching expert, calling notFound(). Error:', expertResult.error);
         notFound();
     }
 
