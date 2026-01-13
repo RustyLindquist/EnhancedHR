@@ -1,7 +1,6 @@
 import React from 'react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
-import AdminPageLayout from '@/components/AdminPageLayout';
 import StandaloneExpertDetailsDashboard from '@/components/admin/StandaloneExpertDetailsDashboard';
 import { StandaloneExpert, StandaloneExpertCredential } from '@/types';
 
@@ -57,12 +56,10 @@ export default async function StandaloneExpertDetailPage({ params }: PageProps) 
         .order('created_at', { ascending: false });
 
     return (
-        <AdminPageLayout activeNavId="admin/experts">
-            <StandaloneExpertDetailsDashboard
-                expert={expert as StandaloneExpert}
-                credentials={(credentials || []) as StandaloneExpertCredential[]}
-                courses={courses || []}
-            />
-        </AdminPageLayout>
+        <StandaloneExpertDetailsDashboard
+            expert={expert as StandaloneExpert}
+            credentials={(credentials || []) as StandaloneExpertCredential[]}
+            courses={courses || []}
+        />
     );
 }
