@@ -22,7 +22,8 @@ import {
   HelpCircle,
   StickyNote,
   Wrench,
-  ClipboardList
+  ClipboardList,
+  UserCircle
 } from 'lucide-react';
 import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
 
@@ -655,6 +656,7 @@ export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
     { id: 'author/courses', label: 'My Courses', icon: BookOpen },
     { id: 'author/analytics', label: 'AI Analytics', icon: BarChart2 },
     { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
+    { id: 'author/profile', label: 'Expert Profile', icon: UserCircle },
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [

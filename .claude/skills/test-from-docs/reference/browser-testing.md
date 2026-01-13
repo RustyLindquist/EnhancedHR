@@ -1,4 +1,4 @@
-# Browser Testing with Chrome Extension
+# Browser Testing with Playwright MCP
 
 ## Available Commands
 
@@ -60,7 +60,7 @@ browser.waitFor("selector", timeout)
 
 ### Phase 4 Browser Tests
 
-Use Chrome Extension for:
+Use Playwright MCP for:
 - Visual verification after UI changes
 - Form interaction testing
 - Console error detection

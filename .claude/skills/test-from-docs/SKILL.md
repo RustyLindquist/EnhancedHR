@@ -43,7 +43,7 @@ Use documentation as the authoritative test blueprint. Tests verify intended beh
 1. **Static Analysis** — `npx tsc --noEmit && npm run lint`
 2. **Feature Checklist** — Run items from feature doc's Testing Checklist
 3. **Integration** — Verify cross-feature integration points
-4. **Browser** — Visual verification with Chrome Extension
+4. **Browser** — Visual verification with Playwright MCP
 5. **Workflow Smoke** — One complete user journey
 6. **Regression** — Verify coupled features still work
 

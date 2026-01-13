@@ -1,19 +1,19 @@
 ---
-description: Enable browser control via Claude Code Chrome Extension for UI testing, screenshots, and workflow verification
+description: Enable browser control via Playwright MCP for UI testing, screenshots, and workflow verification
 ---
 
-# Browser Use Skill (Chrome Extension)
+# Browser Use Skill (Playwright MCP)
 
-This skill enables browser control via the **Claude Code Chrome Extension**. Use this skill whenever you need to interact with the running application in a browser.
+This skill enables browser control via **Playwright MCP**. Use this skill whenever you need to interact with the running application in a browser.
 
-> **Note**: This requires the Claude Code Chrome Extension to be installed and connected. This is NOT headless browser automation — it controls your actual Chrome browser.
+> **Note**: This requires the Playwright MCP server to be running. This provides automated browser control for testing and verification.
 
 ## Prerequisites
 
 Before using browser control:
-1. Ensure Chrome is running
-2. Verify connection with `/chrome`
-3. If not connected, run `/chrome` and select "Reconnect extension"
+1. Ensure the dev server is running (`pnpm dev`)
+2. Playwright MCP server should be available in the MCP configuration
+3. Navigate to the appropriate URL to start testing
 
 ## When to Use Browser Control
 
@@ -35,167 +35,157 @@ Before using browser control:
 
 ### Navigation
 
+Use `mcp__browsermcp__browser_navigate` to navigate:
 ```
-Navigate to localhost:3000/dashboard
+Navigate to http://localhost:3001/dashboard
 Go to the settings page
-Open a new tab and navigate to localhost:3000/admin
-Switch to the tab showing the course player
 ```
 
 ### Taking Screenshots
 
+Use `mcp__browsermcp__browser_screenshot` to capture:
 ```
 Take a screenshot of the current page
 Capture a screenshot of the login form
-Take a screenshot and check if the modal is displaying correctly
 ```
 
 ### Console Access
 
+Use `mcp__browsermcp__browser_get_console_logs` to check:
 ```
 Check the browser console for errors
 List all console messages and look for warnings
-Check if there are any API errors in the console
-Look for console errors related to authentication
 ```
 
 ### UI Interaction
 
+Use `mcp__browsermcp__browser_click` and `mcp__browsermcp__browser_type`:
 ```
 Click the "Submit" button
 Fill the email field with "test@example.com"
-Fill out the form with: name "Test User", email "test@test.com"
-Hover over the profile menu
-Click the dropdown and select "Settings"
 ```
+
+Use `mcp__browsermcp__browser_snapshot` to get element references for interaction.
 
 ### Form Testing
 
 ```
-Fill the login form with invalid data and check for error messages
-Submit an empty form and verify validation errors appear
-Fill the registration form and submit it
+1. Navigate to the form page
+2. Get a snapshot to find element references
+3. Type into form fields
+4. Click submit
+5. Check console for errors
+6. Take a screenshot of the result
 ```
 
 ### Workflow Testing
 
 ```
-Navigate to localhost:3000, click login, fill credentials, and verify the dashboard loads
-Go through the checkout flow: add item, go to cart, proceed to checkout
-Test the course enrollment flow from start to finish
+1. Navigate to starting point
+2. Use snapshots to find elements
+3. Interact with each step
+4. Check console after major actions
+5. Take screenshots at key points
 ```
 
 ## Best Practices
 
-### 1. Start with a Fresh State
+### 1. Get a Snapshot First
+Before interacting with elements, use `browser_snapshot` to get element references:
 ```
-Navigate to localhost:3000 in a new tab
-Clear the current state by logging out first
+1. Navigate to the page
+2. Take a snapshot
+3. Use the ref values from snapshot for clicks/typing
 ```
 
 ### 2. Check Console After Actions
 ```
-Click the submit button, then check the console for any errors
-Navigate to the page and immediately check for console errors
+1. Perform an action (click, submit)
+2. Get console logs to check for errors
 ```
 
 ### 3. Take Screenshots for Evidence
 ```
-Take a screenshot after the form submission to verify the success message
-Capture the error state for documentation
+1. Complete an action
+2. Take a screenshot to verify the result
 ```
 
-### 4. Be Specific with Selectors
-When elements are ambiguous:
-```
-Click the "Save" button in the settings panel (not the header)
-Fill the email field in the registration form (not the login form)
-```
+### 4. Use Specific Element References
+The snapshot provides `ref` values for each element. Use these exact refs when clicking or typing.
 
-### 5. Wait for Actions to Complete
+### 5. Wait When Needed
+Use `mcp__browsermcp__browser_wait` when pages need time to load:
 ```
-Click submit and wait for the page to load
-Navigate to the dashboard and wait for the data to appear
+Wait 2 seconds for the page to load
 ```
 
 ## Error Handling
 
-### Modal Dialogs Block Commands
-If a JavaScript alert, confirm, or prompt appears, it blocks browser control. Dismiss it manually and tell Claude to continue.
-
 ### Element Not Found
 If an element can't be found:
-```
-Take a screenshot to see the current page state
-Check if the page has fully loaded
-Verify the element selector is correct
-```
+1. Take a new snapshot to see current page state
+2. Check if the page has fully loaded
+3. Look for the correct element reference in the snapshot
 
 ### Connection Issues
 If browser control stops working:
-1. Run `/chrome` to check status
-2. Select "Reconnect extension"
-3. If still failing, restart Chrome and Claude Code
+1. Check that the Playwright MCP server is running
+2. Try navigating to a new URL to reset state
 
 ## Common Patterns
 
 ### Verify a UI Change
 ```
-1. Navigate to localhost:3000/[affected-page]
-2. Take a screenshot
-3. Check console for errors
-4. Verify the expected element is visible
+1. browser_navigate to localhost:3001/[affected-page]
+2. browser_screenshot
+3. browser_get_console_logs for errors
+4. browser_snapshot to verify elements
 ```
 
 ### Test a Form
 ```
-1. Navigate to the form page
-2. Fill the form with test data
-3. Submit the form
-4. Check console for errors
-5. Take a screenshot of the result
-6. Verify success/error message appears
+1. browser_navigate to the form page
+2. browser_snapshot to get element refs
+3. browser_type into each field
+4. browser_click the submit button
+5. browser_get_console_logs for errors
+6. browser_screenshot of the result
 ```
 
 ### Test a Workflow
 ```
-1. Navigate to the starting point
-2. Perform each step of the workflow
-3. Check console after each major action
-4. Take screenshots at key points
-5. Verify the workflow completes successfully
+1. browser_navigate to starting point
+2. browser_snapshot
+3. browser_click/type for each step
+4. browser_get_console_logs after each major action
+5. browser_screenshot at key points
 ```
 
 ### Debug an Issue
 ```
-1. Navigate to the problematic page
-2. Check console for errors
-3. Take a screenshot
-4. Interact with the problematic element
-5. Check console again for new errors
-6. Report findings
+1. browser_navigate to the problematic page
+2. browser_get_console_logs for errors
+3. browser_screenshot
+4. browser_snapshot to see element structure
+5. Report findings
 ```
 
-## Limitations
+## Available MCP Tools
 
-- **Chrome only**: Works only with Google Chrome
-- **Visible browser required**: No headless mode
-- **Shared session**: Uses your existing Chrome login state
-- **Modal blockers**: JavaScript alerts/confirms block commands
-- **No WSL support**: Not available on Windows Subsystem for Linux
-
-## Quick Reference
-
-| Action | Example Command |
-|--------|----------------|
-| Navigate | `Navigate to localhost:3000/dashboard` |
-| Screenshot | `Take a screenshot of the current page` |
-| Console | `Check the browser console for errors` |
-| Click | `Click the "Submit" button` |
-| Fill field | `Fill the email field with "test@test.com"` |
-| Fill form | `Fill out the form with: name "X", email "Y"` |
-| New tab | `Open a new tab and go to localhost:3000` |
-| Wait | `Wait for the dashboard to load` |
+| Tool | Purpose |
+|------|---------|
+| `mcp__browsermcp__browser_navigate` | Navigate to a URL |
+| `mcp__browsermcp__browser_snapshot` | Get accessibility tree with element refs |
+| `mcp__browsermcp__browser_screenshot` | Capture current page |
+| `mcp__browsermcp__browser_click` | Click an element by ref |
+| `mcp__browsermcp__browser_type` | Type into an element |
+| `mcp__browsermcp__browser_hover` | Hover over an element |
+| `mcp__browsermcp__browser_select_option` | Select dropdown option |
+| `mcp__browsermcp__browser_press_key` | Press keyboard key |
+| `mcp__browsermcp__browser_wait` | Wait for specified time |
+| `mcp__browsermcp__browser_get_console_logs` | Get console output |
+| `mcp__browsermcp__browser_go_back` | Navigate back |
+| `mcp__browsermcp__browser_go_forward` | Navigate forward |
 
 ## Integration with Testing
 

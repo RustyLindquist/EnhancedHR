@@ -3,6 +3,51 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Instantly makes the current user an expert (approved status).
+ * No form or admin approval required - user can immediately access Expert Dashboard.
+ */
+export async function becomeExpert(): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    // Check if user is already an expert
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('author_status')
+        .eq('id', user.id)
+        .single();
+
+    if (profile?.author_status === 'approved') {
+        return { success: true }; // Already an expert, nothing to do
+    }
+
+    // Update profile to approved expert status
+    const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+            author_status: 'approved',
+        })
+        .eq('id', user.id);
+
+    if (profileError) {
+        console.error('Error updating profile to expert:', profileError);
+        return { success: false, error: 'Failed to become an expert. Please try again.' };
+    }
+
+    revalidatePath('/settings/account');
+    revalidatePath('/author');
+    return { success: true };
+}
+
 interface SubmitExpertProposalData {
     full_name: string;
     expert_title?: string;
