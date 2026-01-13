@@ -494,7 +494,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       case 'collection_assistant': return { name: contextTitle ? `${contextTitle} Assistant` : 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
       case 'org_course_assistant': return { name: 'Organization Courses', icon: Library, color: 'text-amber-400', themeColor: 'bg-amber-400' };
       case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
-      case 'team_analytics_assistant': return { name: 'Team Analytics', icon: Users, color: 'text-purple-400', bgColor: 'bg-purple-500/10', themeColor: 'bg-purple-400' };
+      case 'team_analytics_assistant': return { name: 'Team Assistant', icon: Users, color: 'text-purple-400', bgColor: 'bg-purple-500/10', themeColor: 'bg-purple-400' };
       default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
     }
   };
@@ -744,6 +744,12 @@ const AIPanel: React.FC<AIPanelProps> = ({
                         <>
                           <p>I'm your Organization Courses assistant.</p>
                           <p className="mt-2 text-slate-400 text-xs">I can help you find content in your organization's custom courses, answer questions about course material, and more.</p>
+                        </>
+                      )}
+                      {effectiveAgentType === 'team_analytics_assistant' && (
+                        <>
+                          <p>I'm Your Team Assistant.</p>
+                          <p className="mt-2 text-slate-400 text-xs">I can help you understand the users in this group. I can answer questions about platform use, learning patterns or trends, AI use, etc. You can use me to help you acquire insights not only into how the platform is used, but what your team seems to care about, what they're interested in, or even assess what their needs may be.</p>
                         </>
                       )}
                     </div>
