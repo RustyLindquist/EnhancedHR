@@ -32,13 +32,17 @@ export interface RAGScope {
     // User data context (for org admin views)
     includeUserDataContext?: boolean;
     userDataScopeId?: string; // 'all-users' or group ID
+
+    // Organization scope (for org-specific content like org courses)
+    orgId?: string;                   // Filter to org-specific content (only for org members)
 }
 
 export interface PageContext {
-    type: 'COLLECTION' | 'COURSE' | 'PAGE' | 'PLATFORM' | 'DASHBOARD' | 'USER';
+    type: 'COLLECTION' | 'COURSE' | 'PAGE' | 'PLATFORM' | 'DASHBOARD' | 'USER' | 'ORG_COURSES';
     id?: string;
     collectionId?: string;
     agentType?: string;
+    orgId?: string;  // For org-scoped contexts
 }
 
 // Map of collection aliases to their database labels
@@ -129,7 +133,31 @@ export class ContextResolver {
             };
         }
 
-        // 5.6 Assigned Learning Scope
+        // 5.6 Org Courses Scope
+        // For viewing org-specific courses - includes org course content + personal context
+        // ONLY org members can access this content (enforced by RPC)
+        if (context.type === 'ORG_COURSES' || context.collectionId === 'org-courses') {
+            // Get user's org_id from their profile
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('org_id')
+                .eq('id', userId)
+                .single();
+
+            const userOrgId = context.orgId || profile?.org_id;
+
+            if (userOrgId) {
+                return {
+                    ...baseScope,
+                    orgId: userOrgId,
+                    // Also include platform content so org users can ask general questions
+                    isPlatformScope: true
+                };
+            }
+            // If no org, fall through to platform scope
+        }
+
+        // 5.7 Assigned Learning Scope
         // For viewing assigned content - includes all courses/modules/lessons assigned to user
         if (context.collectionId === 'assigned-learning' || context.id === 'assigned-learning') {
             const assignedCourseIds = await this.getAssignedCourseIds(supabase, userId);

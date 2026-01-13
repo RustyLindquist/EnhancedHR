@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getOrgContext } from '@/lib/org-context';
 import { Course } from '@/types';
 import { revalidatePath } from 'next/cache';
+import { generateOrgCourseEmbeddings, deleteOrgCourseEmbeddings } from '@/lib/ai/org-course-embeddings';
 
 // ============================================
 // Org Course Fetching
@@ -441,6 +442,15 @@ export async function deleteOrgCourse(
         console.error('[deleteOrgCourse] Error deleting course_resources:', resourcesError);
     }
 
+    // Delete embeddings for this course (RAG cleanup)
+    const embeddingResult = await deleteOrgCourseEmbeddings(courseId);
+    if (!embeddingResult.success) {
+        console.error('[deleteOrgCourse] Error deleting embeddings:', embeddingResult.error);
+        // Continue anyway - course deletion is more important
+    } else {
+        console.log(`[deleteOrgCourse] Deleted ${embeddingResult.deletedCount} embeddings`);
+    }
+
     // Finally, delete the course
     const { error: deleteError } = await admin
         .from('courses')
@@ -570,6 +580,18 @@ export async function publishOrgCourse(
         return { success: false, error: updateError.message };
     }
 
+    // Generate embeddings for the published course (for org-scoped RAG)
+    // This runs async - don't block the publish operation
+    generateOrgCourseEmbeddings(courseId, course.org_id).then(result => {
+        if (result.success) {
+            console.log(`[publishOrgCourse] Generated ${result.embeddingCount} embeddings for course ${courseId}`);
+        } else {
+            console.error(`[publishOrgCourse] Failed to generate embeddings:`, result.error);
+        }
+    }).catch(err => {
+        console.error('[publishOrgCourse] Error generating embeddings:', err);
+    });
+
     revalidatePath('/org-courses');
     revalidatePath(`/org-courses/${courseId}`);
 
@@ -640,6 +662,18 @@ export async function unpublishOrgCourse(
         console.error('[unpublishOrgCourse] Error unpublishing course:', updateError);
         return { success: false, error: updateError.message };
     }
+
+    // Delete embeddings for the unpublished course (removes from RAG)
+    // This runs async - don't block the unpublish operation
+    deleteOrgCourseEmbeddings(courseId).then(result => {
+        if (result.success) {
+            console.log(`[unpublishOrgCourse] Deleted ${result.deletedCount} embeddings for course ${courseId}`);
+        } else {
+            console.error(`[unpublishOrgCourse] Failed to delete embeddings:`, result.error);
+        }
+    }).catch(err => {
+        console.error('[unpublishOrgCourse] Error deleting embeddings:', err);
+    });
 
     revalidatePath('/org-courses');
     revalidatePath(`/org-courses/${courseId}`);

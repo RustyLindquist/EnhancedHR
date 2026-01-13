@@ -97,9 +97,27 @@ function formatContextForPrompt(items: any[]): string {
         });
     }
 
+    // Organization course content (org-specific courses)
+    if (grouped['org_course']) {
+        sections.push('\n=== ORGANIZATION COURSES ===');
+        grouped['org_course'].forEach(item => {
+            const courseTitle = item.metadata?.course_title || 'Organization Course';
+            const moduleTitle = item.metadata?.module_title || '';
+            const lessonTitle = item.metadata?.lesson_title || '';
+            const type = item.metadata?.type || 'content';
+
+            let prefix = courseTitle;
+            if (moduleTitle) prefix += ` > ${moduleTitle}`;
+            if (lessonTitle) prefix += ` > ${lessonTitle}`;
+            if (type === 'course_overview') prefix += ' (Overview)';
+
+            sections.push(`[${prefix}]\n${item.content}`);
+        });
+    }
+
     // Any other content
     const otherTypes = Object.keys(grouped).filter(t =>
-        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course', 'resource'].includes(t)
+        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course', 'resource', 'org_course'].includes(t)
     );
     otherTypes.forEach(type => {
         if (grouped[type].length > 0) {
@@ -166,12 +184,19 @@ export async function POST(req: NextRequest) {
         const queryEmbedding = await generateQueryEmbedding(message);
 
         // 3. Resolve RAG scope based on agent type and page context
-        // Include agentType in pageContext for proper scope resolution
+        // Include agentType and orgId in pageContext for proper scope resolution
         const enhancedPageContext = {
             ...(pageContext || { type: 'PAGE', id: 'dashboard' }),
-            agentType
+            agentType,
+            orgId: userOrgId || undefined  // Pass org context if user belongs to an org
         };
         const ragScope = await ContextResolver.resolve(user.id, enhancedPageContext);
+
+        // If user has an org and ragScope doesn't have orgId yet, add it
+        // This ensures org members can access their org's content from any context
+        if (userOrgId && !ragScope.orgId) {
+            ragScope.orgId = userOrgId;
+        }
 
         // 4. Fetch context using unified embeddings RAG
         const { data: contextItems, error: ragError } = await supabase.rpc('match_unified_embeddings', {
