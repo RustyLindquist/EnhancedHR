@@ -5,6 +5,7 @@ import { Plus, BookOpen, Lightbulb } from 'lucide-react';
 import { getOrgContext } from '@/lib/org-context';
 import { fetchOrgCoursesAction, getOrgCourseCounts } from '@/app/actions/org-courses';
 import OrgCoursesClient from './OrgCoursesClient';
+import OrgCourseAIPanelWrapper from './OrgCourseAIPanelWrapper';
 
 interface OrgCoursesPageProps {
     searchParams: Promise<{ status?: string }>;
@@ -224,6 +225,9 @@ export default async function OrgCoursesPage({ searchParams }: OrgCoursesPagePro
                     </p>
                 </div>
             </div>
+
+            {/* AI Assistant Panel */}
+            <OrgCourseAIPanelWrapper orgId={orgContext.orgId} orgName={orgContext.orgName} />
         </div>
     );
 }
