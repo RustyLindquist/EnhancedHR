@@ -237,6 +237,41 @@ Each task should:
 
 ---
 
+## Feature Planning Checklist
+
+When planning any new feature, always ask these questions:
+
+### Pages & Surfaces
+- [ ] What pages/surfaces are involved?
+- [ ] Do they follow `docs/frontend/PAGE_STANDARDS.md`? (Canvas Header, transparent background)
+
+### AI Panel (MANDATORY)
+- [ ] **How should the AI panel work on each page?**
+  - What agent type? (platform_assistant, course_assistant, collection_assistant, etc.)
+  - What context scope? (PLATFORM, COURSE, COLLECTION, ORG_COURSES, etc.)
+  - What data should be searchable via RAG?
+- [ ] If new page type: Does it need a new agent type and context scope?
+- [ ] Reference: `docs/frontend/PAGE_STANDARDS.md` Section 3
+
+### Data Scoping
+- [ ] Does any data need org-scoping? (org_id column)
+- [ ] What embeddings need to be generated for AI? (if any)
+- [ ] Reference: `docs/architecture/org-scoped-content.md`
+
+### Example: Org Courses Feature
+```
+Pages: /org-courses, /org-courses/[id], /org-courses/[id]/builder
+AI Panel:
+  - Agent type: org_course_assistant
+  - Context scope: ORG_COURSES with orgId
+  - RAG: org course content (lessons, descriptions)
+Data scoping:
+  - courses.org_id for org ownership
+  - unified_embeddings.org_id for RAG isolation
+```
+
+---
+
 ## Definition of Done
 
 For any task, verify:

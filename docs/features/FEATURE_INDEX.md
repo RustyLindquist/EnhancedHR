@@ -22,6 +22,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Experts (Instructor Profiles) | experts | Low | Frontend | doc-discovery | Coupled mainly to courses/catalog presentation | Missing |
 | Help System (Help Collection) | help-collection | Medium | Frontend + Backend | doc-discovery | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
 | Organization Membership (Employee Experience) | organization-membership | High | Backend | doc-discovery, plan-lint | Coupled to auth/roles, billing/seats, and admin gating | Exists |
+| Organization Courses | org-courses | High | Backend + Frontend | doc-discovery, plan-lint, test-from-docs | Coupled to AI context engine (RAG scope 8), org-membership, course player; org-scoped content | Exists |
 | Dynamic Groups | dynamic-groups | Medium | Backend | doc-discovery | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
 | Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, and admin review/approval flows | Exists |
 | Platform Admin Portal | admin-portal | High | Backend | doc-discovery, plan-lint | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |

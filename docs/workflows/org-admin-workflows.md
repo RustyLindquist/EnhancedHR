@@ -129,6 +129,70 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 
 ---
 
+### Organization Course Management
+
+**Goal**: Create and manage custom courses for the organization
+**Frequency**: Monthly / As needed
+**Features Involved**: `org-courses`, `organization-membership`, `ai-context-engine`
+
+#### Steps
+1. Navigate to Organization Courses (`/org-courses`)
+2. Click "Create Course" to start a new course
+3. Use the course builder to add modules and lessons
+4. Upload videos and add content (descriptions, transcripts)
+5. Assign an author from org members (optional)
+6. Preview the course content
+7. Click "Publish" to make available to org members
+8. Embeddings are automatically generated for AI integration
+
+#### Variations
+- Unpublish course to hide from employees (keeps as draft)
+- Delete course (removes all data including embeddings)
+- Edit published course (updates visible immediately)
+
+#### Success Criteria
+- Published courses appear for all org members
+- AI assistant can answer questions about course content
+- Employees can track progress on org courses
+
+#### Related Workflows
+- Content Assignment (assign org courses to employees/groups)
+- Progress Monitoring (track completion)
+
+---
+
+### Assign Organization Courses
+
+**Goal**: Assign org-specific courses to employees or groups
+**Frequency**: Weekly / As needed
+**Features Involved**: `org-courses`, `organization-membership`, `content-assignments`
+
+#### Steps
+1. Navigate to Organization Courses (`/org-courses`)
+2. Select a published course
+3. Use assignment controls to assign to:
+   - Individual employees
+   - Employee groups
+   - All org members
+4. Set assignment type (required vs recommended)
+5. Optionally set due date
+6. Assigned courses appear in employee dashboards
+
+#### Variations
+- Bulk assignment to multiple employees
+- Remove assignment
+- Change due date
+
+#### Success Criteria
+- Assigned content appears in employee learning dashboards
+- Progress tracking active once employees start
+
+#### Related Workflows
+- Progress Monitoring
+- Organization Course Management
+
+---
+
 ## Workflows To Document
 
 The following workflows have been identified but not yet documented:
