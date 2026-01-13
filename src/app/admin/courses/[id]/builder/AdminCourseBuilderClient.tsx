@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -20,6 +20,7 @@ import {
     LessonEditorPanel,
     ResourcesEditorPanel
 } from '@/components/admin/course-panels';
+import BulkVideoUploadPanel from '@/components/admin/course-panels/BulkVideoUploadPanel';
 
 interface AdminCourseBuilderClientProps {
     course: Course & { skills?: string[]; status?: string };
@@ -122,6 +123,13 @@ export default function AdminCourseBuilderClient({
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => handleOpenPanel('bulk_upload')}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-sm font-medium"
+                    >
+                        <Upload size={16} />
+                        Bulk Video Upload
+                    </button>
                     <Link
                         href={`/?courseId=${initialCourse.id}`}
                         target="_blank"
@@ -254,6 +262,18 @@ export default function AdminCourseBuilderClient({
                 courseId={initialCourse.id}
                 resources={initialResources}
                 onSave={handlePanelSave}
+            />
+
+            {/* ============================================ */}
+            {/* Bulk Video Upload Panel */}
+            {/* ============================================ */}
+
+            <BulkVideoUploadPanel
+                isOpen={activePanel === 'bulk_upload'}
+                onClose={handleClosePanel}
+                courseId={initialCourse.id}
+                modules={initialSyllabus}
+                onComplete={handlePanelSave}
             />
         </div>
     );

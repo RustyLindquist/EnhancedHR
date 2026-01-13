@@ -51,3 +51,36 @@ export async function createMuxAssetFromUrl(url: string, passthrough?: string) {
         throw error;
     }
 }
+
+export async function getMuxAssetDetails(assetId: string) {
+    try {
+        const asset = await mux.video.assets.retrieve(assetId);
+        return {
+            duration: asset.duration,
+            playbackId: asset.playback_ids?.[0]?.id,
+            status: asset.status,
+        };
+    } catch (error) {
+        console.error('Error retrieving Mux asset:', error);
+        return null;
+    }
+}
+
+export async function waitForMuxAssetReady(assetId: string, maxAttempts: number = 60): Promise<{ ready: boolean; playbackId?: string; duration?: number }> {
+    for (let i = 0; i < maxAttempts; i++) {
+        const details = await getMuxAssetDetails(assetId);
+        if (details?.status === 'ready' && details.playbackId) {
+            return {
+                ready: true,
+                playbackId: details.playbackId,
+                duration: details.duration,
+            };
+        }
+        if (details?.status === 'errored') {
+            return { ready: false };
+        }
+        // Wait 2 seconds between checks
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    return { ready: false };
+}

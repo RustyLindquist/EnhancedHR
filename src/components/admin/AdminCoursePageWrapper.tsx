@@ -14,6 +14,7 @@ export type CourseBuilderPanelType =
     | 'module'
     | 'lesson'
     | 'resources'
+    | 'bulk_upload'
     | null;
 
 // Context for admin mode state
