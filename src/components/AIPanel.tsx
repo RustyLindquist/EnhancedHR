@@ -492,6 +492,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       case 'course_assistant': return { name: 'Course Assistant', icon: Bot, color: 'text-brand-blue-light', themeColor: 'bg-brand-blue-light' };
       case 'course_tutor': return { name: 'Prometheus Tutor', icon: GraduationCap, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
       case 'collection_assistant': return { name: contextTitle ? `${contextTitle} Assistant` : 'Collection Assistant', icon: Library, color: 'text-purple-400', themeColor: 'bg-purple-400' };
+      case 'org_course_assistant': return { name: 'Organization Courses', icon: Library, color: 'text-amber-400', themeColor: 'bg-amber-400' };
       case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
       case 'team_analytics_assistant': return { name: 'Team Analytics', icon: Users, color: 'text-purple-400', bgColor: 'bg-purple-500/10', themeColor: 'bg-purple-400' };
       default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
@@ -737,6 +738,12 @@ const AIPanel: React.FC<AIPanelProps> = ({
                         <>
                           <p>I'm the Collection Assistant.</p>
                           <p className="mt-2 text-slate-400 text-xs">I can help you synthesize information across all the items in this collection.</p>
+                        </>
+                      )}
+                      {effectiveAgentType === 'org_course_assistant' && (
+                        <>
+                          <p>I'm your Organization Courses assistant.</p>
+                          <p className="mt-2 text-slate-400 text-xs">I can help you find content in your organization's custom courses, answer questions about course material, and more.</p>
                         </>
                       )}
                     </div>
