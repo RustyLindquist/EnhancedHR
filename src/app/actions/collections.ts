@@ -67,10 +67,12 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
     console.log('[getCollectionCountsAction] Starting count for user:', userId);
 
     // Fetch User Collections for Alias Mapping (ordered by created_at for consistent resolution)
+    // Exclude org collections - they are separate from personal collections
     const { data: userCollections, error: userCollError } = await admin
         .from('user_collections')
         .select('id, label, is_custom, created_at')
         .eq('user_id', userId)
+        .or('is_org_collection.is.null,is_org_collection.eq.false')
         .order('created_at', { ascending: true });
 
     if (userCollError) {
@@ -139,7 +141,14 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         });
     }
 
-    // 2. Count Context Items (user_context_items)
+    // 2. Count Context Items (user_context_items) - exclude items in org collections
+    // First, get all org collection IDs to filter them out from personal counts
+    const { data: orgCollections } = await admin
+        .from('user_collections')
+        .select('id')
+        .eq('is_org_collection', true);
+    const orgCollectionIds = new Set((orgCollections || []).map((c: any) => c.id));
+
     const { data: contextItems, error: contextError } = await admin
         .from('user_context_items')
         .select('collection_id, type')
@@ -153,7 +162,8 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
     if (contextItems) {
         contextItems.forEach((item: any) => {
             const id = item.collection_id;
-            if (id) {
+            // Skip items in org collections - they shouldn't count toward personal totals
+            if (id && !orgCollectionIds.has(id)) {
                 counts[id] = (counts[id] || 0) + 1;
             }
         });
@@ -208,11 +218,12 @@ export async function getCollectionCountsAction(userId: string): Promise<Record<
         counts['certifications'] = certificationCount;
     }
 
-    // 4b. Count Notes
+    // 4b. Count Notes (personal notes only - exclude org notes)
     const { count: notesCount, error: notesError } = await admin
         .from('notes')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('org_id', null);
 
     if (!notesError && notesCount !== null) {
         counts['notes'] = notesCount;
