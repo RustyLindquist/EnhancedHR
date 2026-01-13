@@ -11,6 +11,7 @@ interface ExpertWithCourses {
     avatar_url: string | null;
     author_bio: string | null;
     publishedCourseCount: number;
+    isStandalone: boolean;
 }
 
 export default async function ExpertsPage() {
@@ -30,23 +31,38 @@ export default async function ExpertsPage() {
         `)
         .or('author_status.eq.approved,role.eq.admin');
 
+    // Fetch standalone experts
+    const { data: standaloneExpertsData } = await supabase
+        .from('standalone_experts')
+        .select(`
+            id,
+            full_name,
+            expert_title,
+            avatar_url,
+            author_bio
+        `)
+        .eq('is_active', true);
+
     // Fetch published courses grouped by author
     const { data: coursesData } = await supabase
         .from('courses')
-        .select('author_id')
-        .eq('status', 'published')
-        .not('author_id', 'is', null);
+        .select('author_id, standalone_expert_id')
+        .eq('status', 'published');
 
-    // Count published courses per author
+    // Count published courses per author (regular and standalone)
     const courseCountByAuthor: Record<string, number> = {};
+    const courseCountByStandaloneExpert: Record<string, number> = {};
     coursesData?.forEach(course => {
         if (course.author_id) {
             courseCountByAuthor[course.author_id] = (courseCountByAuthor[course.author_id] || 0) + 1;
         }
+        if (course.standalone_expert_id) {
+            courseCountByStandaloneExpert[course.standalone_expert_id] = (courseCountByStandaloneExpert[course.standalone_expert_id] || 0) + 1;
+        }
     });
 
-    // Filter to only experts with published courses
-    const expertsWithPublishedCourses: ExpertWithCourses[] = (expertsData || [])
+    // Filter to only experts with published courses (regular experts)
+    const regularExpertsWithCourses: ExpertWithCourses[] = (expertsData || [])
         .filter(expert => courseCountByAuthor[expert.id] > 0)
         .map(expert => ({
             id: expert.id,
@@ -54,8 +70,25 @@ export default async function ExpertsPage() {
             expert_title: expert.expert_title,
             avatar_url: expert.avatar_url,
             author_bio: expert.author_bio,
-            publishedCourseCount: courseCountByAuthor[expert.id]
-        }))
+            publishedCourseCount: courseCountByAuthor[expert.id],
+            isStandalone: false
+        }));
+
+    // Filter to only standalone experts with published courses
+    const standaloneExpertsWithCourses: ExpertWithCourses[] = (standaloneExpertsData || [])
+        .filter(expert => courseCountByStandaloneExpert[expert.id] > 0)
+        .map(expert => ({
+            id: expert.id,
+            full_name: expert.full_name || 'Expert',
+            expert_title: expert.expert_title,
+            avatar_url: expert.avatar_url,
+            author_bio: expert.author_bio,
+            publishedCourseCount: courseCountByStandaloneExpert[expert.id],
+            isStandalone: true
+        }));
+
+    // Combine and sort by course count
+    const expertsWithPublishedCourses = [...regularExpertsWithCourses, ...standaloneExpertsWithCourses]
         .sort((a, b) => b.publishedCourseCount - a.publishedCourseCount);
 
     return (
@@ -237,8 +270,8 @@ export default async function ExpertsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {expertsWithPublishedCourses.map(expert => (
                                 <Link
-                                    key={expert.id}
-                                    href={`/experts/${expert.id}`}
+                                    key={`${expert.id}-${expert.isStandalone ? 'standalone' : 'regular'}`}
+                                    href={expert.isStandalone ? `/experts/standalone/${expert.id}` : `/experts/${expert.id}`}
                                     className="group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-blue-light/30 transition-all hover:-translate-y-1"
                                 >
                                     {/* Avatar */}
