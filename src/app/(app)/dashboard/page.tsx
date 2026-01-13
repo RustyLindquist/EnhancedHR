@@ -69,6 +69,7 @@ function HomeContent() {
   const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
   const [user, setUser] = useState<any>(null); // Track user for DB ops
   const [isOrgAdmin, setIsOrgAdmin] = useState<boolean>(false); // Track if user is org admin
+  const [userOrgId, setUserOrgId] = useState<string | null>(null); // Track user's org ID for nav
   const [viewingGroupName, setViewingGroupName] = useState<string | null>(null); // Current group name for AI Panel title
 
   // Global Modal State
@@ -125,7 +126,7 @@ function HomeContent() {
         await refreshCountsForUser(user.id);
 
         // 3. Fetch org member count for navigation badge
-        const { getOrgMemberCount, getOrgCollections, checkIsOrgAdmin } = await import('@/app/actions/org');
+        const { getOrgMemberCount, getOrgCollections, checkIsOrgAdmin, getCurrentOrgId } = await import('@/app/actions/org');
         const memberCount = await getOrgMemberCount();
         setOrgMemberCount(memberCount);
 
@@ -136,6 +137,10 @@ function HomeContent() {
         // 5. Get org admin status
         const isAdmin = await checkIsOrgAdmin();
         setIsOrgAdmin(isAdmin);
+
+        // 6. Get current org ID for navigation panel
+        const currentOrgId = await getCurrentOrgId();
+        setUserOrgId(currentOrgId);
       }
     }
     initUserAndCollections();
@@ -644,6 +649,7 @@ function HomeContent() {
           customCollections={customCollections}
           orgMemberCount={orgMemberCount}
           orgCollections={orgCollections}
+          orgId={userOrgId || undefined}
         />
 
         {/* Center Content - Using Dashboard V3 */}

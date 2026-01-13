@@ -498,6 +498,21 @@ export async function checkIsOrgAdmin(): Promise<boolean> {
 }
 
 /**
+ * Gets the current user's organization ID.
+ * Used for navigation panel to check org courses visibility.
+ */
+export async function getCurrentOrgId(): Promise<string | null> {
+  'use server';
+  try {
+    const orgContext = await getOrgContext();
+    return orgContext?.orgId || null;
+  } catch (error) {
+    console.error('getCurrentOrgId error:', error);
+    return null;
+  }
+}
+
+/**
  * Gets the count of members in the current user's organization.
  * Used for displaying the count badge in the navigation panel.
  */

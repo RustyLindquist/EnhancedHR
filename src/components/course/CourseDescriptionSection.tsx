@@ -21,6 +21,7 @@ interface CourseDescriptionSectionProps {
     onStartLearning: () => void;
     onAskPrometheus: (prompt: string) => void;
     onViewExpert?: (expertId: string) => void;
+    isOrgCourse?: boolean;
 }
 
 // Default skills if not provided by course
@@ -36,7 +37,8 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     authorCredentials = [],
     onStartLearning,
     onAskPrometheus,
-    onViewExpert
+    onViewExpert,
+    isOrgCourse = false
 }) => {
     // Parse skills from course or use defaults
     const skills = (course as any).skills || DEFAULT_SKILLS;
@@ -106,6 +108,13 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                     </div>
                 </div>
 
+                {/* Organization Course Banner - Top Left */}
+                {isOrgCourse && (
+                    <div className="absolute top-0 left-0 bg-amber-600/90 backdrop-blur-sm text-white text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-br-xl">
+                        Organization Course
+                    </div>
+                )}
+
                 {/* Subtle gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
             </div>
@@ -147,32 +156,34 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                             </ul>
                         </div>
 
-                        {/* Credits You'll Earn (40%) */}
-                        <div className="lg:w-[40%]">
-                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
-                                CREDITS YOU'LL EARN
-                            </h3>
-                            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
-                                <div className="grid grid-cols-2 gap-6">
-                                    {/* SHRM Column */}
-                                    {(hasSHRM || !hasSHRM && !hasHRCI) && (
-                                        <div className="flex flex-col items-center text-center">
-                                            <span className="text-4xl font-bold text-brand-blue-light">2</span>
-                                            <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM</span>
-                                            <span className="text-[10px] text-slate-500">Recertification</span>
-                                        </div>
-                                    )}
-                                    {/* HRCI Column */}
-                                    {(hasHRCI || !hasSHRM && !hasHRCI) && (
-                                        <div className="flex flex-col items-center text-center">
-                                            <span className="text-4xl font-bold text-[#c084fc]">1.5</span>
-                                            <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI</span>
-                                            <span className="text-[10px] text-slate-500">Credit Hours</span>
-                                        </div>
-                                    )}
+                        {/* Credits You'll Earn (40%) - Hidden for org courses */}
+                        {!isOrgCourse && (
+                            <div className="lg:w-[40%]">
+                                <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
+                                    CREDITS YOU'LL EARN
+                                </h3>
+                                <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* SHRM Column */}
+                                        {(hasSHRM || !hasSHRM && !hasHRCI) && (
+                                            <div className="flex flex-col items-center text-center">
+                                                <span className="text-4xl font-bold text-brand-blue-light">2</span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM</span>
+                                                <span className="text-[10px] text-slate-500">Recertification</span>
+                                            </div>
+                                        )}
+                                        {/* HRCI Column */}
+                                        {(hasHRCI || !hasSHRM && !hasHRCI) && (
+                                            <div className="flex flex-col items-center text-center">
+                                                <span className="text-4xl font-bold text-[#c084fc]">1.5</span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI</span>
+                                                <span className="text-[10px] text-slate-500">Credit Hours</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 

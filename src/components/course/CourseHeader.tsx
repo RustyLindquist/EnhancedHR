@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, ChevronRight, Play, Award, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Play, Award, Plus, Pencil } from 'lucide-react';
 import { Course, Module, Lesson } from '../../types';
 
 interface CourseStats {
@@ -21,6 +21,9 @@ interface CourseHeaderProps {
     onBack: () => void;
     onResume: () => void;
     onAddToCollection: () => void;
+    isOrgCourse?: boolean;
+    canEdit?: boolean;
+    onEdit?: () => void;
 }
 
 const CourseHeader: React.FC<CourseHeaderProps> = ({
@@ -31,7 +34,10 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
     stats,
     onBack,
     onResume,
-    onAddToCollection
+    onAddToCollection,
+    isOrgCourse,
+    canEdit,
+    onEdit
 }) => {
     // Determine button text based on state
     const getButtonText = () => {
@@ -60,8 +66,12 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                     <div className="min-w-0 flex-1">
                         {viewMode === 'description' ? (
                             <>
-                                <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] block mb-1">
-                                    COURSE
+                                <span className={`text-[10px] font-bold tracking-[0.2em] uppercase block mb-1 ${
+                                    isOrgCourse
+                                        ? 'text-amber-400 drop-shadow-[0_0_5px_rgba(217,119,6,0.5)]'
+                                        : 'text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)]'
+                                }`}>
+                                    {isOrgCourse ? 'ORGANIZATION COURSE' : 'COURSE'}
                                 </span>
                                 <h1 className="text-2xl lg:text-3xl font-light text-white truncate tracking-tight drop-shadow-lg">
                                     {course.title.split(' ')[0]} <span className="font-bold">{course.title.split(' ').slice(1).join(' ')}</span>
@@ -109,6 +119,17 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                     >
                         <Plus size={20} className="text-slate-400 group-hover:text-white transition-colors" />
                     </button>
+
+                    {/* Edit Button (for org courses with edit permission) */}
+                    {canEdit && (
+                        <button
+                            onClick={onEdit}
+                            className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
+                            title="Edit this course"
+                        >
+                            <Pencil size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+                        </button>
+                    )}
 
                     {/* Certificate Button */}
                     <button
