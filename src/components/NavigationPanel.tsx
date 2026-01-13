@@ -576,8 +576,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               ${organizationExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}
             `}>
               <div className="space-y-1">
-                {/* 1. Users and Groups - Org Admin Only */}
-                {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'users-groups').map((item) => (
+                {/* 1. Users and Groups - All Org Members */}
+                {ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'users-groups').map((item) => (
                   <div
                     key={item.id}
                     onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}

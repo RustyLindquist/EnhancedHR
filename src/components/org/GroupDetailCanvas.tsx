@@ -21,6 +21,7 @@ interface GroupDetailCanvasProps {
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
+    isAdmin?: boolean; // Whether the user is an org admin (or platform admin)
 }
 
 const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
@@ -32,7 +33,8 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick
+    onConversationClick,
+    isAdmin = false
 }) => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [showPicker, setShowPicker] = useState(false);
@@ -207,7 +209,7 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                                     last_login: '',
                                     conversations_count: member.conversations_count
                                 })}
-                                onAddToGroup={() => setAddToGroupMember({
+                                onAddToGroup={isAdmin ? () => setAddToGroupMember({
                                     id: member.id,
                                     email: member.email,
                                     full_name: member.full_name,
@@ -222,7 +224,8 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                                     credits_earned: member.credits_earned,
                                     last_login: '',
                                     conversations_count: member.conversations_count
-                                })}
+                                }) : undefined}
+                                showAddButton={isAdmin}
                             />
                         ))}
                     </div>
@@ -246,13 +249,15 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                                 Required Content
                                 <span className="text-brand-red ml-2">({requiredAssignments.length})</span>
                             </h3>
-                            <button
-                                onClick={() => openPickerForType('required')}
-                                className="flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-lg hover:bg-brand-red/20 transition-colors text-sm font-medium"
-                            >
-                                <Plus size={14} />
-                                Add Required
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => openPickerForType('required')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-brand-red/10 text-brand-red rounded-lg hover:bg-brand-red/20 transition-colors text-sm font-medium"
+                                >
+                                    <Plus size={14} />
+                                    Add Required
+                                </button>
+                            )}
                         </div>
                         {requiredAssignments.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -282,13 +287,15 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                                 Suggested Content
                                 <span className="text-brand-blue-light ml-2">({recommendedAssignments.length})</span>
                             </h3>
-                            <button
-                                onClick={() => openPickerForType('recommended')}
-                                className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 text-brand-blue-light rounded-lg hover:bg-brand-blue-light/20 transition-colors text-sm font-medium"
-                            >
-                                <Plus size={14} />
-                                Add Suggested
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => openPickerForType('recommended')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 text-brand-blue-light rounded-lg hover:bg-brand-blue-light/20 transition-colors text-sm font-medium"
+                                >
+                                    <Plus size={14} />
+                                    Add Suggested
+                                </button>
+                            )}
                         </div>
                         {recommendedAssignments.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

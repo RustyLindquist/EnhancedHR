@@ -7,9 +7,10 @@ interface UserCardProps {
     member: OrgMember;
     onClick: () => void;
     onAddToGroup?: () => void;
+    showAddButton?: boolean; // Whether to show the "+" button (admin only)
 }
 
-export default function UserCard({ member, onClick, onAddToGroup }: UserCardProps) {
+export default function UserCard({ member, onClick, onAddToGroup, showAddButton = true }: UserCardProps) {
     const isAdmin = member.membership_status === 'org_admin' || member.role === 'org_admin' || member.role === 'admin';
     const initials = member.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?';
 
@@ -53,9 +54,9 @@ export default function UserCard({ member, onClick, onAddToGroup }: UserCardProp
                                 </div>
                             )}
                         </div>
-                        {/* Add to Group Button - Right side, always in same position */}
+                        {/* Add to Group Button - Right side, only shown for admins */}
                         <div className="flex items-center">
-                            {onAddToGroup && (
+                            {showAddButton && onAddToGroup && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onAddToGroup(); }}
                                     className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white/30 hover:border-white/60 transition-all shadow-lg"
