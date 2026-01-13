@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
+import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection } from '@/types';
+import { ContextScope } from '@/lib/ai/types';
 import { useRouter } from 'next/navigation';
 
 export default function OrgCoursesLayout({
@@ -14,6 +16,7 @@ export default function OrgCoursesLayout({
 }) {
     const router = useRouter();
     const [leftOpen, setLeftOpen] = useState(true);
+    const [rightOpen, setRightOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
 
     // Navigation State
@@ -110,6 +113,15 @@ export default function OrgCoursesLayout({
                         {children}
                     </div>
                 </main>
+
+                {/* Right AI Panel */}
+                <AIPanel
+                    isOpen={rightOpen}
+                    setIsOpen={setRightOpen}
+                    agentType="org_course_assistant"
+                    contextScope={{ type: 'ORG_COURSES', id: userOrgId || undefined } as ContextScope}
+                    contextTitle="Organization Courses"
+                />
             </div>
         </div>
     );
