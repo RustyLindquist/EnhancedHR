@@ -37,6 +37,7 @@ ai:
     - COURSE
     - PERSONAL_CONTEXT
     - TOOL
+    - ORG_COURSES
   models:
     - google/gemini-2.0-flash-001
 tests:
@@ -119,5 +120,8 @@ Read paths:
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/prometheus-chat.md
+- docs/features/org-courses.md
+- docs/architecture/org-scoped-content.md
 - supabase/migrations/20251219000001_enhanced_unified_embeddings.sql
 - supabase/migrations/20241211180000_unified_embeddings.sql
+- supabase/migrations/20260114000003_add_org_id_to_unified_embeddings.sql

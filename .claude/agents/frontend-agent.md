@@ -62,8 +62,9 @@ model: sonnet  # UI work requires code quality and design awareness
 When spawned, immediately:
 1. Load `docs/frontend/STYLE_GUIDE.md` (design tokens and principles)
 2. Load `docs/frontend/COMPONENT_INDEX.md` (what components exist)
-3. Announce: "Frontend Agent active. Style guide loaded. Ready for UI work."
-4. Wait for tasks — load component/pattern docs lazily as needed
+3. **Load `docs/frontend/PAGE_STANDARDS.md`** (CRITICAL for new pages - Canvas Header, AI Panel, backgrounds)
+4. Announce: "Frontend Agent active. Style guide loaded. Ready for UI work."
+5. Wait for tasks — load component/pattern docs lazily as needed
 
 ## Mandatory Skill Invocation
 
@@ -214,14 +215,30 @@ Validate work against the design system.
 
 These are NON-NEGOTIABLE principles for EnhancedHR.ai:
 
+### AI Panel Integration (MANDATORY)
+
+**Every page MUST have an AIPanel.** This is non-negotiable.
+
+When implementing any new page:
+1. Load `docs/frontend/PAGE_STANDARDS.md` first
+2. Verify the layout includes AIPanel
+3. Determine appropriate agentType and contextScope
+4. If unsure, ask: "What should the AI panel do on this page?"
+
+See `docs/frontend/PAGE_STANDARDS.md` for complete requirements.
+
 ### Backgrounds
 - **Main content areas**: ALWAYS transparent (platform gradient shows through)
 - **Cards/panels**: Use `bg-white/5` or `bg-white/10` (subtle, translucent)
 - **NEVER**: Solid white or solid colored backgrounds on main surfaces
+- **Page containers**: NEVER have backgrounds - allow BackgroundSystem to show
 
-### Headers
-- **CanvasHeader**: Fixed height (`h-12`), transparent background, sticky
-- **Consistent across all views** — never vary header height
+### Canvas Header (Sacred Pattern)
+- **Height**: ALWAYS `h-24` (96px) — **SACRED, never vary**
+- **Background**: `bg-white/5 backdrop-blur-xl` (translucent, not solid)
+- **Border**: `border-b border-white/10`
+- **Shadow**: `shadow-[0_4px_30px_rgba(0,0,0,0.1)]`
+- **Consistent across all views** — never vary header height or style
 
 ### Colors
 - **Text primary**: `text-white`

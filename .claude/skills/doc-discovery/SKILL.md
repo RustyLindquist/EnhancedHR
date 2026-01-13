@@ -20,8 +20,19 @@ Load only necessary documentation before planning. Understand feature landscape 
 1. **Identify Primary Feature**: Read `docs/features/FEATURE_INDEX.md` → find owner
 2. **Map Coupling**: Check "Couples with" entries → list secondary features
 3. **Load Feature Docs**: Read primary + coupled feature docs → extract invariants
-4. **High-Risk Check**: Auth/RLS? AI? Billing? Schema? → load specialized docs
+4. **High-Risk Check**: Auth/RLS? AI? Billing? Schema? Org-scoped? New Pages? → load specialized docs
 5. **Workflow Impact**: Read `docs/workflows/WORKFLOW_INDEX.md` → identify affected journeys
+
+## High-Risk Areas — Required Doc Loading
+
+| Area | Trigger | Load |
+|------|---------|------|
+| AI Context Engine | Changes to RAG, embeddings, context | `docs/features/ai-context-engine.md` |
+| Org-Scoped Content | New org-specific data, org filtering | `docs/architecture/org-scoped-content.md` |
+| New Page Creation | Any new page or layout | `docs/frontend/PAGE_STANDARDS.md` |
+| Auth/RLS | Permission changes, policy updates | `docs/foundation/auth-roles-rls.md` |
+| Billing | Credits, subscriptions, entitlements | `docs/features/billing-subscription.md` |
+| Schema | New tables, columns, migrations | Load relevant feature docs |
 
 ## Output
 

@@ -35,6 +35,15 @@ Ensure plan is doc-consistent before coding. Gate 1 of 2-gate flow.
 3. **Data Safety**: Tables listed? RLS documented? Migration + rollback plan?
 4. **Test Coverage**: Verification steps? Workflow smoke test? Regression areas?
 5. **Workflow Impact**: Affected workflows identified? No journeys broken?
+6. **Page Standards** (for new pages):
+   - [ ] Plan includes AIPanel with agentType
+   - [ ] Plan includes contextScope configuration
+   - [ ] No solid backgrounds on page containers
+   - [ ] Canvas Header follows h-24, bg-white/5 pattern
+7. **Org-Scoped Features** (if org-specific):
+   - [ ] org_id column included in relevant tables
+   - [ ] RLS policies enforce org isolation
+   - [ ] RAG scope includes orgId filtering
 
 ## Blast Radius
 
@@ -45,6 +54,8 @@ Ensure plan is doc-consistent before coding. Gate 1 of 2-gate flow.
 | AI/prompts | +2 |
 | Schema/migrations | +2 |
 | 3+ features | +2 |
+| Org-scoped content | +2 |
+| New page without AI Panel spec | +2 |
 | Shared components | +1 |
 | User workflow change | +1 |
 
