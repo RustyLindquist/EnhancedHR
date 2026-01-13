@@ -119,26 +119,49 @@ export async function updateCourseCredits(courseId: number, credits: {
     return { success: true };
 }
 
-export async function assignCourseExpert(courseId: number, expertId: string | null) {
+export async function assignCourseExpert(
+    courseId: number,
+    expertId: string | null,
+    isStandalone: boolean = false
+) {
     const admin = await createAdminClient();
 
-    // If expertId provided, get the expert's name
+    // If expertId provided, get the expert's name from the appropriate table
     let authorName = null;
     if (expertId) {
-        const { data: profile } = await admin
-            .from('profiles')
-            .select('full_name')
-            .eq('id', expertId)
-            .single();
-        authorName = profile?.full_name;
+        if (isStandalone) {
+            const { data: standaloneExpert } = await admin
+                .from('standalone_experts')
+                .select('full_name')
+                .eq('id', expertId)
+                .single();
+            authorName = standaloneExpert?.full_name;
+        } else {
+            const { data: profile } = await admin
+                .from('profiles')
+                .select('full_name')
+                .eq('id', expertId)
+                .single();
+            authorName = profile?.full_name;
+        }
+    }
+
+    // Update the course with either author_id OR standalone_expert_id
+    const updateData: Record<string, string | null> = {
+        author: authorName
+    };
+
+    if (isStandalone) {
+        updateData.author_id = null;
+        updateData.standalone_expert_id = expertId;
+    } else {
+        updateData.author_id = expertId;
+        updateData.standalone_expert_id = null;
     }
 
     const { error } = await admin
         .from('courses')
-        .update({
-            author_id: expertId,
-            author: authorName
-        })
+        .update(updateData)
         .eq('id', courseId);
 
     if (error) {
@@ -150,22 +173,55 @@ export async function assignCourseExpert(courseId: number, expertId: string | nu
     return { success: true };
 }
 
-export async function getApprovedExperts() {
+export interface ExpertOption {
+    id: string;
+    full_name: string | null;
+    expert_title: string | null;
+    avatar_url: string | null;
+    role?: string;
+    isStandalone: boolean;
+}
+
+export async function getApprovedExperts(): Promise<ExpertOption[]> {
     const supabase = await createClient();
 
     // Include both approved experts AND platform admins
-    const { data, error } = await supabase
+    const { data: profileExperts, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, expert_title, avatar_url, role')
         .or('author_status.eq.approved,role.eq.admin')
         .order('full_name');
 
-    if (error) {
-        console.error('Error fetching approved experts:', error);
-        return [];
+    if (profileError) {
+        console.error('Error fetching approved experts:', profileError);
     }
 
-    return data || [];
+    // Also fetch standalone experts
+    const { data: standaloneExperts, error: standaloneError } = await supabase
+        .from('standalone_experts')
+        .select('id, full_name, expert_title, avatar_url')
+        .eq('is_active', true)
+        .order('full_name');
+
+    if (standaloneError) {
+        console.error('Error fetching standalone experts:', standaloneError);
+    }
+
+    // Combine both lists with isStandalone flag
+    const regularExperts: ExpertOption[] = (profileExperts || []).map(e => ({
+        ...e,
+        isStandalone: false
+    }));
+
+    const standalone: ExpertOption[] = (standaloneExperts || []).map(e => ({
+        ...e,
+        isStandalone: true
+    }));
+
+    // Return combined list, sorted by name
+    return [...regularExperts, ...standalone].sort((a, b) =>
+        (a.full_name || '').localeCompare(b.full_name || '')
+    );
 }
 
 // ============================================

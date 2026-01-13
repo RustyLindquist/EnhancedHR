@@ -368,3 +368,52 @@ export interface Resource {
   url: string;
   size?: string;
 }
+
+// --- Standalone Expert Types ---
+// For expert profiles not tied to user accounts (e.g., experts no longer with the platform)
+
+export interface StandaloneExpert {
+  id: string;
+  full_name: string;
+  email: string | null;
+  avatar_url: string | null;
+  expert_title: string | null;
+  author_bio: string | null;
+  phone_number: string | null;
+  linkedin_url: string | null;
+  twitter_url: string | null;
+  website_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface StandaloneExpertCredential {
+  id: string;
+  standalone_expert_id: string;
+  title: string;
+  type: 'certification' | 'degree' | 'experience' | 'expertise' | 'publication' | 'achievement';
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Unified expert type for display purposes (can be either regular or standalone)
+export type ExpertType = 'regular' | 'standalone';
+
+export interface UnifiedExpert {
+  id: string;
+  type: ExpertType;
+  full_name: string;
+  email: string | null;
+  avatar_url: string | null;
+  expert_title: string | null;
+  author_bio: string | null;
+  phone_number: string | null;
+  linkedin_url: string | null;
+  twitter_url: string | null;
+  website_url: string | null;
+  is_active?: boolean; // Only for standalone experts
+  created_at: string;
+}

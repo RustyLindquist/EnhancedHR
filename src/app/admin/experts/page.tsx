@@ -2,6 +2,7 @@ import React from 'react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import ExpertManagementDashboard from '@/components/admin/ExpertManagementDashboard';
 import { redirect } from 'next/navigation';
+import { StandaloneExpert } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,6 +146,29 @@ export default async function AdminExpertsPage() {
         }
     });
 
+    // Fetch standalone experts
+    const { data: standaloneExperts, error: standaloneError } = await adminSupabase
+        .from('standalone_experts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (standaloneError) {
+        console.error('Error fetching standalone experts:', standaloneError);
+    }
+
+    // Count courses per standalone expert
+    const { data: standaloneCourseCounts } = await supabase
+        .from('courses')
+        .select('standalone_expert_id')
+        .not('standalone_expert_id', 'is', null);
+
+    const courseCountByStandaloneExpert: Record<string, number> = {};
+    standaloneCourseCounts?.forEach((course: any) => {
+        if (course.standalone_expert_id) {
+            courseCountByStandaloneExpert[course.standalone_expert_id] = (courseCountByStandaloneExpert[course.standalone_expert_id] || 0) + 1;
+        }
+    });
+
     return (
         <div className="space-y-8 animate-fade-in">
             <div>
@@ -154,8 +178,10 @@ export default async function AdminExpertsPage() {
 
             <ExpertManagementDashboard
                 experts={expertsWithEmail}
+                standaloneExperts={(standaloneExperts || []) as StandaloneExpert[]}
                 monthlyStats={processedStats}
                 courseCountByAuthor={courseCountByAuthor}
+                courseCountByStandaloneExpert={courseCountByStandaloneExpert}
                 currentMonth={now.toLocaleString('default', { month: 'long', year: 'numeric' })}
             />
         </div>

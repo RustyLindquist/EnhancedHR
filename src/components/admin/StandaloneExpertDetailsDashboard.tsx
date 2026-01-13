@@ -1,0 +1,760 @@
+'use client';
+
+import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { StandaloneExpert, StandaloneExpertCredential } from '@/types';
+import {
+    createStandaloneExpert,
+    updateStandaloneExpert,
+    deleteStandaloneExpert,
+    addStandaloneExpertCredential,
+    deleteStandaloneExpertCredential
+} from '@/app/actions/standalone-experts';
+import {
+    User, Phone, Linkedin, Calendar, BookOpen, Mail,
+    XCircle, ArrowLeft, Edit3, Save, Loader2,
+    Briefcase, Globe, Trash2, Plus, UserCircle, AlertTriangle
+} from 'lucide-react';
+
+// Custom X (formerly Twitter) icon
+const XIcon = ({ size = 16 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="text-slate-400">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
+
+interface StandaloneExpertDetailsDashboardProps {
+    expert?: StandaloneExpert;
+    credentials?: StandaloneExpertCredential[];
+    courses?: Array<{
+        id: number;
+        title: string;
+        status: string;
+        category: string | null;
+        image_url: string | null;
+        created_at: string;
+    }>;
+    isNew?: boolean;
+}
+
+const CREDENTIAL_TYPES = [
+    { value: 'certification', label: 'Certification' },
+    { value: 'degree', label: 'Degree' },
+    { value: 'experience', label: 'Experience' },
+    { value: 'expertise', label: 'Area of Expertise' },
+    { value: 'publication', label: 'Publication' },
+    { value: 'achievement', label: 'Achievement' },
+] as const;
+
+export default function StandaloneExpertDetailsDashboard({
+    expert,
+    credentials = [],
+    courses = [],
+    isNew = false
+}: StandaloneExpertDetailsDashboardProps) {
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const [isEditing, setIsEditing] = useState(isNew);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [localCredentials, setLocalCredentials] = useState(credentials);
+    const [newCredential, setNewCredential] = useState({ title: '', type: 'certification' as const });
+    const [showAddCredential, setShowAddCredential] = useState(false);
+
+    // Form state
+    const [formData, setFormData] = useState({
+        full_name: expert?.full_name || '',
+        email: expert?.email || '',
+        phone_number: expert?.phone_number || '',
+        linkedin_url: expert?.linkedin_url || '',
+        twitter_url: expert?.twitter_url || '',
+        website_url: expert?.website_url || '',
+        author_bio: expert?.author_bio || '',
+        expert_title: expert?.expert_title || '',
+        is_active: expert?.is_active ?? true,
+    });
+
+    const handleBack = () => {
+        router.push('/admin/experts');
+    };
+
+    const handleSave = async () => {
+        if (isPending) return;
+        if (!formData.full_name.trim()) {
+            alert('Name is required');
+            return;
+        }
+
+        startTransition(async () => {
+            if (isNew) {
+                const result = await createStandaloneExpert(formData);
+                if (result.expert) {
+                    router.push(`/admin/experts/standalone/${result.expert.id}`);
+                } else {
+                    alert(result.error || 'Failed to create expert');
+                }
+            } else if (expert) {
+                const result = await updateStandaloneExpert(expert.id, formData);
+                if (result.success) {
+                    setIsEditing(false);
+                    router.refresh();
+                } else {
+                    alert(result.error || 'Failed to update expert');
+                }
+            }
+        });
+    };
+
+    const handleCancel = () => {
+        if (isNew) {
+            router.push('/admin/experts');
+        } else {
+            setFormData({
+                full_name: expert?.full_name || '',
+                email: expert?.email || '',
+                phone_number: expert?.phone_number || '',
+                linkedin_url: expert?.linkedin_url || '',
+                twitter_url: expert?.twitter_url || '',
+                website_url: expert?.website_url || '',
+                author_bio: expert?.author_bio || '',
+                expert_title: expert?.expert_title || '',
+                is_active: expert?.is_active ?? true,
+            });
+            setIsEditing(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (isPending || !expert) return;
+
+        startTransition(async () => {
+            const result = await deleteStandaloneExpert(expert.id);
+            if (result.success) {
+                router.push('/admin/experts');
+            } else {
+                alert(result.error || 'Failed to delete expert');
+            }
+        });
+    };
+
+    const handleAddCredential = async () => {
+        if (isPending || !expert || !newCredential.title.trim()) return;
+
+        startTransition(async () => {
+            const result = await addStandaloneExpertCredential(expert.id, {
+                title: newCredential.title,
+                type: newCredential.type
+            });
+            if (result.credential) {
+                setLocalCredentials([...localCredentials, result.credential]);
+                setNewCredential({ title: '', type: 'certification' });
+                setShowAddCredential(false);
+            } else {
+                alert(result.error || 'Failed to add credential');
+            }
+        });
+    };
+
+    const handleDeleteCredential = async (credentialId: string) => {
+        if (isPending) return;
+        if (!confirm('Are you sure you want to delete this credential?')) return;
+
+        startTransition(async () => {
+            const result = await deleteStandaloneExpertCredential(credentialId);
+            if (result.success) {
+                setLocalCredentials(localCredentials.filter(c => c.id !== credentialId));
+            } else {
+                alert(result.error || 'Failed to delete credential');
+            }
+        });
+    };
+
+    return (
+        <div className="flex flex-col w-full h-full relative overflow-auto">
+            <div className="w-full max-w-7xl mx-auto pb-32 pt-8 px-8 animate-fade-in space-y-8">
+                {/* Page Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <button
+                            onClick={handleBack}
+                            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4 text-sm"
+                        >
+                            <ArrowLeft size={16} />
+                            Back to Experts
+                        </button>
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-3xl font-bold text-white">
+                                {isNew ? 'Add New Expert' : (expert?.full_name || 'Expert Details')}
+                            </h1>
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+                                <UserCircle size={12} /> Standalone Expert
+                            </span>
+                            {!isNew && expert && !expert.is_active && (
+                                <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-500/10 text-slate-400 text-xs font-bold">
+                                    Inactive
+                                </span>
+                            )}
+                        </div>
+                        {expert?.email && <p className="text-slate-400 mt-1">{expert.email}</p>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {!isNew && !isEditing && (
+                            <>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    disabled={isPending}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-xs font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                                >
+                                    <Trash2 size={14} />
+                                    <span>Delete</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-all"
+                                >
+                                    <Edit3 size={14} />
+                                    <span>Edit</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Created Date (for existing experts) */}
+                {!isNew && expert && (
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-slate-500" />
+                            <span className="text-xs text-slate-500 uppercase tracking-wider">Created:</span>
+                            <span className="text-white text-sm">
+                                {new Date(expert.created_at).toLocaleDateString()}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Section 1: Profile Photo */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                            <User size={24} />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">Profile Photo</h2>
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border-4 border-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden flex-shrink-0">
+                            {expert?.avatar_url ? (
+                                <img src={expert.avatar_url} alt={expert.full_name || ''} className="w-full h-full object-cover" />
+                            ) : (
+                                formData.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User size={32} />
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-white font-medium text-lg">{formData.full_name || 'New Expert'}</p>
+                            <p className="text-sm text-slate-400 mt-1">
+                                Profile photo can be set by providing an avatar URL.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 2: Profile Information */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange">
+                            <Briefcase size={24} />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">Profile Information</h2>
+                    </div>
+
+                    {/* Full Name */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Full Name <span className="text-red-400">*</span>
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <User size={16} className="text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={formData.full_name}
+                                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                                    placeholder="John Smith"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                    required
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <User size={16} className="text-slate-400" />
+                                <span>{formData.full_name || 'Not set'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Email Address
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Mail size={16} className="text-slate-400" />
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    placeholder="john@example.com"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <Mail size={16} className="text-slate-400" />
+                                <span>{formData.email || 'Not set'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Professional Title */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Professional Title
+                        </label>
+                        <p className="text-xs text-slate-600 mb-2">
+                            Their role or title (e.g., Senior HR Consultant, CHRO, HR Director)
+                        </p>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Briefcase size={16} className="text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={formData.expert_title}
+                                    onChange={(e) => setFormData({ ...formData, expert_title: e.target.value })}
+                                    placeholder="Senior HR Consultant"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <Briefcase size={16} className="text-slate-400" />
+                                <span>{formData.expert_title || 'Not set'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Expert Bio */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Expert Bio
+                        </label>
+                        <p className="text-xs text-slate-600 mb-2">
+                            Bio displayed on their course pages and expert profile
+                        </p>
+                        {isEditing ? (
+                            <textarea
+                                value={formData.author_bio}
+                                onChange={(e) => setFormData({ ...formData, author_bio: e.target.value })}
+                                placeholder="Write a compelling bio that introduces the expert to learners..."
+                                rows={4}
+                                className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none"
+                            />
+                        ) : (
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-white min-h-[100px]">
+                                {formData.author_bio ? (
+                                    <p className="text-slate-300 whitespace-pre-wrap">{formData.author_bio}</p>
+                                ) : (
+                                    <p className="text-slate-600">Not set</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Status Toggle (only when editing existing) */}
+                    {isEditing && !isNew && (
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                Status
+                            </label>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, is_active: true })}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${formData.is_active
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                                        }`}
+                                >
+                                    Active
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, is_active: false })}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${!formData.is_active
+                                        ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'
+                                        }`}
+                                >
+                                    Inactive
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    {isEditing && (
+                        <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                            <button
+                                onClick={handleCancel}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={isPending}
+                                className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                            >
+                                {isPending ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <Save size={16} />
+                                )}
+                                {isPending ? 'Saving...' : isNew ? 'Create Expert' : 'Save Changes'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Section 3: Credentials & Background (only for existing experts) */}
+                {!isNew && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="8" r="6" />
+                                        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-white">Credentials & Background</h2>
+                            </div>
+                            <button
+                                onClick={() => setShowAddCredential(!showAddCredential)}
+                                className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors"
+                            >
+                                <Plus size={14} />
+                                Add Credential
+                            </button>
+                        </div>
+                        <p className="text-sm text-slate-400 mb-6">
+                            Professional certifications, degrees, and areas of expertise displayed on their expert profile.
+                        </p>
+
+                        {/* Add Credential Form */}
+                        {showAddCredential && (
+                            <div className="p-4 mb-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                                <div className="flex gap-3">
+                                    <input
+                                        type="text"
+                                        value={newCredential.title}
+                                        onChange={(e) => setNewCredential({ ...newCredential, title: e.target.value })}
+                                        placeholder="e.g., SHRM-SCP, MBA, 15+ Years HR Experience"
+                                        className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none text-sm"
+                                    />
+                                    <select
+                                        value={newCredential.type}
+                                        onChange={(e) => setNewCredential({ ...newCredential, type: e.target.value as any })}
+                                        className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white outline-none text-sm"
+                                    >
+                                        {CREDENTIAL_TYPES.map(t => (
+                                            <option key={t.value} value={t.value}>{t.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setShowAddCredential(false);
+                                            setNewCredential({ title: '', type: 'certification' });
+                                        }}
+                                        className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleAddCredential}
+                                        disabled={isPending || !newCredential.title.trim()}
+                                        className="px-3 py-1.5 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50"
+                                    >
+                                        {isPending ? 'Adding...' : 'Add'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Credentials List */}
+                        {localCredentials.length > 0 ? (
+                            <div className="space-y-2">
+                                {localCredentials.map((credential) => (
+                                    <div
+                                        key={credential.id}
+                                        className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-400 uppercase">
+                                                {credential.type}
+                                            </span>
+                                            <span className="text-white">{credential.title}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteCredential(credential.id)}
+                                            disabled={isPending}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-500 hover:text-red-400 transition-all disabled:opacity-50"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-slate-500 italic">
+                                No credentials added yet.
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Section 4: Contact & Social Links */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-500/10 text-green-400">
+                            <Globe size={24} />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">Contact & Social Links</h2>
+                    </div>
+                    <p className="text-sm text-slate-400">
+                        Contact information and social profiles to help learners connect with this expert.
+                    </p>
+
+                    {/* Phone Number */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Phone Number
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Phone size={16} className="text-slate-400" />
+                                <input
+                                    type="tel"
+                                    value={formData.phone_number}
+                                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                    placeholder="Enter phone number"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <Phone size={16} className="text-slate-400" />
+                                <span>{formData.phone_number || 'Not set'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* LinkedIn URL */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            LinkedIn Profile
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Linkedin size={16} className="text-slate-400" />
+                                <input
+                                    type="url"
+                                    value={formData.linkedin_url}
+                                    onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                                    placeholder="https://linkedin.com/in/profile"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <Linkedin size={16} className="text-slate-400" />
+                                {formData.linkedin_url ? (
+                                    <a
+                                        href={formData.linkedin_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-blue-light hover:underline"
+                                    >
+                                        {formData.linkedin_url.replace('https://www.linkedin.com/in/', '').replace('https://linkedin.com/in/', '').replace('/', '')}
+                                    </a>
+                                ) : (
+                                    <span>Not set</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* X (Twitter) URL */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            X (Twitter) Profile
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <XIcon size={16} />
+                                <input
+                                    type="url"
+                                    value={formData.twitter_url}
+                                    onChange={(e) => setFormData({ ...formData, twitter_url: e.target.value })}
+                                    placeholder="https://x.com/handle"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <XIcon size={16} />
+                                {formData.twitter_url ? (
+                                    <a
+                                        href={formData.twitter_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-blue-light hover:underline"
+                                    >
+                                        {formData.twitter_url.replace('https://x.com/', '@').replace('https://twitter.com/', '@')}
+                                    </a>
+                                ) : (
+                                    <span>Not set</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Website URL */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Website
+                        </label>
+                        {isEditing ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Globe size={16} className="text-slate-400" />
+                                <input
+                                    type="url"
+                                    value={formData.website_url}
+                                    onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                                    placeholder="https://your-website.com"
+                                    className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 text-white">
+                                <Globe size={16} className="text-slate-400" />
+                                {formData.website_url ? (
+                                    <a
+                                        href={formData.website_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-brand-blue-light hover:underline"
+                                    >
+                                        {formData.website_url.replace('https://', '').replace('http://', '').replace(/\/$/, '')}
+                                    </a>
+                                ) : (
+                                    <span>Not set</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Section 5: Courses (only for existing experts) */}
+                {!isNew && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+                                <BookOpen size={24} />
+                            </div>
+                            <h2 className="text-xl font-bold text-white">Courses ({courses.length})</h2>
+                        </div>
+
+                        {courses.length > 0 ? (
+                            <div className="space-y-3">
+                                {courses.map((course) => (
+                                    <div
+                                        key={course.id}
+                                        onClick={() => router.push(`/admin/courses/${course.id}`)}
+                                        className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            {course.image_url ? (
+                                                <img
+                                                    src={course.image_url}
+                                                    alt={course.title}
+                                                    className="w-16 h-10 rounded-lg object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-10 rounded-lg bg-slate-700 flex items-center justify-center">
+                                                    <BookOpen size={16} className="text-slate-500" />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <h4 className="text-white font-medium group-hover:text-amber-400 transition-colors">{course.title}</h4>
+                                                <p className="text-xs text-slate-500">
+                                                    {course.category || 'Uncategorized'} • Created {new Date(course.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${course.status === 'published'
+                                            ? 'bg-green-500/10 text-green-400'
+                                            : course.status === 'draft'
+                                                ? 'bg-yellow-500/10 text-yellow-400'
+                                                : 'bg-slate-500/10 text-slate-400'
+                                            }`}>
+                                            {course.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-slate-500 italic">
+                                No courses assigned to this expert yet.
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                            <AlertTriangle className="text-red-400" size={20} />
+                            Delete Expert
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-4">
+                            Are you sure you want to delete this expert? This will mark them as inactive.
+                            Any courses assigned to this expert will retain the assignment.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-bold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {isPending ? 'Deleting...' : 'Delete Expert'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
