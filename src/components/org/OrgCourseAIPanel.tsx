@@ -332,7 +332,7 @@ const OrgCourseAIPanel: React.FC<OrgCourseAIPanelProps> = ({
       <button
         onClick={() => setIsOpen(true)}
         className={`
-          fixed bottom-6 right-6 z-[100]
+          fixed bottom-6 right-6 z-[9999]
           w-14 h-14 rounded-full
           bg-gradient-to-br from-amber-500 to-amber-600
           border border-amber-400/30
@@ -353,7 +353,7 @@ const OrgCourseAIPanel: React.FC<OrgCourseAIPanelProps> = ({
       {/* Backdrop */}
       <div
         className={`
-          fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm
+          fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm
           transition-opacity duration-300
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
         `}
@@ -363,7 +363,7 @@ const OrgCourseAIPanel: React.FC<OrgCourseAIPanelProps> = ({
       {/* Slide-in Panel */}
       <div
         className={`
-          fixed top-0 right-0 bottom-0 z-[120]
+          fixed top-0 right-0 bottom-0 z-[10001]
           w-full max-w-md
           bg-[#0B1120]/95 backdrop-blur-xl
           border-l border-white/10

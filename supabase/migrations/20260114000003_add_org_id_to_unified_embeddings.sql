@@ -2,7 +2,7 @@
 -- This enables Organization Courses to be searchable via RAG but ONLY by org members
 
 -- 1. Add org_id column to unified_embeddings table
-ALTER TABLE unified_embeddings ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES orgs(id) ON DELETE CASCADE;
+ALTER TABLE unified_embeddings ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 -- 2. Create index for efficient org-scoped queries
 CREATE INDEX IF NOT EXISTS idx_unified_embeddings_org_id ON unified_embeddings(org_id) WHERE org_id IS NOT NULL;
