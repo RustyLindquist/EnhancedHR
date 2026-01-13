@@ -89,7 +89,7 @@ export async function getExpertDetails(expertId: string): Promise<{
     let profile;
     let profileError;
 
-    // Try with approved_at first
+    // Query only columns that exist in production
     const result = await admin
         .from('profiles')
         .select(`
@@ -101,49 +101,18 @@ export async function getExpertDetails(expertId: string): Promise<{
             author_bio,
             expert_title,
             linkedin_url,
-            twitter_url,
-            website_url,
             credentials,
             course_proposal_title,
             course_proposal_description,
             application_status,
             application_submitted_at,
-            approved_at,
             created_at
         `)
         .eq('id', expertId)
         .single();
 
-    // If approved_at doesn't exist, fallback to query without it
-    if (result.error?.message?.includes('approved_at')) {
-        const fallbackResult = await admin
-            .from('profiles')
-            .select(`
-                id,
-                full_name,
-                phone_number,
-                avatar_url,
-                author_status,
-                author_bio,
-                expert_title,
-                linkedin_url,
-                twitter_url,
-                website_url,
-                credentials,
-                course_proposal_title,
-                course_proposal_description,
-                application_status,
-                application_submitted_at,
-                created_at
-            `)
-            .eq('id', expertId)
-            .single();
-        profile = fallbackResult.data ? { ...fallbackResult.data, approved_at: null } : null;
-        profileError = fallbackResult.error;
-    } else {
-        profile = result.data;
-        profileError = result.error;
-    }
+    profile = result.data ? { ...result.data, twitter_url: null, website_url: null, approved_at: null } : null;
+    profileError = result.error;
 
     if (profileError) {
         console.error('Error fetching expert profile:', profileError);
