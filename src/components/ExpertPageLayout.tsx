@@ -16,7 +16,7 @@ interface ExpertPageLayoutProps {
     title?: string;
 }
 
-export default function ExpertPageLayout({ children, activeNavId, title = 'Expert Dashboard' }: ExpertPageLayoutProps) {
+export default function ExpertPageLayout({ children, activeNavId, title = 'Expert Console' }: ExpertPageLayoutProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { currentTheme, setTheme } = useTheme();

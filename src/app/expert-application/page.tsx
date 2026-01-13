@@ -195,7 +195,7 @@ export default function ExpertApplicationPage() {
                                     </h2>
                                     <p className="text-slate-400 text-sm">
                                         {application.application_status === 'approved'
-                                            ? 'Welcome to EnhancedHR! You now have full access to the Expert Dashboard.'
+                                            ? 'Welcome to EnhancedHR! You now have full access to the Expert Console.'
                                             : application.application_status === 'rejected'
                                                 ? 'Please review the feedback below and resubmit your application.'
                                                 : 'Thank you for applying to become an EnhancedHR Expert. Our team is reviewing your profile and course proposal. We typically respond within 48 hours. Someone from our team will reach out to you soon.'}

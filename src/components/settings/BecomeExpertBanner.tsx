@@ -99,7 +99,7 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                                 <div>
                                     <h5 className="text-base font-bold text-white mb-1">Click the "Become An Expert Today" link below</h5>
                                     <p className="text-sm text-slate-400">
-                                        You'll now see a new Expert Dashboard link in your profile menu.
+                                        You'll now see a new Expert Console link in your profile menu.
                                     </p>
                                 </div>
                             </div>
@@ -110,7 +110,7 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                                     2
                                 </div>
                                 <div>
-                                    <h5 className="text-base font-bold text-white mb-1">Visit the Expert Dashboard</h5>
+                                    <h5 className="text-base font-bold text-white mb-1">Visit the Expert Console</h5>
                                     <p className="text-sm text-slate-400">
                                         From here you can build and create courses. Once a course is ready, just submit it for review.
                                     </p>
