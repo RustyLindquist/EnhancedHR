@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE';
 
 // Icon mapping for dynamic icon names
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
@@ -193,6 +193,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(59, 130, 246, 0.5)', // Blue glow
             bodyColor: 'bg-[#1e3a5f]/90'
+        },
+        ORG_COURSE: { // Org Course Card - Warm amber/orange
+            headerColor: 'bg-amber-950',
+            borderColor: 'border-amber-500/30',
+            labelColor: 'text-amber-200',
+            barColor: 'bg-amber-600/80',
+            icon: BookOpen,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(217, 119, 6, 0.5)', // Amber glow
+            bodyColor: 'bg-amber-950'
         }
     }[type];
 
@@ -200,7 +210,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     // Top Row (Course/Module/Lesson) has an image background taking up the top half.
     // Bottom Row (Resource/Context/Conv) has a colored "Header Block".
 
-    const isMediaCard = ['COURSE', 'MODULE', 'LESSON'].includes(type);
+    const isMediaCard = ['COURSE', 'MODULE', 'LESSON', 'ORG_COURSE'].includes(type);
 
     // Layout Tweaks:
     // Conversation, Context, AI_Insight, Resource, Profile, Help, Note, Tool, Tool_Conversation & Org_Collection need more text space (40% top / 60% bottom)
@@ -208,8 +218,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, and Org_Collection cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION';
+    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, and Org_Course cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -260,7 +270,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#9A9724]/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#9A9724]/70' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#9A9724]/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#9A9724]/70' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
             >
 
             {/* --- Top Section --- */}
@@ -272,6 +282,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         <img src={imageUrl} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-90" />
                         {type === 'LESSON' ? (
                             <div className="absolute inset-0 bg-gradient-to-t from-[#063F5F] via-[#063F5F]/30 to-transparent"></div>
+                        ) : type === 'ORG_COURSE' ? (
+                            <div className="absolute inset-0 bg-gradient-to-t from-amber-950 via-amber-950/30 to-transparent"></div>
                         ) : (
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/30 to-transparent"></div>
                         )}
@@ -320,7 +332,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         {title}
                     </h3>
                     {/* Author line with rating for Course cards */}
-                    {type === 'COURSE' ? (
+                    {(type === 'COURSE' || type === 'ORG_COURSE') ? (
                         <div className="flex items-center justify-between gap-2">
                             {subtitle && (
                                 <p className="text-xs font-medium text-white/70 tracking-wide truncate">
@@ -398,7 +410,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         )}
 
                         {/* Course Credits */}
-                        {type === 'COURSE' && credits && (
+                        {(type === 'COURSE' || type === 'ORG_COURSE') && credits && (
                             <div className="flex items-center gap-1 flex-shrink-0">
                                 {credits.shrm && (
                                     <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30" title="SHRM Credits">SHRM</span>
@@ -410,8 +422,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         )}
                     </div>
 
-                    {/* Course and Module cards: Show categories in footer instead of action button */}
-                    {(type === 'COURSE' || type === 'MODULE') && categories && categories.length > 0 && (
+                    {/* Course, Module, and Org Course cards: Show categories in footer instead of action button */}
+                    {(type === 'COURSE' || type === 'MODULE' || type === 'ORG_COURSE') && categories && categories.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 justify-end flex-shrink-0">
                             {categories.slice(0, 3).map((cat, i) => (
                                 <span key={i} className="px-2 py-0.5 rounded text-[9px] font-bold bg-white/5 text-slate-400 border border-white/10 uppercase tracking-wide">
@@ -453,8 +465,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </div>
                     )}
 
-                    {/* Other cards (not Course, Module, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, or Tool_Conversation): Show action button */}
-                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && actionLabel && (
+                    {/* Other cards (not Course, Module, Org_Course, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, or Tool_Conversation): Show action button */}
+                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'ORG_COURSE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && actionLabel && (
                         <button
                             onClick={onAction}
                             className={`

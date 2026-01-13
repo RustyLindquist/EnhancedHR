@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -25,8 +27,9 @@ import {
   Plus,
   Shield
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_ADMIN_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
+import { hasPublishedOrgCourses } from '@/app/actions/org-courses';
 
 // Animated Count Badge with warm glow effect on count change
 const AnimatedCountBadge: React.FC<{
@@ -88,6 +91,7 @@ interface NavigationPanelProps {
   customCollections?: Collection[]; // Added custom collections prop
   orgMemberCount?: number; // Count of org members for "Manage Users" badge
   orgCollections?: OrgCollectionNav[]; // Organization collections
+  orgId?: string; // Organization ID for org course visibility checks
 }
 
 const NavItem: React.FC<{
@@ -168,7 +172,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   collectionCounts,
   customCollections = [], // Default to empty array
   orgMemberCount,
-  orgCollections = [] // Default to empty array
+  orgCollections = [], // Default to empty array
+  orgId
 }) => {
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -177,6 +182,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [menuView, setMenuView] = useState<'main' | 'roles'>('main');
   const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [hasOrgCourses, setHasOrgCourses] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -241,6 +247,28 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
     };
   }, []);
+
+  // Check for published org courses (for employees to see nav item)
+  useEffect(() => {
+    const checkOrgCourses = async () => {
+      if (!orgId || !userProfile) return;
+
+      // Org admins and platform admins always see org courses
+      const isOrgAdmin = userProfile.membershipStatus === 'org_admin' || userProfile.role === 'admin';
+      if (isOrgAdmin) {
+        setHasOrgCourses(true);
+        return;
+      }
+
+      // For employees, check if org has published courses
+      if (userProfile.membershipStatus === 'employee') {
+        const result = await hasPublishedOrgCourses(orgId);
+        setHasOrgCourses(result.hasPublished);
+      }
+    };
+
+    checkOrgCourses();
+  }, [orgId, userProfile?.membershipStatus, userProfile?.role]);
 
   // Groups are now managed through the Users and Groups collection, not the nav panel
 
@@ -548,8 +576,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               ${organizationExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}
             `}>
               <div className="space-y-1">
-                {/* Org Admin items - Analytics, All Users (org admin only) */}
-                {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_NAV_ITEMS.map((item) => (
+                {/* 1. Users and Groups - Org Admin Only */}
+                {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'users-groups').map((item) => (
                   <div
                     key={item.id}
                     onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
@@ -558,16 +586,46 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                     <NavItem
                       item={item}
                       isOpen={isOpen}
-                      count={item.id === 'org-team' ? orgMemberCount : undefined}
+                      count={item.id === 'users-groups' ? orgMemberCount : undefined}
                       isActive={activeCollectionId === item.id}
                       onClick={() => onSelectCollection(item.id)}
                     />
                   </div>
                 ))}
 
-                {/* User Groups are now accessed through the Users and Groups collection */}
+                {/* 2. Analytics - Org Admin Only */}
+                {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'org-analytics').map((item) => (
+                  <div
+                    key={item.id}
+                    onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
+                    onMouseLeave={handleItemLeave}
+                  >
+                    <NavItem
+                      item={item}
+                      isOpen={isOpen}
+                      isActive={activeCollectionId === item.id}
+                      onClick={() => onSelectCollection(item.id)}
+                    />
+                  </div>
+                ))}
 
-                {/* Org Collections - single link to the org collections view */}
+                {/* 3. Organization Courses - Visible to Everyone */}
+                {ORG_NAV_ITEMS.filter(item => item.id === 'org-courses').map((item) => (
+                  <div
+                    key={item.id}
+                    onMouseEnter={(e) => handleItemHover(item, e, () => router.push('/org-courses'))}
+                    onMouseLeave={handleItemLeave}
+                  >
+                    <NavItem
+                      item={item}
+                      isOpen={isOpen}
+                      isActive={activeCollectionId === item.id}
+                      onClick={() => router.push('/org-courses')}
+                    />
+                  </div>
+                ))}
+
+                {/* 4. Org Collections - Visible to Everyone */}
                 <div
                   onMouseEnter={(e) => handleItemHover({ id: 'org-collections', label: 'Org Collections', icon: Building }, e, () => onSelectCollection('org-collections'))}
                   onMouseLeave={handleItemLeave}
@@ -581,8 +639,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                   />
                 </div>
 
-                {/* Assigned Learning - show for employees and org admins (at the end) */}
-                {(userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee') && EMPLOYEE_NAV_ITEMS.map((item) => (
+                {/* 5. Assigned Learning - Visible to Everyone */}
+                {EMPLOYEE_NAV_ITEMS.map((item) => (
                   <div
                     key={item.id}
                     onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}

@@ -642,9 +642,15 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin/system', label: 'System Tools', icon: Layers },
 ];
 
-export const ORG_NAV_ITEMS: NavItemConfig[] = [
+// Org Admin Only items
+export const ORG_ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'users-groups', label: 'Users and Groups', icon: Users, color: 'text-brand-blue-light' },
     { id: 'org-analytics', label: 'Analytics', icon: TrendingUp, color: 'text-purple-400' },
+];
+
+// Items visible to everyone in the org
+export const ORG_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'org-courses', label: 'Organization Courses', icon: BookOpen, color: 'text-amber-400' },
 ];
 
 export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [
