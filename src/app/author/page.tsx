@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getMyProposals } from '@/app/actions/proposals';
 import NewProposalForm from '@/components/author/NewProposalForm';
+import GettingStartedBanner from '@/components/author/GettingStartedBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -258,6 +259,9 @@ export default async function AuthorDashboardPage() {
                     Here's how your content is performing. Your expertise is making a difference.
                 </p>
             </div>
+
+            {/* ========== GETTING STARTED GUIDE ========== */}
+            <GettingStartedBanner />
 
             {/* ========== COURSE PROPOSALS ========== */}
             <NewProposalForm existingProposals={existingProposals} />
