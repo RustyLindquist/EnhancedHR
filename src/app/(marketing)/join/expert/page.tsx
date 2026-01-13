@@ -221,7 +221,7 @@ export default function ExpertSignupPage() {
                                             <div>
                                                 <h4 className="text-brand-blue-light text-xs font-bold uppercase tracking-wider mb-1">Expert Account</h4>
                                                 <p className="text-slate-400 text-xs leading-relaxed">
-                                                    This is a free account that gives you access to the Expert Dashboard where you can submit course proposals and manage your content.
+                                                    This is a free account that gives you access to the Expert Console where you can submit course proposals and manage your content.
                                                 </p>
                                             </div>
                                         </div>

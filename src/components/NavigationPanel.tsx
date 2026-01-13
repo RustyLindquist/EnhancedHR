@@ -681,7 +681,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       Settings
                     </button>
 
-                    {/* Expert Dashboard Link - For approved experts and platform admins */}
+                    {/* Expert Console Link - For approved experts and platform admins */}
                     {(userProfile?.authorStatus === 'approved' || userProfile?.role === 'admin') && (
                       <button
                         onClick={() => {
@@ -694,13 +694,13 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                           <div className="w-8 h-8 rounded-lg bg-brand-orange/10 flex items-center justify-center mr-3 group-hover:bg-brand-orange/20 transition-colors">
                             <PenTool size={16} className="text-brand-orange" />
                           </div>
-                          Expert Dashboard
+                          Expert Console
                         </div>
                         <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
                       </button>
                     )}
 
-                    {/* Platform Dashboard Link - Show when in Expert Dashboard */}
+                    {/* Platform Dashboard Link - Show when in Expert Console */}
                     {pathname?.startsWith('/author') && (
                       <button
                         onClick={() => {

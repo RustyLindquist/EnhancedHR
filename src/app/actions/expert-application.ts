@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Instantly makes the current user an expert (approved status).
- * No form or admin approval required - user can immediately access Expert Dashboard.
+ * No form or admin approval required - user can immediately access Expert Console.
  */
 export async function becomeExpert(): Promise<{
     success: boolean;

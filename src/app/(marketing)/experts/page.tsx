@@ -185,7 +185,7 @@ export default async function ExpertsPage() {
                             <div className="absolute inset-0 bg-gradient-to-br from-brand-orange/20 to-brand-red/20 blur-3xl -z-10"></div>
                             <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-8 transform rotate-3 hover:rotate-0 transition-all duration-500 shadow-2xl">
                                 <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-white font-bold">Expert Dashboard</h3>
+                                    <h3 className="text-white font-bold">Expert Console</h3>
                                     <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">Live</div>
                                 </div>
 

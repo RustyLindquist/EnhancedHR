@@ -28,7 +28,7 @@ export default function BecomeExpertSection({
         startTransition(async () => {
             const result = await becomeExpert();
             if (result.success) {
-                // Redirect to Expert Dashboard
+                // Redirect to Expert Console
                 router.push('/author');
             } else {
                 setError(result.error || 'Something went wrong');
