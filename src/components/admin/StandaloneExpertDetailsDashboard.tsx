@@ -8,12 +8,14 @@ import {
     updateStandaloneExpert,
     deleteStandaloneExpert,
     addStandaloneExpertCredential,
-    deleteStandaloneExpertCredential
+    deleteStandaloneExpertCredential,
+    uploadStandaloneExpertAvatar
 } from '@/app/actions/standalone-experts';
 import {
     User, Phone, Linkedin, Calendar, BookOpen, Mail,
     XCircle, ArrowLeft, Edit3, Save, Loader2,
-    Briefcase, Globe, Trash2, Plus, UserCircle, AlertTriangle
+    Briefcase, Globe, Trash2, Plus, UserCircle, AlertTriangle,
+    Upload, Camera
 } from 'lucide-react';
 
 // Custom X (formerly Twitter) icon
@@ -59,6 +61,8 @@ export default function StandaloneExpertDetailsDashboard({
     const [localCredentials, setLocalCredentials] = useState(credentials);
     const [newCredential, setNewCredential] = useState({ title: '', type: 'certification' as const });
     const [showAddCredential, setShowAddCredential] = useState(false);
+    const [localAvatarUrl, setLocalAvatarUrl] = useState(expert?.avatar_url || '');
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -168,6 +172,42 @@ export default function StandaloneExpertDetailsDashboard({
         });
     };
 
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !expert) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please upload a JPEG, PNG, GIF, or WebP image.');
+            return;
+        }
+
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File too large. Maximum size is 5MB.');
+            return;
+        }
+
+        setIsUploadingAvatar(true);
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        const result = await uploadStandaloneExpertAvatar(expert.id, formData);
+
+        setIsUploadingAvatar(false);
+
+        if (result.success && result.url) {
+            setLocalAvatarUrl(result.url);
+        } else {
+            alert(result.error || 'Failed to upload avatar');
+        }
+
+        // Reset the input so the same file can be selected again
+        e.target.value = '';
+    };
+
     return (
         <div className="flex flex-col w-full h-full relative overflow-auto">
             <div className="w-full max-w-7xl mx-auto pb-32 pt-8 px-8 animate-fade-in space-y-8">
@@ -241,18 +281,65 @@ export default function StandaloneExpertDetailsDashboard({
                         <h2 className="text-xl font-bold text-white">Profile Photo</h2>
                     </div>
                     <div className="flex items-center gap-6">
-                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border-4 border-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden flex-shrink-0">
-                            {expert?.avatar_url ? (
-                                <img src={expert.avatar_url} alt={expert.full_name || ''} className="w-full h-full object-cover" />
-                            ) : (
-                                formData.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User size={32} />
+                        <div className="relative group">
+                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border-4 border-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden flex-shrink-0">
+                                {localAvatarUrl ? (
+                                    <img src={localAvatarUrl} alt={formData.full_name || ''} className="w-full h-full object-cover" />
+                                ) : (
+                                    formData.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User size={32} />
+                                )}
+                            </div>
+                            {/* Upload overlay - only show for existing experts */}
+                            {!isNew && (
+                                <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                    {isUploadingAvatar ? (
+                                        <Loader2 size={24} className="text-white animate-spin" />
+                                    ) : (
+                                        <Camera size={24} className="text-white" />
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={handleAvatarUpload}
+                                        disabled={isUploadingAvatar}
+                                        className="hidden"
+                                    />
+                                </label>
                             )}
                         </div>
                         <div>
                             <p className="text-white font-medium text-lg">{formData.full_name || 'New Expert'}</p>
-                            <p className="text-sm text-slate-400 mt-1">
-                                Profile photo can be set by providing an avatar URL.
-                            </p>
+                            {isNew ? (
+                                <p className="text-sm text-slate-400 mt-1">
+                                    Save the expert first, then you can upload a photo.
+                                </p>
+                            ) : (
+                                <div className="mt-2">
+                                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-all cursor-pointer">
+                                        {isUploadingAvatar ? (
+                                            <>
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Uploading...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload size={14} />
+                                                Upload Photo
+                                            </>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/gif,image/webp"
+                                            onChange={handleAvatarUpload}
+                                            disabled={isUploadingAvatar}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        JPEG, PNG, GIF, or WebP. Max 5MB.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

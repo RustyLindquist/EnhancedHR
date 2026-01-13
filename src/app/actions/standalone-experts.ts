@@ -442,6 +442,95 @@ export async function deleteStandaloneExpertCredential(
     return { success: true };
 }
 
+// Upload avatar for standalone expert
+export async function uploadStandaloneExpertAvatar(
+    expertId: string,
+    formData: FormData
+): Promise<{
+    success: boolean;
+    url?: string;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    if (profile?.role !== 'admin') {
+        return { success: false, error: 'Unauthorized' };
+    }
+
+    const file = formData.get('avatar') as File;
+    if (!file) {
+        return { success: false, error: 'No file provided' };
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        return { success: false, error: 'Invalid file type. Please upload JPEG, PNG, GIF, or WebP.' };
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        return { success: false, error: 'File too large. Maximum size is 5MB.' };
+    }
+
+    const admin = await createAdminClient();
+
+    // Generate unique path: experts/{expertId}/{timestamp}.{ext}
+    const timestamp = Date.now();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `experts/${expertId}/${timestamp}.${ext}`;
+
+    // Convert File to Uint8Array for upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = new Uint8Array(arrayBuffer);
+
+    // Upload to 'avatars' bucket using admin client to bypass RLS
+    const { error: uploadError } = await admin.storage
+        .from('avatars')
+        .upload(path, buffer, {
+            contentType: file.type,
+            upsert: true
+        });
+
+    if (uploadError) {
+        console.error('Error uploading avatar:', uploadError);
+        return { success: false, error: 'Failed to upload image' };
+    }
+
+    // Get public URL
+    const { data: urlData } = admin.storage
+        .from('avatars')
+        .getPublicUrl(path);
+
+    // Update standalone expert with avatar URL
+    const { error: updateError } = await admin
+        .from('standalone_experts')
+        .update({ avatar_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', expertId);
+
+    if (updateError) {
+        console.error('Error updating expert avatar_url:', updateError);
+        return { success: false, error: 'Failed to save avatar URL' };
+    }
+
+    revalidatePath('/admin/experts');
+    revalidatePath(`/admin/experts/standalone/${expertId}`);
+
+    return { success: true, url: urlData.publicUrl };
+}
+
 // Get courses by standalone expert
 export async function getStandaloneExpertCourses(
     expertId: string
