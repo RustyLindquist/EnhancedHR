@@ -1,5 +1,12 @@
 {
-  "$schema": "https://claude.ai/schemas/settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm dev)",
+      "Bash(supabase status:*)",
+      "Bash(docker exec:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
