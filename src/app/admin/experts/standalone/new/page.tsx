@@ -1,7 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import AdminPageLayout from '@/components/AdminPageLayout';
 import StandaloneExpertDetailsDashboard from '@/components/admin/StandaloneExpertDetailsDashboard';
 
 export const dynamic = 'force-dynamic';
@@ -23,9 +22,5 @@ export default async function NewStandaloneExpertPage() {
         return <div>Access Denied</div>;
     }
 
-    return (
-        <AdminPageLayout activeNavId="admin/experts">
-            <StandaloneExpertDetailsDashboard isNew={true} />
-        </AdminPageLayout>
-    );
+    return <StandaloneExpertDetailsDashboard isNew={true} />;
 }
