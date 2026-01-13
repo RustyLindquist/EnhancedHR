@@ -63,6 +63,8 @@ export default function StandaloneExpertDetailsDashboard({
     const [showAddCredential, setShowAddCredential] = useState(false);
     const [localAvatarUrl, setLocalAvatarUrl] = useState(expert?.avatar_url || '');
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+    const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string>('');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -92,6 +94,12 @@ export default function StandaloneExpertDetailsDashboard({
             if (isNew) {
                 const result = await createStandaloneExpert(formData);
                 if (result.expert) {
+                    // If there's a pending avatar, upload it now that we have the expert ID
+                    if (pendingAvatarFile) {
+                        const avatarFormData = new FormData();
+                        avatarFormData.append('avatar', pendingAvatarFile);
+                        await uploadStandaloneExpertAvatar(result.expert.id, avatarFormData);
+                    }
                     router.push(`/admin/experts/standalone/${result.expert.id}`);
                 } else {
                     alert(result.error || 'Failed to create expert');
@@ -174,7 +182,7 @@ export default function StandaloneExpertDetailsDashboard({
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !expert) return;
+        if (!file) return;
 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -188,6 +196,19 @@ export default function StandaloneExpertDetailsDashboard({
             alert('File too large. Maximum size is 5MB.');
             return;
         }
+
+        // For new experts, store the file and show preview (upload happens on save)
+        if (isNew) {
+            setPendingAvatarFile(file);
+            // Create a preview URL
+            const previewUrl = URL.createObjectURL(file);
+            setPendingAvatarPreview(previewUrl);
+            e.target.value = '';
+            return;
+        }
+
+        // For existing experts, upload immediately
+        if (!expert) return;
 
         setIsUploadingAvatar(true);
 
@@ -283,19 +304,42 @@ export default function StandaloneExpertDetailsDashboard({
                     <div className="flex items-center gap-6">
                         <div className="relative group">
                             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 border-4 border-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden flex-shrink-0">
-                                {localAvatarUrl ? (
-                                    <img src={localAvatarUrl} alt={formData.full_name || ''} className="w-full h-full object-cover" />
+                                {(isNew ? pendingAvatarPreview : localAvatarUrl) ? (
+                                    <img src={isNew ? pendingAvatarPreview : localAvatarUrl} alt={formData.full_name || ''} className="w-full h-full object-cover" />
                                 ) : (
                                     formData.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User size={32} />
                                 )}
                             </div>
-                            {/* Upload overlay - only show for existing experts */}
-                            {!isNew && (
-                                <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            {/* Upload overlay */}
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                {isUploadingAvatar ? (
+                                    <Loader2 size={24} className="text-white animate-spin" />
+                                ) : (
+                                    <Camera size={24} className="text-white" />
+                                )}
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    onChange={handleAvatarUpload}
+                                    disabled={isUploadingAvatar}
+                                    className="hidden"
+                                />
+                            </label>
+                        </div>
+                        <div>
+                            <p className="text-white font-medium text-lg">{formData.full_name || 'New Expert'}</p>
+                            <div className="mt-2">
+                                <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-all cursor-pointer">
                                     {isUploadingAvatar ? (
-                                        <Loader2 size={24} className="text-white animate-spin" />
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            Uploading...
+                                        </>
                                     ) : (
-                                        <Camera size={24} className="text-white" />
+                                        <>
+                                            <Upload size={14} />
+                                            {isNew && pendingAvatarFile ? 'Change Photo' : 'Upload Photo'}
+                                        </>
                                     )}
                                     <input
                                         type="file"
@@ -305,41 +349,12 @@ export default function StandaloneExpertDetailsDashboard({
                                         className="hidden"
                                     />
                                 </label>
-                            )}
-                        </div>
-                        <div>
-                            <p className="text-white font-medium text-lg">{formData.full_name || 'New Expert'}</p>
-                            {isNew ? (
-                                <p className="text-sm text-slate-400 mt-1">
-                                    Save the expert first, then you can upload a photo.
+                                <p className="text-xs text-slate-500 mt-2">
+                                    {isNew && pendingAvatarFile
+                                        ? 'Photo will be uploaded when you save.'
+                                        : 'JPEG, PNG, GIF, or WebP. Max 5MB.'}
                                 </p>
-                            ) : (
-                                <div className="mt-2">
-                                    <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-all cursor-pointer">
-                                        {isUploadingAvatar ? (
-                                            <>
-                                                <Loader2 size={14} className="animate-spin" />
-                                                Uploading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload size={14} />
-                                                Upload Photo
-                                            </>
-                                        )}
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/gif,image/webp"
-                                            onChange={handleAvatarUpload}
-                                            disabled={isUploadingAvatar}
-                                            className="hidden"
-                                        />
-                                    </label>
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        JPEG, PNG, GIF, or WebP. Max 5MB.
-                                    </p>
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
