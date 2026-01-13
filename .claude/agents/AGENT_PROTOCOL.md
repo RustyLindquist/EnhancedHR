@@ -607,7 +607,7 @@ Main Agent Evaluates Test Needs
                                       ▼
                                Executes tests:
                                - Static analysis (build, tests)
-                               - Browser verification (Chrome Extension)
+                               - Browser verification (Playwright MCP)
                                - Workflow validation
                                       │
                                       ▼
@@ -627,7 +627,7 @@ Main Agent Evaluates Test Needs
 
 The Test Agent uses:
 - **Test Skill** (`.claude/commands/test.md`) — Test patterns and framework
-- **Browser Use Skill** (`.claude/commands/browser-use.md`) — Chrome Extension control
+- **Browser Use Skill** (`.claude/commands/browser-use.md`) — Playwright MCP control
 
 ### Test + Doc Agent Coordination
 

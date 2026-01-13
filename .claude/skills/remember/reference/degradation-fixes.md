@@ -18,7 +18,7 @@ Quick fixes for specific degradation patterns.
 
 **Fix**:
 1. Supabase CLI for ANY database question: `docker exec -i supabase_db_EnhancedHR psql -U postgres -c "..."`
-2. Chrome Extension for ANY UI verification
+2. Playwright MCP for ANY UI verification
 3. Grep/Glob/Read for file exploration
 
 ## Symptom: Missing Safety Rules

@@ -22,10 +22,10 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                     <div className="mb-3 h-1 w-16 bg-gradient-to-r from-brand-orange to-brand-red rounded-full opacity-70 group-hover:opacity-100 transition-opacity"></div>
 
                     <h3 className="text-xl font-bold text-white mb-2">
-                        Want to Share Your HR Expertise?
+                        Become an expert on EnhancedHR
                     </h3>
                     <p className="text-sm text-slate-400">
-                        Join our community of expert instructors and help shape the future of HR education
+                        Are you a thought leader for leaders or HR? Learn more about how to monetize your expertise by joining our community of experts.
                     </p>
                 </div>
 
@@ -42,7 +42,7 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
             {/* Expanded State - Info Panel */}
             <div
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+                    isExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'
                 }`}
             >
                 <div className="p-8 pt-0 space-y-8">
@@ -97,9 +97,9 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                                     1
                                 </div>
                                 <div>
-                                    <h5 className="text-base font-bold text-white mb-1">Apply to Join</h5>
+                                    <h5 className="text-base font-bold text-white mb-1">Click the "Become An Expert Today" link below</h5>
                                     <p className="text-sm text-slate-400">
-                                        Submit your profile and course proposal. We vet all instructors to ensure high-quality content.
+                                        You'll now see a new Expert Dashboard link in your profile menu.
                                     </p>
                                 </div>
                             </div>
@@ -110,9 +110,9 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                                     2
                                 </div>
                                 <div>
-                                    <h5 className="text-base font-bold text-white mb-1">Create Your Course</h5>
+                                    <h5 className="text-base font-bold text-white mb-1">Visit the Expert Dashboard</h5>
                                     <p className="text-sm text-slate-400">
-                                        Record and upload video lessons. We handle hosting, encoding, and AI processing.
+                                        From here you can build and create courses. Once a course is ready, just submit it for review.
                                     </p>
                                 </div>
                             </div>
@@ -123,13 +123,20 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                                     3
                                 </div>
                                 <div>
-                                    <h5 className="text-base font-bold text-white mb-1">Launch & Earn</h5>
+                                    <h5 className="text-base font-bold text-white mb-1">Start Earning!</h5>
                                     <p className="text-sm text-slate-400">
-                                        Go live and track your students and earnings in your instructor dashboard.
+                                        Once approved, your course will be live on the platform, and you can start earning based on how much time people spend in your course.
                                     </p>
                                 </div>
                             </div>
 
+                        </div>
+
+                        {/* Note Section */}
+                        <div className="mt-6 p-4 rounded-lg bg-brand-orange/10 border border-brand-orange/20">
+                            <p className="text-sm text-slate-300">
+                                <span className="font-semibold text-brand-orange">Note:</span> Additional ways to monetize your expertise and existing work are coming soon. Become an expert today to make additional revenue from the work you've already done.
+                            </p>
                         </div>
                     </div>
 
@@ -139,7 +146,7 @@ export default function BecomeExpertBanner({ onSubmitProposal }: BecomeExpertBan
                             onClick={onSubmitProposal}
                             className="px-8 py-4 rounded-full bg-brand-orange text-white font-bold hover:bg-brand-orange/90 transition-all shadow-[0_0_30px_rgba(255,147,0,0.4)] hover:shadow-[0_0_50px_rgba(255,147,0,0.6)] hover:-translate-y-0.5 flex items-center gap-2"
                         >
-                            Submit a Proposal <ArrowRight size={20} />
+                            Become an Expert Today! <ArrowRight size={20} />
                         </button>
                     </div>
 

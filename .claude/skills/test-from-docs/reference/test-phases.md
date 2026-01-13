@@ -43,7 +43,7 @@ If change spans features, verify integration points:
 
 ## Phase 4: Browser Verification
 
-Use Chrome Extension for UI testing:
+Use Playwright MCP for UI testing:
 
 ```markdown
 ### Browser Tests

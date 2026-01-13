@@ -4,12 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
 import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
 import AvatarSection from '@/components/settings/AvatarSection';
-import ExpertProfileSection from '@/components/settings/ExpertProfileSection';
 import BecomeExpertSection from '@/components/settings/BecomeExpertSection';
 import { Shield, Clock, User, CreditCard, Mail } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
-import { getMyCredentials, ExpertCredential } from '@/app/actions/credentials';
-import { getMyProposals } from '@/app/actions/proposals';
 
 export default async function AccountPage() {
     const supabase = await createClient();
@@ -19,41 +16,9 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, application_status, application_submitted_at, rejection_notes, course_proposal_title, course_proposal_description, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, phone_number, linkedin_url, twitter_url, website_url, credentials, author_bio, expert_title, organizations!profiles_org_id_fkey(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, organizations!profiles_org_id_fkey(name)')
         .eq('id', user.id)
         .single();
-
-    // Check if user is an expert (approved, pending, OR platform admin)
-    const isExpert = profile?.role === 'admin' ||
-                     profile?.author_status === 'approved' ||
-                     profile?.author_status === 'pending';
-
-    // Fetch itemized credentials for experts and admins
-    let credentials: ExpertCredential[] = [];
-    if (isExpert) {
-        credentials = await getMyCredentials();
-    }
-
-    // Fetch proposals for pending experts
-    let proposals: Array<{
-        id: string;
-        title: string;
-        description: string;
-        status: string;
-        admin_notes?: string;
-        created_at: string;
-    }> = [];
-    if (profile?.author_status === 'pending') {
-        const proposalsResult = await getMyProposals();
-        proposals = (proposalsResult.proposals || []).map(p => ({
-            id: p.id,
-            title: p.title,
-            description: p.description || '',
-            status: p.status,
-            admin_notes: p.admin_notes || undefined,
-            created_at: p.created_at,
-        }));
-    }
 
     // Determine if user can see "Become an Expert" section
     // Show for users who are NOT admins and NOT already experts (approved or pending)
@@ -120,19 +85,6 @@ export default async function AccountPage() {
                             <ChangePasswordPanel />
                         </div>
                     </section>
-
-                    {/* Expert Profile Section - Only shown for experts */}
-                    {isExpert && (
-                        <ExpertProfileSection
-                            phoneNumber={profile?.phone_number || null}
-                            linkedinUrl={profile?.linkedin_url || null}
-                            twitterUrl={profile?.twitter_url || null}
-                            websiteUrl={profile?.website_url || null}
-                            credentials={credentials}
-                            authorBio={profile?.author_bio || null}
-                            expertTitle={profile?.expert_title || null}
-                        />
-                    )}
 
                     {/* Membership Logic Calculation */}
                     {(() => {
@@ -271,15 +223,6 @@ export default async function AccountPage() {
                             userId={user.id}
                             fullName={profile?.full_name || user.user_metadata?.full_name || ''}
                             authorStatus={profile?.author_status || null}
-                            applicationStatus={profile?.application_status || null}
-                            applicationSubmittedAt={profile?.application_submitted_at || null}
-                            rejectionNotes={profile?.rejection_notes || null}
-                            courseProposalTitle={profile?.course_proposal_title || null}
-                            courseProposalDescription={profile?.course_proposal_description || null}
-                            existingTitle={profile?.expert_title || undefined}
-                            existingLinkedIn={profile?.linkedin_url || undefined}
-                            existingBio={profile?.author_bio || undefined}
-                            proposals={proposals}
                         />
                     )}
 

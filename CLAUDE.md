@@ -53,7 +53,7 @@ ALWAYS USE INSTEAD:
 | Trigger | Tool | Why |
 |---------|------|-----|
 | Database question | **Supabase CLI** | `docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "..."` |
-| After UI change | **Chrome Extension** | Visual verification via Claude Code Chrome Extension |
+| After UI change | **Playwright MCP** | Visual verification via Playwright browser automation |
 | Before any fix | **Research Agent** | Understand current state first |
 | Complex task | **Doc Agent** | Load invariants, validate plan |
 
@@ -66,7 +66,7 @@ Watch for degradation signals:
 | Signal | Action |
 |--------|--------|
 | Doing work directly instead of delegating | `/remember` |
-| Forgetting tools (Supabase CLI, Chrome Extension) | `/remember` |
+| Forgetting tools (Supabase CLI, Playwright MCP) | `/remember` |
 | Responses shorter/simpler | `/context-status` |
 | Forgetting recent decisions | `/checkpoint` then `/remember` |
 | Forgetting tools or delegation rules | `/compact` immediately |

@@ -67,7 +67,7 @@ Reload these critical behaviors:
 ║                                                                           ║
 ║  TOOLS AVAILABLE:                                                         ║
 ║  • Supabase CLI — For ALL database queries and schema inspection          ║
-║  • Chrome Extension — For browser testing and UI verification             ║
+║  • Playwright MCP — For browser testing and UI verification             ║
 ║  • Agent spawning — For delegating implementation work                    ║
 ║                                                                           ║
 ║  CONTEXT MANAGEMENT:                                                      ║
@@ -124,7 +124,7 @@ Quick checks:
 
 ### Tools Ready
 - [ ] Supabase CLI: Available
-- [ ] Chrome Extension: Available
+- [ ] Playwright MCP: Available
 - [ ] Agent spawning: Ready
 
 ---
@@ -170,7 +170,7 @@ Self-Check:
 □ I will DELEGATE frontend work to @frontend-agent
 □ I will DELEGATE backend work to @backend-agent
 □ I will USE Supabase CLI for database questions
-□ I will USE Chrome Extension for UI verification
+□ I will USE Playwright MCP for UI verification
 □ I will NEVER run destructive database commands
 □ I will CHECKPOINT every 30-45 minutes
 ```

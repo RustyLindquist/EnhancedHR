@@ -13,7 +13,7 @@ Combat context degradation by forcefully reloading critical instructions into ac
 **Run /remember immediately if you notice:**
 - Doing implementation work directly instead of delegating
 - Forgetting to use Supabase CLI for database questions
-- Forgetting to use Chrome Extension for UI verification
+- Forgetting to use Playwright MCP for UI verification
 - Missing safety rules (considering destructive commands)
 - Not spawning agents when you should
 - User says "you forgot" or "remember to..."
@@ -101,7 +101,7 @@ Combat context degradation by forcefully reloading critical instructions into ac
 ║                                                                           ║
 ║  BROWSER TOOLS:                                                           ║
 ║  ┌────────────────────────────────────────────────────────────────────┐  ║
-║  │ Chrome Extension                                                    │  ║
+║  │ Playwright MCP                                                    │  ║
 ║  │ • Navigate to routes                                                │  ║
 ║  │ • Inspect elements                                                  │  ║
 ║  │ • Check console for errors                                          │  ║
@@ -166,7 +166,7 @@ After running /remember:
 
 ### Tool Awareness
 ✅ Supabase CLI: AVAILABLE — Use for database questions
-✅ Chrome Extension: AVAILABLE — Use for UI verification
+✅ Playwright MCP: AVAILABLE — Use for UI verification
 ✅ Agent spawning: READY — Delegate implementation
 
 ### Context Management
@@ -182,7 +182,7 @@ I confirm:
 - [ ] I will DELEGATE frontend work to @frontend-agent
 - [ ] I will DELEGATE backend work to @backend-agent
 - [ ] I will USE Supabase CLI before assuming database state
-- [ ] I will USE Chrome Extension after UI changes
+- [ ] I will USE Playwright MCP after UI changes
 - [ ] I will NEVER run destructive database commands
 - [ ] I will INJECT safety rules into every spawned agent
 
@@ -200,7 +200,7 @@ If severely degraded, use minimal version:
 
 1. ⛔ NO destructive DB commands (reset, drop, truncate)
 2. 🎯 DELEGATE to agents (frontend, backend, research, test)
-3. 🔧 USE tools (Supabase CLI, Chrome Extension)
+3. 🔧 USE tools (Supabase CLI, Playwright MCP)
 4. 📋 PLAN before code (doc-discovery → plan-lint)
 
 **I am the ORCHESTRATOR. I delegate work. I use my tools.**

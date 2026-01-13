@@ -138,7 +138,7 @@ Example:
 ### Browser Skills
 | Skill | Purpose | When to Use | Depends On |
 |-------|---------|-------------|------------|
-| **browser-use** | UI verification via Chrome Extension | After UI changes, workflow testing | Chrome Extension connected |
+| **browser-use** | UI verification via Playwright MCP | After UI changes, workflow testing | Playwright MCP available |
 
 ### Orchestration Skills
 | Skill | Purpose | When to Use | Depends On |
@@ -177,7 +177,7 @@ Example:
     └─► /frontend/component-inventory first
 
 "I need to verify UI changes"
-    └─► /browser-use (Chrome Extension)
+    └─► /browser-use (Playwright MCP)
 
 "I found an undocumented pattern"
     └─► /capture-optimization
@@ -283,7 +283,7 @@ DURING SESSION (as needed):
 /checkpoint          # Save state (every 30-45 min)
 /remember            # Refresh if degraded
 /context-status      # Check context health
-/browser-use         # Verify UI via Chrome Extension
+/browser-use         # Verify UI via Playwright MCP
 ```
 
 ### Finish Work

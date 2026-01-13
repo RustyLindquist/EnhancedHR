@@ -71,7 +71,7 @@ Specific concerns: Ensure free vs paid enrollment still works correctly
 2. **Consult** Doc Agent for feature/workflow impact
 3. **Create** a test plan based on risk level
 4. **Execute** static analysis (build, tests)
-5. **Verify** via browser (using Chrome Extension)
+5. **Verify** via browser (using Playwright MCP)
 6. **Test** affected workflows
 7. **Report** results with evidence
 
@@ -105,4 +105,4 @@ Based on Test Agent report:
 ## Skills Used by Test Agent
 
 - `.claude/commands/test.md` - Test framework and patterns
-- `.claude/commands/browser-use.md` - Browser control via Chrome Extension
+- `.claude/commands/browser-use.md` - Browser control via Playwright MCP

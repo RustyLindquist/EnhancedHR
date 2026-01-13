@@ -56,7 +56,7 @@ When spawned, immediately:
 
 You have access to and should use:
 - **Test Skill** (`.claude/commands/test.md`) — Test framework and patterns
-- **Browser Use Skill** (`.claude/commands/browser-use.md`) — Browser control via Chrome Extension
+- **Browser Use Skill** (`.claude/commands/browser-use.md`) — Browser control via Playwright MCP
 
 ## Skill Invocation Protocol (MANDATORY)
 

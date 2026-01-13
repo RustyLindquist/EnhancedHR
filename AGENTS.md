@@ -314,7 +314,7 @@ The Test Agent handles comprehensive validation and testing:
 - Analyzes changes to determine appropriate test scope
 - Consults Doc Agent for workflow/feature impact
 - Creates systematic test plans based on risk
-- Uses browser control (Chrome Extension) for UI verification
+- Uses browser control (Playwright MCP) for UI verification
 - Reports results with evidence (screenshots, console logs)
 - Does NOT fix issues — reports them for implementing agent
 

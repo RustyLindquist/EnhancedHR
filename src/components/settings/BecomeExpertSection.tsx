@@ -1,122 +1,57 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import BecomeExpertBanner from './BecomeExpertBanner';
-import ExpertProposalForm from './ExpertProposalForm';
-import ExpertApplicationStatus from './ExpertApplicationStatus';
-
-interface Proposal {
-    id: string;
-    title: string;
-    description: string;
-    status: string;
-    admin_notes?: string;
-    created_at: string;
-}
+import { becomeExpert } from '@/app/actions/expert-application';
 
 interface BecomeExpertSectionProps {
     userId: string;
     fullName: string;
     authorStatus: string | null;
-    applicationStatus: string | null;
-    applicationSubmittedAt: string | null;
-    rejectionNotes: string | null;
-    courseProposalTitle: string | null;
-    courseProposalDescription: string | null;
-    existingTitle?: string;
-    existingLinkedIn?: string;
-    existingBio?: string;
-    proposals: Proposal[];
 }
 
-type ViewState = 'banner' | 'form' | 'status';
-
 export default function BecomeExpertSection({
-    userId,
-    fullName,
     authorStatus,
-    applicationStatus,
-    applicationSubmittedAt,
-    rejectionNotes,
-    courseProposalTitle,
-    courseProposalDescription,
-    existingTitle,
-    existingLinkedIn,
-    existingBio,
-    proposals,
 }: BecomeExpertSectionProps) {
-    // Determine initial view state based on author_status
-    const getInitialView = (): ViewState => {
-        if (authorStatus === 'pending') {
-            return 'status';
-        }
-        return 'banner';
-    };
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const [error, setError] = useState<string | null>(null);
 
-    const [viewState, setViewState] = useState<ViewState>(getInitialView());
-    const [hasSubmitted, setHasSubmitted] = useState(false);
-
-    // Handle successful submission - show status view
-    const handleSubmitSuccess = () => {
-        setHasSubmitted(true);
-        // The form component handles showing the success state
-        // After a brief delay, we could transition to status view
-        // But for now, the form's internal success state is sufficient
-    };
-
-    // Show status view for pending experts
-    if (authorStatus === 'pending' || hasSubmitted) {
-        // If just submitted, show the form's success state
-        // Otherwise show the full status component
-        if (hasSubmitted && viewState === 'form') {
-            // The form handles its own success state
-            return (
-                <ExpertProposalForm
-                    userId={userId}
-                    fullName={fullName}
-                    existingTitle={existingTitle}
-                    existingLinkedIn={existingLinkedIn}
-                    existingBio={existingBio}
-                    onSubmitSuccess={handleSubmitSuccess}
-                />
-            );
-        }
-
-        return (
-            <ExpertApplicationStatus
-                profile={{
-                    id: userId,
-                    author_status: authorStatus || 'pending',
-                    application_status: applicationStatus || 'submitted',
-                    application_submitted_at: applicationSubmittedAt || new Date().toISOString(),
-                    rejection_notes: rejectionNotes || undefined,
-                    course_proposal_title: courseProposalTitle || undefined,
-                    course_proposal_description: courseProposalDescription || undefined,
-                }}
-                proposals={proposals}
-                onNewProposal={() => setViewState('form')}
-            />
-        );
+    // Don't show anything if user is already an expert
+    if (authorStatus === 'approved' || authorStatus === 'pending') {
+        return null;
     }
 
-    // Banner → Form flow for non-experts
-    if (viewState === 'form') {
-        return (
-            <ExpertProposalForm
-                userId={userId}
-                fullName={fullName}
-                existingTitle={existingTitle}
-                existingLinkedIn={existingLinkedIn}
-                existingBio={existingBio}
-                onSubmitSuccess={handleSubmitSuccess}
-            />
-        );
-    }
+    const handleBecomeExpert = () => {
+        setError(null);
+        startTransition(async () => {
+            const result = await becomeExpert();
+            if (result.success) {
+                // Redirect to Expert Dashboard
+                router.push('/author');
+            } else {
+                setError(result.error || 'Something went wrong');
+            }
+        });
+    };
 
-    // Default: Show the banner
     return (
-        <BecomeExpertBanner
-            onSubmitProposal={() => setViewState('form')}
-        />
+        <div className="relative">
+            {isPending && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-2xl z-10 flex items-center justify-center">
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Setting up your Expert account...</span>
+                    </div>
+                </div>
+            )}
+            {error && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                    {error}
+                </div>
+            )}
+            <BecomeExpertBanner onSubmitProposal={handleBecomeExpert} />
+        </div>
     );
 }

@@ -11,7 +11,7 @@ Forcefully reload critical instructions without losing session state.
 ## When to Use
 
 - Agent doing work directly instead of delegating
-- Forgetting tools (Supabase CLI, Chrome Extension)
+- Forgetting tools (Supabase CLI, Playwright MCP)
 - Missing safety rules or not spawning agents
 - User says "you forgot" or "remember to..."
 - Every 30-45 min in long sessions
@@ -33,7 +33,7 @@ Forcefully reload critical instructions without losing session state.
 
 ### 3. Confirm Tool Awareness
 - **Supabase CLI** — Use for ALL database questions
-- **Chrome Extension** — Use AFTER any UI changes
+- **Playwright MCP** — Use AFTER any UI changes
 - **Agent spawning** — Use for implementation work
 
 ### 4. Confirm Process
@@ -51,7 +51,7 @@ Behavioral Check:
 - [ ] Delegate frontend → @frontend-agent
 - [ ] Delegate backend → @backend-agent
 - [ ] Use Supabase CLI for database
-- [ ] Use Chrome Extension for UI
+- [ ] Use Playwright MCP for UI
 - [ ] NO destructive commands
 
 Ready to continue.
