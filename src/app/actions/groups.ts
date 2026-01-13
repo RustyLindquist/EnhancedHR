@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { computeDynamicGroupMembers } from './dynamic-groups';
+import { computeDynamicGroupMembers, checkUserInDynamicGroup } from './dynamic-groups';
 
 export interface EmployeeGroup {
   id: string;
@@ -606,4 +606,90 @@ export async function getGroupMembersWithStats(
             conversations_count: metrics.conversations
         };
     });
+}
+
+export interface UserGroupMemberships {
+    customGroups: EmployeeGroup[];
+    dynamicGroups: EmployeeGroup[];
+}
+
+/**
+ * Get groups that the current user belongs to (for non-admin members)
+ * Returns both custom groups (via employee_group_members) and dynamic groups (computed)
+ */
+export async function getUserGroupMemberships(): Promise<UserGroupMemberships> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { customGroups: [], dynamicGroups: [] };
+
+    // Get user's org
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.org_id) return { customGroups: [], dynamicGroups: [] };
+
+    const supabaseAdmin = await createAdminClient();
+
+    // Get custom groups the user belongs to
+    const { data: memberships } = await supabaseAdmin
+        .from('employee_group_members')
+        .select('group_id')
+        .eq('user_id', user.id);
+
+    const customGroupIds = memberships?.map(m => m.group_id) || [];
+
+    // Fetch custom group details
+    let customGroups: EmployeeGroup[] = [];
+    if (customGroupIds.length > 0) {
+        const { data: groups } = await supabaseAdmin
+            .from('employee_groups')
+            .select(`
+                id,
+                org_id,
+                name,
+                created_at,
+                is_dynamic,
+                dynamic_type,
+                criteria
+            `)
+            .in('id', customGroupIds)
+            .eq('is_dynamic', false);
+
+        // Fetch member counts separately
+        const groupsWithCounts: EmployeeGroup[] = [];
+        for (const g of groups || []) {
+            const { count } = await supabaseAdmin
+                .from('employee_group_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('group_id', g.id);
+            groupsWithCounts.push({
+                ...g,
+                member_count: count || 0
+            });
+        }
+        customGroups = groupsWithCounts;
+    }
+
+    // Get all dynamic groups for the org
+    const { data: allDynamicGroups } = await supabaseAdmin
+        .from('employee_groups')
+        .select('id, org_id, name, created_at, is_dynamic, dynamic_type, criteria')
+        .eq('org_id', profile.org_id)
+        .eq('is_dynamic', true);
+
+    // Check which dynamic groups the user belongs to
+    const dynamicGroups: EmployeeGroup[] = [];
+    if (allDynamicGroups) {
+        for (const group of allDynamicGroups) {
+            const isInGroup = await checkUserInDynamicGroup(group.id, user.id);
+            if (isInGroup) {
+                dynamicGroups.push(group);
+            }
+        }
+    }
+
+    return { customGroups, dynamicGroups };
 }

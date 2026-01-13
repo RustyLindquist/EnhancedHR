@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Layers } from 'lucide-react';
-import { getOrgGroups, EmployeeGroup } from '@/app/actions/groups';
+import { Users, UserPlus, Layers, Sparkles } from 'lucide-react';
+import { getOrgGroups, getUserGroupMemberships, EmployeeGroup } from '@/app/actions/groups';
 import GroupCard from './GroupCard';
 import GroupManagement from './GroupManagement';
 import CanvasHeader from '../CanvasHeader';
@@ -9,6 +9,7 @@ interface UsersAndGroupsCanvasProps {
     onSelectAllUsers: () => void;
     onSelectGroup: (groupId: string) => void;
     onBack?: () => void;
+    isAdmin?: boolean; // Whether the user is an org admin (or platform admin)
 }
 
 // Special card for "All Users" that leads to the existing user management view
@@ -50,21 +51,30 @@ const AllUsersCard: React.FC<{ onClick: () => void; memberCount: number }> = ({ 
     </div>
 );
 
-export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, onBack }: UsersAndGroupsCanvasProps) {
+export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, onBack, isAdmin = false }: UsersAndGroupsCanvasProps) {
     const [groups, setGroups] = useState<EmployeeGroup[]>([]);
+    const [memberGroups, setMemberGroups] = useState<{ customGroups: EmployeeGroup[], dynamicGroups: EmployeeGroup[] }>({ customGroups: [], dynamicGroups: [] });
     const [loading, setLoading] = useState(true);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
     const [totalMembers, setTotalMembers] = useState(0);
 
     const fetchGroups = async () => {
         setLoading(true);
-        const fetchedGroups = await getOrgGroups();
-        setGroups(fetchedGroups);
+        if (isAdmin) {
+            // Admins see all org groups
+            const fetchedGroups = await getOrgGroups();
+            setGroups(fetchedGroups);
+        } else {
+            // Members only see groups they belong to
+            const memberships = await getUserGroupMemberships();
+            setMemberGroups(memberships);
+        }
         setLoading(false);
     };
 
-    // Fetch member count from org action
+    // Fetch member count from org action (only for admins)
     useEffect(() => {
+        if (!isAdmin) return;
         const fetchMemberCount = async () => {
             try {
                 const { getOrgMembers } = await import('@/app/actions/org');
@@ -75,20 +85,25 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
             }
         };
         fetchMemberCount();
-    }, []);
+    }, [isAdmin]);
 
     useEffect(() => {
         fetchGroups();
-    }, []);
+    }, [isAdmin]);
 
     const handleGroupCreated = () => {
         setIsGroupPanelOpen(false);
         fetchGroups();
     };
 
-    // Split groups into regular and dynamic
+    // Split groups into regular and dynamic (for admin view)
     const regularGroups = groups.filter(g => !g.is_dynamic).sort((a, b) => a.name.localeCompare(b.name));
     const dynamicGroups = groups.filter(g => g.is_dynamic).sort((a, b) => a.name.localeCompare(b.name));
+
+    // For member view: use memberGroups state
+    const memberCustomGroups = memberGroups.customGroups.sort((a, b) => a.name.localeCompare(b.name));
+    const memberDynamicGroups = memberGroups.dynamicGroups.sort((a, b) => a.name.localeCompare(b.name));
+    const hasMemberGroups = memberCustomGroups.length > 0 || memberDynamicGroups.length > 0;
 
     if (loading) {
         return (
@@ -103,90 +118,166 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
             {/* Sticky Header */}
             <div className="sticky top-0 z-50">
                 <CanvasHeader
-                    context="manage your"
+                    context={isAdmin ? "manage your" : "your"}
                     title="Users and Groups"
                     onBack={onBack}
                     backLabel="Go Back"
                 >
-                    <div className="flex items-center space-x-4">
-                        <button
-                            onClick={() => setIsGroupPanelOpen(true)}
-                            className="
-                                flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
-                                bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
-                            "
-                        >
-                            <UserPlus size={16} />
-                            Create Group
-                        </button>
-                    </div>
+                    {/* Only show Create Group button for admins */}
+                    {isAdmin && (
+                        <div className="flex items-center space-x-4">
+                            <button
+                                onClick={() => setIsGroupPanelOpen(true)}
+                                className="
+                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                    bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
+                                "
+                            >
+                                <UserPlus size={16} />
+                                Create Group
+                            </button>
+                        </div>
+                    )}
                 </CanvasHeader>
             </div>
 
             {/* Scrollable Content Container */}
             <div className="w-full max-w-[1600px] mx-auto px-8 pb-32 animate-fade-in relative z-10 pt-8 pl-20">
 
-                {/* Section 1: Your Users and Groups */}
-                <div className="mb-12">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">Your Users and Groups</h2>
-                    <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
-                        {/* All Users Card - Always First */}
-                        <AllUsersCard onClick={onSelectAllUsers} memberCount={totalMembers} />
+                {/* ADMIN VIEW */}
+                {isAdmin && (
+                    <>
+                        {/* Section 1: Your Users and Groups */}
+                        <div className="mb-12">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">Your Users and Groups</h2>
+                            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                {/* All Users Card - Always First */}
+                                <AllUsersCard onClick={onSelectAllUsers} memberCount={totalMembers} />
 
-                        {/* Regular Group Cards */}
-                        {regularGroups.map((group) => (
-                            <GroupCard
-                                key={group.id}
-                                group={group}
-                                onClick={() => onSelectGroup(group.id)}
-                                isDynamic={false}
-                            />
-                        ))}
+                                {/* Regular Group Cards */}
+                                {regularGroups.map((group) => (
+                                    <GroupCard
+                                        key={group.id}
+                                        group={group}
+                                        onClick={() => onSelectGroup(group.id)}
+                                        isDynamic={false}
+                                    />
+                                ))}
 
-                        {/* Empty State Card - shown when no regular groups exist */}
-                        {regularGroups.length === 0 && groups.length === 0 && (
-                            <div className="bg-[#131b2c]/50 border border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[200px]">
-                                <Layers size={32} className="text-slate-600 mb-3" />
-                                <h3 className="text-white font-semibold mb-2">No Groups Yet</h3>
-                                <p className="text-slate-500 text-xs text-center max-w-[200px] mb-4">
-                                    Create groups to organize your team
-                                </p>
-                                <button
-                                    onClick={() => setIsGroupPanelOpen(true)}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:bg-white/10 hover:text-white transition-all"
-                                >
-                                    <UserPlus size={12} />
-                                    Create Group
-                                </button>
+                                {/* Empty State Card - shown when no regular groups exist */}
+                                {regularGroups.length === 0 && groups.length === 0 && (
+                                    <div className="bg-[#131b2c]/50 border border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[200px]">
+                                        <Layers size={32} className="text-slate-600 mb-3" />
+                                        <h3 className="text-white font-semibold mb-2">No Groups Yet</h3>
+                                        <p className="text-slate-500 text-xs text-center max-w-[200px] mb-4">
+                                            Create groups to organize your team
+                                        </p>
+                                        <button
+                                            onClick={() => setIsGroupPanelOpen(true)}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+                                        >
+                                            <UserPlus size={12} />
+                                            Create Group
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Section 2: Dynamic Groups */}
+                        {dynamicGroups.length > 0 && (
+                            <div className="mb-12">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">Dynamic Groups</h2>
+                                <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                    {dynamicGroups.map((group) => (
+                                        <GroupCard
+                                            key={group.id}
+                                            group={group}
+                                            onClick={() => onSelectGroup(group.id)}
+                                            isDynamic={true}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         )}
-                    </div>
-                </div>
+                    </>
+                )}
 
-                {/* Section 2: Dynamic Groups */}
-                {dynamicGroups.length > 0 && (
-                    <div className="mb-12">
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">Dynamic Groups</h2>
-                        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
-                            {dynamicGroups.map((group) => (
-                                <GroupCard
-                                    key={group.id}
-                                    group={group}
-                                    onClick={() => onSelectGroup(group.id)}
-                                    isDynamic={true}
-                                />
-                            ))}
+                {/* MEMBER VIEW */}
+                {!isAdmin && (
+                    <>
+                        {/* All Users Card */}
+                        <div className="mb-12">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">Organization</h2>
+                            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                <AllUsersCard onClick={onSelectAllUsers} memberCount={0} />
+                            </div>
                         </div>
-                    </div>
+
+                        {/* My Groups Section */}
+                        {memberCustomGroups.length > 0 && (
+                            <div className="mb-12">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">My Groups</h2>
+                                <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                    {memberCustomGroups.map((group) => (
+                                        <GroupCard
+                                            key={group.id}
+                                            group={group}
+                                            onClick={() => onSelectGroup(group.id)}
+                                            isDynamic={false}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* My Achievements (Dynamic Groups) */}
+                        {memberDynamicGroups.length > 0 && (
+                            <div className="mb-12">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                    <Sparkles size={14} className="text-amber-400" />
+                                    My Achievements
+                                </h2>
+                                <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                    {memberDynamicGroups.map((group) => (
+                                        <GroupCard
+                                            key={group.id}
+                                            group={group}
+                                            onClick={() => onSelectGroup(group.id)}
+                                            isDynamic={true}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Empty State - Not in any groups */}
+                        {!hasMemberGroups && (
+                            <div className="mb-12">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6">My Groups</h2>
+                                <div className="bg-[#131b2c]/50 border border-dashed border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center mb-4 border border-white/10">
+                                        <Users size={28} className="text-slate-500" />
+                                    </div>
+                                    <h3 className="text-white font-semibold text-lg mb-2">Not in Any Groups Yet</h3>
+                                    <p className="text-slate-400 text-sm text-center max-w-[300px]">
+                                        Your organization admin can add you to groups. Dynamic groups are earned automatically based on your activity.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
-            {/* Create Group Panel */}
-            <GroupManagement
-                isOpen={isGroupPanelOpen}
-                onClose={() => setIsGroupPanelOpen(false)}
-                onSuccess={handleGroupCreated}
-            />
+            {/* Create Group Panel - Only for admins */}
+            {isAdmin && (
+                <GroupManagement
+                    isOpen={isGroupPanelOpen}
+                    onClose={() => setIsGroupPanelOpen(false)}
+                    onSuccess={handleGroupCreated}
+                />
+            )}
         </div>
     );
 }

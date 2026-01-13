@@ -654,6 +654,75 @@ export async function getDynamicGroupsForOrg(
 }
 
 /**
+ * Check if a specific user is a member of a dynamic group
+ * This is a lightweight check that doesn't require admin access
+ */
+export async function checkUserInDynamicGroup(
+  groupId: string,
+  userId: string
+): Promise<boolean> {
+  const supabaseAdmin = await createAdminClient();
+
+  // Get the group details
+  const { data: group, error } = await supabaseAdmin
+    .from('employee_groups')
+    .select('org_id, is_dynamic, dynamic_type, criteria')
+    .eq('id', groupId)
+    .single();
+
+  if (error || !group || !group.is_dynamic) {
+    return false;
+  }
+
+  const criteria = group.criteria as DynamicGroupCriteria;
+
+  // Dispatch to appropriate query builder and check if userId is in result
+  let memberIds: string[] = [];
+
+  switch (group.dynamic_type) {
+    case 'recent_logins':
+      memberIds = await queryRecentLogins(
+        supabaseAdmin,
+        group.org_id,
+        criteria as RecentLoginsCriteria
+      );
+      break;
+    case 'no_logins':
+      memberIds = await queryNoLogins(
+        supabaseAdmin,
+        group.org_id,
+        criteria as NoLoginsCriteria
+      );
+      break;
+    case 'most_active':
+      memberIds = await queryMostActive(
+        supabaseAdmin,
+        group.org_id,
+        criteria as MostActiveCriteria
+      );
+      break;
+    case 'top_learners':
+      memberIds = await queryTopLearners(
+        supabaseAdmin,
+        group.org_id,
+        criteria as TopLearnersCriteria
+      );
+      break;
+    case 'most_talkative':
+      memberIds = await queryMostTalkative(
+        supabaseAdmin,
+        group.org_id,
+        criteria as MostTalkativeCriteria
+      );
+      break;
+    default:
+      return false;
+  }
+
+  return memberIds.includes(userId);
+}
+
+/**
  * Seed default dynamic groups for an organization
  */
 export async function seedDynamicGroupsForOrg(

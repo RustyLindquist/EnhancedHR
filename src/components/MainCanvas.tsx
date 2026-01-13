@@ -754,7 +754,8 @@ const GroupDetailCanvasWrapper = ({
     onCourseClick,
     onModuleClick,
     onLessonClick,
-    onConversationClick
+    onConversationClick,
+    isAdmin
 }: {
     group: any;
     manageTrigger: number;
@@ -765,6 +766,7 @@ const GroupDetailCanvasWrapper = ({
     onModuleClick?: (moduleItem: any) => void;
     onLessonClick?: (lessonItem: any, autoPlay?: boolean) => void;
     onConversationClick?: (conversationId: string) => void;
+    isAdmin?: boolean;
 }) => {
     const [Component, setComponent] = useState<any>(null);
     useEffect(() => {
@@ -782,6 +784,7 @@ const GroupDetailCanvasWrapper = ({
             onModuleClick={onModuleClick}
             onLessonClick={onLessonClick}
             onConversationClick={onConversationClick}
+            isAdmin={isAdmin}
         />
     );
 };
@@ -3945,6 +3948,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                 onModuleClick={handleModuleClick}
                                 onLessonClick={handleLessonClick}
                                 onConversationClick={handleOpenConversation}
+                                isAdmin={isOrgAdmin}
                             />
                         </div>
                     ) :
@@ -4012,11 +4016,12 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     onSelectAllUsers={() => onSelectCollection('org-team')}
                                     onSelectGroup={(groupId) => onSelectCollection(`group-${groupId}`)}
                                     onBack={onGoBack}
+                                    isAdmin={isOrgAdmin}
                                 />
                             </div>
                         ) : activeCollectionId === 'org-team' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
-                                <TeamManagement onBack={onGoBack} />
+                                <TeamManagement onBack={onGoBack} isAdmin={isOrgAdmin} />
                             </div>
                         ) : activeCollectionId === 'assigned-learning' ? (
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">

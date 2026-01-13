@@ -18,9 +18,10 @@ interface OrgSelectorData {
 
 interface TeamManagementProps {
     onBack?: () => void;
+    isAdmin?: boolean; // Whether the user is an org admin (or platform admin)
 }
 
-export default function TeamManagement({ onBack }: TeamManagementProps) {
+export default function TeamManagement({ onBack, isAdmin = false }: TeamManagementProps) {
     const [members, setMembers] = useState<OrgMember[]>([]);
     const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
     const [loading, setLoading] = useState(true);
@@ -126,108 +127,111 @@ export default function TeamManagement({ onBack }: TeamManagementProps) {
             {/* Sticky Header */}
             <div className="sticky top-0 z-50">
                 <CanvasHeader
-                    context={orgSelectorData?.isPlatformAdmin ? "Platform Admin View" : "My Organization"}
-                    title="Manage Users"
+                    context="My Organization"
+                    title="All Users"
                     onBack={onBack}
                     backLabel="Go Back"
                 >
-                    <div className="flex items-center space-x-4">
-                        {/* Platform Admin Org Selector */}
-                        {orgSelectorData?.isPlatformAdmin && orgSelectorData.organizations.length > 0 && (
-                            <div className="relative">
-                                <button
-                                    onClick={() => setIsOrgSelectorOpen(!isOrgSelectorOpen)}
-                                    disabled={isSwitchingOrg}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
-                                >
-                                    <Shield size={14} className="text-purple-400" />
-                                    <span className="text-sm font-bold text-purple-300">
-                                        {isSwitchingOrg ? 'Switching...' : orgSelectorData.currentOrgName || 'Select Org'}
-                                    </span>
-                                    <ChevronDown
-                                        size={14}
-                                        className={`text-purple-400 transition-transform ${isOrgSelectorOpen ? 'rotate-180' : ''}`}
-                                    />
-                                </button>
-
-                                {/* Dropdown */}
-                                {isOrgSelectorOpen && (
-                                    <>
-                                        <div
-                                            className="fixed inset-0 z-40"
-                                            onClick={() => setIsOrgSelectorOpen(false)}
+                    {/* Only show admin controls for admins */}
+                    {isAdmin && (
+                        <div className="flex items-center space-x-4">
+                            {/* Platform Admin Org Selector */}
+                            {orgSelectorData?.isPlatformAdmin && orgSelectorData.organizations.length > 0 && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsOrgSelectorOpen(!isOrgSelectorOpen)}
+                                        disabled={isSwitchingOrg}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                                    >
+                                        <Shield size={14} className="text-purple-400" />
+                                        <span className="text-sm font-bold text-purple-300">
+                                            {isSwitchingOrg ? 'Switching...' : orgSelectorData.currentOrgName || 'Select Org'}
+                                        </span>
+                                        <ChevronDown
+                                            size={14}
+                                            className={`text-purple-400 transition-transform ${isOrgSelectorOpen ? 'rotate-180' : ''}`}
                                         />
-                                        <div className="absolute right-0 top-full mt-2 z-50 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl min-w-[280px] max-h-80 overflow-y-auto dropdown-scrollbar">
-                                            <div className="p-2">
-                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">
-                                                    Switch Organization
-                                                </p>
-                                                {orgSelectorData.organizations.map((org) => (
-                                                    <button
-                                                        key={org.id}
-                                                        onClick={() => handleSelectOrg(org.id)}
-                                                        disabled={isSwitchingOrg}
-                                                        className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-lg transition-colors ${
-                                                            org.id === orgSelectorData.currentOrgId
-                                                                ? 'bg-brand-blue-light/10 text-brand-blue-light'
-                                                                : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                    </button>
+
+                                    {/* Dropdown */}
+                                    {isOrgSelectorOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-40"
+                                                onClick={() => setIsOrgSelectorOpen(false)}
+                                            />
+                                            <div className="absolute right-0 top-full mt-2 z-50 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl min-w-[280px] max-h-80 overflow-y-auto dropdown-scrollbar">
+                                                <div className="p-2">
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">
+                                                        Switch Organization
+                                                    </p>
+                                                    {orgSelectorData.organizations.map((org) => (
+                                                        <button
+                                                            key={org.id}
+                                                            onClick={() => handleSelectOrg(org.id)}
+                                                            disabled={isSwitchingOrg}
+                                                            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-lg transition-colors ${
                                                                 org.id === orgSelectorData.currentOrgId
-                                                                    ? 'bg-brand-blue-light/20 text-brand-blue-light'
-                                                                    : 'bg-white/10 text-slate-400'
-                                                            }`}>
-                                                                {org.name.substring(0, 2).toUpperCase()}
+                                                                    ? 'bg-brand-blue-light/10 text-brand-blue-light'
+                                                                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                                                    org.id === orgSelectorData.currentOrgId
+                                                                        ? 'bg-brand-blue-light/20 text-brand-blue-light'
+                                                                        : 'bg-white/10 text-slate-400'
+                                                                }`}>
+                                                                    {org.name.substring(0, 2).toUpperCase()}
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <p className="font-medium text-sm">{org.name}</p>
+                                                                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                                        <Users size={10} />
+                                                                        {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <div className="text-left">
-                                                                <p className="font-medium text-sm">{org.name}</p>
-                                                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                                    <Users size={10} />
-                                                                    {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        {org.id === orgSelectorData.currentOrgId && (
-                                                            <Check size={16} className="text-brand-blue-light" />
-                                                        )}
-                                                    </button>
-                                                ))}
+                                                            {org.id === orgSelectorData.currentOrgId && (
+                                                                <Check size={16} className="text-brand-blue-light" />
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </>
-                                )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex items-center space-x-2 text-brand-blue-light mr-4">
+                                <div className="w-2 h-2 rounded-full bg-brand-blue-light animate-pulse"></div>
+                                <span className="text-sm font-bold uppercase tracking-widest">{members.length} Members</span>
                             </div>
-                        )}
 
-                        <div className="flex items-center space-x-2 text-brand-blue-light mr-4">
-                            <div className="w-2 h-2 rounded-full bg-brand-blue-light animate-pulse"></div>
-                            <span className="text-sm font-bold uppercase tracking-widest">{members.length} Members</span>
+                            <button
+                                onClick={() => setIsInvitePanelOpen(true)}
+                                className="
+                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                    bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
+                                "
+                            >
+                                <UserPlus size={16} />
+                                Invite Members
+                            </button>
+
+                            <button
+                                onClick={() => setIsGroupPanelOpen(true)}
+                                className="
+                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                    bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
+                                "
+                            >
+                                <Users size={16} />
+                                Create Group
+                            </button>
                         </div>
-
-                        <button
-                            onClick={() => setIsInvitePanelOpen(true)}
-                            className="
-                                flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
-                                bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
-                            "
-                        >
-                            <UserPlus size={16} />
-                            Invite Members
-                        </button>
-
-                        <button
-                            onClick={() => setIsGroupPanelOpen(true)}
-                            className="
-                                flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
-                                bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
-                            "
-                        >
-                            <Users size={16} />
-                            Create Group
-                        </button>
-                    </div>
+                    )}
                 </CanvasHeader>
             </div>
 
@@ -248,7 +252,8 @@ export default function TeamManagement({ onBack }: TeamManagementProps) {
                                 key={member.id}
                                 member={member}
                                 onClick={() => setSelectedMember(member)}
-                                onAddToGroup={() => setAddToGroupMember(member)}
+                                onAddToGroup={isAdmin ? () => setAddToGroupMember(member) : undefined}
+                                showAddButton={isAdmin}
                             />
                         ))}
                     </div>
