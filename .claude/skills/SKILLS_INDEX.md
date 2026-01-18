@@ -106,8 +106,11 @@ Example:
 ├── systematic-debugging/
 │   └── SKILL.md                 ← Methodical debugging protocol
 │
-└── parallel-dispatch/
-    └── SKILL.md                 ← Coordinate parallel agent execution
+├── parallel-dispatch/
+│   └── SKILL.md                 ← Coordinate parallel agent execution
+│
+└── push/
+    └── SKILL.md                 ← Git commit, push, PR, merge via @git-ops-agent
 ```
 
 ## Skill Categories
@@ -147,6 +150,7 @@ Example:
 | **task-router** | Auto-route tasks to optimal agents | At start of complex tasks | infer-intent (optional) |
 | **parallel-dispatch** | Coordinate parallel agent execution | When tasks can run in parallel | task-router |
 | **systematic-debugging** | Methodical debugging protocol | When facing non-obvious bugs | - |
+| **push** | Git commit, push, PR, merge | Context low, feature complete, session ending | - |
 
 ## Skill Decision Tree
 
@@ -219,6 +223,7 @@ Example:
 | Checking doc accuracy | `/drift-check` |
 | Generating tests | `/test-from-docs` |
 | Verify UI changes | `/browser-use` |
+| Push when context low | `/push` |
 | Session ending | `/handoff` |
 | Responses degraded | `/remember` |
 | 30-45 min milestone | `/checkpoint` |

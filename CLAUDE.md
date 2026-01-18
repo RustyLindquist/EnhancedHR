@@ -21,6 +21,7 @@ NOT YOUR ROLE: Write implementation code — DELEGATE to agents
 | System optimize  | @ops-agent            | /spawn-ops-agent              | ~4x   |
 | Architecture     | @architect-agent      | /spawn-architect-agent        | ~4x   |
 | Security review  | @security-agent       | /spawn-security-agent         | ~4x   |
+| Git/Push/Merge   | @git-ops-agent        | /push                         | ~4x   |
 | Session analysis | @workflow-analysis    | /analyze                      | ~4x   |
 | Parallel work    | Multiple agents       | Single message, N tasks       | ~15x  |
 
