@@ -724,7 +724,7 @@ export async function getOrgCollectionItems(collectionId: string): Promise<{
             itemType: 'COURSE',
             title: course.title,
             description: course.description,
-            image: course.image,
+            image: course.image_url,
             author: course.author,
             duration: course.duration,
             rating: course.rating,

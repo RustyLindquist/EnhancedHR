@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
+import CollectionSurface from '@/components/CollectionSurface';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection } from '@/types';
 import { ContextScope } from '@/lib/ai/types';
@@ -26,6 +27,7 @@ export default function OrgCoursesLayout({
     const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
     const [userOrgId, setUserOrgId] = useState<string | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
 
     // Load user data and collections
     useEffect(() => {
@@ -106,13 +108,30 @@ export default function OrgCoursesLayout({
                     orgId={userOrgId || undefined}
                 />
 
-                {/* Main Content Area */}
-                <main className="flex-1 overflow-hidden flex flex-col">
+                {/* Main Content Area (The Canvas) */}
+                <div className="flex-1 flex flex-col relative overflow-hidden bg-transparent">
                     {/* Content - no padding here, pages handle their own padding */}
                     <div className="flex-1 overflow-hidden">
                         {children}
                     </div>
-                </main>
+
+                    {/* Collection Surface at bottom */}
+                    <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none">
+                        <CollectionSurface
+                            isDragging={false}
+                            activeFlareId={null}
+                            customCollections={customCollections}
+                            isOpen={isCollectionSurfaceOpen}
+                            onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                            onCollectionClick={(id) => {
+                                handleSelectCollection(id);
+                            }}
+                            onDropCourse={() => {
+                                // No-op for org courses page - drag/drop handled elsewhere
+                            }}
+                        />
+                    </div>
+                </div>
 
                 {/* Right AI Panel */}
                 <AIPanel
