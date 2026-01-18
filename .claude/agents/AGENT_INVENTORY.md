@@ -18,6 +18,7 @@ Comprehensive registry of all agents, their capabilities, costs, and selection c
 | System optimization | Ops Agent | inherit | ~4x | `/spawn-ops-agent` |
 | Architecture | Architect Agent | opus | ~4x | `/spawn-architect-agent` |
 | Security review | Security Agent | opus | ~4x | `/spawn-security-agent` |
+| Git/Push/Merge | Git Ops Agent | sonnet | ~4x | `/push` |
 | Session analysis | Workflow Analysis | opus | ~4x | `/analyze` |
 
 ---
@@ -306,6 +307,48 @@ Comprehensive registry of all agents, their capabilities, costs, and selection c
 
 ---
 
+### Git Ops Agent (Push Specialist)
+
+**File**: `.claude/agents/git-ops-agent.md`
+
+**Model**: `sonnet` (balanced for git operations)
+
+**Capabilities**:
+- Git commit, push, PR, merge operations
+- Package manager detection (npm/pnpm/yarn)
+- Build validation before commits
+- File categorization (feature/local/test)
+- Merge conflict resolution (simple cases)
+- Lockfile management
+
+**Quick Skill**: `/push "description"`
+
+**Best For**:
+- Pushing changes when context is low
+- Atomic commit-push-merge workflow
+- End-of-session commits
+- Consistent git operations
+
+**Not For**:
+- Fixing code or build errors
+- Editing source files
+- Architecture decisions
+- Documentation updates
+
+**Escalates When**:
+- Build fails requiring code changes
+- Complex merge conflicts in business logic
+- Unclear file inclusion decisions
+- Security concerns in staged files
+
+**Output Includes**:
+- PR URL
+- Files committed/excluded
+- Verification checklist
+- Final git status
+
+---
+
 ### Workflow Analysis Agent (Process Optimizer)
 
 **File**: `.claude/agents/workflow-analysis-agent.md`
@@ -447,6 +490,10 @@ Does this involve UI/components/styling?
 
 Is this about testing?
 ├─ Yes → Test Agent (sonnet)
+└─ No ↓
+
+Is this about git/push/merge (especially when context is low)?
+├─ Yes → /push (Git Ops Agent)
 └─ No ↓
 
 Is this about optimization/process?
