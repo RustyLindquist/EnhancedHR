@@ -12,6 +12,7 @@ import {
     embedFileChunks
 } from '@/lib/context-embeddings';
 import { parseFileContent, chunkText, uploadFileToStorage } from '@/lib/file-parser';
+import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 
 interface CreateContextItemDTO {
     collection_id?: string | null; // null for Global
@@ -138,11 +139,30 @@ export async function createFileContextItem(
         const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
         const textContent = parseResult.success ? parseResult.text : '';
 
-        // 2. Upload to storage
+        // 2. Generate AI summary of the file content (if we have parsed text)
+        let summary: string | null = null;
+        if (textContent && textContent.length > 50) {
+            try {
+                // Truncate to ~2500 chars to keep costs low
+                const truncatedText = textContent.substring(0, 2500);
+                const summaryPrompt = `Summarize the following document in 2-3 concise sentences for a preview card. Focus on the main topic and key points:\n\n${truncatedText}`;
+
+                const generatedSummary = await generateQuickAIResponse(summaryPrompt, 150);
+                if (generatedSummary && generatedSummary.length > 0) {
+                    summary = generatedSummary;
+                    console.log('[createFileContextItem] Generated summary:', summary.substring(0, 100) + '...');
+                }
+            } catch (summaryError) {
+                // Don't let summary failure block the upload
+                console.warn('[createFileContextItem] Summary generation failed (non-blocking):', summaryError);
+            }
+        }
+
+        // 3. Upload to storage
         const file = new File([fileBuffer], fileName, { type: fileType });
         const upload = await uploadFileToStorage(file, user.id, resolvedCollectionId || undefined);
 
-        // 3. Create the context item record
+        // 4. Create the context item record
         const { data: inserted, error } = await supabase
             .from('user_context_items')
             .insert({
@@ -157,7 +177,8 @@ export async function createFileContextItem(
                     url: upload.success ? upload.url : null,
                     storagePath: upload.success ? upload.path : null,
                     parsedTextLength: textContent.length,
-                    parseError: parseResult.success ? null : parseResult.error
+                    parseError: parseResult.success ? null : parseResult.error,
+                    summary
                 }
             })
             .select()
@@ -168,7 +189,7 @@ export async function createFileContextItem(
             return { success: false, error: error.message };
         }
 
-        // 4. Generate embeddings from parsed content
+        // 5. Generate embeddings from parsed content
         if (textContent && textContent.length > 0) {
             const chunks = chunkText(textContent, 1000, 200);
             const embeddingResult = await embedFileChunks(
@@ -408,6 +429,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         lessons: string[];
         conversations: string[];
         notes: string[];
+        resources: string[];
         itemsWithoutType: any[];
     }
 
@@ -423,6 +445,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         lessons: [],
         conversations: [],
         notes: [],
+        resources: [],
         itemsWithoutType: []
     };
 
@@ -438,6 +461,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             grouped.conversations.push(item.item_id);
         } else if (item.item_type === 'NOTE') {
             grouped.notes.push(item.item_id);
+        } else if (item.item_type === 'RESOURCE') {
+            grouped.resources.push(item.item_id);
         } else {
             grouped.itemsWithoutType.push(item);
         }
@@ -576,7 +601,46 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         promises.push(Promise.resolve([]));
     }
 
-    // F. Context Items (Already fetched but logic should be here or separate?
+    // F. Resources (Join Course for metadata)
+    if (grouped.resources.length > 0) {
+        promises.push(
+            admin.from('resources')
+                .select(`
+                    id,
+                    course_id,
+                    title,
+                    type,
+                    url,
+                    size,
+                    summary,
+                    created_at,
+                    courses (
+                        id,
+                        title,
+                        image_url
+                    )
+                `)
+                .in('id', grouped.resources)
+                .then(({ data }) => data?.map((r: any) => ({
+                    id: r.id,
+                    title: r.title,
+                    type: 'RESOURCE',
+                    itemType: 'RESOURCE',
+                    resourceType: r.type,
+                    url: r.url,
+                    size: r.size,
+                    summary: r.summary,
+                    course_id: r.course_id,
+                    courseTitle: r.courses?.title,
+                    image: r.courses?.image_url,
+                    created_at: r.created_at
+                })) || [])
+        );
+    } else {
+        promises.push(Promise.resolve([]));
+    }
+
+    // G. Context Items (Already fetched but logic should be here or separate?
     // The original code fetched them separately. We can keep that or merge.
     // Let's keep fetching them separately as they are in a different table 'user_context_items'
     // BUT we need to return them in the 'contextItems' prop or merge into 'courses' (which is actually 'items').
@@ -584,7 +648,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
     // So distinct is fine.
 
     // Execute fetches
-    const [courses, modules, lessons, conversations, notes] = await Promise.all(promises);
+    const [courses, modules, lessons, conversations, notes, resources] = await Promise.all(promises);
 
     // 3. Fetch Context Items (Same as before)
     const { data: contextItems } = await admin
@@ -602,7 +666,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
         ...modules,
         ...lessons,
         ...conversations,
-        ...notes
+        ...notes,
+        ...resources
     ];
 
     return {
@@ -613,7 +678,8 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             modules: grouped.modules.length,
             lessons: grouped.lessons.length,
             conversations: grouped.conversations.length,
-            notes: grouped.notes.length
+            notes: grouped.notes.length,
+            resources: grouped.resources.length
         }}
     };
 }

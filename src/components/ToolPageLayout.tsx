@@ -32,12 +32,12 @@ const NoteDragLayer: React.FC<{ item: NoteDragItem | null; x: number; y: number 
             className="fixed pointer-events-none z-[150] transform -translate-x-1/2 -translate-y-1/2 opacity-90 scale-90"
             style={{ left: x, top: y }}
         >
-            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#9A9724]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#F5E6A3]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-[#9A9724]/20 rounded text-[#9A9724]">
+                    <div className="p-2 bg-[#F5E6A3]/20 rounded text-[#F5E6A3]">
                         <StickyNote size={18} />
                     </div>
-                    <span className="text-xs font-bold text-[#9A9724] uppercase tracking-wider">Note</span>
+                    <span className="text-xs font-bold text-[#F5E6A3] uppercase tracking-wider">Note</span>
                 </div>
                 <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
             </div>

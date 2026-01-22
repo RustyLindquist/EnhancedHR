@@ -30,9 +30,14 @@ interface UniversalCardProps {
     credits?: { shrm?: number | boolean; hrci?: number | boolean }; // Available credits
     collections?: string[]; // List of collection names for footer display
     iconName?: string; // Dynamic icon name for TOOL cards (e.g., 'Drama', 'TrendingUp')
+    contextSubtype?: 'TEXT' | 'FILE'; // For CONTEXT cards to differentiate text vs file
+    fileUrl?: string; // For FILE context cards and RESOURCE cards - URL to download the file
+    fileName?: string; // For FILE context cards and RESOURCE cards - filename for download
+    resourceType?: string; // For RESOURCE cards - file type (PDF, DOC, etc.)
     onAction?: () => void;
     onRemove?: () => void;
     onAdd?: () => void;
+    onDownload?: () => void; // For FILE context cards - download handler
     draggable?: boolean;
     onDragStart?: (e: React.DragEvent) => void;
 }
@@ -60,9 +65,14 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     credits,
     collections,
     iconName,
+    contextSubtype,
+    fileUrl,
+    fileName,
+    resourceType,
     onAction,
     onRemove,
     onAdd,
+    onDownload,
     draggable,
     onDragStart
 }) => {
@@ -153,16 +163,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(75, 139, 179, 0.6)' // #4B8BB3 glow
         },
-        NOTE: { // Notes Card - Olive green #9A9724
-            headerColor: 'bg-[#9A9724]/80',
-            borderColor: 'border-[#9A9724]/40',
-            labelColor: 'text-white',
-            barColor: 'bg-[#9A9724]/80',
+        NOTE: { // Notes Card - Classic Sticky Note Yellow #F5E6A3
+            headerColor: 'bg-[#F5E6A3]',
+            borderColor: 'border-[#D4C078]/60',
+            labelColor: 'text-slate-700',
+            barColor: 'bg-[#F5E6A3]',
             icon: StickyNote,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(154, 151, 36, 0.4)', // #9A9724 glow
-            bodyColor: 'bg-[#9A9724]/70', // Slightly more opaque for better text readability
-            footerTextColor: 'text-white'
+            buttonStyle: 'bg-black/10 hover:bg-black/20 text-slate-700',
+            glowColor: 'rgba(245, 230, 163, 0.5)', // Warm yellow glow
+            bodyColor: 'bg-[#F5E6A3]', // Solid sticky note yellow
+            footerTextColor: 'text-slate-600'
         },
         TOOL: { // Tools Card - Teal #0D9488
             headerColor: 'bg-[#0D9488]',
@@ -270,7 +280,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#9A9724]/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#9A9724]/70' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#D4C078]/60' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#F5E6A3]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
             >
 
             {/* --- Top Section --- */}
@@ -294,21 +304,35 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 <div data-header-actions className="absolute top-0 left-0 w-full p-3 z-20 flex flex-col gap-2">
 
                     {/* Row 1: Type Label & Core Actions */}
-                    <div className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
-                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70 truncate mr-2">{type === 'AI_INSIGHT' ? 'CONTEXT' : type === 'HELP' ? 'FEATURES' : type.replace('_', ' ')}</span>
+                    <div className={`flex items-center justify-between ${type === 'NOTE' ? 'bg-slate-800/60' : 'bg-black/40'} backdrop-blur-sm px-3 py-1.5 rounded-lg border ${type === 'NOTE' ? 'border-slate-700/30' : 'border-white/5'} shadow-sm`}>
+                        <span className={`text-[10px] font-bold tracking-[0.2em] uppercase ${type === 'NOTE' ? 'text-white/90' : 'text-white/70'} truncate mr-2`}>{type === 'AI_INSIGHT' ? 'CONTEXT' : type === 'HELP' ? 'FEATURES' : type === 'CONTEXT' && contextSubtype ? `CONTEXT (${contextSubtype})` : type.replace('_', ' ')}</span>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {onRemove && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                                    className="text-white/40 hover:text-white transition-colors p-1"
+                                    className={`${type === 'NOTE' ? 'text-white/60 hover:text-white' : 'text-white/40 hover:text-white'} transition-colors p-1`}
                                 >
                                     <Trash2 size={14} />
+                                </button>
+                            )}
+                            {/* Download button for FILE context cards and RESOURCE cards */}
+                            {((type === 'CONTEXT' && contextSubtype === 'FILE') || type === 'RESOURCE') && fileUrl && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Open in new tab for download
+                                        window.open(fileUrl, '_blank');
+                                    }}
+                                    className="text-white/40 hover:text-white transition-colors p-1"
+                                    title="Download file"
+                                >
+                                    <Download size={14} />
                                 </button>
                             )}
                             {onAdd && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                    className="text-white/40 hover:text-white transition-colors p-1"
+                                    className={`${type === 'NOTE' ? 'text-white/60 hover:text-white' : 'text-white/40 hover:text-white'} transition-colors p-1`}
                                 >
                                     <Plus size={16} />
                                 </button>
@@ -328,7 +352,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             ? 'top-1/2 -translate-y-1/2 pt-8'
                             : 'bottom-4'
                 }`}>
-                    <h3 className={`font-bold text-white leading-tight mb-1 drop-shadow-md line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
+                    <h3 className={`font-bold ${type === 'NOTE' ? 'text-slate-800' : 'text-white'} leading-tight mb-1 ${type === 'NOTE' ? '' : 'drop-shadow-md'} line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
                         {title}
                     </h3>
                     {/* Author line with rating for Course cards */}
@@ -358,6 +382,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     <div className="absolute right-[-20px] bottom-[-20px] opacity-10 rotate-[-15deg] pointer-events-none">
                         {type === 'TOOL' ? (
                             <DynamicToolIcon size={160} />
+                        ) : type === 'CONTEXT' && contextSubtype === 'FILE' ? (
+                            <Paperclip size={160} />
                         ) : (
                             <config.icon size={160} />
                         )}
@@ -375,21 +401,20 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             {/* --- Bottom Section (Body) --- */}
             <div className={`${bottomHeight} px-5 py-4 flex flex-col justify-between relative ${(config as any).bodyColor || 'bg-[#0B1120]'} transition-all duration-300`}>
 
-                {/* Dark overlay for NOTE cards - about half as dark as header overlay (bg-black/40) for better text contrast */}
-                {type === 'NOTE' && (
-                    <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
-                )}
-
                 {/* Description / Content Preview */}
                 <div className="flex-1 min-h-0 relative z-10">
 
-                    {type === 'MODULE' || type === 'LESSON' || type === 'RESOURCE' ? (
+                    {type === 'MODULE' || type === 'LESSON' ? (
                         <div className="mb-2">
                             <p className="text-[9px] font-bold text-brand-blue-light uppercase tracking-widest mb-1 opacity-70 truncate">
-                                {type === 'RESOURCE' ? 'THIS IS A RESOURCE FROM' : `THIS IS A ${type} FROM`}
+                                {`THIS IS A ${type} FROM`}
                             </p>
                             <p className="text-[13px] text-slate-300 line-clamp-2 font-light leading-snug">{description}</p>
                         </div>
+                    ) : type === 'NOTE' ? (
+                        <p className="text-[13px] text-slate-700 leading-relaxed line-clamp-3 font-light">
+                            {description}
+                        </p>
                     ) : (
                         <p className="text-[13px] text-slate-300 leading-relaxed line-clamp-3 font-light">
                             {description}
@@ -398,15 +423,20 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Footer (Meta + Action) */}
-                <div className="flex items-center justify-between mt-4 pt-2 border-t border-white/5 gap-2 relative z-10">
+                <div className={`flex items-center justify-between mt-4 pt-2 border-t ${type === 'NOTE' ? 'border-slate-400/30' : 'border-white/5'} gap-2 relative z-10`}>
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
-                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && meta && (
+                        {type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && type !== 'RESOURCE' && meta && (
                             <div className="flex items-center gap-1.5 truncate">
                                 <Clock size={12} className="flex-shrink-0" />
                                 <span className="text-[10px] font-bold tracking-wider uppercase truncate">{meta}</span>
                             </div>
+                        )}
+
+                        {/* Resource type on left for RESOURCE cards */}
+                        {type === 'RESOURCE' && resourceType && (
+                            <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500 truncate">{resourceType}</span>
                         )}
 
                         {/* Course Credits */}
@@ -439,17 +469,17 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             {/* Left side: Collections list */}
                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                 {collections && collections.length > 0 ? (
-                                    <span className="text-[10px] font-medium text-white/80 truncate">
+                                    <span className="text-[10px] font-medium text-slate-600 truncate">
                                         {collections.slice(0, 2).join(', ')}
                                         {collections.length > 2 && ` +${collections.length - 2}`}
                                     </span>
                                 ) : (
-                                    <span className="text-[10px] text-white/50 italic">No collections</span>
+                                    <span className="text-[10px] text-slate-500 italic">No collections</span>
                                 )}
                             </div>
                             {/* Right side: Date */}
                             {meta && (
-                                <div className="flex items-center gap-1.5 text-white/80 flex-shrink-0">
+                                <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
                                     <Clock size={12} />
                                     <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                                 </div>
@@ -457,16 +487,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </>
                     )}
 
-                    {/* Conversation, Context, AI_Insight, Profile, Help, Tool_Conversation cards: Show date on right (no button) */}
-                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'TOOL_CONVERSATION') && meta && (
+                    {/* Conversation, Context, AI_Insight, Profile, Help, Tool_Conversation, Resource cards: Show date on right (no button) */}
+                    {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'TOOL_CONVERSATION' || type === 'RESOURCE') && meta && (
                         <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
                             <Clock size={12} />
                             <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                         </div>
                     )}
 
-                    {/* Other cards (not Course, Module, Org_Course, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, or Tool_Conversation): Show action button */}
-                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'ORG_COURSE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && actionLabel && (
+                    {/* Other cards (not Course, Module, Org_Course, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, or Resource): Show action button */}
+                    {type !== 'COURSE' && type !== 'MODULE' && type !== 'ORG_COURSE' && type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'NOTE' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && type !== 'RESOURCE' && actionLabel && (
                         <button
                             onClick={onAction}
                             className={`
@@ -481,12 +511,6 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         </button>
                     )}
 
-                    {/* Resource Download Icon Override */}
-                    {type === 'RESOURCE' && (
-                        <button className="text-slate-500 hover:text-white transition-colors flex-shrink-0 p-1">
-                            <Download size={16} />
-                        </button>
-                    )}
                 </div>
             </div>
 

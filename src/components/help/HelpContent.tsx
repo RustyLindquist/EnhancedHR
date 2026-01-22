@@ -1861,8 +1861,8 @@ function NotesHelpContent() {
             {/* Value/Purpose */}
             <section>
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-[#9A9724]/20">
-                        <StickyNote size={20} className="text-[#9A9724]" />
+                    <div className="p-2 rounded-lg bg-[#F5E6A3]/20">
+                        <StickyNote size={20} className="text-[#F5E6A3]" />
                     </div>
                     <h3 className="text-lg font-bold text-white">Take Notes While You Learn</h3>
                 </div>
@@ -1884,19 +1884,19 @@ function NotesHelpContent() {
                     <p>When viewing a course, you can access notes from the AI panel on the right side:</p>
                     <ul className="space-y-2">
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span className="text-[#F5E6A3] mt-1">•</span>
                             <span>Switch to the <span className="text-white font-medium">Notes</span> tab to see your course notes</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span className="text-[#F5E6A3] mt-1">•</span>
                             <span>Click <span className="text-white font-medium">+ Note</span> to create a new note for this course</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span className="text-[#F5E6A3] mt-1">•</span>
                             <span>Click any existing note to edit it in the panel editor</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9A9724] mt-1">•</span>
+                            <span className="text-[#F5E6A3] mt-1">•</span>
                             <span>Notes auto-save as you type, so you never lose your work</span>
                         </li>
                     </ul>
@@ -1937,9 +1937,9 @@ function NotesHelpContent() {
             </section>
 
             {/* Tip */}
-            <section className="bg-[#9A9724]/10 border border-[#9A9724]/30 rounded-xl p-5">
+            <section className="bg-[#F5E6A3]/10 border border-[#F5E6A3]/30 rounded-xl p-5">
                 <div className="flex items-start gap-3">
-                    <Lightbulb size={20} className="text-[#9A9724] flex-shrink-0 mt-0.5" />
+                    <Lightbulb size={20} className="text-[#F5E6A3] flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-medium text-white mb-1">Pro Tip</p>
                         <p className="text-sm text-slate-400">

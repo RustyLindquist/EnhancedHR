@@ -50,7 +50,7 @@ Provides a unified card interface for displaying 12 different content types with
 | CONTEXT | `bg-[#7c2d12]` | `border-orange-500/30` | `rgba(234,88,12,0.5)` |
 | AI_INSIGHT | `bg-[#7a4500]` | `border-[#FF9300]/40` | `rgba(255,147,0,0.6)` |
 | HELP | `bg-[#4B8BB3]` | `border-[#4B8BB3]/30` | `rgba(75,139,179,0.6)` |
-| NOTE | `bg-[#9A9724]/80` | `border-[#9A9724]/40` | `rgba(154,151,36,0.4)` |
+| NOTE | `bg-[#F5E6A3]` | `border-[#D4C078]/60` | `rgba(245,230,163,0.5)` |
 | TOOL | `bg-[#0D9488]` | `border-teal-500/30` | `rgba(13,148,136,0.6)` |
 
 ## Props

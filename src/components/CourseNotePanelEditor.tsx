@@ -173,7 +173,7 @@ const CourseNotePanelEditor: React.FC<CourseNotePanelEditorProps> = ({
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 size={24} className="animate-spin text-[#9A9724]" />
+                <Loader2 size={24} className="animate-spin text-[#F5E6A3]" />
             </div>
         );
     }
