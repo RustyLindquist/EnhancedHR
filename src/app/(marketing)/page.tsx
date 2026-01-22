@@ -304,7 +304,7 @@ export default async function MarketingHomePage() {
                                 <p className="text-slate-500 text-sm mb-8">per user</p>
 
                                 <Link
-                                    href="/join"
+                                    href="/login?view=signup"
                                     className="block w-full py-4 rounded-xl bg-brand-blue-light text-brand-black font-bold text-lg hover:bg-white transition-all shadow-lg hover:shadow-brand-blue-light/20 mb-6"
                                 >
                                     Start Your Free Trial

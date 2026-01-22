@@ -3,10 +3,12 @@
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { login, signup, resetPassword, verifyEmail, resendVerification, signInWithOAuth } from './actions'
-import { Mail, Lock, User, ArrowRight, Loader2, Building, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Building, Eye, EyeOff, Menu } from 'lucide-react'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 
 function LoginPageContent() {
     const searchParams = useSearchParams()
@@ -100,34 +102,72 @@ function LoginPageContent() {
     }
 
     return (
-        <div className="min-h-screen w-full bg-[#051114] flex flex-col relative overflow-hidden font-sans text-white">
+        <div className="min-h-screen w-full bg-[#0A0D12] flex flex-col relative overflow-hidden font-sans text-white">
 
             {/* 1. Background System */}
             <BackgroundSystem theme={BACKGROUND_THEMES[0]} />
 
-            {/* 2. Canvas Header */}
-            <header className="absolute top-0 left-0 w-full p-8 z-20">
-                <div className="flex flex-col">
-                    <span className="text-brand-blue-light text-[10px] font-bold uppercase tracking-widest mb-1">Platform</span>
-                    <h1 className="text-2xl font-light tracking-wide text-white">ACCOUNT ACCESS</h1>
+            {/* 2. Site Navigation Header */}
+            <nav className="fixed top-0 w-full z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-2 group">
+                        <Image
+                            src="/images/logos/EnhancedHR-logo.png"
+                            alt="EnhancedHR"
+                            width={180}
+                            height={40}
+                            className="w-[180px] h-auto"
+                        />
+                    </Link>
+
+                    {/* Desktop Links */}
+                    <div className="hidden md:flex items-center gap-8">
+                        <Link href="/experts" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
+                            Experts
+                        </Link>
+                        <Link href="/#pricing" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
+                            Pricing
+                        </Link>
+                        <Link href="/login" className="text-sm font-medium text-white hover:text-brand-blue-light transition-colors">
+                            Log In
+                        </Link>
+                        <Link
+                            href="/login?view=signup"
+                            className="px-5 py-2.5 rounded-full bg-brand-blue-light text-brand-black text-sm font-bold hover:bg-white transition-all shadow-[0_0_20px_rgba(120,192,240,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+                        >
+                            Get Started
+                        </Link>
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <button className="md:hidden text-white">
+                        <Menu size={24} />
+                    </button>
                 </div>
-            </header>
+            </nav>
 
-            {/* 3. Main Content Area - Vertical Stack */}
-            <main className="flex-1 flex flex-col items-center justify-center relative z-10 p-4 pt-20">
+            {/* 3. Main Content Area - Side by Side Layout */}
+            <main className="flex-1 flex items-center justify-center relative z-10 pt-24 pb-12 px-6">
+                {/* Centered container for logo + card */}
+                <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 w-full max-w-4xl">
 
-                {/* Logo Area */}
-                <div className="flex flex-col items-center mb-10 transform hover:scale-105 transition-transform duration-500">
-                    <img
-                        src="/images/logos/EnhancedHR-logo-full-vertical.png"
-                        alt="EnhancedHR"
-                        className="w-[250px] h-auto object-contain drop-shadow-[0_0_30px_rgba(120,192,240,0.3)]"
-                    />
-                </div>
+                    {/* Logo Area - Left Side (centered vertically with card) */}
+                    <div className="flex items-center justify-center lg:justify-end shrink-0">
+                        <div className="transform hover:scale-[1.02] transition-transform duration-500">
+                            <Image
+                                src="/images/logos/EnhancedHR-logo-full-vertical.png"
+                                alt="EnhancedHR"
+                                width={220}
+                                height={160}
+                                className="w-[180px] lg:w-[220px] h-auto object-contain drop-shadow-[0_0_40px_rgba(120,192,240,0.25)]"
+                            />
+                        </div>
+                    </div>
 
-                {/* Auth Card */}
-                <div className="w-full max-w-[480px]">
-                    <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                    {/* Auth Card Container - Right Side */}
+                    <div className="w-full max-w-[460px] flex flex-col">
+                    <div className="bg-[#0f172a]/70 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden">
 
                         {/* Card Header */}
                         <div className="flex items-center justify-between mb-8">
@@ -159,6 +199,26 @@ function LoginPageContent() {
                                 </button>
                             )}
                         </div>
+
+                        {/* Account Type Toggle - Show for signup only */}
+                        {view === 'signup' && (
+                            <div className="flex p-1 bg-[#0A0D12] border border-white/10 rounded-lg mb-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setAccountType('individual')}
+                                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'individual' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Individual
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAccountType('org')}
+                                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'org' ? 'bg-brand-blue-light/20 text-brand-blue-light shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Organization
+                                </button>
+                            </div>
+                        )}
 
                         {/* OAuth Buttons - Show for login and signup */}
                         {(view === 'login' || view === 'signup') && (
@@ -193,7 +253,7 @@ function LoginPageContent() {
                         )}
 
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="space-y-5">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             {/* Hidden field for redirect after login */}
                             <input type="hidden" name="next" value={searchParams.get('next') || ''} />
 
@@ -248,24 +308,6 @@ function LoginPageContent() {
                             {/* SIGNUP VIEW */}
                             {view === 'signup' && (
                                 <div className="space-y-4">
-                                    {/* Account Type Toggle */}
-                                    <div className="flex p-1 bg-[#0A0D12] border border-white/10 rounded-lg mb-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => setAccountType('individual')}
-                                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'individual' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                                        >
-                                            Individual
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setAccountType('org')}
-                                            className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${accountType === 'org' ? 'bg-brand-blue-light/20 text-brand-blue-light shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-                                        >
-                                            Organization
-                                        </button>
-                                    </div>
-
                                     {/* Org Name Input */}
                                     {accountType === 'org' && (
                                         <div className="space-y-2 animate-fade-in">
@@ -366,45 +408,43 @@ function LoginPageContent() {
 
                             {/* MEMBERSHIP SELECTION (Sign Up Only) */}
                             {view === 'signup' && (
-                                <div className="mt-6 pt-6 border-t border-white/10">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-3 block">Membership Plan</label>
-
-                                    <div className="grid grid-cols-1 gap-3">
+                                <div className="mt-4">
+                                    <div className="grid grid-cols-2 gap-3">
                                         {/* Free Trial Option */}
                                         <div
                                             onClick={() => setMembershipType('free')}
-                                            className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'free' ? 'bg-brand-blue-light/10 border-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
+                                            className={`relative p-3 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'free' ? 'bg-brand-blue-light/10 border-brand-blue-light shadow-[0_0_15px_rgba(120,192,240,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
                                         >
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className={`text-sm font-bold ${membershipType === 'free' ? 'text-brand-blue-light' : 'text-white'}`}>
-                                                    {accountType === 'org' ? 'Org Free Trial' : 'Free Trial'}
+                                                    Free Trial
                                                 </span>
-                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${membershipType === 'free' ? 'border-brand-blue-light bg-brand-blue-light' : 'border-slate-600'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${membershipType === 'free' ? 'border-brand-blue-light bg-brand-blue-light' : 'border-slate-600'}`}>
                                                     {membershipType === 'free' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                                                 </div>
                                             </div>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
-                                                {accountType === 'org' ? 'Trial access for your team.' : 'Access to limited courses.'} Upgrade anytime.<br />
-                                                <span className="text-brand-blue-light/80 text-[10px] uppercase tracking-wider">No credit card required</span>
+                                            <p className="text-[11px] text-slate-400 leading-snug">
+                                                Limited access<br />
+                                                <span className="text-brand-blue-light/80 text-[10px]">No card required</span>
                                             </p>
                                         </div>
 
                                         {/* Pro Membership Option */}
                                         <div
                                             onClick={() => setMembershipType('pro')}
-                                            className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'pro' ? 'bg-brand-orange/10 border-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
+                                            className={`relative p-3 rounded-xl border cursor-pointer transition-all duration-300 ${membershipType === 'pro' ? 'bg-brand-orange/10 border-brand-orange shadow-[0_0_15px_rgba(255,147,0,0.1)]' : 'bg-[#0A0D12] border-white/10 hover:border-white/20'}`}
                                         >
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className={`text-sm font-bold ${membershipType === 'pro' ? 'text-brand-orange' : 'text-white'}`}>
-                                                    {accountType === 'org' ? 'Organization Pro' : 'Professional Membership'}
+                                                    Professional
                                                 </span>
-                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${membershipType === 'pro' ? 'border-brand-orange bg-brand-orange' : 'border-slate-600'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${membershipType === 'pro' ? 'border-brand-orange bg-brand-orange' : 'border-slate-600'}`}>
                                                     {membershipType === 'pro' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                                                 </div>
                                             </div>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
-                                                {accountType === 'org' ? 'Unlimited access for your team.' : 'Unlimited access to all courses & AI tools.'}<br />
-                                                <span className="text-white font-bold">{accountType === 'org' ? '$30/seat/mo' : '$30/month'}</span> <span className="text-slate-500">billed monthly</span>
+                                            <p className="text-[11px] text-slate-400 leading-snug">
+                                                Unlimited access<br />
+                                                <span className="text-white font-bold">$30/month</span>
                                             </p>
                                         </div>
                                     </div>
@@ -461,7 +501,7 @@ function LoginPageContent() {
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className={`w-full py-4 rounded-lg bg-gradient-to-r text-white font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(120,192,240,0.4)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6 ${membershipType === 'pro' && view === 'signup' ? 'from-brand-orange to-red-500 hover:shadow-[0_0_20px_rgba(255,147,0,0.4)]' : 'from-[#054C74] to-[#78C0F0]'}`}
+                                className={`w-full py-3 rounded-lg bg-gradient-to-r text-white font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(120,192,240,0.4)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-5 ${membershipType === 'pro' && view === 'signup' ? 'from-brand-orange to-red-500 hover:shadow-[0_0_20px_rgba(255,147,0,0.4)]' : 'from-[#054C74] to-[#78C0F0]'}`}
                             >
                                 {isLoading ? (
                                     <Loader2 size={20} className="animate-spin" />
@@ -473,13 +513,15 @@ function LoginPageContent() {
                             </button>
                         </form>
                     </div>
-                </div>
 
-                {/* Footer Text */}
-                <div className="mt-8 text-center max-w-md">
-                    <p className="text-slate-600 text-xs">
-                        By continuing, you agree to our <a href="/terms" className="text-slate-500 hover:text-white underline transition-colors">Terms of Service</a> and <a href="/privacy" className="text-slate-500 hover:text-white underline transition-colors">Privacy Policy</a>.
+                    {/* Terms & Privacy - Directly Below Card */}
+                    <p className="mt-5 text-center text-slate-500 text-xs">
+                        By continuing, you agree to our{' '}
+                        <a href="/terms" className="text-slate-400 hover:text-white underline underline-offset-2 transition-colors">Terms of Service</a>
+                        {' '}and{' '}
+                        <a href="/privacy" className="text-slate-400 hover:text-white underline underline-offset-2 transition-colors">Privacy Policy</a>
                     </p>
+                    </div>
                 </div>
             </main>
         </div>
