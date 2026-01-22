@@ -205,11 +205,11 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
         <button
             onClick={handleCreateNote}
             disabled={isCreating}
-            className="w-full text-left rounded-lg overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg opacity-60 hover:opacity-100 border-2 border-dashed border-[#9A9724]/50"
-            style={{ boxShadow: '0 0 15px rgba(154, 151, 36, 0.1)' }}
+            className="w-full text-left rounded-lg overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg opacity-60 hover:opacity-100 border-2 border-dashed border-[#F5E6A3]/50"
+            style={{ boxShadow: '0 0 15px rgba(245, 230, 163, 0.1)' }}
         >
             {/* Header */}
-            <div className="bg-[#9A9724]/40 px-3 py-2 flex items-center gap-2">
+            <div className="bg-[#F5E6A3]/40 px-3 py-2 flex items-center gap-2">
                 <StickyNote size={14} className="text-white/60" />
                 <span className="text-white/70 text-sm font-medium">
                     {isCreating ? 'Creating...' : 'New Note'}
@@ -219,7 +219,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                 </span>
             </div>
             {/* Body */}
-            <div className="bg-[#9A9724]/30 px-3 py-3 flex items-center justify-center">
+            <div className="bg-[#F5E6A3]/30 px-3 py-3 flex items-center justify-center">
                 <span className="text-white/50 text-xs flex items-center gap-2">
                     {isCreating ? (
                         <Loader2 size={12} className="animate-spin" />
@@ -248,7 +248,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
             <div className="flex-1 overflow-y-auto overflow-x-clip space-y-3 pl-2 pr-1 py-2">
                 {isLoading ? (
                     <div className="flex items-center justify-center py-10">
-                        <Loader2 size={24} className="animate-spin text-[#9A9724]" />
+                        <Loader2 size={24} className="animate-spin text-[#F5E6A3]" />
                     </div>
                 ) : (
                     <>
@@ -349,7 +349,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
             {/* Vertical Beam Effect - 1px wide, slow expansion */}
             <div
                 className={`
-                    absolute -left-[1px] top-0 bottom-0 w-px bg-[#9A9724]
+                    absolute -left-[1px] top-0 bottom-0 w-px bg-[#F5E6A3]
                     shadow-[0_0_15px_rgba(154,151,36,0.8)] z-40 pointer-events-none
                     transition-transform duration-[1500ms] ease-out origin-center
                     ${isHandleHovered ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'}
@@ -364,8 +364,8 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                     onMouseEnter={() => setIsHandleHovered(true)}
                     onMouseLeave={() => setIsHandleHovered(false)}
                 >
-                    {/* Note Color Handle: #9A9724 (Yellow/Gold) */}
-                    <div className="w-3 h-16 bg-[#7A7720] border border-white/20 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(154,151,36,0.8)] hover:bg-[#9A9724]">
+                    {/* Note Color Handle: #F5E6A3 (Yellow/Gold) */}
+                    <div className="w-3 h-16 bg-[#D4C078] border border-white/20 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-lg transition-all duration-300 hover:shadow-[0_0_20px_rgba(154,151,36,0.8)] hover:bg-[#F5E6A3]">
                         <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
                         <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
                         <div className="w-0.5 h-0.5 rounded-full bg-brand-black/60"></div>
@@ -378,7 +378,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                 {/* Toggle Button - Placed on border */}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="absolute -left-3 top-9 bg-white/10 border border-white/10 rounded-full p-1 text-white/40 hover:bg-[#9A9724] hover:border-white/20 hover:text-white hover:shadow-[0_0_10px_rgba(154,151,36,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
+                    className="absolute -left-3 top-9 bg-white/10 border border-white/10 rounded-full p-1 text-white/40 hover:bg-[#F5E6A3] hover:border-white/20 hover:text-white hover:shadow-[0_0_10px_rgba(154,151,36,0.5)] transition-all shadow-lg z-50 backdrop-blur-md"
                 >
                     {isOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                 </button>
@@ -387,11 +387,11 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                     <div className="flex items-center overflow-hidden w-full justify-between">
                         {/* Title */}
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[#9A9724]/20 border border-[#9A9724]/30 flex items-center justify-center">
-                                <StickyNote size={16} className="text-[#9A9724]" />
+                            <div className="w-8 h-8 rounded-lg bg-[#F5E6A3]/20 border border-[#F5E6A3]/30 flex items-center justify-center">
+                                <StickyNote size={16} className="text-[#F5E6A3]" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-bold text-sm tracking-widest uppercase text-[#9A9724] drop-shadow-[0_0_5px_rgba(154,151,36,0.5)]">
+                                <span className="font-bold text-sm tracking-widest uppercase text-[#F5E6A3] drop-shadow-[0_0_5px_rgba(154,151,36,0.5)]">
                                     Notes
                                 </span>
                                 <span className="text-[10px] text-slate-400 uppercase tracking-wider">
@@ -436,7 +436,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                                         value={currentNoteTitle}
                                         onChange={(e) => setCurrentNoteTitle(e.target.value)}
                                         placeholder="Untitled Note"
-                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-white placeholder-slate-600 focus:outline-none focus:border-[#9A9724]/50 transition-all text-sm"
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-white placeholder-slate-600 focus:outline-none focus:border-[#F5E6A3]/50 transition-all text-sm"
                                     />
                                 </>
                             ) : (
@@ -460,7 +460,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({
                                                         onClick={() => handleOpenNote(note)}
                                                         className="w-full text-left px-3 py-2 hover:bg-white/5 transition-colors flex items-center gap-2"
                                                     >
-                                                        <StickyNote size={14} className="text-[#9A9724]" />
+                                                        <StickyNote size={14} className="text-[#F5E6A3]" />
                                                         <span className="text-sm text-white truncate flex-1">
                                                             {note.title || 'Untitled Note'}
                                                         </span>

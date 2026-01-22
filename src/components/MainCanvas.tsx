@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
@@ -723,12 +724,12 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
         );
     } else if (item.type === 'NOTE') {
         Content = (
-            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#9A9724]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#F5E6A3]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-[#9A9724]/20 rounded text-[#9A9724]">
+                    <div className="p-2 bg-[#F5E6A3]/20 rounded text-[#F5E6A3]">
                         <StickyNote size={18} />
                     </div>
-                    <span className="text-xs font-bold text-[#9A9724] uppercase tracking-wider">Note</span>
+                    <span className="text-xs font-bold text-[#F5E6A3] uppercase tracking-wider">Note</span>
                 </div>
                 <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
             </div>
@@ -820,6 +821,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onOrgCollectionsUpdate,
     onViewingGroupChange
 }) => {
+    // --- ROUTER ---
+    const router = useRouter();
+
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
     const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
@@ -1800,8 +1804,17 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
             setSelectedCourseSyllabus(syllabus);
 
-            // Still using mock resources for now as we haven't seeded resources table yet
-            const resources = generateMockResources(courseId);
+            // Fetch real resources from database
+            const { data: dbResources } = await supabase
+                .from('resources')
+                .select('id, title, type, url, size')
+                .eq('course_id', courseId)
+                .order('created_at', { ascending: true });
+
+            // Use real resources if available, fall back to mock for courses without resources
+            const resources = dbResources && dbResources.length > 0
+                ? dbResources
+                : generateMockResources(courseId);
             setSelectedCourseResources(resources);
         } catch (error) {
             console.error("Failed to load course details", error);
@@ -1911,7 +1924,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
             setSelectedCourseSyllabus(syllabus);
 
-            const resources = generateMockResources(courseId);
+            // Fetch real resources from database
+            const { data: dbResources } = await supabase
+                .from('resources')
+                .select('id, title, type, url, size')
+                .eq('course_id', courseId)
+                .order('created_at', { ascending: true });
+
+            const resources = dbResources && dbResources.length > 0
+                ? dbResources
+                : generateMockResources(courseId);
             setSelectedCourseResources(resources);
 
             // Set the module to open and go directly to player
@@ -1960,7 +1982,16 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
             setSelectedCourseSyllabus(syllabus);
 
-            const resources = generateMockResources(courseId);
+            // Fetch real resources from database
+            const { data: dbResources } = await supabase
+                .from('resources')
+                .select('id, title, type, url, size')
+                .eq('course_id', courseId)
+                .order('created_at', { ascending: true });
+
+            const resources = dbResources && dbResources.length > 0
+                ? dbResources
+                : generateMockResources(courseId);
             setSelectedCourseResources(resources);
 
             // Set the lesson and module to open
@@ -3535,10 +3566,16 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                 {activeCollectionId !== 'org-team' && activeCollectionId !== 'users-groups' && activeCollectionId !== 'org-analytics' && !viewingGroupMember && (
                     <div className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] flex items-center justify-between px-10 relative">
                         <div className="flex items-center gap-4">
-                            {/* Back Button - appears when there's a previous page to navigate to */}
-                            {previousCollectionId && onGoBack && (
+                            {/* Back Button - appears when there's a previous page to navigate to, or always for Conversations */}
+                            {((previousCollectionId && onGoBack) || activeCollectionId === 'conversations') && (
                                 <button
-                                    onClick={onGoBack}
+                                    onClick={() => {
+                                        if (previousCollectionId && onGoBack) {
+                                            onGoBack();
+                                        } else {
+                                            router.back();
+                                        }
+                                    }}
                                     className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-105 active:scale-95"
                                     title="Go Back"
                                 >

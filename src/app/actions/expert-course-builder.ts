@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
+import { parseFileContent } from '@/lib/file-parser';
 
 // ============================================
 // Permission Check Helper
@@ -604,8 +606,77 @@ export async function addExpertCourseResource(courseId: number, data: {
         return { success: false, error: error.message };
     }
 
+    // Generate AI summary for file-based resources (not LINKs or images)
+    if (resource && ['PDF', 'DOC', 'XLS'].includes(data.type) && data.url) {
+        generateResourceSummary(resource.id, data.url, data.type, supabase).catch(err => {
+            console.error('Error generating resource summary:', err);
+        });
+    }
+
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true, resource };
+}
+
+/**
+ * Generate AI summary for a resource file (runs in background)
+ */
+async function generateResourceSummary(
+    resourceId: string,
+    url: string,
+    type: string,
+    supabase: Awaited<ReturnType<typeof createClient>>
+) {
+    try {
+        // Fetch the file content
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn(`[ResourceSummary] Failed to fetch resource: ${response.status}`);
+            return;
+        }
+
+        const buffer = await response.arrayBuffer();
+
+        // Map resource type to MIME type
+        const mimeTypeMap: Record<string, string> = {
+            'PDF': 'application/pdf',
+            'DOC': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'XLS': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        };
+
+        const mimeType = mimeTypeMap[type] || 'application/octet-stream';
+
+        // Parse the file content
+        const parseResult = await parseFileContent(buffer, mimeType);
+
+        if (!parseResult.success || !parseResult.text || parseResult.text.length < 50) {
+            console.warn(`[ResourceSummary] Could not parse content for resource ${resourceId}`);
+            return;
+        }
+
+        // Truncate text for summary generation (keep costs low)
+        const truncatedText = parseResult.text.substring(0, 2500);
+
+        // Generate summary
+        const summaryPrompt = `Summarize the following document in 2-3 concise sentences for a preview card. Focus on the main topic and key takeaways:\n\n${truncatedText}`;
+
+        const summary = await generateQuickAIResponse(summaryPrompt, 150);
+
+        if (summary && summary.length > 10) {
+            // Update the resource with the summary
+            const { error: updateError } = await supabase
+                .from('resources')
+                .update({ summary })
+                .eq('id', resourceId);
+
+            if (updateError) {
+                console.error(`[ResourceSummary] Failed to update resource: ${updateError.message}`);
+            } else {
+                console.log(`[ResourceSummary] Generated summary for resource ${resourceId}: ${summary.substring(0, 100)}...`);
+            }
+        }
+    } catch (error) {
+        console.error(`[ResourceSummary] Error generating summary for resource ${resourceId}:`, error);
+    }
 }
 
 export async function deleteExpertCourseResource(resourceId: string, courseId: number) {

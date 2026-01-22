@@ -131,6 +131,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             cardProps = {
                 ...cardProps,
                 type: 'CONTEXT',
+                contextSubtype: 'TEXT',
                 description: context.content?.text,
                 meta: context.created_at ? new Date(context.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT'
@@ -154,11 +155,14 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             const file = item as any;
             cardProps = {
                 ...cardProps,
-                type: 'RESOURCE',
-                subtitle: 'Uploaded Document',
-                description: file.content?.fileType || 'File',
+                type: 'CONTEXT',
+                contextSubtype: 'FILE',
+                subtitle: 'Uploaded File',
+                description: file.content?.summary || file.content?.fileType || 'File',
                 meta: file.created_at ? new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
-                actionLabel: 'PREVIEW'
+                actionLabel: 'PREVIEW',
+                fileUrl: file.content?.url,
+                fileName: file.content?.fileName || file.title
             };
             break;
         }
@@ -195,9 +199,12 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             cardProps = {
                 ...cardProps,
                 type: 'RESOURCE',
-                subtitle: content.subtitle || 'Resource',
-                description: content.description || 'Reference Material',
-                actionLabel: 'OPEN'
+                subtitle: resContext.courseTitle || content.subtitle || 'Course Resource',
+                description: resContext.summary || content.description || 'Course resource attachment',
+                resourceType: resContext.resourceType || resContext.type || content.resourceType || 'File',
+                meta: resContext.created_at ? new Date(resContext.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
+                fileUrl: resContext.url,
+                fileName: resContext.title
             };
             break;
         }
