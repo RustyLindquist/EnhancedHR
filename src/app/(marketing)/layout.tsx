@@ -50,7 +50,7 @@ export default async function MarketingLayout({
                                     Log In
                                 </Link>
                                 <Link
-                                    href="/join"
+                                    href="/login?view=signup"
                                     className="px-5 py-2.5 rounded-full bg-brand-blue-light text-brand-black text-sm font-bold hover:bg-white transition-all shadow-[0_0_20px_rgba(120,192,240,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
                                 >
                                     Get Started
@@ -105,7 +105,7 @@ export default async function MarketingLayout({
                                 <li><Link href="/experts" className="hover:text-brand-blue-light transition-colors flex items-center gap-2"><ArrowRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 transition-all" /> Experts</Link></li>
                                 <li><Link href="/login" className="hover:text-brand-blue-light transition-colors">Login</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-brand-blue-light transition-colors">Pricing</Link></li>
-                                <li><Link href="/join" className="hover:text-brand-blue-light transition-colors">Get Started</Link></li>
+                                <li><Link href="/login?view=signup" className="hover:text-brand-blue-light transition-colors">Get Started</Link></li>
                             </ul>
                         </div>
 
