@@ -660,6 +660,7 @@ export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [
 export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
     { id: 'author', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'author/courses', label: 'My Courses', icon: BookOpen },
+    { id: 'author/resources', label: 'Expert Resources', icon: Layers },
     { id: 'author/analytics', label: 'AI Analytics', icon: BarChart2 },
     { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
     { id: 'author/profile', label: 'Expert Profile', icon: UserCircle },

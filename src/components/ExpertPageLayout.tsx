@@ -14,9 +14,10 @@ interface ExpertPageLayoutProps {
     children: React.ReactNode;
     activeNavId?: string;
     title?: string;
+    headerActions?: React.ReactNode;
 }
 
-export default function ExpertPageLayout({ children, activeNavId, title = 'Expert Console' }: ExpertPageLayoutProps) {
+export default function ExpertPageLayout({ children, activeNavId, title = 'Expert Console', headerActions }: ExpertPageLayoutProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { currentTheme, setTheme } = useTheme();
@@ -25,6 +26,17 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
 
     // Determine active nav item from pathname if not provided
     const currentActiveId = activeNavId || (pathname?.replace('/', '') || 'author');
+
+    // Dynamic title based on route if not provided
+    const ROUTE_TITLES: Record<string, string> = {
+        'author': 'Expert Dashboard',
+        'author/courses': 'My Courses',
+        'author/resources': 'Expert Resources',
+        'author/analytics': 'AI Analytics',
+        'author/earnings': 'Earnings',
+        'author/profile': 'Expert Profile',
+    };
+    const displayTitle = title !== 'Expert Console' ? title : (ROUTE_TITLES[currentActiveId] || title);
 
     useEffect(() => {
         async function loadCourses() {
@@ -71,10 +83,12 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
                     {/* Canvas Header */}
                     <CanvasHeader
                         context="Expert Portal"
-                        title={title}
+                        title={displayTitle}
                         onBack={() => router.push('/dashboard')}
                         backLabel="Back to Dashboard"
-                    />
+                    >
+                        {headerActions}
+                    </CanvasHeader>
 
                     {/* Main Content Area */}
                     <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative custom-scrollbar">

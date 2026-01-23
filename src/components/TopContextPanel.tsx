@@ -12,6 +12,10 @@ interface TopContextPanelProps {
     initialType?: ContextItemType; // For "Add Context" vs "Add File"
     userId: string;
     onSaveSuccess?: () => void;
+    // Optional custom handlers for special collections (e.g., Expert Resources)
+    customCreateHandler?: (data: { type: ContextItemType; title: string; content: any }) => Promise<{ success: boolean; error?: string; id?: string }>;
+    customUpdateHandler?: (id: string, updates: { title?: string; content?: any }) => Promise<{ success: boolean; error?: string }>;
+    customFileCreateHandler?: (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => Promise<{ success: boolean; error?: string; id?: string }>;
 }
 
 const TopContextPanel: React.FC<TopContextPanelProps> = ({
@@ -21,7 +25,10 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
     itemToEdit,
     initialType = 'CUSTOM_CONTEXT',
     userId,
-    onSaveSuccess
+    onSaveSuccess,
+    customCreateHandler,
+    customUpdateHandler,
+    customFileCreateHandler
 }) => {
     const [title, setTitle] = useState('');
     const [textContent, setTextContent] = useState('');
@@ -94,7 +101,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
         setUploadProgress(null);
         try {
             const targetCollectionId = activeCollectionId;
-            let result;
+            let result: { success: boolean; error?: string; id?: string };
 
             // Handle FILE type separately with full upload pipeline
             if (itemType === 'FILE' && selectedFile && !itemToEdit) {
@@ -102,12 +109,20 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                 const fileBuffer = await selectedFile.arrayBuffer();
 
                 setUploadProgress('Parsing content...');
-                result = await createFileContextItem(
-                    targetCollectionId,
-                    selectedFile.name,
-                    selectedFile.type,
-                    fileBuffer
-                );
+                if (customFileCreateHandler) {
+                    result = await customFileCreateHandler(
+                        selectedFile.name,
+                        selectedFile.type,
+                        fileBuffer
+                    );
+                } else {
+                    result = await createFileContextItem(
+                        targetCollectionId,
+                        selectedFile.name,
+                        selectedFile.type,
+                        fileBuffer
+                    );
+                }
                 setUploadProgress('Generating embeddings...');
             } else {
                 // Handle other types (CUSTOM_CONTEXT, PROFILE, AI_INSIGHT)
@@ -125,17 +140,34 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                 }
 
                 if (itemToEdit && itemToEdit.id !== 'virtual-profile-placeholder') {
-                    result = await updateContextItem(itemToEdit.id, {
-                        title: title || 'Untitled',
-                        content: contentToSave
-                    });
+                    // Update existing
+                    if (customUpdateHandler) {
+                        result = await customUpdateHandler(itemToEdit.id, {
+                            title: title || 'Untitled',
+                            content: contentToSave
+                        });
+                    } else {
+                        result = await updateContextItem(itemToEdit.id, {
+                            title: title || 'Untitled',
+                            content: contentToSave
+                        });
+                    }
                 } else {
-                    result = await createContextItem({
-                        collection_id: targetCollectionId,
-                        type: itemType,
-                        title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
-                        content: contentToSave
-                    });
+                    // Create new
+                    if (customCreateHandler) {
+                        result = await customCreateHandler({
+                            type: itemType,
+                            title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
+                            content: contentToSave
+                        });
+                    } else {
+                        result = await createContextItem({
+                            collection_id: targetCollectionId,
+                            type: itemType,
+                            title: title || (itemType === 'PROFILE' ? 'My Profile' : 'Untitled Context'),
+                            content: contentToSave
+                        });
+                    }
                 }
             }
 
