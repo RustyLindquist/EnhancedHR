@@ -455,7 +455,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
             grouped.courses.push(item.course_id);
         } else if (item.item_type === 'MODULE') {
             grouped.modules.push(item.item_id);
-        } else if (item.item_type === 'LESSON') {
+        } else if (item.item_type === 'LESSON' || item.item_type === 'ACTIVITY') {
             grouped.lessons.push(item.item_id);
         } else if (item.item_type === 'CONVERSATION') {
             grouped.conversations.push(item.item_id);
@@ -536,7 +536,7 @@ export async function getCollectionDetailsAction(collectionIdOrAlias: string) {
                 .then(({ data }) => data?.map((l: any) => ({
                     ...l,
                     type: 'LESSON',
-                    itemType: 'LESSON',
+                    itemType: l.type === 'quiz' ? 'ACTIVITY' : 'LESSON',
                     moduleTitle: l.modules?.title,
                     courseTitle: l.modules?.courses?.title,
                     course_id: l.modules?.course_id,
