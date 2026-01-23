@@ -378,9 +378,31 @@ export default function ExpertProfileEditor({
                     )}
                 </div>
 
-                {/* Edit Button for Contact Section */}
+                {/* Action Buttons for Contact Section */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                    {!isEditing && (
+                    {isEditing ? (
+                        <>
+                            <button
+                                onClick={handleCancel}
+                                disabled={isPending}
+                                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={isPending}
+                                className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg text-sm font-bold hover:bg-brand-orange/80 transition-colors disabled:opacity-50"
+                            >
+                                {isPending ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <Save size={16} />
+                                )}
+                                {isPending ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </>
+                    ) : (
                         <button
                             onClick={() => setIsEditing(true)}
                             className="text-xs font-bold text-brand-blue-light hover:text-white transition-colors"

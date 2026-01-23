@@ -256,7 +256,7 @@ function HomeContent() {
         } else {
           console.error('User missing during save!');
         }
-      } else if (modalItem.type === 'MODULE' || modalItem.type === 'LESSON' || modalItem.type === 'RESOURCE') {
+      } else if (modalItem.type === 'MODULE' || modalItem.type === 'LESSON' || modalItem.type === 'RESOURCE' || modalItem.type === 'ACTIVITY') {
         // Course content items (Module, Lesson, Resource) go to collection_items table
         if (user) {
           const { addToCollectionAction } = await import('@/app/actions/collections');

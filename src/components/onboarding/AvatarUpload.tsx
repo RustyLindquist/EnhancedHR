@@ -51,6 +51,11 @@ export default function AvatarUpload({
         };
     }, []);
 
+    // Sync avatarUrl state with currentAvatarUrl prop when it changes
+    useEffect(() => {
+        setAvatarUrl(currentAvatarUrl || null);
+    }, [currentAvatarUrl]);
+
     const handleFileSelect = useCallback(async (file: File) => {
         // Validate file type
         const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

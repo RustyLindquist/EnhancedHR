@@ -71,6 +71,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<{
     revalidatePath('/dashboard');
     revalidatePath('/settings/account');
     revalidatePath('/org/users');
+    revalidatePath('/author/profile');
 
     return { success: true, url: urlData.publicUrl };
 }
