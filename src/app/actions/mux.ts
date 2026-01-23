@@ -21,8 +21,15 @@ export async function getMuxUploadUrl() {
             uploadUrl: upload.url,
             uploadId: upload.id,
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating Mux upload:', error);
+
+        // Extract user-friendly error message from Mux API response
+        const muxMessage = error?.error?.messages?.[0] || error?.message;
+        if (muxMessage?.includes('Free plan is limited')) {
+            throw new Error('Mux video limit reached. Please delete unused videos or upgrade your Mux plan.');
+        }
+
         throw new Error('Failed to create upload URL');
     }
 }
