@@ -531,7 +531,7 @@ export async function addCourseResource(courseId: number, data: {
     const admin = await createAdminClient();
 
     const { data: resource, error } = await admin
-        .from('course_resources')
+        .from('resources')
         .insert({
             course_id: courseId,
             title: data.title,
@@ -578,7 +578,7 @@ export async function deleteCourseResource(resourceId: string, courseId: number)
     });
 
     const { error } = await admin
-        .from('course_resources')
+        .from('resources')
         .delete()
         .eq('id', resourceId);
 
@@ -699,7 +699,7 @@ export async function getCourseForBuilder(courseId: number) {
 
     // Fetch resources
     const { data: resources } = await supabase
-        .from('course_resources')
+        .from('resources')
         .select('*')
         .eq('course_id', courseId);
 
