@@ -82,12 +82,51 @@ export async function updateCourseDetails(courseId: number, data: {
                             .eq('id', course.author_id);
 
                         console.log(`Auto-approved expert ${course.author_id} on first course publish`);
+
+                        // Upgrade their membership (non-blocking)
+                        const { upgradeExpertMembership } = await import('@/lib/expert-membership');
+                        await upgradeExpertMembership(course.author_id);
+                    }
+                } else if (author?.author_status === 'approved') {
+                    // Already approved expert - check if this is their first published course
+                    // (handles case where admin manually approved before first course publish)
+                    const { countPublishedCourses, upgradeExpertMembership } = await import('@/lib/expert-membership');
+                    const count = await countPublishedCourses(course.author_id, courseId);
+                    if (count === 0) {
+                        await upgradeExpertMembership(course.author_id);
                     }
                 }
             }
         } catch (autoApproveError) {
-            // Don't fail the course update if auto-approval fails
-            console.error('Error auto-approving expert:', autoApproveError);
+            // Don't fail the course update if auto-approval or membership upgrade fails
+            console.error('Error auto-approving expert or upgrading membership:', autoApproveError);
+        }
+    }
+
+    // Detect unpublish: status changing FROM published to something else
+    // We need to check the current status BEFORE the update was applied
+    if (data.status && data.status !== 'published') {
+        try {
+            // Get the course's current status (before this update) and author
+            const { data: currentCourse } = await admin
+                .from('courses')
+                .select('author_id, status')
+                .eq('id', courseId)
+                .single();
+
+            // Note: The update already happened, so we check if the status WAS published
+            // by looking at what we're changing FROM. Since we already updated,
+            // we need to check via a different approach - check if they now have zero courses
+            if (currentCourse?.author_id) {
+                const { countPublishedCourses, downgradeExpertMembership } = await import('@/lib/expert-membership');
+                const remaining = await countPublishedCourses(currentCourse.author_id);
+                if (remaining === 0) {
+                    await downgradeExpertMembership(currentCourse.author_id);
+                }
+            }
+        } catch (membershipError) {
+            // Non-blocking: don't fail the course update if membership downgrade fails
+            console.error('[updateCourseDetails] Membership downgrade error:', membershipError);
         }
     }
 

@@ -16,7 +16,7 @@ export default async function AccountPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, organizations!profiles_org_id_fkey(name)')
+        .select('membership_status, role, author_status, trial_minutes_used, billing_period_end, full_name, avatar_url, org_id, billing_disabled, organizations!profiles_org_id_fkey(name)')
         .eq('id', user.id)
         .single();
 
@@ -126,11 +126,32 @@ export default async function AccountPage() {
                                     <p className="text-slate-300 mb-4">Your membership is provided by your organization (<b>{orgName}</b>).</p>
                                 </div>
                             );
-                        } else if (aStatus === 'approved') {
+                        } else if (aStatus === 'approved' && profile?.billing_disabled) {
+                            // Active expert with free membership (has published course)
                             membershipTitle = 'Expert Membership';
                             BillingComponent = (
                                 <div>
-                                    <p className="text-slate-300">As an approved platform expert, your membership is provided free of charge.</p>
+                                    <p className="text-slate-300">As an approved platform expert with a published course, your membership is provided free of charge.</p>
+                                </div>
+                            );
+                        } else if (aStatus === 'approved' && mStatus === 'active') {
+                            // Approved expert who also has a paid subscription (billing resumed after downgrade, then kept paying)
+                            membershipTitle = 'Expert Membership + Pro';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300 mb-4">You are an approved platform expert. You also have an active Pro subscription.</p>
+                                    <ManageSubscriptionButton />
+                                </div>
+                            );
+                        } else if (aStatus === 'approved') {
+                            // Approved expert without published courses (downgraded to trial or no subscription)
+                            membershipTitle = 'Expert Account (No Published Courses)';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300 mb-6">You are an approved platform expert, but you currently have no published courses. Publish a course to restore your free Expert Membership, or upgrade to Pro.</p>
+                                    <div className="flex gap-4">
+                                        <UpgradeButton />
+                                    </div>
                                 </div>
                             );
                         } else if (aStatus === 'pending') {

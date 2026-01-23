@@ -663,6 +663,27 @@ export async function unpublishOrgCourse(
         return { success: false, error: updateError.message };
     }
 
+    // Handle expert membership downgrade if this was their last published course
+    try {
+        // Get the author of this course
+        const { data: courseData } = await admin
+            .from('courses')
+            .select('author_id')
+            .eq('id', courseId)
+            .single();
+
+        if (courseData?.author_id) {
+            const { countPublishedCourses, downgradeExpertMembership } = await import('@/lib/expert-membership');
+            const remaining = await countPublishedCourses(courseData.author_id);
+            if (remaining === 0) {
+                await downgradeExpertMembership(courseData.author_id);
+            }
+        }
+    } catch (membershipError) {
+        // Non-blocking: don't fail the unpublish if membership downgrade fails
+        console.error('[unpublishOrgCourse] Membership downgrade error:', membershipError);
+    }
+
     // Delete embeddings for the unpublished course (removes from RAG)
     // This runs async - don't block the unpublish operation
     deleteOrgCourseEmbeddings(courseId).then(result => {
