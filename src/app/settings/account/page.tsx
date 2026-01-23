@@ -21,9 +21,9 @@ export default async function AccountPage() {
         .single();
 
     // Determine if user can see "Become an Expert" section
-    // Show for users who are NOT admins and NOT already experts (approved or pending)
-    const canBecomeExpert = profile?.role !== 'admin' &&
-                           profile?.author_status !== 'approved';
+    // Show for users who are NOT admins and NOT already experts (pending, approved, or rejected)
+    const hasExpertStatus = profile?.author_status && profile.author_status !== 'none';
+    const canBecomeExpert = profile?.role !== 'admin' && !hasExpertStatus;
 
 
 
@@ -134,10 +134,17 @@ export default async function AccountPage() {
                                 </div>
                             );
                         } else if (aStatus === 'pending') {
-                            membershipTitle = 'Expert Membership (Pending)';
+                            membershipTitle = 'Expert Account (Pending Approval)';
                             BillingComponent = (
                                 <div>
-                                    <p className="text-slate-300">Your application to be an expert on the platform is still pending. Once approved, you will be given a free membership as an approved expert.</p>
+                                    <p className="text-slate-300">You have access to the Expert Console where you can build and submit courses. Once your first course is approved and published, you&apos;ll become a fully approved expert with free membership.</p>
+                                </div>
+                            );
+                        } else if (aStatus === 'rejected') {
+                            membershipTitle = 'Expert Account';
+                            BillingComponent = (
+                                <div>
+                                    <p className="text-slate-300">You have access to the Expert Console where you can build and submit courses. Once your first course is approved and published, you&apos;ll become a fully approved expert.</p>
                                 </div>
                             );
                         } else if (mStatus === 'active') {

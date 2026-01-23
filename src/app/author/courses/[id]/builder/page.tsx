@@ -20,15 +20,18 @@ export default async function ExpertCourseBuilderPage({ params }: ExpertCourseBu
         redirect('/login');
     }
 
-    // Check expert status (must be approved or admin)
+    // Check expert status (pending, approved, rejected, or admin can access)
     const { data: profile } = await supabase
         .from('profiles')
         .select('author_status, role')
         .eq('id', user.id)
         .single();
 
-    if (profile?.author_status !== 'approved' && profile?.role !== 'admin') {
-        // Not an approved expert - redirect to teach page to apply
+    const hasExpertAccess = profile?.role === 'admin' ||
+        (profile?.author_status && profile.author_status !== 'none');
+
+    if (!hasExpertAccess) {
+        // Not an expert - redirect to teach page
         redirect('/teach');
     }
 

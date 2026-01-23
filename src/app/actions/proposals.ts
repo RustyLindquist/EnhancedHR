@@ -168,15 +168,16 @@ export async function createProposal(data: {
         return { success: false, error: 'Not authenticated' };
     }
 
-    // Check if user is an approved expert
+    // Check if user has expert access (pending, approved, or rejected)
     const { data: profile } = await supabase
         .from('profiles')
         .select('author_status')
         .eq('id', user.id)
         .single();
 
-    if (profile?.author_status !== 'approved') {
-        return { success: false, error: 'Only approved experts can submit proposals' };
+    const hasExpertAccess = profile?.author_status && profile.author_status !== 'none';
+    if (!hasExpertAccess) {
+        return { success: false, error: 'Only experts can submit proposals' };
     }
 
     const { data: proposal, error } = await supabase

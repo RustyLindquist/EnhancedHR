@@ -739,8 +739,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       Settings
                     </button>
 
-                    {/* Expert Console Link - For approved experts and platform admins */}
-                    {(userProfile?.authorStatus === 'approved' || userProfile?.role === 'admin') && (
+                    {/* Expert Console Link - For experts (pending, approved, rejected) and platform admins */}
+                    {((userProfile?.authorStatus && userProfile.authorStatus !== 'none') || userProfile?.role === 'admin') && (
                       <button
                         onClick={() => {
                           router.push('/author');
