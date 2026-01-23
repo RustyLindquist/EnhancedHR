@@ -5,6 +5,8 @@ import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangl
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
+import QuizBuilder from '@/components/admin/QuizBuilder';
+import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
 type VideoSourceType = 'url' | 'upload' | 'mux_id';
@@ -19,6 +21,7 @@ interface LessonEditorPanelProps {
     lessonVideoUrl?: string;
     lessonContent?: string;
     lessonDuration?: string;
+    lessonQuizData?: QuizData;
     isNewLesson?: boolean;
     onSave: () => void;
     onDelete?: () => void;
@@ -34,6 +37,7 @@ export default function LessonEditorPanel({
     lessonVideoUrl = '',
     lessonContent = '',
     lessonDuration = '',
+    lessonQuizData,
     isNewLesson = false,
     onSave,
     onDelete
@@ -54,6 +58,9 @@ export default function LessonEditorPanel({
     const [videoSource, setVideoSource] = useState<VideoSourceType>('url');
     const [isUploading, setIsUploading] = useState(false);
 
+    // Quiz data state
+    const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
+
     // Transcript generation
     const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
 
@@ -65,12 +72,13 @@ export default function LessonEditorPanel({
             setVideoUrl(lessonVideoUrl);
             setContent(lessonContent);
             setDuration(lessonDuration);
+            setQuizData(lessonQuizData);
             setError(null);
             setShowDeleteConfirm(false);
             setIsUploading(false);
             setIsGeneratingTranscript(false);
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData]);
 
     const handleGenerateTranscript = useCallback(async () => {
         if (!videoUrl) {
@@ -115,7 +123,8 @@ export default function LessonEditorPanel({
                     title: title.trim(),
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: content || undefined,
-                    duration: duration || undefined
+                    duration: duration || undefined,
+                    quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else {
                 setError('Lesson ID is missing');
@@ -132,7 +141,7 @@ export default function LessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, lessonId, title, type, videoUrl, content, duration, isNewLesson, onSave]);
+    }, [moduleId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave]);
 
     const handleDelete = useCallback(() => {
         if (!lessonId) return;
@@ -342,66 +351,80 @@ export default function LessonEditorPanel({
                     </div>
                 )}
 
-                {/* Transcript / Content */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            {type === 'video' ? 'Transcript / Script' : type === 'article' ? 'Article Content' : 'Quiz Description'}
+                {/* Quiz Builder - Only show for quiz type */}
+                {type === 'quiz' && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                            Quiz Builder
                         </label>
+                        <QuizBuilder
+                            initialData={quizData}
+                            onChange={setQuizData}
+                            disabled={isPending}
+                        />
+                    </div>
+                )}
 
-                        {/* Generate from Video button - only show for video type with a video URL */}
-                        {type === 'video' && videoUrl && (
-                            <button
-                                onClick={handleGenerateTranscript}
-                                disabled={isGeneratingTranscript || isPending}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isGeneratingTranscript ? (
-                                    <>
-                                        <Loader2 size={12} className="animate-spin" />
-                                        Generating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles size={12} />
-                                        Generate from Video
-                                    </>
-                                )}
-                            </button>
+                {/* Transcript / Content - Only show for video and article types */}
+                {type !== 'quiz' && (
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {type === 'video' ? 'Transcript / Script' : 'Article Content'}
+                            </label>
+
+                            {/* Generate from Video button - only show for video type with a video URL */}
+                            {type === 'video' && videoUrl && (
+                                <button
+                                    onClick={handleGenerateTranscript}
+                                    disabled={isGeneratingTranscript || isPending}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isGeneratingTranscript ? (
+                                        <>
+                                            <Loader2 size={12} className="animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={12} />
+                                            Generate from Video
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Generation in progress indicator */}
+                        {isGeneratingTranscript && (
+                            <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm flex items-center gap-3">
+                                <Loader2 size={16} className="animate-spin" />
+                                <div>
+                                    <p className="font-medium">Analyzing video and generating transcript...</p>
+                                    <p className="text-xs text-purple-400/70 mt-0.5">This may take a minute depending on video length</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder={
+                                type === 'video'
+                                    ? 'Paste video transcript here for AI search and summarization...'
+                                    : 'Write the article content...'
+                            }
+                            rows={6}
+                            disabled={isGeneratingTranscript}
+                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50"
+                        />
+                        {type === 'video' && (
+                            <p className="text-xs text-slate-600 mt-2">
+                                Transcripts enable AI-powered search and help learners get answers about lesson content.
+                            </p>
                         )}
                     </div>
-
-                    {/* Generation in progress indicator */}
-                    {isGeneratingTranscript && (
-                        <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm flex items-center gap-3">
-                            <Loader2 size={16} className="animate-spin" />
-                            <div>
-                                <p className="font-medium">Analyzing video and generating transcript...</p>
-                                <p className="text-xs text-purple-400/70 mt-0.5">This may take a minute depending on video length</p>
-                            </div>
-                        </div>
-                    )}
-
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder={
-                            type === 'video'
-                                ? 'Paste video transcript here for AI search and summarization...'
-                                : type === 'article'
-                                ? 'Write the article content...'
-                                : 'Describe what this quiz covers...'
-                        }
-                        rows={6}
-                        disabled={isGeneratingTranscript}
-                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50"
-                    />
-                    {type === 'video' && (
-                        <p className="text-xs text-slate-600 mt-2">
-                            Transcripts enable AI-powered search and help learners get answers about lesson content.
-                        </p>
-                    )}
-                </div>
+                )}
 
                 {/* Duration */}
                 <div>

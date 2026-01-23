@@ -481,6 +481,7 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
     video_url?: string;
     content?: string;
     duration?: string;
+    quiz_data?: any;
 }) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
@@ -509,7 +510,8 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
             order: nextOrder,
             video_url: data.type === 'video' ? data.video_url : undefined,
             content: data.content || undefined,
-            duration: data.duration || '0m'
+            duration: data.duration || '0m',
+            quiz_data: data.type === 'quiz' ? data.quiz_data : undefined
         })
         .select()
         .single();

@@ -87,9 +87,9 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
     };
 
     const handleQuizComplete = (score: number, passed: boolean) => {
-        if (passed) {
-            onLessonComplete(lesson.id);
-        }
+        // Mark lesson as complete regardless of pass/fail
+        // The passing score is for learner self-assessment, not a gate for completion
+        onLessonComplete(lesson.id);
     };
 
     // Reset video error and show overlay when lesson changes
