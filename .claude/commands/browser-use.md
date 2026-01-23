@@ -1,196 +1,217 @@
 ---
-description: Enable browser control via Playwright MCP for UI testing, screenshots, and workflow verification
+description: Browser automation for UI testing, screenshots, and workflow verification. Routes to optimal tool based on context.
 ---
 
-# Browser Use Skill (Playwright MCP)
+# Browser Use Command
 
-This skill enables browser control via **Playwright MCP**. Use this skill whenever you need to interact with the running application in a browser.
+Enables browser control for UI testing, screenshots, and workflow verification. This command intelligently routes to the best browser tool for your needs.
 
-> **Note**: This requires the Playwright MCP server to be running. This provides automated browser control for testing and verification.
-
-## Prerequisites
-
-Before using browser control:
-1. Ensure the dev server is running (`pnpm dev`)
-2. Playwright MCP server should be available in the MCP configuration
-3. Navigate to the appropriate URL to start testing
-
-## When to Use Browser Control
-
-**Use browser control for:**
-- Verifying UI changes visually
-- Checking for console errors after changes
-- Testing user workflows end-to-end
-- Taking screenshots for documentation or verification
-- Filling forms and testing validation
-- Checking responsive design
-
-**Don't use browser control for:**
-- Unit tests (use `pnpm test` instead)
-- Build verification (use `pnpm build` instead)
-- Type checking (use TypeScript compiler instead)
-- Tasks that can be done via code inspection
-
-## Capabilities
-
-### Navigation
-
-Use `mcp__browsermcp__browser_navigate` to navigate:
-```
-Navigate to http://localhost:3001/dashboard
-Go to the settings page
-```
-
-### Taking Screenshots
-
-Use `mcp__browsermcp__browser_screenshot` to capture:
-```
-Take a screenshot of the current page
-Capture a screenshot of the login form
-```
-
-### Console Access
-
-Use `mcp__browsermcp__browser_get_console_logs` to check:
-```
-Check the browser console for errors
-List all console messages and look for warnings
-```
-
-### UI Interaction
-
-Use `mcp__browsermcp__browser_click` and `mcp__browsermcp__browser_type`:
-```
-Click the "Submit" button
-Fill the email field with "test@example.com"
-```
-
-Use `mcp__browsermcp__browser_snapshot` to get element references for interaction.
-
-### Form Testing
+## Quick Selection
 
 ```
-1. Navigate to the form page
-2. Get a snapshot to find element references
-3. Type into form fields
-4. Click submit
+┌─────────────────────────────────────────────────────────────────┐
+│                    WHICH BROWSER TOOL?                          │
+│                                                                 │
+│  Running structured test suite?     ──► Playwright Test         │
+│  Need assertions & reports?         ──► Playwright Test         │
+│  CI/CD / regression testing?        ──► Playwright Test         │
+│                                                                 │
+│  Need user's logged-in session?     ──► Claude in Chrome        │
+│  Creating a GIF recording?          ──► Claude in Chrome        │
+│  Monitoring network/API requests?   ──► Claude in Chrome        │
+│                                                                 │
+│  Quick isolated smoke test?         ──► Browser MCP             │
+│  Simple interaction check?          ──► Browser MCP             │
+│                                                                 │
+│  DEFAULT (interactive): Claude in Chrome                        │
+│  DEFAULT (test suite): Playwright Test                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Available Tools
+
+| Tool | Type | Best For |
+|------|------|----------|
+| **Claude in Chrome** | MCP (`mcp__claude-in-chrome__*`) | Authenticated flows, GIF recording, network monitoring, JS execution |
+| **Browser MCP** | MCP (`mcp__browsermcp__*`) | Interactive isolated testing, simple interactions, accessibility snapshots |
+| **Playwright Test** | CLI (`npx playwright test`) | Structured test suites, assertions, CI/CD, regression testing |
+
+## Decision Matrix
+
+| Scenario | Use | Why |
+|----------|-----|-----|
+| **Structured test suite** | Playwright Test | Assertions, reports, parallelization |
+| **CI/CD pipeline** | Playwright Test | Exit codes, reports, retries |
+| **Regression testing** | Playwright Test | Repeatable, deterministic |
+| **Pre-PR validation** | Playwright Test | Run full test suite |
+| Test authenticated page | Claude in Chrome | Uses user's logged-in session |
+| Create demo GIF | Claude in Chrome | Has gif_creator |
+| Debug live issue | Claude in Chrome | See what user sees |
+| Monitor API calls | Claude in Chrome | read_network_requests |
+| Execute page JavaScript | Claude in Chrome | javascript_tool |
+| Multi-tab workflow | Claude in Chrome | Tab management |
+| Quick isolated smoke test | Browser MCP | Clean state, simpler API |
+| Quick accessibility check | Browser MCP | browser_snapshot |
+| Simple form test | Either MCP | Both capable |
+
+## Playwright Test Quick Start
+
+```bash
+# Run all tests
+npx playwright test
+
+# Run specific file
+npx playwright test tests/e2e/auth.spec.ts
+
+# Run with visible browser
+npx playwright test --headed
+
+# Run with UI mode (interactive debugging)
+npx playwright test --ui
+
+# View report
+npx playwright show-report
+```
+
+**Key capabilities:**
+- Assertions (`expect(page).toHaveURL(...)`)
+- Test organization (`describe`, `test`, `beforeEach`)
+- Parallel execution
+- Retries and flaky test handling
+- HTML reports
+- Cross-browser (Chromium, Firefox, WebKit)
+
+See `.claude/skills/browser-use/reference/playwright-test.md` for complete reference.
+
+## Claude in Chrome Quick Start
+
+```
+1. mcp__claude-in-chrome__tabs_context_mcp     # ALWAYS FIRST
+2. mcp__claude-in-chrome__navigate             # Go to page
+3. mcp__claude-in-chrome__computer             # Interact/screenshot
+4. mcp__claude-in-chrome__read_console_messages # Check errors
+```
+
+**Key capabilities:**
+- Tab management
+- GIF recording
+- Network request monitoring
+- JavaScript execution
+- Form input with refs
+- Natural language element finding
+
+See `.claude/skills/browser-use/reference/claude-in-chrome.md` for complete reference.
+
+## Browser MCP Quick Start
+
+```
+1. mcp__browsermcp__browser_navigate           # Go to page
+2. mcp__browsermcp__browser_snapshot           # Get element refs
+3. mcp__browsermcp__browser_click/type         # Interact
+4. mcp__browsermcp__browser_get_console_logs   # Check errors
+```
+
+**Key capabilities:**
+- Isolated browser instance
+- Accessibility tree snapshots
+- Simple click/type/screenshot
+- Console log access
+
+See `.claude/skills/browser-use/reference/browser-mcp.md` for complete reference.
+
+## Common Patterns
+
+### Run Test Suite (Playwright Test)
+
+```bash
+# Full regression suite
+npx playwright test
+
+# Specific feature tests
+npx playwright test tests/e2e/courses/
+
+# Single test for debugging
+npx playwright test -g "user can log in" --headed
+```
+
+### Verify UI Change (MCP - Interactive)
+
+**With Claude in Chrome (authenticated):**
+```
+1. tabs_context_mcp
+2. navigate to localhost:3001/[page]
+3. computer action=screenshot
+4. read_console_messages pattern="error"
+```
+
+**With Browser MCP (isolated):**
+```
+1. browser_navigate url="http://localhost:3001/[page]"
+2. browser_screenshot
+3. browser_get_console_logs
+```
+
+### Test Form Submission (MCP)
+
+```
+1. Navigate to form page
+2. Get element refs (read_page or browser_snapshot)
+3. Fill fields (form_input or browser_type)
+4. Submit (click submit button)
 5. Check console for errors
-6. Take a screenshot of the result
+6. Screenshot result
 ```
 
-### Workflow Testing
+### Create Demo GIF (Claude in Chrome only)
 
 ```
-1. Navigate to starting point
-2. Use snapshots to find elements
-3. Interact with each step
-4. Check console after major actions
-5. Take screenshots at key points
+1. tabs_context_mcp
+2. gif_creator action=start_recording tabId=<id>
+3. computer action=screenshot        # First frame
+4. [Perform demo steps]
+5. computer action=screenshot        # Last frame
+6. gif_creator action=stop_recording
+7. gif_creator action=export download=true filename="demo.gif"
+```
+
+### Monitor API Calls (Claude in Chrome only)
+
+```
+1. tabs_context_mcp
+2. navigate to page
+3. [Trigger API action]
+4. read_network_requests urlPattern="/api/"
 ```
 
 ## Best Practices
 
-### 1. Get a Snapshot First
-Before interacting with elements, use `browser_snapshot` to get element references:
-```
-1. Navigate to the page
-2. Take a snapshot
-3. Use the ref values from snapshot for clicks/typing
-```
+1. **Playwright Test: Use for repeatable validation** - Assertions ensure expected behavior
+2. **Claude in Chrome: Always call `tabs_context_mcp` first** - Required for all operations
+3. **Browser MCP: Always call `browser_snapshot` before interacting** - Get element refs
+4. **Check console after actions** - All tools support this
+5. **Screenshot at key points** - Visual evidence
+6. **Use element refs** - More reliable than coordinates
 
-### 2. Check Console After Actions
-```
-1. Perform an action (click, submit)
-2. Get console logs to check for errors
-```
+## When to Use Each
 
-### 3. Take Screenshots for Evidence
-```
-1. Complete an action
-2. Take a screenshot to verify the result
-```
+| Task | Tool | Reason |
+|------|------|--------|
+| Verify PR before merge | Playwright Test | Structured, repeatable |
+| Quick check during dev | Browser MCP | Fast, isolated |
+| Debug user-reported issue | Claude in Chrome | See their session |
+| Record walkthrough | Claude in Chrome | GIF recording |
+| Investigate API issue | Claude in Chrome | Network monitoring |
 
-### 4. Use Specific Element References
-The snapshot provides `ref` values for each element. Use these exact refs when clicking or typing.
+## When to Escalate
 
-### 5. Wait When Needed
-Use `mcp__browsermcp__browser_wait` when pages need time to load:
-```
-Wait 2 seconds for the page to load
-```
+If browser testing reveals complex issues:
+- **Spawn Test Agent** for comprehensive validation
+- **Use systematic-debugging skill** for methodical investigation
+- **Check network requests** for API-level issues
 
-## Error Handling
+## Full Documentation
 
-### Element Not Found
-If an element can't be found:
-1. Take a new snapshot to see current page state
-2. Check if the page has fully loaded
-3. Look for the correct element reference in the snapshot
-
-### Connection Issues
-If browser control stops working:
-1. Check that the Playwright MCP server is running
-2. Try navigating to a new URL to reset state
-
-## Common Patterns
-
-### Verify a UI Change
-```
-1. browser_navigate to localhost:3001/[affected-page]
-2. browser_screenshot
-3. browser_get_console_logs for errors
-4. browser_snapshot to verify elements
-```
-
-### Test a Form
-```
-1. browser_navigate to the form page
-2. browser_snapshot to get element refs
-3. browser_type into each field
-4. browser_click the submit button
-5. browser_get_console_logs for errors
-6. browser_screenshot of the result
-```
-
-### Test a Workflow
-```
-1. browser_navigate to starting point
-2. browser_snapshot
-3. browser_click/type for each step
-4. browser_get_console_logs after each major action
-5. browser_screenshot at key points
-```
-
-### Debug an Issue
-```
-1. browser_navigate to the problematic page
-2. browser_get_console_logs for errors
-3. browser_screenshot
-4. browser_snapshot to see element structure
-5. Report findings
-```
-
-## Available MCP Tools
-
-| Tool | Purpose |
-|------|---------|
-| `mcp__browsermcp__browser_navigate` | Navigate to a URL |
-| `mcp__browsermcp__browser_snapshot` | Get accessibility tree with element refs |
-| `mcp__browsermcp__browser_screenshot` | Capture current page |
-| `mcp__browsermcp__browser_click` | Click an element by ref |
-| `mcp__browsermcp__browser_type` | Type into an element |
-| `mcp__browsermcp__browser_hover` | Hover over an element |
-| `mcp__browsermcp__browser_select_option` | Select dropdown option |
-| `mcp__browsermcp__browser_press_key` | Press keyboard key |
-| `mcp__browsermcp__browser_wait` | Wait for specified time |
-| `mcp__browsermcp__browser_get_console_logs` | Get console output |
-| `mcp__browsermcp__browser_go_back` | Navigate back |
-| `mcp__browsermcp__browser_go_forward` | Navigate forward |
-
-## Integration with Testing
-
-This skill is used by:
-- **Any agent** for quick visual verification and console checks
-- **Test Agent** for comprehensive workflow and feature testing
-
-When in doubt about whether browser control is needed, ask: "Would a real user need to see/interact with this to verify it works?" If yes, use browser control.
+- **Skill overview:** `.claude/skills/browser-use/SKILL.md`
+- **Claude in Chrome:** `.claude/skills/browser-use/reference/claude-in-chrome.md`
+- **Browser MCP:** `.claude/skills/browser-use/reference/browser-mcp.md`
+- **Playwright Test:** `.claude/skills/browser-use/reference/playwright-test.md`

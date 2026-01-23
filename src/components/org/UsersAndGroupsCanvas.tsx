@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Layers, Sparkles } from 'lucide-react';
 import { getOrgGroups, getUserGroupMemberships, EmployeeGroup } from '@/app/actions/groups';
+import { getOrgMembers, InviteInfo } from '@/app/actions/org';
 import GroupCard from './GroupCard';
 import GroupManagement from './GroupManagement';
+import InviteMemberPanel from './InviteMemberPanel';
 import CanvasHeader from '../CanvasHeader';
 
 interface UsersAndGroupsCanvasProps {
@@ -56,7 +58,9 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
     const [memberGroups, setMemberGroups] = useState<{ customGroups: EmployeeGroup[], dynamicGroups: EmployeeGroup[] }>({ customGroups: [], dynamicGroups: [] });
     const [loading, setLoading] = useState(true);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
+    const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
     const [totalMembers, setTotalMembers] = useState(0);
+    const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
 
     const fetchGroups = async () => {
         setLoading(true);
@@ -72,19 +76,20 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
         setLoading(false);
     };
 
-    // Fetch member count from org action (only for admins)
+    // Fetch member count and invite info from org action (only for admins)
+    const fetchMemberData = async () => {
+        try {
+            const { members, inviteInfo } = await getOrgMembers();
+            setTotalMembers(members.length);
+            setInviteInfo(inviteInfo);
+        } catch (e) {
+            console.error('Failed to fetch member data', e);
+        }
+    };
+
     useEffect(() => {
         if (!isAdmin) return;
-        const fetchMemberCount = async () => {
-            try {
-                const { getOrgMembers } = await import('@/app/actions/org');
-                const { members } = await getOrgMembers();
-                setTotalMembers(members.length);
-            } catch (e) {
-                console.error('Failed to fetch member count', e);
-            }
-        };
-        fetchMemberCount();
+        fetchMemberData();
     }, [isAdmin]);
 
     useEffect(() => {
@@ -123,17 +128,27 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
                     onBack={onBack}
                     backLabel="Go Back"
                 >
-                    {/* Only show Create Group button for admins */}
+                    {/* Only show admin buttons for admins */}
                     {isAdmin && (
                         <div className="flex items-center space-x-4">
                             <button
-                                onClick={() => setIsGroupPanelOpen(true)}
+                                onClick={() => setIsInvitePanelOpen(true)}
                                 className="
                                     flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
                                     bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
                                 "
                             >
                                 <UserPlus size={16} />
+                                Invite Members
+                            </button>
+                            <button
+                                onClick={() => setIsGroupPanelOpen(true)}
+                                className="
+                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                    bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
+                                "
+                            >
+                                <Users size={16} />
                                 Create Group
                             </button>
                         </div>
@@ -269,6 +284,14 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
                     </>
                 )}
             </div>
+
+            {/* Invite Members Panel - Only for admins */}
+            <InviteMemberPanel
+                isOpen={isInvitePanelOpen}
+                onClose={() => setIsInvitePanelOpen(false)}
+                inviteInfo={inviteInfo}
+                onUpdate={fetchMemberData}
+            />
 
             {/* Create Group Panel - Only for admins */}
             {isAdmin && (

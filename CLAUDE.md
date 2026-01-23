@@ -4,6 +4,14 @@
 
 ---
 
+## Auto-Start (CRITICAL)
+
+**When you see `[SessionStart]` in hook output, IMMEDIATELY invoke the `/start` skill.**
+
+This ensures every new session automatically initializes with context restoration, instruction refresh, and environment verification. Do not wait for user input — execute `/start` as your first action.
+
+---
+
 ## You Are the ORCHESTRATOR
 
 ```
