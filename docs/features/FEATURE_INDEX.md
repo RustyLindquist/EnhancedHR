@@ -19,7 +19,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Notes | notes | Medium | Frontend + Backend | doc-discovery | Coupled to course player, collections organization, and export/share behaviors | Exists |
 | Tools (AI Workflows) | tools | High | Backend | doc-discovery, plan-lint | Coupled to conversations, AI context engine, collections, and permissions | Exists |
 | Certifications, Credits & Certificates | certifications-and-credits | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to progress tracking and ledger/certificate generation; business-critical | Exists |
-| Experts (Instructor Profiles) | experts | Medium | Frontend + Backend | doc-discovery, plan-lint | Coupled to author-portal, course-builder (auto-approval), navigation, account settings | Exists |
+| Experts (Instructor Profiles) | experts | Medium | Frontend + Backend | doc-discovery, plan-lint | Coupled to author-portal, course-builder (auto-approval + membership), membership-billing, org-courses, navigation, account settings | Exists |
 | Help System (Help Collection) | help-collection | Medium | Frontend + Backend | doc-discovery | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
 | Organization Membership (Employee Experience) | organization-membership | High | Backend | doc-discovery, plan-lint | Coupled to auth/roles, billing/seats, and admin gating | Exists |
 | Organization Courses | org-courses | High | Backend + Frontend | doc-discovery, plan-lint, test-from-docs | Coupled to AI context engine (RAG scope 8), org-membership, course player; org-scoped content | Exists |

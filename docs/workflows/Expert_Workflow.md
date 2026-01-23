@@ -8,6 +8,8 @@
 
 This document describes the technical implementation of the Expert (Author) workflow, from discovery through course building and auto-approval. The flow has been updated to a **pending-then-auto-approve model** where experts can immediately access the Expert Console to build courses, and are automatically approved when their first course is published.
 
+**Key Feature Update (Jan 2026):** Expert Membership Upgrade/Downgrade now automatically adjusts membership benefits when experts publish/unpublish courses. See [Expert Membership State Machine](#expert-membership-state-machine) for details.
+
 ---
 
 ## Table of Contents
@@ -19,9 +21,10 @@ This document describes the technical implementation of the Expert (Author) work
 5. [Server Actions](#server-actions)
 6. [API Routes](#api-routes)
 7. [State Machine](#state-machine)
-8. [Admin Functionality](#admin-functionality)
-9. [Common Pitfalls](#common-pitfalls)
-10. [Testing Checklist](#testing-checklist)
+8. [Expert Membership State Machine](#expert-membership-state-machine)
+9. [Admin Functionality](#admin-functionality)
+10. [Common Pitfalls](#common-pitfalls)
+11. [Testing Checklist](#testing-checklist)
 
 ---
 
@@ -93,6 +96,13 @@ phone_number              TEXT
 linkedin_url              TEXT
 author_bio                TEXT
 avatar_url                TEXT
+
+-- Membership fields (used by expert membership upgrade/downgrade)
+membership_status         TEXT     -- 'trial' | 'active' | 'inactive' | 'employee' | 'org_admin'
+billing_disabled          BOOLEAN  -- true = exempt from billing (set when expert publishes first course)
+org_id                    UUID     -- if set, user is org member (exempt from expert membership changes)
+stripe_customer_id        TEXT     -- Stripe customer ID for subscription checks
+stripe_subscription_id    TEXT     -- Stripe subscription ID
 
 -- Legacy proposal fields (still used for initial application)
 course_proposal_title       TEXT
@@ -231,9 +241,11 @@ supabase/
 | `src/app/author/courses/[id]/builder/page.tsx` | Same route guard update |
 | `src/app/actions/expert-course-builder.ts` | Allows pending/rejected experts to create courses |
 | `src/app/actions/proposals.ts` | Allows pending/rejected experts to submit proposals |
-| `src/app/actions/course-builder.ts` | Added auto-approval logic on first course publish |
+| `src/app/actions/course-builder.ts` | Added auto-approval logic on first course publish + membership upgrade/downgrade |
+| `src/app/actions/org-courses.ts` | Added membership downgrade on org course unpublish |
+| `src/lib/expert-membership.ts` | **NEW** Expert membership upgrade/downgrade utilities |
 | `src/components/NavigationPanel.tsx` | Shows Expert Console link for all expert statuses |
-| `src/app/settings/account/page.tsx` | Updated expert status messaging |
+| `src/app/settings/account/page.tsx` | Updated expert status messaging + expert membership display |
 
 ---
 
@@ -456,6 +468,124 @@ The auto-approval is triggered in `src/app/actions/course-builder.ts` when a cou
 
 ---
 
+## Expert Membership State Machine
+
+When experts publish or unpublish courses, their **membership benefits** change automatically while their **author_status** remains 'approved'. This is separate from the author_status state machine above.
+
+### Membership Upgrade (First Course Published)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    MEMBERSHIP UPGRADE STATE MACHINE                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  TRIGGER: Expert publishes their FIRST course                                 │
+│                                                                               │
+│  ┌─────────────────────┐                                                      │
+│  │   Trial Account     │                                                      │
+│  │ membership_status=  │                                                      │
+│  │    'trial'          │                                                      │
+│  └──────────┬──────────┘                                                      │
+│             │                                                                 │
+│             │  First course published                                         │
+│             ▼                                                                 │
+│  ┌─────────────────────┐                                                      │
+│  │   Active Expert     │                                                      │
+│  │ membership_status=  │                                                      │
+│  │    'active'         │                                                      │
+│  │ billing_disabled=   │                                                      │
+│  │    true             │                                                      │
+│  └─────────────────────┘                                                      │
+│                                                                               │
+│  ┌─────────────────────┐                                                      │
+│  │   Paid Individual   │                                                      │
+│  │ (Stripe sub exists) │                                                      │
+│  └──────────┬──────────┘                                                      │
+│             │                                                                 │
+│             │  First course published                                         │
+│             ▼                                                                 │
+│  ┌─────────────────────┐                                                      │
+│  │ billing_disabled=   │  (Subscription kept but billing paused)              │
+│  │    true             │                                                      │
+│  └─────────────────────┘                                                      │
+│                                                                               │
+│  ┌─────────────────────┐                                                      │
+│  │   Org Member        │                                                      │
+│  │   (org_id set)      │ ──────────────▶  NO CHANGE                          │
+│  └─────────────────────┘                                                      │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Membership Downgrade (Last Course Unpublished)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    MEMBERSHIP DOWNGRADE STATE MACHINE                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  TRIGGER: Expert unpublishes their LAST published course                      │
+│                                                                               │
+│  ┌─────────────────────┐                                                      │
+│  │   Active Expert     │                                                      │
+│  │ billing_disabled=   │                                                      │
+│  │    true             │                                                      │
+│  └──────────┬──────────┘                                                      │
+│             │                                                                 │
+│             │  Last course unpublished                                        │
+│             │                                                                 │
+│             ├───────────────────────────────────────┐                         │
+│             │                                       │                         │
+│             ▼                                       ▼                         │
+│  ┌─────────────────────┐              ┌─────────────────────┐                 │
+│  │ Has Stripe Sub?     │              │ No Stripe Sub?      │                 │
+│  │                     │              │                     │                 │
+│  │ billing_disabled=   │              │ membership_status=  │                 │
+│  │    false            │              │    'trial'          │                 │
+│  │ (billing resumes)   │              │ billing_disabled=   │                 │
+│  └─────────────────────┘              │    false            │                 │
+│                                       └─────────────────────┘                 │
+│                                                                               │
+│  ┌─────────────────────┐                                                      │
+│  │   Org Member        │                                                      │
+│  │   (org_id set)      │ ──────────────▶  NO CHANGE                          │
+│  └─────────────────────┘                                                      │
+│                                                                               │
+│  NOTE: author_status stays 'approved' - only membership benefits change       │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/expert-membership.ts` | Core upgrade/downgrade logic |
+| `src/app/actions/course-builder.ts` | Triggers upgrade on publish, downgrade on unpublish |
+| `src/app/actions/org-courses.ts` | Triggers downgrade on org course unpublish |
+| `src/app/settings/account/page.tsx` | Displays expert membership status |
+
+### Key Functions in expert-membership.ts
+
+| Function | Purpose |
+|----------|---------|
+| `getExpertMembershipContext(userId)` | Fetch profile fields needed for membership decisions |
+| `isOrgMember(context)` | Check if user is org owner/employee (exempt from changes) |
+| `countPublishedCourses(authorId, excludeCourseId?)` | Count published courses for first/last detection |
+| `hasActiveStripeSubscription(stripeCustomerId)` | Query Stripe API to check subscription status |
+| `upgradeExpertMembership(userId)` | Execute upgrade logic on first course publish |
+| `downgradeExpertMembership(userId)` | Execute downgrade logic on last course unpublish |
+
+### Account Settings Display States
+
+| State | Display Text |
+|-------|--------------|
+| `billing_disabled=true` | "Expert Membership" |
+| `billing_disabled=false` + Stripe sub | "Expert Membership + Pro" |
+| `author_status='approved'` + no published courses | "Expert Account (No Published Courses)" |
+
+---
+
 ## Admin Functionality
 
 ### Viewing Experts
@@ -538,6 +668,41 @@ When adding new /author/* routes, ensure they follow this pattern.
 
 **Solution:** Check the expert's existing published course count before expecting auto-approval. If they already have published courses, the trigger won't fire again.
 
+### 8. Membership Upgrade Not Happening
+
+**Problem:** Expert publishes first course but billing_disabled stays false.
+
+**Solution:** Check:
+1. Is this really their FIRST published course? `countPublishedCourses()` should return 0 before publish.
+2. Is the user an org member? `isOrgMember()` returns true if org_id is set (exempt from changes).
+3. Was `upgradeExpertMembership()` called in course-builder.ts?
+
+### 9. Membership Downgrade Not Reverting
+
+**Problem:** Expert unpublishes last course but stays active (billing_disabled=true).
+
+**Solution:** Check:
+1. Is this really their LAST published course? `countPublishedCourses(userId, excludeCourseId)` should return 0.
+2. Does the user have an active Stripe subscription? If yes, only billing_disabled changes to false (billing resumes).
+3. Was `downgradeExpertMembership()` called?
+
+### 10. Org Member Membership Changed
+
+**Problem:** Org member's membership was incorrectly modified on publish/unpublish.
+
+**Solution:** This is a bug. The `isOrgMember()` check should prevent any membership changes. Verify:
+1. User's org_id is correctly set.
+2. `isOrgMember()` is called before any membership changes.
+3. Restore org member's original membership_status.
+
+### 11. Stripe API Failure During Downgrade
+
+**Problem:** Stripe API call fails when checking subscription status.
+
+**Expected Behavior:** Conservative fallback - if Stripe API fails, `hasActiveStripeSubscription()` returns false, and user is downgraded to trial. This is safer than accidentally continuing to charge.
+
+**Solution:** If wrong decision was made, manually verify Stripe subscription status and update profile accordingly.
+
 ---
 
 ## Testing Checklist
@@ -593,6 +758,24 @@ Before deploying Expert workflow changes, verify:
 - [ ] Pending expert sees appropriate status message
 - [ ] Approved expert sees appropriate status message
 - [ ] Rejected expert sees appropriate status message
+
+### Expert Membership Upgrade (New)
+- [ ] Trial user publishes first course → membership_status='active', billing_disabled=true
+- [ ] Paid user (Stripe sub) publishes first course → billing_disabled=true (billing stops)
+- [ ] Second+ course publish → no membership change (already upgraded)
+- [ ] Org member publishes course → no membership change (org_id exempt)
+
+### Expert Membership Downgrade (New)
+- [ ] Expert unpublishes last course (no Stripe sub) → membership_status='trial', billing_disabled=false
+- [ ] Expert unpublishes last course (has Stripe sub) → billing_disabled=false (billing resumes)
+- [ ] Expert unpublishes course with others remaining → no membership change
+- [ ] Org member unpublishes last course → no membership change (org_id exempt)
+- [ ] Stripe API failure during downgrade → fallback to trial (conservative)
+
+### Account Settings Expert Display (New)
+- [ ] Active expert (billing_disabled=true) → shows "Expert Membership"
+- [ ] Expert with Stripe sub (billing_disabled=false) → shows "Expert Membership + Pro"
+- [ ] Approved expert, no published courses → shows "Expert Account (No Published Courses)"
 
 ---
 
