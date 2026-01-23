@@ -12,14 +12,16 @@ surfaces:
   collections: []
 data:
   tables:
-    - public.profiles (author_status, author_bio, linkedin_url)
+    - public.profiles (author_status, author_bio, linkedin_url, membership_status, billing_disabled)
     - public.courses (author_id, status)
     - public.expert_credentials
   storage: []
 backend:
   actions:
     - src/app/actions/expert-application.ts
-    - src/app/actions/course-builder.ts (auto-approval logic)
+    - src/app/actions/course-builder.ts (auto-approval + membership upgrade/downgrade logic)
+    - src/app/actions/org-courses.ts (membership downgrade on org course unpublish)
+    - src/lib/expert-membership.ts (membership change utilities)
 ai:
   context_scopes: []
   models: []
@@ -28,14 +30,21 @@ tests:
     - Open /experts; verify expert list pulled from profiles with author_status='approved' AND at least one published course.
     - Click "Become an Expert"; verify author_status set to 'pending'.
     - As pending expert, verify access to /author (Expert Console).
+    - Publish first course as trial user; verify membership_status='active' AND billing_disabled=true.
+    - Unpublish last course (no Stripe sub); verify membership_status='trial' AND billing_disabled=false.
   staging:
     - Open expert detail page; courses authored by that expert are listed.
     - Publish a pending expert's first course; verify auto-approval to 'approved'.
+    - Verify Stripe subscription check works during downgrade (billing_disabled=false if subscription exists).
 invariants:
   - author_status must be 'approved' AND have at least one published course to appear on /experts page.
   - Pending, approved, AND rejected experts can all access the Expert Console (/author/*).
   - Auto-approval triggers when admin publishes an expert's FIRST course (author_status changes from 'pending' to 'approved').
-  - Once approved, expert stays approved even if courses are unpublished later.
+  - Once approved, expert stays approved even if courses are unpublished later (author_status is permanent).
+  - Membership benefits change on publish/unpublish but author_status stays 'approved'.
+  - On first course publish: trial → active (billing_disabled=true), paid → billing_disabled=true.
+  - On last course unpublish: with Stripe sub → billing_disabled=false, without → trial (billing_disabled=false).
+  - Org members (org_id set) are exempt from membership changes on publish/unpublish.
   - courses.author_id must match profiles.id; profile must exist.
   - expert_credentials tied to user_id for additional detail.
 ---
@@ -132,12 +141,67 @@ Read paths:
 - Auto-approval only triggers on FIRST published course.
 - Approved status is permanent (course unpublish doesn't revert to pending).
 - Courses must maintain correct author_id; reassignment requires manual update.
+- Membership benefits (billing_disabled) change on publish/unpublish; author_status stays 'approved'.
+- Org members (org_id set) are exempt from all expert membership changes.
+
+## Expert Membership Upgrade/Downgrade
+
+When experts publish or unpublish courses, their membership benefits change automatically while their author_status remains 'approved'.
+
+### Upgrade (First Course Published)
+
+Triggered when an expert's first course is published (via course-builder.ts or org-courses.ts).
+
+| Current State | Action |
+|---------------|--------|
+| Trial account (`membership_status='trial'`) | Set `membership_status='active'`, `billing_disabled=true` |
+| Paid Individual (has Stripe subscription) | Set `billing_disabled=true` (stops billing) |
+| Org Owner/Employee (`org_id` set) | No change (org membership takes precedence) |
+
+### Downgrade (Last Published Course Removed)
+
+Triggered when an expert's last published course is unpublished.
+
+| Current State | Action |
+|---------------|--------|
+| Has active Stripe subscription | Set `billing_disabled=false` (resume billing) |
+| No Stripe subscription | Set `membership_status='trial'`, `billing_disabled=false` |
+| Org member (`org_id` set) | No change |
+
+### Key Implementation Details
+
+**Files:**
+- `src/lib/expert-membership.ts` — Core utility functions
+  - `getExpertMembershipContext(userId)` — Fetch profile fields for decisions
+  - `isOrgMember(context)` — Check if user is org owner/employee
+  - `countPublishedCourses(authorId, excludeCourseId?)` — Count published courses
+  - `hasActiveStripeSubscription(stripeCustomerId)` — Verify via Stripe API
+  - `upgradeExpertMembership(userId)` — Execute upgrade logic
+  - `downgradeExpertMembership(userId)` — Execute downgrade logic
+- `src/app/actions/course-builder.ts` — Calls upgrade on first publish, downgrade on last unpublish
+- `src/app/actions/org-courses.ts` — Calls downgrade on org course unpublish
+
+**Edge Cases:**
+- Rapid publish/unpublish: atomic state checks prevent race conditions
+- Multiple courses: `countPublishedCourses` with `excludeCourseId` for accurate counts
+- Stripe API failure: conservative fallback assumes no subscription (downgrades to trial)
+- Manually approved expert: handled by checking if first course on publish
+
+### Account Settings Display
+
+The account settings page (`/settings/account`) shows three expert membership states:
+- **Active expert** (`billing_disabled=true`): "Expert Membership"
+- **Expert with paid subscription** (`billing_disabled=false` + Stripe sub): "Expert Membership + Pro"
+- **Approved but no published courses**: "Expert Account (No Published Courses)"
 
 ## Failure Modes & Recovery
 - **Expert missing from /experts list**: Verify author_status='approved' AND has at least one published course.
 - **Expert can't access Expert Console**: Check author_status is not 'none'. All other statuses should have access.
 - **Auto-approval didn't trigger**: Verify this was the FIRST published course for this expert; check course-builder.ts logic.
 - **Course not showing under expert**: Ensure author_id set; course status may be non-published.
+- **Expert still being billed after publish**: Check billing_disabled=true; if false, run upgradeExpertMembership().
+- **Expert not reverting to trial on unpublish**: Check Stripe subscription status; if active sub exists, they keep paid status.
+- **Org member's membership changed**: Bug — isOrgMember() check should prevent this. Verify org_id is set.
 
 ## Testing Checklist
 - [ ] Click "Become an Expert" → verify author_status='pending' (not 'approved').
@@ -149,11 +213,23 @@ Read paths:
 - [ ] Unpublish the expert's only course → expert should remain 'approved'.
 - [ ] As rejected expert, access /author → should succeed (can try again).
 
+### Membership Upgrade/Downgrade Tests
+- [ ] Trial user publishes first course → membership_status='active', billing_disabled=true.
+- [ ] Paid user (with Stripe sub) publishes first course → billing_disabled=true (billing stops).
+- [ ] Expert unpublishes last course (no Stripe sub) → membership_status='trial', billing_disabled=false.
+- [ ] Expert unpublishes last course (has Stripe sub) → billing_disabled=false (billing resumes).
+- [ ] Org member publishes/unpublishes → no membership changes.
+- [ ] Rapid publish/unpublish → correct final state (no race conditions).
+- [ ] Account settings shows correct expert membership state.
+
 ## Change Guide
 - **Changing registration behavior**: Update src/app/actions/expert-application.ts becomeExpert().
 - **Changing Expert Console access**: Update route guards in src/app/author/layout.tsx, page.tsx, and courses/[id]/builder/page.tsx.
 - **Changing auto-approval logic**: Update src/app/actions/course-builder.ts publish action.
 - **Changing public visibility rules**: Update /experts page query and this doc's invariants.
+- **Changing membership upgrade logic**: Update src/lib/expert-membership.ts upgradeExpertMembership().
+- **Changing membership downgrade logic**: Update src/lib/expert-membership.ts downgradeExpertMembership() and callers in course-builder.ts, org-courses.ts.
+- **Adding new membership states**: Update getExpertMembershipContext(), account settings display, and this doc.
 
 ## Related Docs
 - docs/features/author-portal.md

@@ -81,11 +81,11 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 
 ---
 
-### Course Publishing (with Auto-Approval)
+### Course Publishing (with Auto-Approval + Membership Upgrade)
 
 **Goal**: Get course approved and live on platform
 **Frequency**: Per course
-**Features Involved**: `author-portal`, `admin-portal`, `academy`, `experts`
+**Features Involved**: `author-portal`, `admin-portal`, `academy`, `experts`, `membership-billing`
 
 #### Steps
 1. Submit course for review
@@ -96,23 +96,68 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 6. **If this is expert's FIRST published course:**
    - System auto-approves expert (`author_status` → `'approved'`)
    - Expert now visible on /experts page
+   - **Membership Upgrade Triggered:**
+     - Trial users: `membership_status='active'`, `billing_disabled=true`
+     - Paid users: `billing_disabled=true` (billing pauses)
+     - Org members: No membership change
 7. Course appears in Academy
 8. Start earning on enrollments
 
 #### Variations
-- First course (triggers auto-approval)
-- Subsequent courses (no status change)
+- First course (triggers auto-approval + membership upgrade)
+- Subsequent courses (no status/membership change)
 - Revisions requested
 - Rejection with feedback
+- Org member publishing (no membership change)
 
 #### Success Criteria
 - Course live in Academy
 - Enrollments possible
 - Expert visible on /experts page (after first publish)
+- billing_disabled=true (if first course and not org member)
 
 #### Related Workflows
 - Course Creation
 - Performance Tracking
+- Membership Downgrade (on unpublish)
+
+---
+
+### Course Unpublishing (with Membership Downgrade)
+
+**Goal**: Remove course from public catalog (with membership impact if last course)
+**Frequency**: Rare
+**Features Involved**: `author-portal`, `admin-portal`, `academy`, `experts`, `membership-billing`
+
+#### Steps
+1. Navigate to course in Expert Console or Admin Portal
+2. Choose to unpublish course
+3. Confirm unpublish action
+4. Course removed from Academy catalog
+5. **If this was expert's LAST published course:**
+   - **Membership Downgrade Triggered:**
+     - Expert with Stripe subscription: `billing_disabled=false` (billing resumes)
+     - Expert without Stripe subscription: `membership_status='trial'`, `billing_disabled=false`
+     - Org members: No membership change
+   - Expert remains `author_status='approved'` (status is permanent)
+   - Expert may no longer appear on /experts page (requires published course)
+6. Existing enrollments may be affected (based on policy)
+
+#### Variations
+- Has other published courses (no membership change)
+- Has Stripe subscription (billing resumes, stays active)
+- No Stripe subscription (returns to trial)
+- Org member unpublishing (no membership change)
+
+#### Success Criteria
+- Course removed from catalog
+- Correct membership state based on remaining courses and subscription status
+- author_status still 'approved'
+- Account settings shows correct membership display
+
+#### Related Workflows
+- Course Publishing
+- Content Updates
 
 ---
 
@@ -231,6 +276,8 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 
 The following workflows have been identified but not yet documented:
 - [x] Expert Onboarding / Registration (documented above)
+- [x] Course Publishing with Membership Upgrade (documented above)
+- [x] Course Unpublishing with Membership Downgrade (documented above)
 - [ ] Course Pricing Strategy
 - [ ] Learner Engagement Response
 - [ ] Co-authoring (if available)
@@ -248,7 +295,9 @@ When working on features that affect Experts/Authors:
 5. **Auto-approval is automatic** — first course publish changes pending → approved
 6. **Approval is permanent** — once approved, status persists even if courses unpublished
 7. **Three approval paths exist** — API route, admin action, and auto-approval on publish
-8. Update this doc and `docs/workflows/Expert_Workflow.md` if workflow changes
+8. **Membership changes on publish/unpublish** — billing_disabled changes, author_status stays 'approved'
+9. **Org members are exempt** — isOrgMember() check prevents membership changes for org members
+10. Update this doc and `docs/workflows/Expert_Workflow.md` if workflow changes
 
 ### Key Files for Expert Flow
 - `src/app/actions/expert-application.ts` — becomeExpert() sets 'pending'
@@ -257,6 +306,8 @@ When working on features that affect Experts/Authors:
 - `src/app/author/courses/[id]/builder/page.tsx` — Route guard for course builder
 - `src/app/actions/expert-course-builder.ts` — Course creation permissions
 - `src/app/actions/proposals.ts` — Proposal submission permissions
-- `src/app/actions/course-builder.ts` — Auto-approval logic on publish
+- `src/app/actions/course-builder.ts` — Auto-approval + membership upgrade/downgrade on publish/unpublish
+- `src/app/actions/org-courses.ts` — Membership downgrade on org course unpublish
+- `src/lib/expert-membership.ts` — **NEW** Expert membership upgrade/downgrade utilities
 - `src/components/NavigationPanel.tsx` — Expert Console link visibility
-- `src/app/settings/account/page.tsx` — Expert status messaging
+- `src/app/settings/account/page.tsx` — Expert status messaging + membership display
