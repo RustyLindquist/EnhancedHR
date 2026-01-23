@@ -163,9 +163,55 @@ export async function signup(formData: FormData) {
             return { error: 'Account created but sign-in failed. Please try logging in.' }
         }
 
-        // Redirect to org join page
+        // Parse slug and hash from the next URL (format: /slug/hash)
+        const [, slug, hash] = next.split('/')
+
+        // Look up the organization and verify the invite
+        const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .select('id, name, invite_hash')
+            .eq('slug', slug)
+            .single()
+
+        if (!orgError && org && org.invite_hash === hash && adminData.user) {
+            // Auto-join the user to the organization
+            await supabase
+                .from('profiles')
+                .update({
+                    org_id: org.id,
+                    membership_status: 'employee',
+                    role: 'user'
+                })
+                .eq('id', adminData.user.id)
+
+            // Create "My Profile" Context Card for the new user
+            try {
+                const { createContextItem } = await import('@/app/actions/context')
+                await createContextItem({
+                    collection_id: 'personal-context',
+                    type: 'PROFILE',
+                    title: 'My Profile',
+                    content: {
+                        role: fullName || 'Member',
+                        yearsInRole: '',
+                        yearsInCompany: '',
+                        yearsInHR: '',
+                        linkedInUrl: '',
+                        objectives: '',
+                        measuresOfSuccess: '',
+                        areasOfConcern: '',
+                        areasOfInterest: ''
+                    }
+                })
+            } catch (cardError) {
+                // Non-blocking error, log and continue
+                console.error('[Signup] Failed to create User Card:', cardError)
+            }
+        }
+
+        // Redirect directly to dashboard (user is now joined to the org)
         revalidatePath('/', 'layout')
-        redirect(next)
+        redirect('/dashboard')
     }
 
     // Standard signup flow with email verification
