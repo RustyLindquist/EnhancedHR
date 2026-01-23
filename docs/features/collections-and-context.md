@@ -118,6 +118,7 @@ Collections let users and org admins organize heterogeneous learning objects (co
 - **Context cards MUST always be clickable**: All context cards (courses, lessons, modules, conversations, notes, context items) must have click handlers that navigate to or open their associated content/location. This ensures users can always access the full content from any collection view.
 - **Context cards MUST always be draggable**: All context cards must support drag-and-drop functionality with a follow-along visual artifact (via CustomDragLayer), enabling users to organize content by dragging items onto the CollectionSurface. Use `UniversalCollectionCard` wrapper (not direct `UniversalCard`) to ensure both click and drag handlers are properly wired.
 - **Anti-pattern**: Direct use of `UniversalCard` without click/drag handlers in collection views is an anti-pattern. Always use `UniversalCollectionCard` which properly wraps `UniversalCard` with required interaction handlers.
+- **Reserved collection IDs**: The string `'expert-resources'` is reserved for platform-wide expert resources and must not be used as a user collection label or ID. See `docs/features/expert-resources.md` for the platform-wide resource pattern.
 
 ## Failure Modes & Recovery
 - **Duplicate system collections** (multiple rows with same label) cause counts to drift and alias resolution to pick an arbitrary row. Run `cleanupDuplicateCollectionsAction` to merge items and remove duplicates.
@@ -163,7 +164,50 @@ Collections let users and org admins organize heterogeneous learning objects (co
 
 **Related Workflows**: docs/workflows/collection-lifecycle.md (if exists)
 
+## Platform-Wide Resource Pattern (Admin Client)
+
+Some features require platform-wide resources that are visible to many users but only editable by admins. These use a special pattern:
+
+### Expert Resources Pattern
+
+Expert Resources (`expert-resources.md`) demonstrates the admin client pattern for platform-wide context items:
+
+1. **Reserved Collection ID**: Use a string literal (e.g., `'expert-resources'`) instead of a UUID to identify platform-wide collections.
+2. **Admin Client for Writes**: Use `createAdminClient()` to bypass RLS for write operations.
+3. **Server-Side Permission Checks**: Always verify admin role before write operations.
+4. **Admin Client for Reads**: Use admin client for reads to bypass user_id RLS restrictions.
+5. **Custom Panel Handlers**: Pass custom handlers to TopContextPanel/AddNotePanel to override default RLS-bound operations.
+
+```typescript
+// Pattern: Platform-wide resource with admin client
+const COLLECTION_ID = 'expert-resources'; // Reserved string, not a UUID
+
+async function createPlatformResource(data: ResourceDTO) {
+  // 1. Verify authenticated user
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  // 2. Verify admin role
+  const admin = createAdminClient();
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return { success: false, error: 'Forbidden' };
+
+  // 3. Write with admin client (bypasses RLS)
+  const { error } = await admin.from('user_context_items').insert({
+    user_id: user.id,
+    collection_id: COLLECTION_ID,
+    ...data
+  });
+
+  return { success: !error };
+}
+```
+
+See `docs/features/expert-resources.md` for complete implementation details.
+
 ## Related Docs
 - docs/engine/DOCUMENTATION_ENGINE.md
 - docs/features/FEATURE_INDEX.md
+- docs/features/expert-resources.md
 - docs/Object Oriented Context Engineering.md

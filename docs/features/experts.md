@@ -233,6 +233,7 @@ The account settings page (`/settings/account`) shows three expert membership st
 
 ## Related Docs
 - docs/features/author-portal.md
+- docs/features/expert-resources.md
 - docs/features/academy.md
 - docs/workflows/Expert_Workflow.md
 - docs/workflows/expert-author-workflows.md
