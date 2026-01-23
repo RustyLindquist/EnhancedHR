@@ -377,6 +377,7 @@ export default function OrgCourseBuilderClient({
                 lessonVideoUrl={editingLesson?.video_url || ''}
                 lessonContent={editingLesson?.content || ''}
                 lessonDuration={editingLesson?.duration || ''}
+                lessonQuizData={editingLesson?.quiz_data}
                 isNewLesson={!editingLessonId}
                 onSave={handlePanelSave}
                 onDelete={handlePanelSave}
