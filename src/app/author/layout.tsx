@@ -22,8 +22,12 @@ export default async function AuthorLayout({
         .eq('id', user.id)
         .single();
 
-    // Only approved experts and platform admins can access
-    if (profile?.author_status !== 'approved' && profile?.role !== 'admin') {
+    // Experts (pending, approved, rejected) and platform admins can access Expert Console
+    // Only users who never clicked "Become Expert" (status = 'none' or null) are blocked
+    const hasExpertAccess = profile?.role === 'admin' ||
+        (profile?.author_status && profile.author_status !== 'none');
+
+    if (!hasExpertAccess) {
         redirect('/teach');
     }
 

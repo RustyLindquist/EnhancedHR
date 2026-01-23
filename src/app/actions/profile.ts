@@ -160,13 +160,13 @@ export async function updateExpertProfileAction(data: {
     const { error } = await admin
         .from('profiles')
         .update({
-            phone_number: data.phone_number,
-            linkedin_url: data.linkedin_url,
-            twitter_url: data.twitter_url,
-            website_url: data.website_url,
-            credentials: data.credentials,
-            author_bio: data.author_bio,
-            expert_title: data.expert_title,
+            phone_number: data.phone_number || null,
+            linkedin_url: data.linkedin_url || null,
+            twitter_url: data.twitter_url || null,
+            website_url: data.website_url || null,
+            credentials: data.credentials || null,
+            author_bio: data.author_bio || null,
+            expert_title: data.expert_title || null,
         })
         .eq('id', user.id);
 

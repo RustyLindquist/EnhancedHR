@@ -29,11 +29,12 @@ async function checkExpertCourseAccess(courseId: number): Promise<{
         .eq('id', user.id)
         .single();
 
-    const isApprovedExpert = profile?.author_status === 'approved';
+    // Allow pending, approved, or rejected experts (anyone who clicked "Become Expert")
+    const hasExpertAccess = profile?.author_status && profile.author_status !== 'none';
     const isAdmin = profile?.role === 'admin';
 
-    if (!isApprovedExpert && !isAdmin) {
-        return { allowed: false, error: 'Not an approved expert' };
+    if (!hasExpertAccess && !isAdmin) {
+        return { allowed: false, error: 'Not an expert' };
     }
 
     // Check course ownership and draft status
@@ -77,11 +78,12 @@ export async function createExpertCourse() {
         .eq('id', user.id)
         .single();
 
-    const isApprovedExpert = profile?.author_status === 'approved';
+    // Allow pending, approved, or rejected experts (anyone who clicked "Become Expert")
+    const hasExpertAccess = profile?.author_status && profile.author_status !== 'none';
     const isAdmin = profile?.role === 'admin';
 
-    if (!isApprovedExpert && !isAdmin) {
-        return { success: false, error: 'Not an approved expert' };
+    if (!hasExpertAccess && !isAdmin) {
+        return { success: false, error: 'Not an expert' };
     }
 
     // Create course (RLS will enforce author_id = user.id and status = draft)

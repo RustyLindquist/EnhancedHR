@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Instantly makes the current user an expert (approved status).
- * No form or admin approval required - user can immediately access Expert Console.
+ * Makes the current user a pending expert.
+ * User can access Expert Console and build courses, but won't appear publicly
+ * until their first course is approved/published (which auto-approves them).
  */
 export async function becomeExpert(): Promise<{
     success: boolean;
@@ -19,27 +20,27 @@ export async function becomeExpert(): Promise<{
         return { success: false, error: 'Not authenticated' };
     }
 
-    // Check if user is already an expert
+    // Check if user is already an expert (pending, approved, or rejected can all access Expert Console)
     const { data: profile } = await supabase
         .from('profiles')
         .select('author_status')
         .eq('id', user.id)
         .single();
 
-    if (profile?.author_status === 'approved') {
-        return { success: true }; // Already an expert, nothing to do
+    if (profile?.author_status && profile.author_status !== 'none') {
+        return { success: true }; // Already has expert status, nothing to do
     }
 
-    // Update profile to approved expert status
+    // Update profile to pending expert status
     const { error: profileError } = await supabase
         .from('profiles')
         .update({
-            author_status: 'approved',
+            author_status: 'pending',
         })
         .eq('id', user.id);
 
     if (profileError) {
-        console.error('Error updating profile to expert:', profileError);
+        console.error('Error updating profile to pending expert:', profileError);
         return { success: false, error: 'Failed to become an expert. Please try again.' };
     }
 

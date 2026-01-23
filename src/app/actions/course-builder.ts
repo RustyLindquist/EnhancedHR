@@ -44,8 +44,56 @@ export async function updateCourseDetails(courseId: number, data: {
         return { success: false, error: error.message };
     }
 
+    // Auto-approve expert when their first course is published
+    if (data.status === 'published') {
+        try {
+            // Get the course author
+            const { data: course } = await admin
+                .from('courses')
+                .select('author_id')
+                .eq('id', courseId)
+                .single();
+
+            if (course?.author_id) {
+                // Check if author is pending
+                const { data: author } = await admin
+                    .from('profiles')
+                    .select('author_status')
+                    .eq('id', course.author_id)
+                    .single();
+
+                if (author?.author_status === 'pending') {
+                    // Check if this is their first published course (excluding current one which was just updated)
+                    const { data: publishedCourses } = await admin
+                        .from('courses')
+                        .select('id')
+                        .eq('author_id', course.author_id)
+                        .eq('status', 'published')
+                        .neq('id', courseId);
+
+                    // If no other published courses, this is their first - auto-approve them
+                    if (!publishedCourses || publishedCourses.length === 0) {
+                        await admin
+                            .from('profiles')
+                            .update({
+                                author_status: 'approved',
+                                approved_at: new Date().toISOString()
+                            })
+                            .eq('id', course.author_id);
+
+                        console.log(`Auto-approved expert ${course.author_id} on first course publish`);
+                    }
+                }
+            }
+        } catch (autoApproveError) {
+            // Don't fail the course update if auto-approval fails
+            console.error('Error auto-approving expert:', autoApproveError);
+        }
+    }
+
     revalidatePath(`/admin/courses/${courseId}/builder`);
     revalidatePath('/admin/courses');
+    revalidatePath('/author');
     return { success: true };
 }
 

@@ -25,8 +25,11 @@ export default async function AuthorDashboardPage() {
         .eq('id', user.id)
         .single();
 
-    // Only approved experts and platform admins can access
-    if (profile?.author_status !== 'approved' && profile?.role !== 'admin') {
+    // Experts (pending, approved, rejected) and platform admins can access Expert Console
+    const hasExpertAccess = profile?.role === 'admin' ||
+        (profile?.author_status && profile.author_status !== 'none');
+
+    if (!hasExpertAccess) {
         redirect('/teach');
     }
 
