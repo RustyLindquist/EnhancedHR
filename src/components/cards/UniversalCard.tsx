@@ -5,7 +5,7 @@ import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Pap
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE';
 
 // Icon mapping for dynamic icon names
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
@@ -106,35 +106,48 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             barColor: 'hidden',
             icon: null,
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.6)',
+            glowColor: 'rgba(200, 240, 255, 0.9)', // Bright cyan/white for visibility on blue
             bodyColor: 'bg-[#063F5F]'
         },
-        RESOURCE: { // Red/Terra-cotta
-            headerColor: 'bg-[#4A2020]',
-            borderColor: 'border-red-500/30',
+        ACTIVITY: {
+            headerColor: 'bg-[#800725]',
+            borderColor: 'border-red-700/30',
             labelColor: 'text-red-200',
-            barColor: 'bg-red-900/50', // Solid header bg
-            icon: Paperclip,
-            buttonStyle: 'text-slate-400 hover:text-white',
-            glowColor: 'rgba(239, 68, 68, 0.5)' // Red
+            barColor: 'hidden',
+            icon: null,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(255, 180, 200, 0.9)', // Bright pink/white for visibility on red
+            bodyColor: 'bg-[#800725]'
         },
-        CONVERSATION: { // Blue/Teal -> Dark Mode Theme
-            headerColor: 'bg-[#054C74]', // Brand Medium Blue
-            borderColor: 'border-[#78C0F0]/30', // Light Blue Accent
+        RESOURCE: { // Dark maroon gradient - #521B23 to #3A1218
+            headerColor: 'bg-transparent',
+            borderColor: 'border-[#521B23]/40',
+            labelColor: 'text-red-200',
+            barColor: 'bg-transparent',
+            icon: Paperclip,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(255, 150, 150, 0.95)', // Bright pink-red for contrast
+            bodyColor: 'bg-black/25'
+        },
+        CONVERSATION: { // Blue gradient - #063B59 to #085684
+            headerColor: 'bg-transparent',
+            borderColor: 'border-[#78C0F0]/30',
             labelColor: 'text-[#78C0F0]',
-            barColor: 'bg-[#054C74]',
+            barColor: 'bg-transparent',
             icon: ConversationGraphic,
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.6)'
+            glowColor: 'rgba(120, 192, 240, 0.7)', // Bright blue for visibility
+            bodyColor: 'bg-black/25'
         },
-        CONTEXT: { // Brand Orange
-            headerColor: 'bg-[#7c2d12]', // Deep Orange/Amber base
-            borderColor: 'border-orange-500/30',
-            labelColor: 'text-orange-200',
-            barColor: 'bg-[#ea580c]/80', // Orange-600
+        CONTEXT: { // Red/Rust gradient - #BD4B18 to #943C14
+            headerColor: 'bg-transparent',
+            borderColor: 'border-[#BD4B18]/40',
+            labelColor: 'text-orange-100',
+            barColor: 'bg-transparent',
             icon: FileText,
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(234, 88, 12, 0.5)' // Orange
+            glowColor: 'rgba(255, 180, 130, 0.95)', // Bright peach-orange for contrast
+            bodyColor: 'bg-black/25'
         },
         AI_INSIGHT: { // Bright Orange #FF9300 for AI-generated insights
             headerColor: 'bg-[#7a4500]', // Darker base for contrast
@@ -163,16 +176,16 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(75, 139, 179, 0.6)' // #4B8BB3 glow
         },
-        NOTE: { // Notes Card - Classic Sticky Note Yellow #F5E6A3
-            headerColor: 'bg-[#F5E6A3]',
-            borderColor: 'border-[#D4C078]/60',
-            labelColor: 'text-slate-700',
-            barColor: 'bg-[#F5E6A3]',
+        NOTE: { // Notes Card - Gold/Orange gradient #A87938 to #FF9300
+            headerColor: 'bg-transparent',
+            borderColor: 'border-[#FF9300]/40',
+            labelColor: 'text-white',
+            barColor: 'bg-transparent',
             icon: StickyNote,
-            buttonStyle: 'bg-black/10 hover:bg-black/20 text-slate-700',
-            glowColor: 'rgba(245, 230, 163, 0.5)', // Warm yellow glow
-            bodyColor: 'bg-[#F5E6A3]', // Solid sticky note yellow
-            footerTextColor: 'text-slate-600'
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(255, 230, 140, 0.95)', // Bright yellow-gold for contrast
+            bodyColor: 'bg-black/25',
+            footerTextColor: 'text-white/70'
         },
         TOOL: { // Tools Card - Teal #0D9488
             headerColor: 'bg-[#0D9488]',
@@ -216,20 +229,20 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
         }
     }[type];
 
-    // Inference from image:
-    // Top Row (Course/Module/Lesson) has an image background taking up the top half.
-    // Bottom Row (Resource/Context/Conv) has a colored "Header Block".
-
-    const isMediaCard = ['COURSE', 'MODULE', 'LESSON', 'ORG_COURSE'].includes(type);
-
-    // Layout Tweaks:
-    // Conversation, Context, AI_Insight, Resource, Profile, Help, Note, Tool, Tool_Conversation & Org_Collection need more text space (40% top / 60% bottom)
+    // Card type categorization
+    // New layout cards: COURSE, MODULE, LESSON - image below header
+    const isNewLayoutCard = ['COURSE', 'MODULE', 'LESSON', 'ACTIVITY'].includes(type);
+    // Legacy media cards with background image: ORG_COURSE
+    const isMediaCard = ['ORG_COURSE'].includes(type);
+    // Text-heavy cards with colored header sections
     const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION', 'ORG_COLLECTION'].includes(type);
+
+    // Height calculations for legacy layout
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, and Org_Course cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE';
+    // For Course, Module, Lesson, Activity, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, and Org_Course cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -280,8 +293,116 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#D4C078]/60' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'LESSON' ? 'bg-[#063F5F]' : type === 'NOTE' ? 'bg-[#F5E6A3]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''}`}
+                className={`relative group w-full rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
             >
+
+            {/* ========== NEW LAYOUT FOR COURSE/MODULE/LESSON ========== */}
+            {isNewLayoutCard ? (
+                <div className="flex flex-col min-h-full">
+                    {/* Header Row - Separate dark pill at top with its own padding */}
+                    <div data-header-actions className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm relative z-10 mx-3 mt-3">
+                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70">
+                            {type}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            {onRemove && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                                    className="text-white/40 hover:text-white transition-colors p-1"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            )}
+                            {onAdd && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                                    className="text-white/40 hover:text-white transition-colors p-1"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Featured Image Section - Full width, fixed 120px height */}
+                    <div className="relative h-[120px] w-full mt-2 overflow-hidden bg-black/20 flex items-center justify-center flex-shrink-0">
+                        {imageUrl ? (
+                            <img src={imageUrl} alt={title} className="w-full h-full object-cover opacity-70" />
+                        ) : (
+                            <span className="text-white/30 text-xs font-medium tracking-widest uppercase">
+                                Featured Image
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Content Area - Below image with padding */}
+                    <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+                        {/* Content Section */}
+                        <div className="flex-1 flex flex-col pt-3 px-4">
+                            {/* Star Rating (Course only) - Above title, right-aligned */}
+                            {type === 'COURSE' && rating !== undefined && (
+                                <div className="flex items-center justify-end gap-1 text-amber-400 mb-1">
+                                    <Star size={14} fill="currentColor" />
+                                    <span className="text-[13px] font-bold">{rating.toFixed(1)}</span>
+                                </div>
+                            )}
+
+                            {/* Title */}
+                            <h3 className="font-semibold text-white text-[15px] leading-tight line-clamp-2 mb-1">
+                                {title}
+                            </h3>
+
+                            {/* From: Course (Module/Lesson/Activity) */}
+                            {(type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY') && description && (
+                                <p className="text-[11px] text-white/60 mb-0.5 truncate">
+                                    From: {description}
+                                </p>
+                            )}
+
+                            {/* Author */}
+                            {subtitle && (
+                                <p className="text-[11px] text-white/60 truncate">
+                                    {subtitle}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Footer - Hidden for ACTIVITY cards */}
+                        {type !== 'ACTIVITY' && (
+                            <div className="flex items-center justify-between mt-auto mx-4 py-2 border-t border-white/10">
+                                <div className="flex items-center gap-2 text-white/50">
+                                    {meta && (
+                                        <>
+                                            <Clock size={12} />
+                                            <span className="text-[10px] font-bold tracking-wider uppercase">
+                                                {meta}
+                                            </span>
+                                        </>
+                                    )}
+                                    {/* SHRM/HRCI badges (Course only) */}
+                                    {type === 'COURSE' && credits && (credits.shrm || credits.hrci) && (
+                                        <div className="flex items-center gap-1.5 ml-1">
+                                            {credits.shrm && (
+                                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#4f46e5]/30 text-[#a5b4fc] border border-[#4f46e5]/40">
+                                                    SHRM
+                                                </span>
+                                            )}
+                                            {credits.hrci && (
+                                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#9333ea]/30 text-[#d8b4fe] border border-[#9333ea]/40">
+                                                    HRCI
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Right side empty for conditional badges like "For You", "#1 Trending" */}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+            <>
+            {/* ========== LEGACY LAYOUT FOR OTHER CARDS ========== */}
 
             {/* --- Top Section --- */}
             <div className={`relative ${topHeight} w-full overflow-hidden ${isMediaCard ? 'bg-black' : config.barColor} transition-all duration-300`}>
@@ -304,13 +425,13 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 <div data-header-actions className="absolute top-0 left-0 w-full p-3 z-20 flex flex-col gap-2">
 
                     {/* Row 1: Type Label & Core Actions */}
-                    <div className={`flex items-center justify-between ${type === 'NOTE' ? 'bg-slate-800/60' : 'bg-black/40'} backdrop-blur-sm px-3 py-1.5 rounded-lg border ${type === 'NOTE' ? 'border-slate-700/30' : 'border-white/5'} shadow-sm`}>
-                        <span className={`text-[10px] font-bold tracking-[0.2em] uppercase ${type === 'NOTE' ? 'text-white/90' : 'text-white/70'} truncate mr-2`}>{type === 'AI_INSIGHT' ? 'CONTEXT' : type === 'HELP' ? 'FEATURES' : type === 'CONTEXT' && contextSubtype ? `CONTEXT (${contextSubtype})` : type.replace('_', ' ')}</span>
+                    <div className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
+                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70 truncate mr-2">{type === 'AI_INSIGHT' ? 'CONTEXT' : type === 'HELP' ? 'FEATURES' : type === 'CONTEXT' && contextSubtype ? `CONTEXT (${contextSubtype})` : type.replace('_', ' ')}</span>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {onRemove && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                                    className={`${type === 'NOTE' ? 'text-white/60 hover:text-white' : 'text-white/40 hover:text-white'} transition-colors p-1`}
+                                    className="text-white/40 hover:text-white transition-colors p-1"
                                 >
                                     <Trash2 size={14} />
                                 </button>
@@ -332,7 +453,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             {onAdd && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                    className={`${type === 'NOTE' ? 'text-white/60 hover:text-white' : 'text-white/40 hover:text-white'} transition-colors p-1`}
+                                    className="text-white/40 hover:text-white transition-colors p-1"
                                 >
                                     <Plus size={16} />
                                 </button>
@@ -352,7 +473,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             ? 'top-1/2 -translate-y-1/2 pt-8'
                             : 'bottom-4'
                 }`}>
-                    <h3 className={`font-bold ${type === 'NOTE' ? 'text-slate-800' : 'text-white'} leading-tight mb-1 ${type === 'NOTE' ? '' : 'drop-shadow-md'} line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
+                    <h3 className={`font-bold text-white leading-tight mb-1 drop-shadow-md line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
                         {title}
                     </h3>
                     {/* Author line with rating for Course cards */}
@@ -412,7 +533,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             <p className="text-[13px] text-slate-300 line-clamp-2 font-light leading-snug">{description}</p>
                         </div>
                     ) : type === 'NOTE' ? (
-                        <p className="text-[13px] text-slate-700 leading-relaxed line-clamp-3 font-light">
+                        <p className="text-[13px] text-white/80 leading-relaxed line-clamp-3 font-light">
                             {description}
                         </p>
                     ) : (
@@ -423,7 +544,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Footer (Meta + Action) */}
-                <div className={`flex items-center justify-between mt-4 pt-2 border-t ${type === 'NOTE' ? 'border-slate-400/30' : 'border-white/5'} gap-2 relative z-10`}>
+                <div className={`flex items-center justify-between mt-4 pt-2 border-t border-white/10 gap-2 relative z-10`}>
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
@@ -469,17 +590,17 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             {/* Left side: Collections list */}
                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                 {collections && collections.length > 0 ? (
-                                    <span className="text-[10px] font-medium text-slate-600 truncate">
+                                    <span className="text-[10px] font-medium text-white/60 truncate">
                                         {collections.slice(0, 2).join(', ')}
                                         {collections.length > 2 && ` +${collections.length - 2}`}
                                     </span>
                                 ) : (
-                                    <span className="text-[10px] text-slate-500 italic">No collections</span>
+                                    <span className="text-[10px] text-white/40 italic">No collections</span>
                                 )}
                             </div>
                             {/* Right side: Date */}
                             {meta && (
-                                <div className="flex items-center gap-1.5 text-slate-600 flex-shrink-0">
+                                <div className="flex items-center gap-1.5 text-white/60 flex-shrink-0">
                                     <Clock size={12} />
                                     <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                                 </div>
@@ -489,7 +610,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
                     {/* Conversation, Context, AI_Insight, Profile, Help, Tool_Conversation, Resource cards: Show date on right (no button) */}
                     {(type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'TOOL_CONVERSATION' || type === 'RESOURCE') && meta && (
-                        <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
+                        <div className="flex items-center gap-1.5 text-white/60 flex-shrink-0">
                             <Clock size={12} />
                             <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
                         </div>
@@ -516,7 +637,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
             {/* Color Band for Non-Media Cards (Top Border or distinct style?) */}
             {/* The design seems to have a colored top section. I used config.barColor for that. */}
-
+            </>
+            )}
             </div>
         </InteractiveCardWrapper>
     );

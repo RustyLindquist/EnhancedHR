@@ -30,6 +30,7 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
     onDragStart
 }) => {
     const isQuiz = lesson.type === 'quiz';
+    const isActivity = lesson.type === 'article'; // Activities are stored as 'article' type
 
     // Format duration
     const formatDuration = (duration: string) => {
@@ -54,12 +55,13 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
 
     const handleAdd = (e: React.MouseEvent) => {
         e.stopPropagation();
+        const isActivityOrQuiz = isActivity || isQuiz;
         const dragItem: DragItem = {
-            type: 'LESSON',
+            type: isActivityOrQuiz ? 'ACTIVITY' : 'LESSON',
             id: lesson.id,
             title: lesson.title,
-            subtitle: `Module: ${moduleId}`,
-            meta: lesson.duration
+            subtitle: courseTitle,
+            meta: isActivityOrQuiz ? undefined : lesson.duration // Activities and quizzes don't show duration
         };
         onAddToCollection(dragItem);
     };
@@ -70,12 +72,13 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
         emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         e.dataTransfer.setDragImage(emptyImg, 0, 0);
 
+        const isActivityOrQuiz = isActivity || isQuiz;
         const dragItem: DragItem = {
-            type: 'LESSON',
+            type: isActivityOrQuiz ? 'ACTIVITY' : 'LESSON',
             id: lesson.id,
             title: lesson.title,
-            subtitle: `Module: ${moduleId}`,
-            meta: lesson.duration
+            subtitle: courseTitle,
+            meta: isActivityOrQuiz ? undefined : lesson.duration // Activities and quizzes don't show duration
         };
         e.dataTransfer.setData('application/json', JSON.stringify(dragItem));
         onDragStart(dragItem);
@@ -109,12 +112,16 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
 
             {/* Card Content */}
             <div className="px-4 py-[26px]">
-                {/* Top Row: Lesson Number/Quiz Badge + Duration */}
+                {/* Top Row: Lesson Number/Quiz/Activity Badge + Duration */}
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         {isQuiz ? (
                             <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[9px] font-bold uppercase rounded border border-brand-orange/30">
                                 QUIZ
+                            </span>
+                        ) : isActivity ? (
+                            <span className="px-2 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30">
+                                ACTIVITY
                             </span>
                         ) : (
                             <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
@@ -122,9 +129,11 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
                             </span>
                         )}
                     </div>
-                    <span className="text-[10px] font-medium text-slate-500 transition-opacity duration-200 group-hover:opacity-0">
-                        {formatDuration(lesson.duration)}
-                    </span>
+                    {!isActivity && (
+                        <span className="text-[10px] font-medium text-slate-500 transition-opacity duration-200 group-hover:opacity-0">
+                            {formatDuration(lesson.duration)}
+                        </span>
+                    )}
                 </div>
 
                 {/* Lesson Title */}

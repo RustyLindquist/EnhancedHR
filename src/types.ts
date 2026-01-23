@@ -251,7 +251,7 @@ export interface ToolConversation extends Omit<Conversation, 'type'> {
 }
 
 // Drag Item Types (used for drag/drop and modal operations)
-export type DragItemType = 'COURSE' | 'LESSON' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE' | 'TOOL_CONVERSATION';
+export type DragItemType = 'COURSE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'MODULE' | 'CONVERSATION' | 'CONTEXT' | 'PROFILE' | 'NOTE' | 'TOOL_CONVERSATION';
 
 export interface DragItem {
   type: DragItemType;
