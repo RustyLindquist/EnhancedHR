@@ -5,6 +5,8 @@ import { getMyCredentials } from '@/app/actions/credentials';
 import ExpertProfileEditor from './ExpertProfileEditor';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export default async function ExpertProfilePage() {
     const supabase = await createClient();
