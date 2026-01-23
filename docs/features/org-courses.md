@@ -3,7 +3,7 @@ id: org-courses
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-13
+last_updated: 2026-01-23
 surfaces:
   routes:
     - /org-courses
@@ -76,6 +76,7 @@ The feature includes full integration with the AI Context Engine, enabling the A
 - Module and lesson management
 - Video upload via Mux
 - Author assignment from org members
+- Quiz Builder for creating assessments (see `docs/features/course-player-and-progress.md`)
 - Publish/Unpublish actions
 
 ### AI Panel Integration

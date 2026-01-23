@@ -3,7 +3,7 @@ id: course-player-and-progress
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-04
+last_updated: 2026-01-23
 surfaces:
   routes:
     - /dashboard?collection=academy
@@ -40,10 +40,77 @@ invariants:
   - lessons.module_id and modules.course_id FKs must be intact; deleting course cascades to modules/lessons.
   - Course player saves progress per lesson (is_completed/last_accessed/view_time_seconds); course card is_saved depends on collections, not progress.
   - user_assessment_attempts rows are owned by user_id; insert only by owner.
+  - Quiz passing score does NOT gate lesson completion; learners receive credit regardless of score.
+  - Quiz explanations are only shown AFTER submission, not during question answering.
+  - Each quiz question must have exactly one correct answer marked.
 ---
 
 ## Overview
-Course player surfaces course/module/lesson content, tracks per-lesson progress, and exposes resources and notes within the player. Progress is persisted in Supabase so the dashboard and collections reflect learning state. Assessments are recorded per lesson.
+Course player surfaces course/module/lesson content, tracks per-lesson progress, and exposes resources and notes within the player. Progress is persisted in Supabase so the dashboard and collections reflect learning state. Assessments (quizzes) are recorded per lesson, providing knowledge checks without gating completion.
+
+## Quiz/Assessment System
+
+### Quiz Data Model
+Quiz data is stored in the `lessons.quiz_data` JSONB column with the following structure:
+
+```typescript
+interface QuizData {
+  questions: QuizQuestion[];
+  passingScore: number;  // 0-100 percentage, default 80
+}
+
+interface QuizQuestion {
+  id: string;           // Unique identifier (q_timestamp_random)
+  text: string;         // The question text
+  options: QuizOption[];
+  explanation?: string; // Optional explanation shown after submission
+}
+
+interface QuizOption {
+  id: string;           // Unique identifier
+  text: string;         // The option text
+  isCorrect: boolean;   // Only one option per question should be true
+}
+```
+
+### Key Behaviors
+
+**Passing Score Does NOT Gate Completion**
+- The passing score is purely for learner self-assessment
+- Learners receive lesson completion credit regardless of their quiz score
+- This supports the recertification model where attempting is what matters, not passing
+
+**Explanations**
+- Optional per-question explanations can be added by course creators
+- Explanations are shown AFTER the learner submits their answers
+- Used to reinforce concepts or explain why the correct answer is right
+
+**Retry Behavior**
+- Learners can retry quizzes as many times as they like
+- Each attempt is recorded in `user_assessment_attempts`
+- Lesson completion is triggered on first submission, regardless of score
+
+### Quiz Builder
+Course creators (Admins, Org Admins, and Experts) can build quizzes using the QuizBuilder component:
+- **Location**: `src/components/admin/QuizBuilder.tsx`
+- **Available in**: Admin Course Builder, Org Course Builder, Expert Course Builder
+- **Features**:
+  - Set passing score (0-100%)
+  - Add/remove questions
+  - Add/remove answer options (minimum 2 per question)
+  - Mark correct answer (radio behavior - one per question)
+  - Add optional explanations per question
+  - Reorder questions with up/down arrows
+
+### Quiz Player
+Learners take quizzes via the QuizPlayer component:
+- **Location**: `src/components/QuizPlayer.tsx`
+- **Features**:
+  - Displays questions with selectable options
+  - Validates all questions answered before submission
+  - Shows score and pass/fail status after submission
+  - Displays explanations for each question
+  - Retry button to attempt again
 
 ## User Surfaces
 - Academy collection view (course cards show saved state and ratings).
