@@ -139,7 +139,7 @@ export interface Conversation {
 
 // --- Personal Context Types ---
 
-export type ContextItemType = 'AI_INSIGHT' | 'CUSTOM_CONTEXT' | 'FILE' | 'PROFILE';
+export type ContextItemType = 'AI_INSIGHT' | 'CUSTOM_CONTEXT' | 'FILE' | 'PROFILE' | 'VIDEO';
 
 export interface UserContextItem {
     id: string;
@@ -205,6 +205,22 @@ export interface ProfileDetails {
         directReports?: string;
         areasOfConcern?: string;
         areasOfInterest?: string;
+    };
+    created_at: string;
+    collections?: string[];
+}
+
+export interface VideoContent {
+    type: 'VIDEO';
+    id: string;
+    title: string;
+    content: {
+        muxAssetId: string;
+        muxPlaybackId: string;
+        muxUploadId?: string;
+        duration?: number;
+        status: 'uploading' | 'processing' | 'ready' | 'error';
+        description?: string;
     };
     created_at: string;
     collections?: string[];
@@ -280,7 +296,7 @@ export interface Note {
 }
 
 // The polymorphic Context Object (Card)
-export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | HelpTopic | Tool | ToolConversation | DragItem;
+export type ContextCard = Course | Conversation | Instructor | AIInsight | CustomContext | ContextFile | ProfileDetails | VideoContent | HelpTopic | Tool | ToolConversation | DragItem;
 
 export interface BackgroundTheme {
   id: string;

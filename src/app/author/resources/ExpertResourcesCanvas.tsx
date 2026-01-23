@@ -1,14 +1,22 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Layers, Upload, StickyNote, Lightbulb } from 'lucide-react';
+import { Layers, Upload, StickyNote, Lightbulb, Video } from 'lucide-react';
 import { UserContextItem, ContextItemType } from '@/types';
 import TopContextPanel from '@/components/TopContextPanel';
 import AddNotePanel from '@/components/AddNotePanel';
+import AddVideoPanel from '@/components/AddVideoPanel';
+import VideoViewPanel from '@/components/VideoViewPanel';
 import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
 import ResourceViewPanel from '@/components/ResourceViewPanel';
 import { useRouter } from 'next/navigation';
 import { createExpertResource, updateExpertResource, deleteExpertResource, createExpertFileResource } from '@/app/actions/expertResources';
+import {
+    createExpertVideoResource,
+    finalizeExpertVideoUpload,
+    updateExpertVideoResource,
+    deleteExpertVideoResource,
+} from '@/app/actions/videoResources';
 
 interface ExpertResourcesCanvasProps {
     resources: UserContextItem[];
@@ -21,6 +29,7 @@ interface ExpertResourcesCanvasProps {
 function getCardType(resource: UserContextItem): CardType {
     const isNote = (resource.content as any)?.isNote === true;
     if (isNote) return 'NOTE';
+    if (resource.type === 'VIDEO') return 'VIDEO';
     if (resource.type === 'FILE') return 'CONTEXT';
     return 'CONTEXT';
 }
@@ -56,6 +65,11 @@ export default function ExpertResourcesCanvas({
     const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState<UserContextItem | null>(null);
     const [addType, setAddType] = useState<'CUSTOM_CONTEXT' | 'FILE'>('CUSTOM_CONTEXT');
+    // Video panel state
+    const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
+    const [editingVideoItem, setEditingVideoItem] = useState<UserContextItem | null>(null);
+    const [isVideoViewOpen, setIsVideoViewOpen] = useState(false);
+    const [viewingVideoItem, setViewingVideoItem] = useState<UserContextItem | null>(null);
 
     const handleAddNote = useCallback(() => {
         setSelectedResource(null);
@@ -70,6 +84,18 @@ export default function ExpertResourcesCanvas({
 
     const handleResourceClick = useCallback((resource: UserContextItem) => {
         setSelectedResource(resource);
+
+        // Handle VIDEO type
+        if (resource.type === 'VIDEO') {
+            if (isPlatformAdmin) {
+                setEditingVideoItem(resource);
+                setIsVideoPanelOpen(true);
+            } else {
+                setViewingVideoItem(resource);
+                setIsVideoViewOpen(true);
+            }
+            return;
+        }
 
         if (isPlatformAdmin) {
             // Admins can edit - check if it's a note or context
@@ -103,11 +129,14 @@ export default function ExpertResourcesCanvas({
         return updateExpertResource(id, updates);
     }, []);
 
-    const handleDeleteResource = useCallback(async (resourceId: string) => {
+    const handleDeleteResource = useCallback(async (resourceId: string, resourceType?: string) => {
         if (!confirm('Are you sure you want to delete this resource?')) {
             return;
         }
-        const result = await deleteExpertResource(resourceId);
+        // Use video delete for VIDEO type, otherwise use regular delete
+        const result = resourceType === 'VIDEO'
+            ? await deleteExpertVideoResource(resourceId)
+            : await deleteExpertResource(resourceId);
         if (result.success) {
             router.refresh();
         } else {
@@ -117,6 +146,24 @@ export default function ExpertResourcesCanvas({
 
     const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => {
         return createExpertFileResource(fileName, fileType, fileBuffer);
+    }, []);
+
+    // Video handlers for Expert Resources
+    const handleCreateExpertVideo = useCallback(async (title: string, description?: string) => {
+        return createExpertVideoResource(title, description);
+    }, []);
+
+    const handleFinalizeExpertVideo = useCallback(async (itemId: string, uploadId: string) => {
+        return finalizeExpertVideoUpload(itemId, uploadId);
+    }, []);
+
+    const handleUpdateExpertVideo = useCallback(async (id: string, updates: { title?: string; description?: string }) => {
+        return updateExpertVideoResource(id, updates);
+    }, []);
+
+    const handleAddVideo = useCallback(() => {
+        setEditingVideoItem(null);
+        setIsVideoPanelOpen(true);
     }, []);
 
     return (
@@ -151,6 +198,13 @@ export default function ExpertResourcesCanvas({
                             <Upload size={16} />
                             File
                         </button>
+                        <button
+                            onClick={handleAddVideo}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95"
+                        >
+                            <Video size={16} />
+                            Video
+                        </button>
                     </div>
                 </div>
             )}
@@ -172,8 +226,10 @@ export default function ExpertResourcesCanvas({
                                 contextSubtype={resource.type === 'FILE' ? 'FILE' : 'TEXT'}
                                 fileUrl={resource.type === 'FILE' ? (resource.content as any).url : undefined}
                                 fileName={resource.type === 'FILE' ? (resource.content as any).fileName : undefined}
+                                videoPlaybackId={resource.type === 'VIDEO' ? (resource.content as any).muxPlaybackId : undefined}
+                                videoStatus={resource.type === 'VIDEO' ? (resource.content as any).status : undefined}
                                 onAction={() => handleResourceClick(resource)}
-                                onRemove={isPlatformAdmin ? () => handleDeleteResource(resource.id) : undefined}
+                                onRemove={isPlatformAdmin ? () => handleDeleteResource(resource.id, resource.type) : undefined}
                             />
                         </div>
                     ))}
@@ -217,6 +273,13 @@ export default function ExpertResourcesCanvas({
                             >
                                 <Upload size={16} />
                                 File
+                            </button>
+                            <button
+                                onClick={handleAddVideo}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95"
+                            >
+                                <Video size={16} />
+                                Video
                             </button>
                         </div>
                     )}
@@ -274,6 +337,32 @@ export default function ExpertResourcesCanvas({
                     setSelectedResource(null);
                 }}
                 resource={selectedResource}
+            />
+
+            {/* Add/Edit Video Panel */}
+            <AddVideoPanel
+                isOpen={isVideoPanelOpen}
+                onClose={() => {
+                    setIsVideoPanelOpen(false);
+                    setEditingVideoItem(null);
+                }}
+                itemToEdit={editingVideoItem}
+                onSaveSuccess={() => {
+                    router.refresh();
+                }}
+                customCreateHandler={handleCreateExpertVideo}
+                customFinalizeHandler={handleFinalizeExpertVideo}
+                customUpdateHandler={handleUpdateExpertVideo}
+            />
+
+            {/* Video View Panel (for non-admin experts) */}
+            <VideoViewPanel
+                isOpen={isVideoViewOpen}
+                onClose={() => {
+                    setIsVideoViewOpen(false);
+                    setViewingVideoItem(null);
+                }}
+                resource={viewingVideoItem}
             />
         </div>
     );

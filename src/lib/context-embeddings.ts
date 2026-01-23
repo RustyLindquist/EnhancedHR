@@ -20,6 +20,7 @@ const SOURCE_TYPE_MAP: Record<ContextItemType, string> = {
     'FILE': 'file',
     'PROFILE': 'profile',
     'AI_INSIGHT': 'custom_context', // Insights are treated as custom context
+    'VIDEO': 'video', // Video resources (no embeddings generated for videos)
 };
 
 /**

@@ -84,3 +84,13 @@ export async function waitForMuxAssetReady(assetId: string, maxAttempts: number 
     }
     return { ready: false };
 }
+
+export async function deleteMuxAsset(assetId: string): Promise<boolean> {
+    try {
+        await mux.video.assets.delete(assetId);
+        return true;
+    } catch (error) {
+        console.error('Error deleting Mux asset:', error);
+        return false;
+    }
+}

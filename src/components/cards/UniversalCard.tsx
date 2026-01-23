@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen, Video, RefreshCw } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE' | 'VIDEO';
 
 // Icon mapping for dynamic icon names
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
@@ -34,6 +34,8 @@ interface UniversalCardProps {
     fileUrl?: string; // For FILE context cards and RESOURCE cards - URL to download the file
     fileName?: string; // For FILE context cards and RESOURCE cards - filename for download
     resourceType?: string; // For RESOURCE cards - file type (PDF, DOC, etc.)
+    videoPlaybackId?: string; // For VIDEO cards - Mux playback ID for thumbnail
+    videoStatus?: 'uploading' | 'processing' | 'ready' | 'error'; // For VIDEO cards - processing status
     onAction?: () => void;
     onRemove?: () => void;
     onAdd?: () => void;
@@ -69,6 +71,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     fileUrl,
     fileName,
     resourceType,
+    videoPlaybackId,
+    videoStatus,
     onAction,
     onRemove,
     onAdd,
@@ -226,12 +230,24 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
             glowColor: 'rgba(217, 119, 6, 0.5)', // Amber glow
             bodyColor: 'bg-amber-950'
+        },
+        VIDEO: { // Video Card - Purple/Violet gradient
+            headerColor: 'bg-transparent',
+            borderColor: 'border-purple-500/30',
+            labelColor: 'text-purple-100',
+            barColor: 'bg-transparent',
+            icon: Video,
+            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+            glowColor: 'rgba(168, 85, 247, 0.7)', // Purple glow
+            bodyColor: 'bg-black/25'
         }
     }[type];
 
     // Card type categorization
     // New layout cards: COURSE, MODULE, LESSON - image below header
     const isNewLayoutCard = ['COURSE', 'MODULE', 'LESSON', 'ACTIVITY'].includes(type);
+    // Video card has its own layout: header -> title -> thumbnail
+    const isVideoCard = type === 'VIDEO';
     // Legacy media cards with background image: ORG_COURSE
     const isMediaCard = ['ORG_COURSE'].includes(type);
     // Text-heavy cards with colored header sections
@@ -241,8 +257,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
-    // For Course, Module, Lesson, Activity, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, and Org_Course cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE';
+    // For Course, Module, Lesson, Activity, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, Org_Course, and Video cards, the entire card body is clickable
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE' || type === 'VIDEO';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -293,7 +309,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
+                className={`relative group w-full rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'VIDEO' ? 'border-purple-500/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'VIDEO' ? 'bg-gradient-to-br from-[#4A2F4A] to-[#7A3579]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
             >
 
             {/* ========== NEW LAYOUT FOR COURSE/MODULE/LESSON ========== */}
@@ -400,6 +416,97 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         )}
                     </div>
                 </div>
+            ) : isVideoCard ? (
+            /* ========== VIDEO CARD LAYOUT ========== */
+            <div className="flex flex-col h-full p-3">
+                {/* Header Bar */}
+                <div data-header-actions className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
+                    <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70">
+                        VIDEO
+                    </span>
+                    <div className="flex items-center gap-2">
+                        {onRemove && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                        {onDownload && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDownload(); }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                            >
+                                <Download size={14} />
+                            </button>
+                        )}
+                        {onAdd && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-[17px] font-bold text-white leading-tight mt-3 px-1 line-clamp-2">
+                    {title}
+                </h3>
+
+                {/* Video Thumbnail Area */}
+                <div className="flex-1 mt-3 rounded-xl overflow-hidden bg-black/60 relative min-h-[120px]">
+                    {videoPlaybackId && videoStatus === 'ready' ? (
+                        <>
+                            <img
+                                src={`https://image.mux.com/${videoPlaybackId}/thumbnail.jpg?time=0`}
+                                alt={title}
+                                className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            {/* Bottom gradient overlay - 25% black starting halfway */}
+                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/25 to-transparent"></div>
+                            {/* Play icon */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="p-3 rounded-full bg-black/50 backdrop-blur-sm border border-white/20">
+                                    <Play size={24} className="text-white ml-0.5" fill="currentColor" />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-2 text-purple-300/50">
+                                {videoStatus === 'uploading' && (
+                                    <>
+                                        <div className="animate-pulse"><Video size={40} /></div>
+                                        <span className="text-xs uppercase tracking-wider">Uploading...</span>
+                                    </>
+                                )}
+                                {videoStatus === 'processing' && (
+                                    <>
+                                        <div className="animate-spin"><RefreshCw size={28} /></div>
+                                        <span className="text-xs uppercase tracking-wider">Processing...</span>
+                                    </>
+                                )}
+                                {videoStatus === 'error' && (
+                                    <>
+                                        <Video size={40} className="text-red-400/70" />
+                                        <span className="text-xs uppercase tracking-wider text-red-400/70">Error</span>
+                                    </>
+                                )}
+                                {!videoStatus && (
+                                    <>
+                                        <Video size={40} />
+                                        <span className="text-xs uppercase tracking-wider">VIDEO COVER IMAGE</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
             ) : (
             <>
             {/* ========== LEGACY LAYOUT FOR OTHER CARDS ========== */}
