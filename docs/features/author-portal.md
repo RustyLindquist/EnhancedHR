@@ -3,7 +3,7 @@ id: author-portal
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-04
+last_updated: 2026-01-22
 surfaces:
   routes:
     - /author/*
@@ -18,75 +18,125 @@ data:
   storage: []
 backend:
   actions:
-    - src/app/author pages/components
+    - src/app/actions/expert-application.ts
+    - src/app/actions/expert-course-builder.ts
+    - src/app/actions/proposals.ts
+    - src/app/actions/course-builder.ts
 ai:
   context_scopes: []
   models: []
 tests:
   local:
-    - Access /teach as authenticated user; verify author application flow reachable.
+    - Access /author as pending expert; verify Expert Console access granted.
+    - Access /author as rejected expert; verify Expert Console access granted.
+    - Create course as pending expert; verify course creation succeeds.
   staging:
-    - Submit author application (course_proposals); confirm row inserted and author_status updates to pending.
+    - Submit course proposal as pending expert; confirm row inserted.
+    - Admin publishes first course for pending expert; verify auto-approval to 'approved'.
 invariants:
-  - profiles.author_status enum (none/pending/approved/rejected) governs author capabilities.
+  - profiles.author_status enum (none/pending/approved/rejected) governs visibility, NOT access.
+  - Pending, approved, AND rejected experts can all access the Expert Console (/author/*).
+  - Pending, approved, AND rejected experts can all create courses and submit proposals.
+  - Auto-approval triggers when first course is published (pending → approved).
   - course_proposals/expert_credentials tied to profile id; authors can manage only their own data.
-  - Courses authored by approved authors should reference author_id = profiles.id.
+  - Courses authored by any expert (regardless of status) should reference author_id = profiles.id.
 ---
 
 ## Overview
-Author Portal supports instructor onboarding and course proposal/management for approved authors. It relies on profile author_status and related proposal/credential tables.
+Author Portal (Expert Console) supports course creation and management for all experts regardless of approval status. Pending, approved, and rejected experts can all access the portal and build courses. The key distinction is visibility: only approved experts with published courses appear on the public /experts page. Approval happens automatically when an admin publishes the expert's first course.
 
 ## User Surfaces
-- `/teach` landing to start author application.
-- `/author/*` pages for managing proposals, credentials, and authored courses.
+- `/teach` landing to start becoming an expert.
+- `/author/*` pages (Expert Console) for managing proposals, credentials, and authored courses.
+- Accessible to ALL expert statuses: pending, approved, and rejected.
 
 ## Core Concepts & Objects
-- **Author**: profile with author_status='approved'.
+- **Expert Console**: The /author/* routes where experts build and manage courses.
+- **Pending Expert**: New expert who clicked "Become an Expert" but doesn't have a published course yet.
+- **Approved Expert**: Expert whose first course has been published by admin.
+- **Rejected Expert**: Expert whose application was rejected; can still access Expert Console.
 - **Author application/proposal**: course_proposals rows keyed to profile.
 - **Expert credentials**: expert_credentials rows storing author qualifications.
 
 ## Data Model
-- `profiles`: author_status enum, author_bio, linkedin_url.
+- `profiles`: author_status enum ('none' | 'pending' | 'approved' | 'rejected'), author_bio, linkedin_url.
 - `course_proposals`: id uuid PK, user_id FK profiles, course details fields, created_at.
 - `expert_credentials`: id uuid PK, user_id FK profiles, credential fields.
 - `courses`: author_id FK profiles; status text (draft/published etc).
 
 Write paths:
-- Author application inserts into course_proposals; may set author_status to pending.
-- Admin approval sets author_status to approved; author can then create/manage courses.
+- `becomeExpert()` sets author_status='pending' (NOT 'approved').
+- Pending/approved/rejected experts can create courses and submit proposals.
+- Course publish action auto-approves expert on first published course.
 
 Read paths:
-- Author pages list proposals and authored courses; filter by user_id.
+- Expert Console pages list proposals and authored courses; filter by user_id.
+- Route guards check author_status IN ('pending', 'approved', 'rejected').
 
 ## Permissions & Security
-- RLS on proposals/credentials should restrict to owner; admin may have elevated access (see policies in migrations).
-- Author creation/editing of courses may use admin policies; ensure author_id matches auth user.
+- Expert Console access: author_status must be 'pending', 'approved', OR 'rejected' (NOT 'none').
+- RLS on proposals/credentials restricts to owner; admin may have elevated access.
+- Course creation allowed for ALL expert statuses (pending/approved/rejected).
+- Proposal submission allowed for ALL expert statuses.
 
 ## Integration Points
-- Academy uses courses authored by approved authors.
+- Academy uses courses authored by approved authors with published courses.
 - Payout reporting references courses.author_id and profiles.author_status.
+- Course builder contains auto-approval logic for first course publish.
+- Navigation panel shows Expert Console link for all expert statuses.
+
+## Expert Console Access Rules
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   EXPERT CONSOLE ACCESS                         │
+├─────────────────────────────────────────────────────────────────┤
+│  author_status  │  Can Access   │  Can Create   │  On /experts  │
+│                 │  Expert Console  Courses       │  Page         │
+├─────────────────┼───────────────┼───────────────┼───────────────┤
+│  'none'         │      NO       │      NO       │      NO       │
+│  'pending'      │     YES       │     YES       │      NO       │
+│  'approved'     │     YES       │     YES       │  YES (if pub) │
+│  'rejected'     │     YES       │     YES       │      NO       │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Invariants
-- author_status must be approved before author can publish courses.
+- Expert Console access requires author_status != 'none' (pending/approved/rejected all allowed).
+- Course creation and proposal submission allowed for all expert statuses except 'none'.
+- Auto-approval: First course publish changes pending → approved automatically.
+- Approval is permanent: course unpublish doesn't revert approved → pending.
 - course_proposals and expert_credentials must reference the same user_id as profiles.id.
 - Course author_id should remain stable; reassigning requires business approval.
 
 ## Failure Modes & Recovery
-- Author cannot access portal: check author_status and RLS policies.
-- Proposal not visible: verify user_id matches auth.uid() and row exists.
-- Course missing author info: ensure author_id set and profile exists.
+- **Expert cannot access portal**: Check author_status is not 'none'. Any other status should grant access.
+- **Pending expert can't create course**: Verify route guards allow pending status; check expert-course-builder.ts.
+- **Auto-approval didn't trigger**: Verify this was the FIRST published course; check course-builder.ts.
+- **Proposal not visible**: Verify user_id matches auth.uid() and row exists.
+- **Course missing author info**: Ensure author_id set and profile exists.
 
 ## Testing Checklist
-- Submit author application; confirm course_proposals row and profile author_status=pending.
-- Admin approve (manual update); author can access /author dashboard and create a draft course.
-- Create credential; ensure expert_credentials row tied to user_id.
+- [ ] As user with author_status='none', /author → should redirect/block.
+- [ ] Click "Become an Expert" → author_status='pending'.
+- [ ] As pending expert, access /author → should succeed.
+- [ ] As pending expert, create course → should succeed.
+- [ ] As pending expert, submit proposal → should succeed.
+- [ ] As rejected expert, access /author → should succeed.
+- [ ] As rejected expert, create course → should succeed.
+- [ ] Admin publishes pending expert's first course → author_status auto-changes to 'approved'.
+- [ ] Unpublish approved expert's only course → should remain 'approved'.
 
 ## Change Guide
-- Adding approval workflow: add statuses and actions; update RLS to allow admin approval.
-- Expanding course creation: ensure new course fields captured and linked to author_id.
-- If enabling revenue sharing, integrate with payout reporting and author_id usage.
+- **Changing Expert Console access**: Update route guards in src/app/author/layout.tsx, page.tsx, and courses/[id]/builder/page.tsx.
+- **Changing course creation permissions**: Update src/app/actions/expert-course-builder.ts.
+- **Changing proposal permissions**: Update src/app/actions/proposals.ts.
+- **Changing auto-approval logic**: Update src/app/actions/course-builder.ts publish action.
+- **Adding approval workflow**: Modify auto-approval or add manual approval step.
 
 ## Related Docs
 - docs/features/academy.md
+- docs/features/experts.md
 - docs/features/admin-portal.md
-- docs/architecture/Expert_Workflow.md
+- docs/workflows/Expert_Workflow.md
+- docs/workflows/expert-author-workflows.md

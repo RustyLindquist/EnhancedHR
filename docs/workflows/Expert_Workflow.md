@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document describes the technical implementation of the Expert (Author) workflow, from discovery through approval and course proposal management. Use this as a reference when making changes to any Expert-related functionality.
+This document describes the technical implementation of the Expert (Author) workflow, from discovery through course building and auto-approval. The flow has been updated to a **pending-then-auto-approve model** where experts can immediately access the Expert Console to build courses, and are automatically approved when their first course is published.
 
 ---
 
@@ -29,30 +29,42 @@ This document describes the technical implementation of the Expert (Author) work
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           EXPERT USER JOURNEY                                │
+│                    EXPERT USER JOURNEY (Updated Jan 2026)                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  1. DISCOVERY                                                                │
 │     Home Page → "Experts" link (nav) → /experts landing page                │
+│     Or: Any "Become an Expert" button throughout the app                    │
 │                                                                              │
-│  2. SIGNUP                                                                   │
-│     /experts → "Become an Expert" → /join/expert (creates account)          │
-│     └── Account created with role: 'pending_author'                         │
+│  2. REGISTRATION (Immediate Access)                                          │
+│     User clicks "Become an Expert"                                          │
+│     └── author_status set to 'pending' (NOT 'approved')                     │
+│     └── User IMMEDIATELY gains Expert Console access                        │
+│     └── No application form required                                        │
 │                                                                              │
-│  3. APPLICATION                                                              │
-│     Auto-redirect to /expert-application (middleware enforced)              │
-│     └── Fill profile, credentials, course proposal                          │
-│     └── Submit application → status becomes 'submitted'                     │
+│  3. COURSE DEVELOPMENT (Pending State)                                       │
+│     Pending expert accesses Expert Console (/author/*)                      │
+│     └── Can create and build courses                                        │
+│     └── Can submit course proposals                                         │
+│     └── Can upload content and manage drafts                                │
+│     └── Cannot appear on public /experts page yet                           │
 │                                                                              │
-│  4. ADMIN REVIEW                                                             │
-│     Admin views at /admin/experts                                            │
-│     └── Can approve → role becomes 'author', approved_at set                │
-│     └── Can reject → rejection_notes saved, expert can resubmit             │
+│  4. AUTO-APPROVAL (On First Course Publish)                                  │
+│     Admin reviews and publishes expert's first course                       │
+│     └── System auto-changes author_status: 'pending' → 'approved'           │
+│     └── Expert now visible on /experts page                                 │
+│     └── No separate admin approval step for expert status                   │
 │                                                                              │
 │  5. APPROVED EXPERT                                                          │
-│     Access to /author dashboard                                              │
-│     └── Can submit new course proposals                                     │
-│     └── Can access course builder                                            │
+│     Continued access to /author dashboard                                   │
+│     └── Visible on public /experts page                                     │
+│     └── Status persists even if courses later unpublished                   │
+│                                                                              │
+│  6. REJECTION PATH (Edge Case)                                               │
+│     If admin explicitly rejects an expert:                                  │
+│     └── author_status = 'rejected'                                          │
+│     └── Expert CAN still access Expert Console                              │
+│     └── Can continue building courses and try again                         │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -146,19 +158,19 @@ src/
 ├── app/
 │   ├── (marketing)/
 │   │   ├── experts/
-│   │   │   └── page.tsx              # Expert landing page
+│   │   │   └── page.tsx              # Expert landing page (public)
 │   │   └── join/
 │   │       └── expert/
 │   │           ├── page.tsx          # Expert signup form
 │   │           └── actions.ts        # signupExpert() action
 │   │
-│   ├── expert-application/
-│   │   ├── page.tsx                  # Application form (pending_author only)
-│   │   └── actions.ts                # getExpertApplication(), saveExpertApplication()
-│   │
-│   ├── author/
-│   │   ├── page.tsx                  # Author dashboard (approved only)
-│   │   └── courses/                  # Course builder
+│   ├── author/                       # EXPERT CONSOLE (Updated Access Rules)
+│   │   ├── layout.tsx                # Route guard: allows pending/approved/rejected
+│   │   ├── page.tsx                  # Expert Console dashboard (same guard)
+│   │   └── courses/
+│   │       └── [id]/
+│   │           └── builder/
+│   │               └── page.tsx      # Course builder (same guard)
 │   │
 │   ├── admin/
 │   │   ├── experts/
@@ -169,17 +181,26 @@ src/
 │   │       └── page.tsx              # Global proposal queue
 │   │
 │   ├── actions/
+│   │   ├── expert-application.ts     # becomeExpert() - sets 'pending' status
+│   │   ├── expert-course-builder.ts  # Course creation (allows pending/rejected)
+│   │   ├── proposals.ts              # Proposal submission (allows pending/rejected)
+│   │   ├── course-builder.ts         # Auto-approval logic on first publish
 │   │   ├── experts.ts                # updateExpertStatus(), getExpertDetails()
-│   │   ├── proposals.ts              # getAllProposals(), updateProposalStatus()
 │   │   └── credentials.ts            # CRUD for expert_credentials
+│   │
+│   ├── settings/
+│   │   └── account/
+│   │       └── page.tsx              # Expert status messaging (updated)
 │   │
 │   └── api/
 │       └── admin/
 │           └── authors/
 │               └── approve/
-│                   └── route.ts      # POST endpoint for approval
+│                   └── route.ts      # POST endpoint for manual approval
 │
 ├── components/
+│   ├── NavigationPanel.tsx           # Expert Console link (shows for all statuses)
+│   │
 │   ├── admin/
 │   │   ├── ExpertManagementDashboard.tsx  # Expert list
 │   │   ├── ExpertDetailsDashboard.tsx     # Expert detail + proposals
@@ -193,14 +214,26 @@ src/
 │   │
 │   └── CredentialsEditor.tsx              # Drag-sortable credentials
 │
-└── middleware.ts                          # Redirects pending_author to /expert-application
-
 supabase/
 └── migrations/
     ├── 20251229000003_create_course_proposals.sql
     ├── 20251229000004_create_expert_credentials.sql
     └── 20260102000002_add_expert_rejection_notes.sql
 ```
+
+### Key Files Changed in Pending-Then-Auto-Approve Update
+
+| File | Change |
+|------|--------|
+| `src/app/actions/expert-application.ts` | `becomeExpert()` now sets `author_status='pending'` instead of `'approved'` |
+| `src/app/author/layout.tsx` | Route guard updated to allow pending/rejected experts |
+| `src/app/author/page.tsx` | Same route guard update |
+| `src/app/author/courses/[id]/builder/page.tsx` | Same route guard update |
+| `src/app/actions/expert-course-builder.ts` | Allows pending/rejected experts to create courses |
+| `src/app/actions/proposals.ts` | Allows pending/rejected experts to submit proposals |
+| `src/app/actions/course-builder.ts` | Added auto-approval logic on first course publish |
+| `src/components/NavigationPanel.tsx` | Shows Expert Console link for all expert statuses |
+| `src/app/settings/account/page.tsx` | Updated expert status messaging |
 
 ---
 
@@ -360,27 +393,66 @@ Legacy API route for approving/rejecting experts.
 
 ## State Machine
 
-### Role Transitions
+### Author Status Transitions (Updated)
 
 ```
-┌──────────┐    signup     ┌─────────────────┐   approve   ┌────────┐
-│   user   │ ───────────▶ │ pending_author  │ ──────────▶ │ author │
-└──────────┘               └─────────────────┘             └────────┘
-                                   │
-                                   │ reject
-                                   ▼
-                           (stays pending_author,
-                            can resubmit)
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        AUTHOR STATUS STATE MACHINE                            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│                     "Become an Expert"                                        │
+│    ┌────────┐      (becomeExpert())       ┌─────────┐                        │
+│    │  none  │ ──────────────────────────▶ │ pending │                        │
+│    └────────┘                              └────┬────┘                        │
+│                                                 │                             │
+│                    ┌────────────────────────────┼────────────────────┐       │
+│                    │                            │                    │       │
+│                    ▼                            ▼                    ▼       │
+│    ┌───────────────────────┐      ┌──────────────────┐    ┌──────────────┐  │
+│    │ First course published│      │  Admin rejects   │    │ Stay pending │  │
+│    │    (auto-approval)    │      │    (optional)    │    │ (build more) │  │
+│    └───────────┬───────────┘      └────────┬─────────┘    └──────────────┘  │
+│                │                           │                                  │
+│                ▼                           ▼                                  │
+│          ┌──────────┐               ┌──────────┐                             │
+│          │ approved │               │ rejected │ ← Can still access          │
+│          └──────────┘               └────┬─────┘   Expert Console            │
+│                ▲                         │                                    │
+│                │    First course         │                                    │
+│                │    published            │                                    │
+│                └─────────────────────────┘                                    │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+KEY CHANGES FROM PREVIOUS FLOW:
+- Registration sets 'pending' (was: 'approved')
+- Pending experts CAN access Expert Console (was: blocked)
+- Rejected experts CAN access Expert Console (was: blocked)
+- Auto-approval triggers on first course publish (was: manual admin approval)
+- Approved status is permanent (course unpublish doesn't revert)
 ```
 
-### Application Status
+### Expert Console Access by Status
 
-```
-draft ──▶ submitted ──▶ approved
-                   └──▶ rejected (can resubmit → submitted)
-```
+| author_status | Expert Console | Create Courses | Submit Proposals | Public /experts |
+|---------------|----------------|----------------|------------------|-----------------|
+| `none`        | NO             | NO             | NO               | NO              |
+| `pending`     | YES            | YES            | YES              | NO              |
+| `approved`    | YES            | YES            | YES              | YES (if pub)    |
+| `rejected`    | YES            | YES            | YES              | NO              |
 
-**Note:** The `reviewing` status exists in the schema but is NOT used. The progress indicator shows only "Submitted → Under Review" without a separate reviewing state.
+### Auto-Approval Logic
+
+The auto-approval is triggered in `src/app/actions/course-builder.ts` when a course is published:
+
+1. Check if expert's author_status is 'pending'
+2. Check if this is the expert's FIRST published course
+3. If both conditions met: auto-change author_status to 'approved'
+
+**Edge Cases:**
+- Course unpublished later: Expert stays 'approved'
+- Multiple courses published: Only first triggers auto-approval (others are no-op)
+- Rejected expert's course published: Changes 'rejected' → 'approved'
 
 ---
 
@@ -414,13 +486,27 @@ Shows all proposals across all experts.
 
 ## Common Pitfalls
 
-### 1. Two Approval Paths
+### 1. Three Approval Paths
 
-**Problem:** Both `/api/admin/authors/approve` and `updateExpertStatus()` can approve experts.
+**Problem:** Expert approval can happen via:
+- `/api/admin/authors/approve` (legacy API route)
+- `updateExpertStatus()` (admin action)
+- Auto-approval on first course publish (new)
 
-**Solution:** Both now set `approved_at`. If you add new approval logic, update BOTH.
+**Solution:** All paths must set `author_status='approved'` and `approved_at`. The auto-approval path is in `src/app/actions/course-builder.ts`. If adding new approval logic, update ALL THREE paths.
 
-### 2. Proposals Stored in Two Places
+### 2. Assuming Only Approved Experts Access Expert Console
+
+**Problem:** The OLD flow blocked non-approved experts from /author/*. The NEW flow allows pending/approved/rejected.
+
+**Solution:** Route guards in the following files have been updated to allow all statuses except 'none':
+- `src/app/author/layout.tsx`
+- `src/app/author/page.tsx`
+- `src/app/author/courses/[id]/builder/page.tsx`
+
+When adding new /author/* routes, ensure they follow this pattern.
+
+### 3. Proposals Stored in Two Places
 
 **Problem:** Initial proposal in `profiles.course_proposal_*`, subsequent proposals in `course_proposals` table.
 
@@ -428,17 +514,11 @@ Shows all proposals across all experts.
 
 **Future:** Consider deprecating `profiles.course_proposal_*` fields entirely.
 
-### 3. Credentials Migration
+### 4. Credentials Migration
 
 **Problem:** Old `profiles.credentials` (text) vs new `expert_credentials` table.
 
 **Current State:** `CredentialsEditor` uses only the new table. Legacy field still exists but should not be read from.
-
-### 4. Middleware Redirect Loop
-
-**Problem:** If middleware redirects to `/expert-application` but page throws error, could loop.
-
-**Solution:** Ensure `/expert-application/page.tsx` always renders something, even on error.
 
 ### 5. RLS Bypass Requirements
 
@@ -446,49 +526,73 @@ Shows all proposals across all experts.
 
 **Solution:** Use `createAdminClient()` for all admin mutations. Regular `createClient()` respects RLS.
 
+### 6. Confusing 'Pending' with 'No Access'
+
+**Problem:** 'pending' now means "can access Expert Console but not visible on /experts page" rather than "waiting for approval to access anything".
+
+**Solution:** Update any code that treats pending as a blocking state. The only blocking state is 'none'.
+
+### 7. Auto-Approval Not Triggering
+
+**Problem:** Auto-approval only triggers on the FIRST published course.
+
+**Solution:** Check the expert's existing published course count before expecting auto-approval. If they already have published courses, the trigger won't fire again.
+
 ---
 
 ## Testing Checklist
 
 Before deploying Expert workflow changes, verify:
 
-### Signup Flow
-- [ ] New user can navigate: Home → /experts → /join/expert
-- [ ] Signup creates account with `role: 'pending_author'`
-- [ ] User is redirected to `/expert-application`
+### Registration Flow (Updated)
+- [ ] User can click "Become an Expert" from various locations
+- [ ] Registration sets `author_status='pending'` (NOT 'approved')
+- [ ] User immediately has access to Expert Console (/author/*)
+- [ ] No application form or approval wait required
 
-### Application Form
-- [ ] Can save as draft (no validation)
-- [ ] Can upload avatar (< 2MB)
-- [ ] Can add/edit/delete/reorder credentials
-- [ ] Required fields show asterisks (Full Name, Course Title, Description)
-- [ ] Character counters display correctly
-- [ ] Submit validates required fields
-- [ ] Submit creates entry in `course_proposals` table
+### Expert Console Access (New)
+- [ ] As user with `author_status='none'`: /author → should redirect/block
+- [ ] As pending expert: /author → should load Expert Console
+- [ ] As approved expert: /author → should load Expert Console
+- [ ] As rejected expert: /author → should load Expert Console (can try again)
 
-### Admin Review
-- [ ] Pending expert appears in `/admin/experts`
-- [ ] Admin can view full application details
-- [ ] Approve sets: `author_status='approved'`, `role='author'`, `approved_at`
-- [ ] Reject modal appears with notes textarea
-- [ ] Rejection notes saved to `rejection_notes` field
+### Course Building (Pending State)
+- [ ] Pending expert can create a new course
+- [ ] Pending expert can build course content
+- [ ] Pending expert can submit course proposals
+- [ ] Pending expert does NOT appear on /experts page
+
+### Auto-Approval (New)
+- [ ] Admin publishes pending expert's first course → author_status auto-changes to 'approved'
+- [ ] Expert now appears on /experts page (with published course)
+- [ ] Publishing second+ courses does NOT trigger auto-approval again (already approved)
+- [ ] Rejected expert's course published → changes to 'approved'
+
+### Approval Persistence (New)
+- [ ] Unpublish an approved expert's only course → expert should REMAIN 'approved'
+- [ ] Approved status is permanent once granted
+
+### Admin Review (Still Available)
+- [ ] Admin can still manually change author_status via /admin/experts
+- [ ] Approve/reject modals still function
 - [ ] Actions logged to `admin_audit_log`
 
-### Rejected Expert
-- [ ] Sees rejection feedback on `/expert-application`
-- [ ] Can edit and resubmit application
-- [ ] Resubmission clears rejection status
+### Rejected Expert (Updated)
+- [ ] Rejected expert CAN still access Expert Console
+- [ ] Rejected expert CAN create courses
+- [ ] Rejected expert CAN have courses published (triggers auto-approval)
+- [ ] Rejection messaging shows in account settings
 
-### Approved Expert
-- [ ] Can access `/author` dashboard
-- [ ] Can submit new course proposals
-- [ ] Cannot access `/expert-application` (redirected)
+### Navigation (Updated)
+- [ ] Expert Console link shows for pending experts
+- [ ] Expert Console link shows for approved experts
+- [ ] Expert Console link shows for rejected experts
+- [ ] Expert Console link hidden for users with author_status='none'
 
-### Global Proposals
-- [ ] `/admin/proposals` shows all proposals
-- [ ] Filters work correctly
-- [ ] Can approve/reject with notes
-- [ ] Links to expert detail work
+### Account Settings Messaging
+- [ ] Pending expert sees appropriate status message
+- [ ] Approved expert sees appropriate status message
+- [ ] Rejected expert sees appropriate status message
 
 ---
 

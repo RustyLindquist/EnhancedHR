@@ -1,7 +1,7 @@
 # Expert/Author Workflows
 
-> **Status**: Stub — to be populated as workflows are discovered and documented
-> **Last Updated**: 2026-01-04
+> **Status**: Active
+> **Last Updated**: 2026-01-22
 
 ## Role Overview
 
@@ -9,14 +9,44 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 
 **Primary Goals**:
 - Create high-quality course content
-- Get courses approved and published
+- Get courses published and visible to learners
 - Track course performance and engagement
 - Earn revenue from course sales
 - Build reputation as an expert
 
-**Access Level**: Author portal access via `/author/*` and `/teach` routes
+**Access Level**: Expert Console access via `/author/*` routes. Available to ALL expert statuses (pending, approved, rejected).
 
 ## Primary Workflows
+
+### Expert Onboarding / Registration
+
+**Goal**: Become an expert and start building courses
+**Frequency**: One-time
+**Features Involved**: `experts`, `author-portal`, `auth-accounts`
+
+#### Steps
+1. User discovers "Become an Expert" option (nav, settings, or landing pages)
+2. User clicks "Become an Expert" button
+3. System sets `author_status = 'pending'` (immediate, no form required)
+4. User gains immediate access to Expert Console (`/author/*`)
+5. Navigation panel shows Expert Console link
+6. User can start building courses immediately
+
+#### Variations
+- From /experts landing page
+- From account settings
+- From marketing pages
+
+#### Success Criteria
+- User's author_status is 'pending'
+- User can access /author routes
+- Expert Console link visible in navigation
+
+#### Related Workflows
+- Course Creation
+- Auto-Approval on First Publish
+
+---
 
 ### Course Creation
 
@@ -25,7 +55,7 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 **Features Involved**: `author-portal`, `academy`
 
 #### Steps
-1. Navigate to Author Portal (`/author`)
+1. Navigate to Expert Console (`/author`)
 2. Click "Create New Course"
 3. Add course metadata (title, description, category)
 4. Build module structure
@@ -38,6 +68,7 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 - Course from template
 - Importing existing content
 - Multi-module courses
+- Created by pending expert (before approval)
 
 #### Success Criteria
 - Course submitted successfully
@@ -46,32 +77,38 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 #### Related Workflows
 - Course Publishing
 - Content Updates
+- Auto-Approval on First Publish
 
 ---
 
-### Course Publishing
+### Course Publishing (with Auto-Approval)
 
 **Goal**: Get course approved and live on platform
 **Frequency**: Per course
-**Features Involved**: `author-portal`, `admin-portal`, `academy`
+**Features Involved**: `author-portal`, `admin-portal`, `academy`, `experts`
 
 #### Steps
 1. Submit course for review
 2. Wait for admin review
 3. Receive feedback (if revisions needed)
 4. Make revisions and resubmit
-5. Course approved
-6. Course appears in Academy
-7. Start earning on enrollments
+5. Admin publishes course
+6. **If this is expert's FIRST published course:**
+   - System auto-approves expert (`author_status` → `'approved'`)
+   - Expert now visible on /experts page
+7. Course appears in Academy
+8. Start earning on enrollments
 
 #### Variations
+- First course (triggers auto-approval)
+- Subsequent courses (no status change)
 - Revisions requested
 - Rejection with feedback
-- Fast-track approval (trusted authors)
 
 #### Success Criteria
 - Course live in Academy
 - Enrollments possible
+- Expert visible on /experts page (after first publish)
 
 #### Related Workflows
 - Course Creation
@@ -193,18 +230,33 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 ## Workflows To Document
 
 The following workflows have been identified but not yet documented:
-- [ ] Expert Onboarding / Application
+- [x] Expert Onboarding / Registration (documented above)
 - [ ] Course Pricing Strategy
 - [ ] Learner Engagement Response
 - [ ] Co-authoring (if available)
+- [ ] Expert Re-application After Rejection
 
 ---
 
 ## Notes for Agents
 
 When working on features that affect Experts/Authors:
-1. Revenue impact is critical — earnings must be accurate
-2. Course creation UX affects content quality
-3. Video processing (Mux) is async — handle appropriately
-4. Approval workflow involves admin coordination
-5. Update this doc if workflow changes
+1. **Revenue impact is critical** — earnings must be accurate
+2. **Course creation UX affects content quality**
+3. **Video processing (Mux) is async** — handle appropriately
+4. **Expert Console access is broad** — pending, approved, AND rejected experts can all access /author/*
+5. **Auto-approval is automatic** — first course publish changes pending → approved
+6. **Approval is permanent** — once approved, status persists even if courses unpublished
+7. **Three approval paths exist** — API route, admin action, and auto-approval on publish
+8. Update this doc and `docs/workflows/Expert_Workflow.md` if workflow changes
+
+### Key Files for Expert Flow
+- `src/app/actions/expert-application.ts` — becomeExpert() sets 'pending'
+- `src/app/author/layout.tsx` — Route guard for Expert Console
+- `src/app/author/page.tsx` — Route guard for Expert Console
+- `src/app/author/courses/[id]/builder/page.tsx` — Route guard for course builder
+- `src/app/actions/expert-course-builder.ts` — Course creation permissions
+- `src/app/actions/proposals.ts` — Proposal submission permissions
+- `src/app/actions/course-builder.ts` — Auto-approval logic on publish
+- `src/components/NavigationPanel.tsx` — Expert Console link visibility
+- `src/app/settings/account/page.tsx` — Expert status messaging
