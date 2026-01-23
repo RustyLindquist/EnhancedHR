@@ -7,8 +7,10 @@ last_updated: 2026-01-23
 surfaces:
   routes:
     - /author/*
+    - /author/resources (Expert Resources - see expert-resources.md)
     - /teach
-  collections: []
+  collections:
+    - expert-resources (platform-wide, managed by platform admins)
 data:
   tables:
     - public.profiles (author_status, author_bio)
@@ -153,6 +155,7 @@ Read paths:
 ## Related Docs
 - docs/features/academy.md
 - docs/features/experts.md
+- docs/features/expert-resources.md
 - docs/features/admin-portal.md
 - docs/workflows/Expert_Workflow.md
 - docs/workflows/expert-author-workflows.md
