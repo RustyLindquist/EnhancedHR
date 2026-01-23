@@ -141,7 +141,19 @@ Example:
 ### Browser Skills
 | Skill | Purpose | When to Use | Depends On |
 |-------|---------|-------------|------------|
-| **browser-use** | UI verification via Playwright MCP | After UI changes, workflow testing | Playwright MCP available |
+| **browser-use** | UI verification, screenshots, workflow testing | After UI changes, workflow testing | One of the tools below |
+
+**Browser Tool Selection:**
+| Need | Tool |
+|------|------|
+| Structured test suite | Playwright Test (`npx playwright test`) |
+| Assertions & reports | Playwright Test |
+| CI/CD / regression | Playwright Test |
+| User's logged-in session | Claude in Chrome |
+| GIF recording | Claude in Chrome |
+| Network monitoring | Claude in Chrome |
+| Isolated/clean test | Browser MCP |
+| Quick smoke test | Browser MCP |
 
 ### Orchestration Skills
 | Skill | Purpose | When to Use | Depends On |
@@ -181,7 +193,9 @@ Example:
     └─► /frontend/component-inventory first
 
 "I need to verify UI changes"
-    └─► /browser-use (Playwright MCP)
+    └─► /browser-use (routes to optimal tool)
+        ├─► Claude in Chrome (authenticated, GIF, network)
+        └─► Browser MCP (isolated, simple tests)
 
 "I found an undocumented pattern"
     └─► /capture-optimization
@@ -288,7 +302,7 @@ DURING SESSION (as needed):
 /checkpoint          # Save state (every 30-45 min)
 /remember            # Refresh if degraded
 /context-status      # Check context health
-/browser-use         # Verify UI via Playwright MCP
+/browser-use         # Verify UI (routes to Claude in Chrome or Browser MCP)
 ```
 
 ### Finish Work

@@ -6,6 +6,55 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { trackLoginEvent } from '@/app/actions/org-dashboard'
 
+/**
+ * Generate a URL-friendly slug from an organization name
+ * Example: "Acme Corp" → "acme-corp"
+ */
+function generateSlug(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
+        .replace(/^-+|-+$/g, '')       // Trim leading/trailing hyphens
+        .replace(/-+/g, '-');          // Consolidate multiple hyphens
+}
+
+/**
+ * Generate a random invite hash (16 characters)
+ */
+function generateInviteHash(): string {
+    return Math.random().toString(36).substring(2, 10) +
+           Math.random().toString(36).substring(2, 10);
+}
+
+/**
+ * Find a unique slug by appending a number if needed
+ */
+async function findUniqueSlug(supabase: Awaited<ReturnType<typeof createClient>>, baseSlug: string): Promise<string> {
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+        const { data: existing } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('slug', slug)
+            .single();
+
+        if (!existing) {
+            return slug;
+        }
+
+        counter++;
+        slug = `${baseSlug}-${counter}`;
+
+        // Safety limit to prevent infinite loops
+        if (counter > 100) {
+            // Fall back to timestamp-based uniqueness
+            return `${baseSlug}-${Date.now().toString(36)}`;
+        }
+    }
+}
+
 export async function signInWithOAuth(provider: 'google' | 'apple', next?: string) {
     const supabase = await createClient()
     const headersList = await headers()
@@ -150,10 +199,19 @@ export async function signup(formData: FormData) {
     if (data?.user && data?.session) {
         // If Org Account, create the Organization and Link User
         if (accountType === 'org' && orgName) {
-            // 1. Create Organization
+            // Generate slug and invite hash for the organization
+            const baseSlug = generateSlug(orgName);
+            const slug = await findUniqueSlug(supabase, baseSlug);
+            const inviteHash = generateInviteHash();
+
+            // 1. Create Organization with slug and invite_hash
             const { data: org, error: orgError } = await supabase
                 .from('organizations')
-                .insert({ name: orgName })
+                .insert({
+                    name: orgName,
+                    slug,
+                    invite_hash: inviteHash,
+                })
                 .select()
                 .single();
 
@@ -204,10 +262,19 @@ export async function verifyEmail(formData: FormData) {
         const orgName = data.user.user_metadata?.org_name
 
         if (accountType === 'org' && orgName) {
-            // Create Organization
+            // Generate slug and invite hash for the organization
+            const baseSlug = generateSlug(orgName);
+            const slug = await findUniqueSlug(supabase, baseSlug);
+            const inviteHash = generateInviteHash();
+
+            // Create Organization with slug and invite_hash
             const { data: org, error: orgError } = await supabase
                 .from('organizations')
-                .insert({ name: orgName })
+                .insert({
+                    name: orgName,
+                    slug,
+                    invite_hash: inviteHash,
+                })
                 .select()
                 .single();
 

@@ -64,15 +64,44 @@ export async function ensurePlatformAdminOrg(): Promise<{ success: boolean; orgI
     // Create a personal organization for this platform admin
     const baseName = profile.full_name || user.email?.split('@')[0] || 'Admin';
     const orgName = `${baseName}'s Organization`;
-    const slug = baseName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-    const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
-    const inviteHash = Math.random().toString(36).substring(2, 18);
+
+    // Generate a clean slug from the name
+    const baseSlug = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-');
+
+    // Find a unique slug (append -2, -3, etc. if needed)
+    let slug = baseSlug;
+    let counter = 1;
+    while (true) {
+      const { data: existing } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+
+      if (!existing) break;
+
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+
+      // Safety limit
+      if (counter > 100) {
+        slug = `${baseSlug}-${Date.now().toString(36)}`;
+        break;
+      }
+    }
+
+    const inviteHash = Math.random().toString(36).substring(2, 10) +
+                       Math.random().toString(36).substring(2, 10);
 
     const { data: newOrg, error: orgError } = await supabase
       .from('organizations')
       .insert({
         name: orgName,
-        slug: uniqueSlug,
+        slug,
         invite_hash: inviteHash,
       })
       .select()
