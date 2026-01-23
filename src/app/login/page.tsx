@@ -14,6 +14,15 @@ function LoginPageContent() {
     const searchParams = useSearchParams()
     const initialView = searchParams.get('view') === 'signup' ? 'signup' : 'login'
 
+    // Detect if user is coming from an org invite URL (pattern: /slug/hash)
+    const nextParam = searchParams.get('next') || ''
+    const isOrgInvite = /^\/[^/]+\/[^/]+$/.test(nextParam) &&
+        !nextParam.startsWith('/login') &&
+        !nextParam.startsWith('/dashboard') &&
+        !nextParam.startsWith('/settings') &&
+        !nextParam.startsWith('/org') &&
+        !nextParam.startsWith('/admin')
+
     const [view, setView] = useState<'login' | 'signup' | 'forgot_password' | 'verify'>(initialView)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -200,8 +209,8 @@ function LoginPageContent() {
                             )}
                         </div>
 
-                        {/* Account Type Toggle - Show for signup only */}
-                        {view === 'signup' && (
+                        {/* Account Type Toggle - Show for signup only, hide for org invites */}
+                        {view === 'signup' && !isOrgInvite && (
                             <div className="flex p-1 bg-[#0A0D12] border border-white/10 rounded-lg mb-4">
                                 <button
                                     type="button"
@@ -308,8 +317,8 @@ function LoginPageContent() {
                             {/* SIGNUP VIEW */}
                             {view === 'signup' && (
                                 <div className="space-y-4">
-                                    {/* Org Name Input */}
-                                    {accountType === 'org' && (
+                                    {/* Org Name Input - hide for org invites */}
+                                    {accountType === 'org' && !isOrgInvite && (
                                         <div className="space-y-2 animate-fade-in">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Company Name</label>
                                             <div className="relative group">
@@ -406,8 +415,8 @@ function LoginPageContent() {
                                 </div>
                             )}
 
-                            {/* MEMBERSHIP SELECTION (Sign Up Only) */}
-                            {view === 'signup' && (
+                            {/* MEMBERSHIP SELECTION (Sign Up Only) - hide for org invites */}
+                            {view === 'signup' && !isOrgInvite && (
                                 <div className="mt-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         {/* Free Trial Option */}

@@ -7,6 +7,21 @@ import BackgroundSystem from '@/components/BackgroundSystem';
 import { BACKGROUND_THEMES } from '@/constants';
 import JoinPageActions from './JoinPageActions';
 
+/**
+ * Extract a clean display name from the org name
+ * Handles cases like "Rusty Lindquist's Organization" -> "Rusty Lindquist's Organization" (keep as is for title)
+ * But for organizations with actual company names, use them directly
+ */
+function getDisplayName(orgName: string): string {
+    // If it ends with "'s Organization", it's likely a platform admin auto-created org
+    // In this case, we want to show just the person/company name part for the title
+    const suffixMatch = orgName.match(/^(.+)'s Organization$/i);
+    if (suffixMatch) {
+        return suffixMatch[1]; // Return just "Rusty Lindquist" without "'s Organization"
+    }
+    return orgName;
+}
+
 export default async function JoinPage({ params }: { params: Promise<{ slug: string; hash: string }> }) {
     const { slug, hash } = await params;
     const supabase = await createClient();
@@ -83,10 +98,10 @@ export default async function JoinPage({ params }: { params: Promise<{ slug: str
                     </div>
 
                     <h1 className="text-3xl font-bold text-center text-white mb-2">
-                        Join {org.name}
+                        Join {getDisplayName(org.name)}
                     </h1>
                     <p className="text-center text-slate-400 mb-8">
-                        You've been invited to create an account on EnhancedHR as a member of <b className="text-white">{org.name}</b>
+                        You've been invited to create an account on EnhancedHR as a member of <b className="text-white">{getDisplayName(org.name)}</b>
                     </p>
 
                     <div className="space-y-4">
