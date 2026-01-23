@@ -7,8 +7,9 @@ export type CollectionItemDetail =
     | (Course & { itemType: 'COURSE' })
     | (Conversation & { itemType: 'CONVERSATION' })
     | (ToolConversation & { itemType: 'TOOL_CONVERSATION' })
-    | (Module & { itemType: 'MODULE'; courseTitle?: string })
-    | (Lesson & { itemType: 'LESSON'; courseTitle?: string; moduleTitle?: string })
+    | (Module & { itemType: 'MODULE'; courseTitle?: string; courseImage?: string; courseAuthor?: string })
+    | (Lesson & { itemType: 'LESSON'; courseTitle?: string; moduleTitle?: string; courseImage?: string; courseAuthor?: string })
+    | (Lesson & { itemType: 'ACTIVITY'; courseTitle?: string; courseImage?: string; courseAuthor?: string })
     | (Resource & { itemType: 'RESOURCE'; courseTitle?: string })
     | (AIInsight & { itemType: 'AI_INSIGHT' })
     | (CustomContext & { itemType: 'CUSTOM_CONTEXT' })
@@ -32,6 +33,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             case 'COURSE': return 'COURSE';
             case 'MODULE': return 'MODULE';
             case 'LESSON': return 'LESSON';
+            case 'ACTIVITY': return 'ACTIVITY';
             case 'RESOURCE': return 'RESOURCE';
             case 'CONVERSATION': return 'CONVERSATION';
             case 'TOOL_CONVERSATION': return 'TOOL_CONVERSATION';
@@ -172,10 +174,10 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             cardProps = {
                 ...cardProps,
                 type: 'MODULE',
-                subtitle: modItem.author || content.author || 'EnhancedHR Expert',
+                subtitle: modItem.courseAuthor || modItem.author || content.author || 'EnhancedHR Expert',
                 description: modItem.courseTitle || content.courseTitle || 'Module',
                 meta: modItem.duration || content.meta,
-                imageUrl: modItem.image || content.image,
+                imageUrl: modItem.courseImage || modItem.image || content.image,
                 actionLabel: 'START'
             };
             break;
@@ -186,9 +188,23 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             cardProps = {
                 ...cardProps,
                 type: 'LESSON',
-                subtitle: lessonItem.moduleTitle || content.subtitle || 'Lesson',
+                subtitle: lessonItem.courseAuthor || content.subtitle || 'EnhancedHR Expert',
+                description: lessonItem.courseTitle || content.courseTitle || 'Lesson',
                 meta: lessonItem.duration || content.meta,
-                imageUrl: lessonItem.image || content.image,
+                imageUrl: lessonItem.courseImage || lessonItem.image || content.image,
+                actionLabel: 'START'
+            };
+            break;
+        }
+        case 'ACTIVITY': {
+            const activityItem = item as any;
+            const content = activityItem.content || {};
+            cardProps = {
+                ...cardProps,
+                type: 'ACTIVITY',
+                subtitle: activityItem.courseAuthor || content.subtitle || 'EnhancedHR Expert',
+                description: activityItem.courseTitle || content.courseTitle || 'Activity',
+                imageUrl: activityItem.courseImage || activityItem.image || content.image,
                 actionLabel: 'START'
             };
             break;

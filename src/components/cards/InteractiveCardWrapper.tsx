@@ -120,13 +120,13 @@ const InteractiveCardWrapper: React.FC<InteractiveCardWrapperProps> = ({
             <div
                 className={`absolute inset-0 rounded-3xl pointer-events-none transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                 style={{
-                    padding: '2px',
-                    background: `conic-gradient(from var(--gradient-angle), transparent 0%, ${glowColor} 10%, transparent 20%, transparent 100%)`,
+                    padding: '4px',
+                    background: `conic-gradient(from var(--gradient-angle), transparent 0%, ${glowColor} 3%, ${glowColor} 18%, transparent 28%, transparent 100%)`,
                     WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                     WebkitMaskComposite: 'xor',
                     maskComposite: 'exclude',
-                    animation: 'gradient-rotate 4s linear infinite',
-                    zIndex: 50,
+                    animation: 'gradient-rotate 3s linear infinite',
+                    zIndex: 60,
                 }}
             />
 

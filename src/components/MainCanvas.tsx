@@ -645,14 +645,15 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
 
     if (item.type === 'COURSE') {
         Content = (
-            <div className="w-80 h-[28rem] bg-slate-800/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-                <div className="h-44 w-full relative">
-                    <img src={item.image} className="w-full h-full object-cover opacity-80" alt="" />
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-brand-blue-light/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-brand-blue-light/20 rounded text-brand-blue-light">
+                        <BookOpen size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-brand-blue-light uppercase tracking-wider">Course</span>
                 </div>
-                <div className="p-6">
-                    <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                    <p className="text-sm text-slate-300">{item.subtitle}</p>
-                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+                {item.subtitle && <p className="text-[10px] text-slate-400 truncate">{item.subtitle}</p>}
             </div>
         );
     } else if (item.type === 'LESSON') {
@@ -664,14 +665,14 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
         );
     } else if (item.type === 'RESOURCE') {
         Content = (
-            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-brand-orange/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
-                <div className="p-2 bg-brand-orange/20 rounded text-brand-orange">
-                    <FileText size={20} />
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#521B23]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-[#3A1218]/40 rounded text-[#FF9999]">
+                        <FileText size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-[#FF9999] uppercase tracking-wider">Resource</span>
                 </div>
-                <div>
-                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
-                    <p className="text-[10px] text-slate-400">Resource</p>
-                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
             </div>
         );
     } else if (item.type === 'MODULE') {
@@ -688,26 +689,26 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
         );
     } else if (item.type === 'CONVERSATION') {
         Content = (
-            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-cyan-400/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#78C0F0]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-cyan-400/20 rounded text-cyan-400">
+                    <div className="p-2 bg-[#085684]/40 rounded text-[#78C0F0]">
                         <MessageSquare size={18} />
                     </div>
-                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Conversation</span>
+                    <span className="text-xs font-bold text-[#78C0F0] uppercase tracking-wider">Conversation</span>
                 </div>
                 <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
             </div>
         );
     } else if (item.type === 'CONTEXT') {
         Content = (
-            <div className="w-64 h-24 bg-slate-800/90 backdrop-blur-xl border border-brand-orange/50 rounded-xl shadow-2xl p-4 flex items-center gap-3">
-                <div className="p-2 bg-brand-orange/20 rounded text-brand-orange">
-                    <FileText size={20} />
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#BD4B18]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-[#943C14]/40 rounded text-[#E8885A]">
+                        <FileText size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-[#E8885A] uppercase tracking-wider">Context</span>
                 </div>
-                <div>
-                    <h3 className="text-sm font-bold text-white truncate w-32">{item.title}</h3>
-                    <p className="text-[10px] text-slate-400">Context</p>
-                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
             </div>
         );
     } else if (item.type === 'PROFILE') {
@@ -724,14 +725,27 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
         );
     } else if (item.type === 'NOTE') {
         Content = (
-            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#F5E6A3]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-[#FF9300]/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-[#F5E6A3]/20 rounded text-[#F5E6A3]">
+                    <div className="p-2 bg-[#A87938]/40 rounded text-[#FF9300]">
                         <StickyNote size={18} />
                     </div>
-                    <span className="text-xs font-bold text-[#F5E6A3] uppercase tracking-wider">Note</span>
+                    <span className="text-xs font-bold text-[#FF9300] uppercase tracking-wider">Note</span>
                 </div>
                 <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+            </div>
+        );
+    } else if (item.type === 'ACTIVITY') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-red-700/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-red-700/20 rounded text-red-400">
+                        <Target size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Activity</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+                {item.subtitle && <p className="text-[10px] text-slate-400 truncate">{item.subtitle}</p>}
             </div>
         );
     }
