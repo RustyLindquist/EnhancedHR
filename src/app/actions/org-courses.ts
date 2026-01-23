@@ -434,7 +434,7 @@ export async function deleteOrgCourse(
 
     // Delete course resources
     const { error: resourcesError } = await admin
-        .from('course_resources')
+        .from('resources')
         .delete()
         .eq('course_id', courseId);
 

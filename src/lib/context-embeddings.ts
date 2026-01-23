@@ -450,7 +450,7 @@ export async function embedAllCourseResources(
     try {
         // Fetch all resources for the course
         const { data: resources, error } = await admin
-            .from('course_resources')
+            .from('resources')
             .select('id, title, type, url')
             .eq('course_id', courseId);
 
