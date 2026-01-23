@@ -312,6 +312,63 @@ export async function deleteFileFromStorage(path: string): Promise<boolean> {
 }
 
 /**
+ * Upload a file to the platform folder in Supabase Storage
+ * Used for Expert Resources that are not tied to any specific user.
+ * Files are stored at: platform/expert-resources/{timestamp}_{filename}
+ *
+ * @param file - The file to upload
+ * @param subfolder - Subfolder within platform/ (e.g., 'expert-resources')
+ * @returns Upload result with path and URL
+ */
+export async function uploadPlatformFileToStorage(
+    file: File,
+    subfolder: string = 'expert-resources'
+): Promise<{ path: string; url: string; success: boolean; error?: string }> {
+    const admin = createAdminClient();
+
+    // Generate unique path in platform folder (not tied to any user)
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `platform/${subfolder}/${timestamp}_${sanitizedName}`;
+
+    try {
+        const buffer = await file.arrayBuffer();
+
+        const { data, error } = await admin.storage
+            .from('user-context-files')
+            .upload(path, buffer, {
+                contentType: file.type,
+                upsert: false
+            });
+
+        if (error) {
+            console.error('Platform storage upload error:', error);
+            return { path: '', url: '', success: false, error: error.message };
+        }
+
+        // Get public URL
+        const { data: urlData } = admin.storage
+            .from('user-context-files')
+            .getPublicUrl(path);
+
+        return {
+            path: data.path,
+            url: urlData.publicUrl,
+            success: true
+        };
+
+    } catch (error) {
+        console.error('Platform file upload error:', error);
+        return {
+            path: '',
+            url: '',
+            success: false,
+            error: error instanceof Error ? error.message : 'Upload failed'
+        };
+    }
+}
+
+/**
  * Full file processing pipeline:
  * 1. Upload to storage
  * 2. Parse text content

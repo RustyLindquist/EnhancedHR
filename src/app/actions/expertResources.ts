@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { ContextItemType } from '@/types';
-import { parseFileContent, uploadFileToStorage } from '@/lib/file-parser';
+import { parseFileContent, uploadPlatformFileToStorage, deleteFileFromStorage } from '@/lib/file-parser';
 import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 
 const EXPERT_RESOURCES_COLLECTION_ID = 'expert-resources';
@@ -59,14 +59,17 @@ export async function createExpertResource(data: CreateExpertResourceDTO) {
     // Use admin client to bypass RLS
     const admin = createAdminClient();
 
+    // Expert resources are platform-owned but we track who created them
+    // user_id is kept for FK compatibility, created_by tracks the actual creator
     const { data: inserted, error } = await admin
         .from('user_context_items')
         .insert({
-            user_id: user.id,
+            user_id: user.id, // Required for FK, but resource is platform-owned
             collection_id: EXPERT_RESOURCES_COLLECTION_ID,
             type: data.type,
             title: data.title,
-            content: data.content
+            content: data.content,
+            created_by: user.id // Audit trail: who created this resource
         })
         .select()
         .single();
@@ -118,6 +121,7 @@ export async function updateExpertResource(id: string, updates: { title?: string
 
 /**
  * Delete an expert resource (platform admin only)
+ * Also deletes the associated file from storage if it exists
  */
 export async function deleteExpertResource(id: string) {
     const supabase = await createClient();
@@ -135,6 +139,26 @@ export async function deleteExpertResource(id: string) {
 
     const admin = createAdminClient();
 
+    // First, fetch the resource to get the storage path if it's a file
+    const { data: resource } = await admin
+        .from('user_context_items')
+        .select('type, content')
+        .eq('id', id)
+        .eq('collection_id', EXPERT_RESOURCES_COLLECTION_ID)
+        .single();
+
+    // Delete the storage file if this is a FILE type resource
+    if (resource?.type === 'FILE' && resource.content?.storagePath) {
+        const deletedFromStorage = await deleteFileFromStorage(resource.content.storagePath);
+        if (!deletedFromStorage) {
+            console.warn('[deleteExpertResource] Failed to delete storage file:', resource.content.storagePath);
+            // Continue with DB deletion even if storage deletion fails
+        } else {
+            console.log('[deleteExpertResource] Deleted storage file:', resource.content.storagePath);
+        }
+    }
+
+    // Delete the database record
     const { error } = await admin
         .from('user_context_items')
         .delete()
@@ -223,17 +247,19 @@ export async function createExpertFileResource(
             }
         }
 
-        // 3. Upload to storage
+        // 3. Upload to platform storage (not tied to any user)
+        // Files go to: platform/expert-resources/{timestamp}_{filename}
         const file = new File([fileBuffer], fileName, { type: fileType });
-        const upload = await uploadFileToStorage(file, user.id, EXPERT_RESOURCES_COLLECTION_ID);
+        const upload = await uploadPlatformFileToStorage(file, EXPERT_RESOURCES_COLLECTION_ID);
 
         // 4. Create the context item record using admin client
         const admin = createAdminClient();
 
+        // Expert resources are platform-owned but we track who created them
         const { data: inserted, error } = await admin
             .from('user_context_items')
             .insert({
-                user_id: user.id,
+                user_id: user.id, // Required for FK, but resource is platform-owned
                 collection_id: EXPERT_RESOURCES_COLLECTION_ID,
                 type: 'FILE',
                 title: fileName,
@@ -245,8 +271,10 @@ export async function createExpertFileResource(
                     storagePath: upload.success ? upload.path : null,
                     parsedTextLength: textContent.length,
                     parseError: parseResult.success ? null : parseResult.error,
-                    summary
-                }
+                    summary,
+                    isPlatformOwned: true // Flag indicating this is platform content
+                },
+                created_by: user.id // Audit trail: who created this resource
             })
             .select()
             .single();
