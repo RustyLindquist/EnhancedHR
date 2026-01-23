@@ -131,7 +131,21 @@ export default function CourseImageEditorPanel({
                         />
                     </div>
                     <p className="text-xs text-slate-600 mt-2">
-                        Enter a direct URL to an image file. Recommended dimensions: 1200x630px
+                        Enter a direct URL to an image file (PNG, JPG, or WebP).
+                    </p>
+                </div>
+
+                {/* Recommended Dimensions Info */}
+                <div className="p-4 rounded-xl bg-brand-blue-light/10 border border-brand-blue-light/20">
+                    <h4 className="text-sm font-semibold text-brand-blue-light mb-2">
+                        Recommended Dimensions
+                    </h4>
+                    <p className="text-white font-mono text-lg mb-2">
+                        2400 × 800 px
+                    </p>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                        This wide banner format (3:1 aspect ratio) is optimized for full-screen viewing on retina displays.
+                        The image will be cropped to fit, so keep important content centered.
                     </p>
                 </div>
 
@@ -142,7 +156,7 @@ export default function CourseImageEditorPanel({
                         Drag and drop an image here, or click to upload
                     </p>
                     <p className="text-xs text-slate-600 mt-2">
-                        PNG, JPG, or WebP up to 5MB
+                        PNG, JPG, or WebP up to 5MB (recommended: 2400×800px)
                     </p>
                     <p className="text-xs text-slate-700 mt-4 italic">
                         (Upload feature coming soon)
