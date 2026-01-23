@@ -3,7 +3,7 @@ id: author-portal
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-22
+last_updated: 2026-01-23
 surfaces:
   routes:
     - /author/*
@@ -49,6 +49,22 @@ Author Portal (Expert Console) supports course creation and management for all e
 - `/teach` landing to start becoming an expert.
 - `/author/*` pages (Expert Console) for managing proposals, credentials, and authored courses.
 - Accessible to ALL expert statuses: pending, approved, and rejected.
+
+## Course Building Features
+
+### Quiz Builder
+Experts can create quiz assessments for lessons using the integrated Quiz Builder:
+- **Location**: Expert Lesson Editor Panel (ExpertLessonEditorPanel.tsx)
+- **Access**: Select "Quiz" as the lesson type to reveal the Quiz Builder UI
+- **Features**:
+  - Set passing score (0-100%) - note: this does NOT gate lesson completion
+  - Add/remove questions with text input
+  - Add/remove answer options per question (minimum 2)
+  - Mark correct answer (one per question)
+  - Add optional explanation per question (shown after submission)
+  - Reorder questions with up/down arrows
+
+See `docs/features/course-player-and-progress.md` for quiz data model and behavior details.
 
 ## Core Concepts & Objects
 - **Expert Console**: The /author/* routes where experts build and manage courses.

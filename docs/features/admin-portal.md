@@ -3,7 +3,7 @@ id: admin-portal
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-04
+last_updated: 2026-01-23
 surfaces:
   routes:
     - /admin/*
@@ -38,7 +38,24 @@ Admin Portal provides privileged management of system resources such as AI syste
 
 ## User Surfaces
 - `/admin` pages (e.g., System Prompt Manager) for editing ai_system_prompts.
+- `/admin/courses/[id]/builder` for editing courses with full Quiz Builder support.
 - Potential course/tool management pages under /admin (code scaffolding).
+
+## Course Management Features
+
+### Quiz Builder
+Admins can create and edit quiz assessments for lessons:
+- **Location**: Admin Lesson Editor Panel (LessonEditorPanel.tsx)
+- **Access**: Select "Quiz" as the lesson type to reveal the Quiz Builder UI
+- **Features**:
+  - Set passing score (0-100%) - note: this does NOT gate lesson completion
+  - Add/remove questions with text input
+  - Add/remove answer options per question (minimum 2)
+  - Mark correct answer (one per question)
+  - Add optional explanation per question (shown after submission)
+  - Reorder questions with up/down arrows
+
+See `docs/features/course-player-and-progress.md` for quiz data model and behavior details.
 
 ## Core Concepts & Objects
 - **Admin user**: profile with role='admin'.
