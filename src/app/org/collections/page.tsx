@@ -38,25 +38,34 @@ export default async function OrgCollectionsPage() {
             {/* Collections Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {collections?.map((collection) => (
-                    <div key={collection.id} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group relative">
+                    <Link
+                        key={collection.id}
+                        href={`/org/collections/${collection.id}`}
+                        className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group relative block"
+                    >
                         <div className="flex justify-between items-start mb-4">
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white ${collection.color || 'bg-brand-blue-light/20'}`}>
                                 <Layers size={24} />
                             </div>
-                            <button className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
+                            <div className="p-2 text-slate-500 group-hover:text-white transition-colors">
                                 <MoreHorizontal size={18} />
-                            </button>
+                            </div>
                         </div>
 
                         <h3 className="text-lg font-bold text-white mb-1">{collection.label}</h3>
-                        <p className="text-sm text-slate-400 mb-4">{collection.collection_items?.[0]?.count || 0} Courses</p>
+                        <p className="text-sm text-slate-400 mb-4">{collection.collection_items?.[0]?.count || 0} Items</p>
 
                         <div className="flex items-center gap-2">
                             <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-slate-400 border border-white/5">
                                 {collection.is_custom ? 'Custom' : 'System'}
                             </span>
+                            {collection.is_required && (
+                                <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-blue-light/20 text-brand-blue-light border border-brand-blue-light/20">
+                                    Required
+                                </span>
+                            )}
                         </div>
-                    </div>
+                    </Link>
                 ))}
 
                 {/* Empty State */}

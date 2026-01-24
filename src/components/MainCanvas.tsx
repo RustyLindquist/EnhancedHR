@@ -750,6 +750,19 @@ const CustomDragLayer: React.FC<{ item: DragItem | null; x: number; y: number }>
                 {item.subtitle && <p className="text-[10px] text-slate-400 truncate">{item.subtitle}</p>}
             </div>
         );
+    } else if (item.type === 'VIDEO') {
+        Content = (
+            <div className="w-64 h-32 bg-slate-800/90 backdrop-blur-xl border border-purple-500/50 rounded-xl shadow-2xl p-4 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-purple-500/20 rounded text-purple-400">
+                        <Video size={18} />
+                    </div>
+                    <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">Video</span>
+                </div>
+                <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+                {item.subtitle && <p className="text-[10px] text-slate-400 truncate">{item.subtitle}</p>}
+            </div>
+        );
     }
 
     return (
