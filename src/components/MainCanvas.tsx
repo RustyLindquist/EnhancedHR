@@ -3072,6 +3072,20 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                         // Open the note editor
                                         handleOpenNoteEditor(item.id as string);
                                     }
+                                    else if (item.itemType === 'VIDEO') {
+                                        // Open the video panel - convert to UserContextItem format
+                                        const video = item as any;
+                                        handleOpenVideoPanel({
+                                            id: video.id,
+                                            user_id: video.user_id || '',
+                                            collection_id: video.collection_id || null,
+                                            type: 'VIDEO',
+                                            title: video.title,
+                                            content: video.content,
+                                            created_at: video.created_at,
+                                            updated_at: video.updated_at || video.created_at,
+                                        });
+                                    }
                                     else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
                                         handleOpenContextEditor(item.itemType, item as any);
                                     }
@@ -4410,6 +4424,18 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                             handleModuleClick(i);
                                                                         } else if (i.itemType === 'LESSON') {
                                                                             handleLessonClick(i);
+                                                                        } else if (i.itemType === 'VIDEO') {
+                                                                            const video = i as any;
+                                                                            handleOpenVideoPanel({
+                                                                                id: video.id,
+                                                                                user_id: video.user_id || '',
+                                                                                collection_id: video.collection_id || null,
+                                                                                type: 'VIDEO',
+                                                                                title: video.title,
+                                                                                content: video.content,
+                                                                                created_at: video.created_at,
+                                                                                updated_at: video.updated_at || video.created_at,
+                                                                            });
                                                                         }
                                                                     }}
                                                                     onDragStart={handleDragStart}
