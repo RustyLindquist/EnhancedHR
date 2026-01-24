@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getMuxUploadUrl, getMuxAssetId, getMuxAssetDetails, waitForMuxAssetReady, deleteMuxAsset } from './mux';
 import { revalidatePath } from 'next/cache';
 import { resolveCollectionId } from './context';
+import { processVideoForRAG, regenerateVideoTranscript } from '@/lib/video-transcript';
+import { deleteContextEmbeddings } from '@/lib/context-embeddings';
 
 const EXPERT_RESOURCES_COLLECTION_ID = 'expert-resources';
 
@@ -82,6 +84,12 @@ export async function createVideoResource(data: {
 
             console.log('[createVideoResource] Success! Created external video resource:', inserted.id);
             revalidatePath('/dashboard');
+
+            // Fire-and-forget transcript generation for external URLs
+            if (inserted.id) {
+                processVideoForRAG(inserted.id, user.id, { collectionId: resolvedCollectionId })
+                    .catch(err => console.error('[createVideoResource] Transcript generation failed:', err));
+            }
 
             return {
                 success: true,
@@ -217,7 +225,7 @@ export async function finalizeVideoUpload(
         // 3. Update record with playbackId, duration, status='ready'
         const { data: currentForReady } = await supabase
             .from('user_context_items')
-            .select('content')
+            .select('content, collection_id')
             .eq('id', itemId)
             .eq('user_id', user.id)
             .single();
@@ -245,6 +253,10 @@ export async function finalizeVideoUpload(
 
         revalidatePath('/dashboard');
         revalidatePath('/academy');
+
+        // Fire-and-forget transcript generation
+        processVideoForRAG(itemId, user.id, { collectionId: currentForReady?.collection_id })
+            .catch(err => console.error('[finalizeVideoUpload] Transcript generation failed:', err));
 
         return {
             success: true,
@@ -306,6 +318,8 @@ export async function updateVideoResource(
         }
     }
 
+    const currentContent = current.content;
+
     const { error } = await supabase
         .from('user_context_items')
         .update(updateData)
@@ -315,6 +329,12 @@ export async function updateVideoResource(
     if (error) {
         console.error('[updateVideoResource] Error:', error);
         return { success: false, error: `Failed to update: ${error.message}` };
+    }
+
+    // If external URL changed, regenerate transcript
+    if (updates.externalUrl && updates.externalUrl !== currentContent.externalUrl) {
+        regenerateVideoTranscript(id, user.id)
+            .catch(err => console.error('[updateVideoResource] Re-transcription failed:', err));
     }
 
     revalidatePath('/dashboard');
@@ -344,7 +364,10 @@ export async function deleteVideoResource(id: string): Promise<{ success: boolea
         return { success: false, error: 'Video not found' };
     }
 
-    // 2. Delete Mux asset if it exists
+    // 2. Clean up embeddings
+    await deleteContextEmbeddings(id);
+
+    // 3. Delete Mux asset if it exists
     const muxAssetId = resource.content?.muxAssetId;
     if (muxAssetId) {
         const deleted = await deleteMuxAsset(muxAssetId);
@@ -356,7 +379,7 @@ export async function deleteVideoResource(id: string): Promise<{ success: boolea
         }
     }
 
-    // 3. Delete database record
+    // 4. Delete database record
     const { error } = await supabase
         .from('user_context_items')
         .delete()
@@ -404,6 +427,32 @@ export async function getVideoStatus(id: string): Promise<{
         playbackId: data.content?.muxPlaybackId,
         duration: data.content?.duration
     };
+}
+
+/**
+ * Regenerate transcript for a video (user-facing action)
+ * Allows users to retry transcript generation after failure
+ */
+export async function regenerateTranscriptForVideo(videoId: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    // Verify ownership
+    const { data: video } = await supabase
+        .from('user_context_items')
+        .select('user_id')
+        .eq('id', videoId)
+        .single();
+
+    if (!video || video.user_id !== user.id) {
+        return { success: false, error: 'Video not found or not owned by user' };
+    }
+
+    return regenerateVideoTranscript(videoId, user.id);
 }
 
 // ============================================
@@ -466,6 +515,12 @@ export async function createExpertVideoResource(
 
             console.log('[createExpertVideoResource] Success! Created external expert video:', inserted.id);
             revalidatePath('/author/resources');
+
+            // Fire-and-forget transcript generation for external URLs
+            if (inserted.id) {
+                processVideoForRAG(inserted.id, user.id, { collectionId: EXPERT_RESOURCES_COLLECTION_ID })
+                    .catch(err => console.error('[createExpertVideoResource] Transcript generation failed:', err));
+            }
 
             return {
                 success: true,
@@ -648,6 +703,10 @@ export async function finalizeExpertVideoUpload(
 
         revalidatePath('/author/resources');
 
+        // Fire-and-forget transcript generation
+        processVideoForRAG(itemId, user.id, { collectionId: EXPERT_RESOURCES_COLLECTION_ID })
+            .catch(err => console.error('[finalizeExpertVideoUpload] Transcript generation failed:', err));
+
         return {
             success: true,
             playbackId: result.playbackId,
@@ -717,6 +776,8 @@ export async function updateExpertVideoResource(
         }
     }
 
+    const currentContent = current.content;
+
     const { error } = await admin
         .from('user_context_items')
         .update(updateData)
@@ -726,6 +787,12 @@ export async function updateExpertVideoResource(
     if (error) {
         console.error('[updateExpertVideoResource] Error:', error);
         return { success: false, error: `Failed to update: ${error.message}` };
+    }
+
+    // If external URL changed, regenerate transcript
+    if (updates.externalUrl && updates.externalUrl !== currentContent.externalUrl) {
+        regenerateVideoTranscript(id, user.id)
+            .catch(err => console.error('[updateExpertVideoResource] Re-transcription failed:', err));
     }
 
     revalidatePath('/author/resources');
@@ -764,7 +831,10 @@ export async function deleteExpertVideoResource(id: string): Promise<{ success: 
         return { success: false, error: 'Video not found' };
     }
 
-    // 2. Delete Mux asset if it exists
+    // 2. Clean up embeddings
+    await deleteContextEmbeddings(id);
+
+    // 3. Delete Mux asset if it exists
     const muxAssetId = resource.content?.muxAssetId;
     if (muxAssetId) {
         const deleted = await deleteMuxAsset(muxAssetId);
@@ -776,7 +846,7 @@ export async function deleteExpertVideoResource(id: string): Promise<{ success: 
         }
     }
 
-    // 3. Delete database record
+    // 4. Delete database record
     const { error } = await admin
         .from('user_context_items')
         .delete()

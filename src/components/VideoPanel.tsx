@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Video, Calendar, Clock, Loader2, Upload, Link as LinkIcon, CheckCircle, AlertCircle, Pencil } from 'lucide-react';
+import { Video, Calendar, Clock, Loader2, Upload, Link as LinkIcon, CheckCircle, AlertCircle, Pencil, RefreshCw } from 'lucide-react';
 import MuxPlayer from '@mux/mux-player-react';
 import MuxUploader from '@mux/mux-uploader-react';
 import GlobalTopPanel from './GlobalTopPanel';
@@ -10,6 +10,7 @@ import {
     createVideoResource,
     finalizeVideoUpload,
     updateVideoResource,
+    regenerateTranscriptForVideo,
 } from '@/app/actions/videoResources';
 
 type VideoSourceType = 'upload' | 'url';
@@ -23,6 +24,11 @@ interface VideoContent {
     status?: 'uploading' | 'processing' | 'ready' | 'error';
     duration?: number;
     description?: string;
+    // Transcript fields
+    transcriptStatus?: 'pending' | 'generating' | 'ready' | 'failed';
+    transcript?: string;
+    transcriptError?: string;
+    transcriptGeneratedAt?: string;
 }
 
 // Extract YouTube video ID from various URL formats
@@ -137,6 +143,7 @@ export default function VideoPanel({
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'preparing' | 'uploading' | 'processing' | 'ready' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRegeneratingTranscript, setIsRegeneratingTranscript] = useState(false);
     // Track newly created video for switching to view mode after save
     const [savedVideo, setSavedVideo] = useState<UserContextItem | null>(null);
 
@@ -216,8 +223,26 @@ export default function VideoPanel({
             const finalizeFn = customFinalizeHandler || finalizeVideoUpload;
             const result = await finalizeFn(itemId, uploadId);
 
-            if (result.success) {
+            if (result.success && result.playbackId) {
                 setUploadStatus('ready');
+
+                // Create a video object to display in view mode (same as URL flow)
+                const newVideo: UserContextItem = {
+                    id: itemId,
+                    user_id: '', // Not needed for display
+                    collection_id: collectionId || null,
+                    type: 'VIDEO',
+                    title: title.trim(),
+                    content: {
+                        muxPlaybackId: result.playbackId,
+                        status: 'ready',
+                        description: description.trim() || null
+                    },
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                setSavedVideo(newVideo);
+                setCurrentMode('view');
                 onSaveSuccess?.();
             } else {
                 setError(result.error || 'Failed to process video');
@@ -227,7 +252,7 @@ export default function VideoPanel({
             setError('Failed to process video');
             setUploadStatus('error');
         }
-    }, [itemId, uploadId, customFinalizeHandler, onSaveSuccess]);
+    }, [itemId, uploadId, customFinalizeHandler, onSaveSuccess, collectionId, title, description]);
 
     // Handle save (for URL-based videos or editing existing)
     const handleSave = async () => {
@@ -331,6 +356,35 @@ export default function VideoPanel({
         }
     };
 
+    // Handle regenerate transcript
+    const handleRegenerateTranscript = async () => {
+        const videoId = displayVideo?.id;
+        if (!videoId || isRegeneratingTranscript) return;
+
+        setIsRegeneratingTranscript(true);
+        try {
+            const result = await regenerateTranscriptForVideo(videoId);
+            if (!result.success) {
+                console.error('Failed to regenerate transcript:', result.error);
+            }
+            // Update local state to show generating status
+            if (savedVideo) {
+                setSavedVideo({
+                    ...savedVideo,
+                    content: {
+                        ...(savedVideo.content as VideoContent),
+                        transcriptStatus: 'generating',
+                        transcriptError: undefined
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error regenerating transcript:', error);
+        } finally {
+            setIsRegeneratingTranscript(false);
+        }
+    };
+
     // Handle close
     const handleClose = () => {
         setTitle('');
@@ -343,6 +397,7 @@ export default function VideoPanel({
         setUploadStatus('idle');
         setError(null);
         setSavedVideo(null);
+        setIsRegeneratingTranscript(false);
         setCurrentMode(initialMode);
         onClose();
     };
@@ -409,6 +464,36 @@ export default function VideoPanel({
                 return <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} /> Ready</span>;
             case 'error':
                 return <span className="flex items-center gap-2 text-red-400"><AlertCircle size={16} /> Error</span>;
+            default:
+                return null;
+        }
+    };
+
+    // Render transcript status badge
+    const renderTranscriptStatusBadge = () => {
+        if (!videoContent?.transcriptStatus) return null;
+
+        switch (videoContent.transcriptStatus) {
+            case 'pending':
+                return <span className="text-slate-400 text-xs px-2 py-1 bg-slate-800 rounded-full">Pending</span>;
+            case 'generating':
+                return (
+                    <span className="flex items-center gap-1 text-blue-400 text-xs px-2 py-1 bg-blue-900/30 rounded-full">
+                        <Loader2 className="animate-spin" size={12} /> Generating
+                    </span>
+                );
+            case 'ready':
+                return (
+                    <span className="flex items-center gap-1 text-green-400 text-xs px-2 py-1 bg-green-900/30 rounded-full">
+                        <CheckCircle size={12} /> Ready
+                    </span>
+                );
+            case 'failed':
+                return (
+                    <span className="flex items-center gap-1 text-red-400 text-xs px-2 py-1 bg-red-900/30 rounded-full">
+                        <AlertCircle size={12} /> Failed
+                    </span>
+                );
             default:
                 return null;
         }
@@ -512,6 +597,60 @@ export default function VideoPanel({
                         <div className="p-6">
                             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Description</h3>
                             <p className="text-slate-300 leading-relaxed">{videoContent.description}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Transcript Section - Only show if transcriptStatus exists */}
+                {videoContent?.transcriptStatus && (
+                    <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
+                        <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-500" />
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    Transcript
+                                </h3>
+                                {renderTranscriptStatusBadge()}
+                            </div>
+
+                            {/* Show transcript text when ready */}
+                            {videoContent.transcriptStatus === 'ready' && videoContent.transcript && (
+                                <div className="max-h-64 overflow-y-auto">
+                                    <p className="text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
+                                        {videoContent.transcript}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Show error and retry button when failed */}
+                            {videoContent.transcriptStatus === 'failed' && (
+                                <div className="space-y-3">
+                                    {videoContent.transcriptError && (
+                                        <p className="text-red-400 text-sm">{videoContent.transcriptError}</p>
+                                    )}
+                                    <button
+                                        onClick={handleRegenerateTranscript}
+                                        disabled={isRegeneratingTranscript}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 rounded-lg text-white text-sm transition-colors"
+                                    >
+                                        <RefreshCw size={14} className={isRegeneratingTranscript ? 'animate-spin' : ''} />
+                                        {isRegeneratingTranscript ? 'Regenerating...' : 'Regenerate Transcript'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Show generating status */}
+                            {videoContent.transcriptStatus === 'generating' && (
+                                <div className="flex items-center gap-2 text-blue-400">
+                                    <Loader2 className="animate-spin" size={16} />
+                                    <span className="text-sm">Generating transcript...</span>
+                                </div>
+                            )}
+
+                            {/* Show pending status */}
+                            {videoContent.transcriptStatus === 'pending' && (
+                                <p className="text-slate-400 text-sm">Transcript generation pending...</p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -669,6 +808,18 @@ export default function VideoPanel({
                 {error && (
                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
                         {error}
+                    </div>
+                )}
+
+                {/* Transcript Preview in Edit Mode */}
+                {videoContent?.transcript && (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">
+                            AI-Generated Transcript
+                        </label>
+                        <div className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-slate-400 text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
+                            {videoContent.transcript}
+                        </div>
                     </div>
                 )}
             </div>
