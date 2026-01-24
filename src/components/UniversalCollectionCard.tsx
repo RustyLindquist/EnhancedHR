@@ -1,5 +1,5 @@
 import React from 'react';
-import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note, ToolConversation } from '../types';
+import { Course, Conversation, Module, Lesson, Resource, AIInsight, CustomContext, ContextFile, ProfileDetails, DragItem, DragItemType, Note, ToolConversation, VideoContent } from '../types';
 import UniversalCard, { CardType } from './cards/UniversalCard';
 
 // Unified type for all renderable items in a collection
@@ -15,7 +15,8 @@ export type CollectionItemDetail =
     | (CustomContext & { itemType: 'CUSTOM_CONTEXT' })
     | (ContextFile & { itemType: 'FILE' })
     | (ProfileDetails & { itemType: 'PROFILE' })
-    | (Note & { itemType: 'NOTE' });
+    | (Note & { itemType: 'NOTE' })
+    | (VideoContent & { itemType: 'VIDEO' });
 
 interface UniversalCollectionCardProps {
     item: CollectionItemDetail;
@@ -38,6 +39,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
             case 'CONVERSATION': return 'CONVERSATION';
             case 'TOOL_CONVERSATION': return 'TOOL_CONVERSATION';
             case 'NOTE': return 'NOTE';
+            case 'VIDEO': return 'VIDEO';
             case 'AI_INSIGHT':
             case 'CUSTOM_CONTEXT':
             case 'FILE': return 'CONTEXT';
@@ -236,6 +238,19 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 description: preview || 'No content',
                 meta: note.updated_at ? new Date(note.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 actionLabel: 'EDIT'
+            };
+            break;
+        }
+        case 'VIDEO': {
+            const video = item as any;
+            cardProps = {
+                ...cardProps,
+                type: 'VIDEO',
+                description: video.content?.description || '',
+                meta: video.created_at ? new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
+                videoPlaybackId: video.content?.muxPlaybackId,
+                videoStatus: video.content?.status,
+                actionLabel: 'VIEW'
             };
             break;
         }

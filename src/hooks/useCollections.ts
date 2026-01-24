@@ -76,6 +76,7 @@ export function useCollections(initialCourses: Course[]) {
                     if (item.type === 'AI_INSIGHT') return 'AI_INSIGHT';
                     if (item.type === 'PROFILE') return 'PROFILE';
                     if (item.type === 'FILE') return 'FILE';
+                    if (item.type === 'VIDEO') return 'VIDEO';
                     return 'CUSTOM_CONTEXT';
                 })()
             }));
