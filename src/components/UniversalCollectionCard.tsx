@@ -249,6 +249,7 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 description: video.content?.description || '',
                 meta: video.created_at ? new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined,
                 videoPlaybackId: video.content?.muxPlaybackId,
+                videoExternalUrl: video.content?.externalUrl,
                 videoStatus: video.content?.status,
                 actionLabel: 'VIEW'
             };

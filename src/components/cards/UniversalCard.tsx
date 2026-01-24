@@ -7,6 +7,36 @@ import InteractiveCardWrapper from './InteractiveCardWrapper';
 
 export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE' | 'VIDEO';
 
+// Extract YouTube video ID from various URL formats
+function extractYouTubeId(url: string): string | null {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+// Extract Vimeo video ID
+function extractVimeoId(url: string): string | null {
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    return match ? match[1] : null;
+}
+
+// Get thumbnail URL for external video
+function getVideoThumbnailUrl(url: string): string | null {
+    // YouTube thumbnail
+    const youtubeId = extractYouTubeId(url);
+    if (youtubeId) {
+        return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+    }
+    // Vimeo doesn't have a simple thumbnail API, would need API call
+    return null;
+}
+
 // Icon mapping for dynamic icon names
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
     'Wrench': Wrench,
@@ -35,6 +65,7 @@ interface UniversalCardProps {
     fileName?: string; // For FILE context cards and RESOURCE cards - filename for download
     resourceType?: string; // For RESOURCE cards - file type (PDF, DOC, etc.)
     videoPlaybackId?: string; // For VIDEO cards - Mux playback ID for thumbnail
+    videoExternalUrl?: string; // For VIDEO cards - external URL (YouTube, Vimeo, etc.)
     videoStatus?: 'uploading' | 'processing' | 'ready' | 'error'; // For VIDEO cards - processing status
     onAction?: () => void;
     onRemove?: () => void;
@@ -72,6 +103,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     fileName,
     resourceType,
     videoPlaybackId,
+    videoExternalUrl,
     videoStatus,
     onAction,
     onRemove,
@@ -459,52 +491,64 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
                 {/* Video Thumbnail Area */}
                 <div className="flex-1 mt-3 rounded-xl overflow-hidden bg-black/60 relative min-h-[120px]">
-                    {videoPlaybackId && videoStatus === 'ready' ? (
-                        <>
-                            <img
-                                src={`https://image.mux.com/${videoPlaybackId}/thumbnail.jpg?time=0`}
-                                alt={title}
-                                className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            {/* Bottom gradient overlay - 25% black starting halfway */}
-                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/25 to-transparent"></div>
-                            {/* Play icon */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="p-3 rounded-full bg-black/50 backdrop-blur-sm border border-white/20">
-                                    <Play size={24} className="text-white ml-0.5" fill="currentColor" />
+                    {(() => {
+                        // Get thumbnail URL from Mux playback ID or external URL
+                        const thumbnailUrl = videoPlaybackId
+                            ? `https://image.mux.com/${videoPlaybackId}/thumbnail.jpg?time=0`
+                            : videoExternalUrl
+                                ? getVideoThumbnailUrl(videoExternalUrl)
+                                : null;
+
+                        if (thumbnailUrl && videoStatus === 'ready') {
+                            return (
+                                <>
+                                    <img
+                                        src={thumbnailUrl}
+                                        alt={title}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                    {/* Bottom gradient overlay - 25% black starting halfway */}
+                                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/25 to-transparent"></div>
+                                    {/* Play icon */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="p-3 rounded-full bg-black/50 backdrop-blur-sm border border-white/20">
+                                            <Play size={24} className="text-white ml-0.5" fill="currentColor" />
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        }
+                        return (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="flex flex-col items-center gap-2 text-purple-300/50">
+                                    {videoStatus === 'uploading' && (
+                                        <>
+                                            <div className="animate-pulse"><Video size={40} /></div>
+                                            <span className="text-xs uppercase tracking-wider">Uploading...</span>
+                                        </>
+                                    )}
+                                    {videoStatus === 'processing' && (
+                                        <>
+                                            <div className="animate-spin"><RefreshCw size={28} /></div>
+                                            <span className="text-xs uppercase tracking-wider">Processing...</span>
+                                        </>
+                                    )}
+                                    {videoStatus === 'error' && (
+                                        <>
+                                            <Video size={40} className="text-red-400/70" />
+                                            <span className="text-xs uppercase tracking-wider text-red-400/70">Error</span>
+                                        </>
+                                    )}
+                                    {!videoStatus && (
+                                        <>
+                                            <Video size={40} />
+                                            <span className="text-xs uppercase tracking-wider">VIDEO COVER IMAGE</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="flex flex-col items-center gap-2 text-purple-300/50">
-                                {videoStatus === 'uploading' && (
-                                    <>
-                                        <div className="animate-pulse"><Video size={40} /></div>
-                                        <span className="text-xs uppercase tracking-wider">Uploading...</span>
-                                    </>
-                                )}
-                                {videoStatus === 'processing' && (
-                                    <>
-                                        <div className="animate-spin"><RefreshCw size={28} /></div>
-                                        <span className="text-xs uppercase tracking-wider">Processing...</span>
-                                    </>
-                                )}
-                                {videoStatus === 'error' && (
-                                    <>
-                                        <Video size={40} className="text-red-400/70" />
-                                        <span className="text-xs uppercase tracking-wider text-red-400/70">Error</span>
-                                    </>
-                                )}
-                                {!videoStatus && (
-                                    <>
-                                        <Video size={40} />
-                                        <span className="text-xs uppercase tracking-wider">VIDEO COVER IMAGE</span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
             ) : (

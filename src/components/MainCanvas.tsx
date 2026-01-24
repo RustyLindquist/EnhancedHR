@@ -25,6 +25,7 @@ import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversati
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
+import { deleteVideoResource } from '@/app/actions/videoResources';
 import { deleteCollection, renameCollection } from '@/app/actions/collections';
 import { searchLessonsAction } from '@/app/actions/courses';
 import { getNotesAction, createNoteAction, addNoteToCollectionAction } from '@/app/actions/notes';
@@ -2207,7 +2208,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (!contextItemToDelete) return;
         setDeleteContextModalOpen(false);
 
-        const result = await deleteContextItem(contextItemToDelete.id);
+        // Use appropriate delete function based on item type
+        const result = contextItemToDelete.type === 'VIDEO'
+            ? await deleteVideoResource(contextItemToDelete.id)
+            : await deleteContextItem(contextItemToDelete.id);
+
         if (result.success) {
             // Update local state to remove item immediately
             setCollectionItems(prev => prev.filter(item => item.id !== contextItemToDelete.id));
@@ -2256,8 +2261,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             await removeNoteFromCollectionAction(itemId, resolvedCollectionId);
             // Refresh the collection
             setRefreshTrigger(prev => prev + 1);
-        } else if (itemType === 'AI_INSIGHT' || itemType === 'CUSTOM_CONTEXT' || itemType === 'FILE' || itemType === 'PROFILE') {
-            // Context Items have their own confirmation modal
+        } else if (itemType === 'AI_INSIGHT' || itemType === 'CUSTOM_CONTEXT' || itemType === 'FILE' || itemType === 'PROFILE' || itemType === 'VIDEO') {
+            // Context Items (including VIDEO) have their own confirmation modal
             const item = collectionItems.find(i => i.id === itemId);
             const title = item?.title || 'Context Item';
             initiateDeleteContextItem(itemId, itemType as ContextItemType, title);

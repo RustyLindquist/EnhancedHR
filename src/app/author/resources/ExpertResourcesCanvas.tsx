@@ -222,6 +222,7 @@ export default function ExpertResourcesCanvas({
                                 fileUrl={resource.type === 'FILE' ? (resource.content as any).url : undefined}
                                 fileName={resource.type === 'FILE' ? (resource.content as any).fileName : undefined}
                                 videoPlaybackId={resource.type === 'VIDEO' ? (resource.content as any).muxPlaybackId : undefined}
+                                videoExternalUrl={resource.type === 'VIDEO' ? (resource.content as any).externalUrl : undefined}
                                 videoStatus={resource.type === 'VIDEO' ? (resource.content as any).status : undefined}
                                 onAction={() => handleResourceClick(resource)}
                                 onRemove={isPlatformAdmin ? () => handleDeleteResource(resource.id, resource.type) : undefined}

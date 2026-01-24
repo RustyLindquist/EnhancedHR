@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getMuxUploadUrl, getMuxAssetId, getMuxAssetDetails, waitForMuxAssetReady, deleteMuxAsset } from './mux';
 import { revalidatePath } from 'next/cache';
+import { resolveCollectionId } from './context';
 
 const EXPERT_RESOURCES_COLLECTION_ID = 'expert-resources';
 
@@ -52,13 +53,16 @@ export async function createVideoResource(data: {
     }
 
     try {
+        // Resolve collection alias to UUID (e.g., 'research' -> actual UUID)
+        const resolvedCollectionId = await resolveCollectionId(supabase, data.collectionId, user.id);
+
         // If external URL provided, create immediately with status 'ready'
         if (data.externalUrl) {
             const { data: inserted, error } = await supabase
                 .from('user_context_items')
                 .insert({
                     user_id: user.id,
-                    collection_id: data.collectionId || null,
+                    collection_id: resolvedCollectionId,
                     type: 'VIDEO',
                     title: data.title,
                     content: {
@@ -93,7 +97,7 @@ export async function createVideoResource(data: {
             .from('user_context_items')
             .insert({
                 user_id: user.id,
-                collection_id: data.collectionId || null,
+                collection_id: resolvedCollectionId,
                 type: 'VIDEO',
                 title: data.title,
                 content: {
