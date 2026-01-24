@@ -399,3 +399,6 @@ The platform uses a Node.js-based file parsing engine for extracting text conten
 - `file` - Parsed file content
 - `conversation` - Conversation history
 - `profile` - User profile details
+- `video` - Video context items (Title + Description + Transcript); see `docs/features/video-ai-context.md`
+- `resource` - Course resources
+- `org_course` - Organization-specific course content

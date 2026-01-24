@@ -236,10 +236,36 @@ user_context_items (type = 'VIDEO')
 ├── collection_id: text (e.g., 'expert-resources' or collection UUID)
 ├── type: 'VIDEO'
 ├── title: text
-├── content: jsonb (VideoContent schema above)
+├── content: jsonb (VideoContent schema below)
 ├── created_at: timestamp
 └── updated_at: timestamp
 ```
+
+### VideoContent Schema (with Transcript)
+
+```typescript
+interface VideoContent {
+  // Source identification
+  muxAssetId?: string;
+  muxPlaybackId?: string;
+  muxUploadId?: string;
+  externalUrl?: string;
+  externalPlatform?: 'youtube' | 'vimeo' | 'wistia' | 'other';
+
+  // Common fields
+  status?: 'uploading' | 'processing' | 'ready' | 'error';
+  duration?: number;
+  description?: string;
+
+  // Transcript fields (for AI context integration)
+  transcript?: string;
+  transcriptStatus?: 'pending' | 'generating' | 'ready' | 'failed';
+  transcriptError?: string;
+  transcriptGeneratedAt?: string;
+}
+```
+
+See `docs/features/video-ai-context.md` for transcript generation and embedding details.
 
 ## RLS Considerations
 
@@ -379,4 +405,5 @@ Client Player → Progress Events → Server → Database
 - `docs/features/course-player-and-progress.md` — Feature-level documentation
 - `docs/features/expert-resources.md` — Expert Resources feature (VIDEO card usage)
 - `docs/features/collections-and-context.md` — Collection system (context item storage)
+- `docs/features/video-ai-context.md` — Video AI context integration (transcripts, embeddings, RAG)
 - `docs/foundation/auth-roles-rls.md` — Permission model

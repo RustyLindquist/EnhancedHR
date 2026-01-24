@@ -85,7 +85,7 @@ Collections let users and org admins organize heterogeneous learning objects (co
 - **user_collections**: `id` (uuid), `user_id`, `label`, `color`, `is_custom` (default true), `is_org_collection` (default false), `org_id`, `created_at`; PK `id`; org/admin RLS below. System resolution always selects the oldest row per label to avoid duplicates.
 - **collection_items**: `collection_id` (uuid FK → user_collections CASCADE), `item_type` text, `item_id` text, `course_id` bigint nullable, `added_at`; PK `(collection_id, item_type, item_id)`. Course items should populate both `item_id` and `course_id` for RAG filtering.
 - **user_context_items** (migration 20251208000001): `id` uuid PK, `user_id` uuid (auth.users), `collection_id` text nullable (expected to hold collection uuid string), `type` enum context_item_type, `title`, `content` jsonb, timestamps; indexes on user_id, collection_id. No FK to user_collections—manual cleanup needed on collection delete.
-- **unified_embeddings**: `id`, `user_id`, `course_id`, `collection_id`, `source_type` (lesson|custom_context|file|conversation|profile), `source_id`, `content`, `embedding vector(768)`, `metadata`, `created_at`; RLS allows course rows to all authenticated, private rows only to owner; service_role full access. RPC `match_unified_embeddings` uses `filter_scope` (collectionId, allowedCourseIds, allowedItemIds, includePersonalContext, includeAllUserContext, isPlatformScope, isGlobalAcademy, userId).
+- **unified_embeddings**: `id`, `user_id`, `course_id`, `collection_id`, `source_type` (lesson|custom_context|file|conversation|profile|video|resource|org_course), `source_id`, `content`, `embedding vector(768)`, `metadata`, `created_at`; RLS allows course rows to all authenticated, private rows only to owner; service_role full access. RPC `match_unified_embeddings` uses `filter_scope` (collectionId, allowedCourseIds, allowedItemIds, includePersonalContext, includeAllUserContext, isPlatformScope, isGlobalAcademy, userId). Video embeddings (source_type='video') are created automatically when VIDEO items are added to collections; see `docs/features/video-ai-context.md`.
 - **conversations**: `metadata.collection_ids` array (legacy) plus collection_items rows for canonical membership; `is_saved` toggled when any collections are attached.
 - **notes**: note rows saved in `notes` table; membership tracked through `collection_items` item_type `NOTE`.
 - **courses/modules/lessons**: referenced from collection_items for nested content; `courses.collections` text[] is legacy and not source of truth.
@@ -210,4 +210,5 @@ See `docs/features/expert-resources.md` for complete implementation details.
 - docs/engine/DOCUMENTATION_ENGINE.md
 - docs/features/FEATURE_INDEX.md
 - docs/features/expert-resources.md
-- docs/Object Oriented Context Engineering.md
+- docs/features/video-ai-context.md
+- docs/PRD/Object Oriented Context Engineering.md

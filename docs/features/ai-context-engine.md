@@ -69,7 +69,7 @@ The AI Context Engine assembles retrieval scopes and embeddings for all assistan
 - **Context items**: user_context_items plus their embeddings stored in unified_embeddings.
 
 ## Data Model
-- `unified_embeddings`: user_id, course_id, collection_id, source_type (lesson|custom_context|file|conversation|profile), source_id, content, embedding (vector 768), metadata. RLS allows public course rows; user rows only to owner; service_role full access.
+- `unified_embeddings`: user_id, course_id, collection_id, source_type (lesson|custom_context|file|conversation|profile|video|resource|org_course), source_id, content, embedding (vector 768), metadata. RLS allows public course rows; user rows only to owner; service_role full access.
 - `match_unified_embeddings` (enhanced 20251219000001): security definer; filters by scope booleans and IDs; always applies similarity threshold and limit.
 - Legacy tables `course_embeddings`/`context_embeddings` remain but primary RAG path is unified_embeddings.
 - `user_context_items`: source for custom_context/file/profile/AI_INSIGHT embeddings.
@@ -114,14 +114,16 @@ Read paths:
 ## Change Guide
 - Changing embedding model/dimension: migrate unified_embeddings column and regenerate embeddings; update generateQueryEmbedding and match_unified_embeddings accordingly.
 - Adding new scope types: extend ContextResolver and match_unified_embeddings filter logic; update callers to set new flags.
-- Introducing new source_type: add to unified_embeddings enum, embedding writers, and formatter in api/chat/stream to group sources.
+- Introducing new source_type: add to unified_embeddings enum, embedding writers, and formatter in api/chat/stream to group sources. See `docs/features/video-ai-context.md` for the video source type implementation pattern.
 - If personal context should be excluded for a specific agent, add an explicit flag in page context and propagate to ContextResolver/includePersonalContext.
 
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/prometheus-chat.md
 - docs/features/org-courses.md
+- docs/features/video-ai-context.md
 - docs/architecture/org-scoped-content.md
 - supabase/migrations/20251219000001_enhanced_unified_embeddings.sql
 - supabase/migrations/20241211180000_unified_embeddings.sql
 - supabase/migrations/20260114000003_add_org_id_to_unified_embeddings.sql
+- supabase/migrations/20260124100000_add_video_to_embeddings.sql
