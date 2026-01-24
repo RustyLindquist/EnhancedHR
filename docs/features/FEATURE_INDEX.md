@@ -50,9 +50,11 @@ These are not "single screens." They affect many features and require extra disc
 - **Supabase Schema + Migrations (Local vs Prod Sync)**
   - Why cross-cutting: nearly every feature depends on stable table contracts and predictable migrations.
   - Why to be careful: schema drift between local and production is a common failure mode; any schema change needs a clear sync plan.
-- **Video/Progress Tracking (Mux + progress writes)**
+- **Video/Progress Tracking (Mux + External URLs + progress writes)**
   - Why cross-cutting: progress drives dashboards, credits, certificates, and learner experience.
   - Why to be careful: subtle timing/state changes can break progress, watch-time, and eligibility calculations.
+  - Why to be careful (external URLs): YouTube/Vimeo embed URLs and thumbnail extraction depend on platform-specific URL patterns; changes to extraction functions affect VIDEO cards across Expert Resources and Collections.
+  - Foundation doc: `docs/foundation/video-mux.md`
 - **Payments (Stripe)**
   - Why cross-cutting: membership affects access across the platform (individual and org seat models).
   - Why to be careful: errors directly impact revenue and access; changes must be verified end-to-end.

@@ -3,7 +3,7 @@ id: expert-resources
 owner: platform-engineering
 status: active
 stability: new
-last_updated: 2026-01-23
+last_updated: 2026-01-24
 surfaces:
   routes:
     - /author/resources
@@ -26,18 +26,25 @@ tests:
     - Access /author/resources as platform admin; verify action buttons visible.
     - Access /author/resources as non-admin expert; verify read-only mode (no action buttons).
     - Create note, context, and file resources as admin; verify they appear in grid.
+    - Create video resource with YouTube URL; verify thumbnail displays on card.
+    - Create video resource with Vimeo URL; verify card displays correctly.
+    - Click a video resource; verify VideoPanel opens in view mode with embedded player.
     - Click a resource as non-admin expert; verify read-only view panel opens.
     - Click a resource as admin; verify edit panel opens.
     - Delete a resource as admin; confirm deletion and refresh.
   staging:
     - Platform admin creates resources; verify all expert users can view them.
     - Verify file uploads generate AI summaries.
+    - Verify external URL videos play correctly via iframe embed.
 invariants:
   - Only platform admins (role='admin') can create, update, or delete expert resources.
   - All experts (pending, approved, rejected) can view expert resources.
   - Expert resources use collection_id='expert-resources' (a reserved platform-wide identifier).
   - Admin client is required to bypass RLS since resources are shared across all users.
-  - Custom handlers must be passed to TopContextPanel and AddNotePanel for expert resources.
+  - Custom handlers must be passed to TopContextPanel, AddNotePanel, and VideoPanel for expert resources.
+  - VIDEO resources with external URLs are immediately ready (status='ready'); no processing wait.
+  - VideoPanel switches to view mode after save (does not close); allows immediate video playback.
+  - VIDEO cards must receive videoExternalUrl prop for YouTube thumbnail extraction to work.
 ---
 
 ## Overview
@@ -66,6 +73,18 @@ Expert Resources is a platform-wide resource library within the Expert Console t
 | Note | Markdown-formatted text with `isNote: true` flag | AddNotePanel | `{ text: string, isNote: true }` |
 | Context | Plain text context item | TopContextPanel | `{ text: string }` |
 | File | Uploaded document with AI-generated summary | TopContextPanel | `{ fileName, fileType, fileSize, url, storagePath, summary }` |
+| Video | Mux-hosted or external URL video | VideoPanel | `{ muxPlaybackId?, externalUrl?, externalPlatform?, status, description? }` |
+
+### VIDEO Resource Details
+
+Videos can be added as expert resources in two ways:
+
+1. **Mux Upload**: Direct video upload processed by Mux CDN
+2. **External URL**: YouTube, Vimeo, Wistia, or other video platform URLs
+
+External URL videos are immediately available (`status: 'ready'`) while Mux uploads require processing time.
+
+See `docs/foundation/video-mux.md` for complete video system documentation.
 
 ## Data Model
 
@@ -253,17 +272,31 @@ page.tsx ─► getExpertResources() ─► ExpertResourcesCanvas (renders Unive
 ## Testing Checklist
 
 ### Platform Admin Tests
-- [ ] Navigate to /author/resources as admin; verify action buttons (Note, Context, File) visible.
+- [ ] Navigate to /author/resources as admin; verify action buttons (Note, Context, File, Video) visible.
 - [ ] Create a note; verify it appears in the grid with amber NOTE card styling.
 - [ ] Create a context item; verify it appears in the grid with orange CONTEXT card styling.
 - [ ] Upload a file; verify it appears with AI-generated summary preview.
 - [ ] Click a resource; verify edit panel opens with pre-filled content.
 - [ ] Delete a resource; confirm deletion dialog and verify removal from grid.
 
+### VIDEO Resource Tests (Admin)
+- [ ] Click Video button; verify VideoPanel opens in edit mode.
+- [ ] Enter title and select "Video URL" option.
+- [ ] Enter YouTube URL; verify platform detected and preview shown.
+- [ ] Save; verify panel switches to view mode (not closes).
+- [ ] Verify YouTube video plays via iframe embed in view mode.
+- [ ] Verify VIDEO card appears in grid with purple gradient styling.
+- [ ] Verify YouTube thumbnail displays on VIDEO card.
+- [ ] Enter Vimeo URL; verify platform detected correctly.
+- [ ] Save Vimeo video; verify embed playback works.
+- [ ] Test Mux upload flow; verify status progression (preparing → uploading → processing → ready).
+
 ### Non-Admin Expert Tests
 - [ ] Navigate to /author/resources as pending/approved/rejected expert.
-- [ ] Verify NO action buttons visible (no Note, Context, File buttons).
+- [ ] Verify NO action buttons visible (no Note, Context, File, Video buttons).
 - [ ] Click a resource; verify read-only ResourceViewPanel opens.
+- [ ] Click a VIDEO resource; verify VideoPanel opens in view-only mode.
+- [ ] Verify video plays in read-only VideoPanel.
 - [ ] Verify file download button works in read-only view.
 - [ ] Verify markdown content renders correctly in read-only view.
 
@@ -272,6 +305,8 @@ page.tsx ─► getExpertResources() ─► ExpertResourcesCanvas (renders Unive
 - [ ] Upload file > 10MB; verify error handling.
 - [ ] Rapid create/delete; verify no race conditions.
 - [ ] Access /author/resources as non-expert user; verify redirect to /teach.
+- [ ] Enter invalid video URL; verify validation error shown.
+- [ ] Enter non-video URL (e.g., website); verify "other" platform detection.
 
 ## Change Guide
 
@@ -280,6 +315,9 @@ page.tsx ─► getExpertResources() ─► ExpertResourcesCanvas (renders Unive
 - **Changing expert access rules**: Update page.tsx access check (`hasExpertAccess` logic).
 - **Adding edit permissions for experts**: Remove `isPlatformAdmin` check from edit panel logic; pass custom handlers conditionally.
 - **Changing the collection identifier**: Search for all uses of `'expert-resources'` string and update consistently.
+- **Adding new video platforms**: Update `detectVideoPlatform()`, `extractXxxId()`, and `getEmbedUrl()` in both VideoPanel.tsx and UniversalCard.tsx.
+- **Changing VIDEO card thumbnails**: Update `getVideoThumbnailUrl()` in UniversalCard.tsx; ensure `videoExternalUrl` prop is passed from parent components.
+- **Changing VideoPanel save behavior**: Modify `handleSave()` and `savedVideo` state management; ensure view mode transition works correctly.
 
 ## Implementation Guidance
 
@@ -301,4 +339,5 @@ page.tsx ─► getExpertResources() ─► ExpertResourcesCanvas (renders Unive
 - docs/features/collections-and-context.md (context item data model, RLS patterns)
 - docs/features/experts.md (expert status definitions)
 - docs/features/author-portal.md (Expert Console access rules)
-- docs/frontend/components/UniversalCard.md (card component usage)
+- docs/foundation/video-mux.md (VIDEO system, external URL support, Mux integration)
+- docs/frontend/components/UniversalCard.md (card component usage, VIDEO card type)

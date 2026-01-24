@@ -35,6 +35,8 @@ interface VideoItem {
     content: {
         muxAssetId?: string;
         muxPlaybackId?: string;
+        externalUrl?: string;
+        externalPlatform?: string;
         status?: 'uploading' | 'processing' | 'ready' | 'error';
         duration?: number;
         description?: string;
@@ -169,6 +171,7 @@ export default function OrgCollectionDetailView({
                                             description={video.content.description || ''}
                                             meta={formatDate(video.created_at)}
                                             videoPlaybackId={video.content.muxPlaybackId}
+                                            videoExternalUrl={video.content.externalUrl}
                                             videoStatus={video.content.status}
                                             onAction={() => handleVideoClick(video)}
                                             onRemove={isOrgAdmin ? () => handleDeleteVideo(video.id) : undefined}

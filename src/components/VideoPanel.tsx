@@ -25,6 +25,38 @@ interface VideoContent {
     description?: string;
 }
 
+// Extract YouTube video ID from various URL formats
+function extractYouTubeId(url: string): string | null {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+// Extract Vimeo video ID
+function extractVimeoId(url: string): string | null {
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    return match ? match[1] : null;
+}
+
+// Get embed URL for external video
+function getEmbedUrl(url: string, platform: string): string | null {
+    if (platform === 'youtube') {
+        const videoId = extractYouTubeId(url);
+        return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0` : null;
+    }
+    if (platform === 'vimeo') {
+        const videoId = extractVimeoId(url);
+        return videoId ? `https://player.vimeo.com/video/${videoId}` : null;
+    }
+    return null;
+}
+
 interface VideoPanelProps {
     isOpen: boolean;
     onClose: () => void;
@@ -105,9 +137,13 @@ export default function VideoPanel({
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'preparing' | 'uploading' | 'processing' | 'ready' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    // Track newly created video for switching to view mode after save
+    const [savedVideo, setSavedVideo] = useState<UserContextItem | null>(null);
 
-    const isNewVideo = !video;
-    const videoContent = video?.content as VideoContent | undefined;
+    const isNewVideo = !video && !savedVideo;
+    // Use savedVideo (newly created/updated) or original video prop
+    const displayVideo = savedVideo || video;
+    const videoContent = displayVideo?.content as VideoContent | undefined;
 
     // Initialize state from video prop
     useEffect(() => {
@@ -214,9 +250,27 @@ export default function VideoPanel({
                 });
                 const result = await createFn(title.trim(), description.trim() || undefined, externalUrl.trim());
 
-                if (result.success) {
+                if (result.success && result.id) {
+                    // Create a video object to display in view mode
+                    const newVideo: UserContextItem = {
+                        id: result.id,
+                        user_id: '', // Not needed for display
+                        collection_id: collectionId || null,
+                        type: 'VIDEO',
+                        title: title.trim(),
+                        content: {
+                            externalUrl: externalUrl.trim(),
+                            externalPlatform: detectVideoPlatform(externalUrl.trim()),
+                            status: 'ready',
+                            description: description.trim() || null
+                        },
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    setSavedVideo(newVideo);
+                    setItemId(result.id);
+                    setCurrentMode('view');
                     onSaveSuccess?.();
-                    onClose();
                 } else {
                     setError(result.error || 'Failed to create video');
                 }
@@ -235,8 +289,37 @@ export default function VideoPanel({
                 const result = await updateFn(itemId, updates);
 
                 if (result.success) {
+                    // Update the local video object and switch to view mode
+                    if (savedVideo) {
+                        setSavedVideo({
+                            ...savedVideo,
+                            title: title.trim(),
+                            content: {
+                                ...savedVideo.content as VideoContent,
+                                description: description.trim() || null,
+                                ...(videoSource === 'url' && {
+                                    externalUrl: externalUrl.trim(),
+                                    externalPlatform: detectVideoPlatform(externalUrl.trim())
+                                })
+                            }
+                        });
+                    } else if (video) {
+                        // Create updated video from original
+                        setSavedVideo({
+                            ...video,
+                            title: title.trim(),
+                            content: {
+                                ...(video.content as VideoContent),
+                                description: description.trim() || null,
+                                ...(videoSource === 'url' && {
+                                    externalUrl: externalUrl.trim(),
+                                    externalPlatform: detectVideoPlatform(externalUrl.trim())
+                                })
+                            }
+                        });
+                    }
+                    setCurrentMode('view');
                     onSaveSuccess?.();
-                    onClose();
                 } else {
                     setError(result.error || 'Failed to update video');
                 }
@@ -259,6 +342,7 @@ export default function VideoPanel({
         setItemId(null);
         setUploadStatus('idle');
         setError(null);
+        setSavedVideo(null);
         setCurrentMode(initialMode);
         onClose();
     };
@@ -271,7 +355,7 @@ export default function VideoPanel({
             </div>
             <h2 className="text-xl font-bold text-white">
                 {currentMode === 'edit'
-                    ? (isNewVideo ? 'Add Video' : 'Edit Video')
+                    ? (displayVideo ? 'Edit Video' : 'Add Video')
                     : 'Video'
                 }
             </h2>
@@ -280,7 +364,7 @@ export default function VideoPanel({
 
     // Render header actions
     const renderHeaderActions = () => {
-        if (currentMode === 'view' && canEdit) {
+        if (currentMode === 'view' && canEdit && displayVideo) {
             return (
                 <button
                     onClick={() => setCurrentMode('edit')}
@@ -293,8 +377,9 @@ export default function VideoPanel({
         }
 
         if (currentMode === 'edit') {
-            // For URL mode or editing existing, show Save button
-            if (videoSource === 'url' || (!isNewVideo && uploadStatus === 'ready')) {
+            // For URL mode or editing existing (including savedVideo), show Save button
+            const hasExistingVideo = !isNewVideo || savedVideo;
+            if (videoSource === 'url' || (hasExistingVideo && uploadStatus === 'ready')) {
                 return (
                     <button
                         onClick={handleSave}
@@ -331,24 +416,30 @@ export default function VideoPanel({
 
     // Render VIEW mode content
     const renderViewMode = () => {
-        if (!video) return null;
+        if (!displayVideo) return null;
 
         const playbackId = videoContent?.muxPlaybackId;
         const externalVideoUrl = videoContent?.externalUrl;
+        const externalPlatform = videoContent?.externalPlatform;
         const duration = videoContent?.duration;
         const status = videoContent?.status;
 
-        const formattedDate = new Date(video.created_at).toLocaleDateString('en-US', {
+        const formattedDate = new Date(displayVideo.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
         });
 
+        // Get embed URL for external videos
+        const embedUrl = externalVideoUrl && externalPlatform
+            ? getEmbedUrl(externalVideoUrl, externalPlatform)
+            : null;
+
         return (
             <div className="max-w-4xl mx-auto space-y-6 pb-32 pt-[30px]">
                 {/* Title */}
                 <div>
-                    <h1 className="text-2xl font-bold text-white mb-2">{video.title}</h1>
+                    <h1 className="text-2xl font-bold text-white mb-2">{displayVideo.title}</h1>
                     <div className="flex items-center gap-4 text-slate-400 text-sm">
                         <div className="flex items-center gap-2">
                             <Calendar size={14} />
@@ -364,20 +455,31 @@ export default function VideoPanel({
                 </div>
 
                 {/* Video Player */}
-                {(playbackId || externalVideoUrl) && status === 'ready' ? (
+                {status === 'ready' && (playbackId || embedUrl) ? (
                     <div className="bg-black rounded-2xl overflow-hidden shadow-2xl">
-                        <MuxPlayer
-                            streamType="on-demand"
-                            playbackId={playbackId || undefined}
-                            src={externalVideoUrl || undefined}
-                            metadata={{
-                                video_id: video.id,
-                                video_title: video.title,
-                            }}
-                            primaryColor="#A855F7"
-                            accentColor="#7C3AED"
-                            style={{ width: '100%', aspectRatio: '16/9' }}
-                        />
+                        {playbackId ? (
+                            // Mux video - use MuxPlayer
+                            <MuxPlayer
+                                streamType="on-demand"
+                                playbackId={playbackId}
+                                metadata={{
+                                    video_id: displayVideo.id,
+                                    video_title: displayVideo.title,
+                                }}
+                                primaryColor="#A855F7"
+                                accentColor="#7C3AED"
+                                style={{ width: '100%', aspectRatio: '16/9' }}
+                            />
+                        ) : embedUrl ? (
+                            // External video - use iframe embed
+                            <iframe
+                                src={embedUrl}
+                                title={displayVideo.title}
+                                className="w-full aspect-video"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        ) : null}
                     </div>
                 ) : status === 'processing' ? (
                     <div className="bg-black/30 border border-white/10 rounded-2xl p-12 text-center">

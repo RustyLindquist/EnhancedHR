@@ -343,7 +343,7 @@ export async function getGlobalContextItems() {
     return getContextItems('personal-context');
 }
 // Helper to resolve "personal-context" and other default IDs to real DB ID
-async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
+export async function resolveCollectionId(supabase: any, collectionId: string | undefined | null, userId: string): Promise<string | null> {
     if (!collectionId) return null;
 
     const labelMap: Record<string, string> = {
