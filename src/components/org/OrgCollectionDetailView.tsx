@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ArrowLeft, Video, Layers, BookOpen, Play, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Video, Layers, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UniversalCard from '@/components/cards/UniversalCard';
-import AddVideoPanel from '@/components/AddVideoPanel';
-import VideoViewPanel from '@/components/VideoViewPanel';
+import VideoPanel from '@/components/VideoPanel';
 import {
     createOrgVideoResource,
     finalizeOrgVideoUpload,
@@ -63,49 +62,36 @@ export default function OrgCollectionDetailView({
 }: OrgCollectionDetailViewProps) {
     const router = useRouter();
     const [videos, setVideos] = useState(initialVideos);
+    // Unified video panel state
     const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
-    const [editingVideoItem, setEditingVideoItem] = useState<any>(null);
-    const [isVideoViewOpen, setIsVideoViewOpen] = useState(false);
-    const [viewingVideoItem, setViewingVideoItem] = useState<any>(null);
+    const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
+    const [videoPanelMode, setVideoPanelMode] = useState<'view' | 'edit'>('view');
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     // Video handlers for org collections
-    const handleCreateOrgVideo = useCallback(async (title: string, description?: string) => {
-        return createOrgVideoResource(collection.id, title, description);
+    const handleCreateOrgVideo = useCallback(async (title: string, description?: string, externalUrl?: string) => {
+        return createOrgVideoResource(collection.id, title, description, externalUrl);
     }, [collection.id]);
 
     const handleFinalizeOrgVideo = useCallback(async (itemId: string, uploadId: string) => {
         return finalizeOrgVideoUpload(itemId, uploadId);
     }, []);
 
-    const handleUpdateOrgVideo = useCallback(async (id: string, updates: { title?: string; description?: string }) => {
+    const handleUpdateOrgVideo = useCallback(async (id: string, updates: { title?: string; description?: string; externalUrl?: string }) => {
         return updateOrgVideoResource(id, updates);
     }, []);
 
     const handleAddVideo = useCallback(() => {
-        setEditingVideoItem(null);
+        setSelectedVideo(null);
+        setVideoPanelMode('edit');  // New video opens in edit mode
         setIsVideoPanelOpen(true);
     }, []);
 
     const handleVideoClick = useCallback((video: VideoItem) => {
-        if (isOrgAdmin) {
-            // Admin can edit
-            setEditingVideoItem({
-                id: video.id,
-                title: video.title,
-                content: video.content,
-            });
-            setIsVideoPanelOpen(true);
-        } else {
-            // Non-admin views read-only
-            setViewingVideoItem({
-                id: video.id,
-                title: video.title,
-                content: video.content,
-            });
-            setIsVideoViewOpen(true);
-        }
-    }, [isOrgAdmin]);
+        setSelectedVideo(video);
+        setVideoPanelMode('view');  // Always open in view mode, Edit button shown if canEdit
+        setIsVideoPanelOpen(true);
+    }, []);
 
     const handleDeleteVideo = useCallback(async (videoId: string) => {
         if (!confirm('Are you sure you want to delete this video?')) return;
@@ -242,30 +228,32 @@ export default function OrgCollectionDetailView({
                 </div>
             )}
 
-            {/* Add/Edit Video Panel */}
-            <AddVideoPanel
+            {/* Unified Video Panel (view/edit) */}
+            <VideoPanel
                 isOpen={isVideoPanelOpen}
                 onClose={() => {
                     setIsVideoPanelOpen(false);
-                    setEditingVideoItem(null);
+                    setSelectedVideo(null);
                 }}
-                itemToEdit={editingVideoItem}
+                mode={videoPanelMode}
+                video={selectedVideo ? {
+                    id: selectedVideo.id,
+                    user_id: '',
+                    type: 'VIDEO',
+                    title: selectedVideo.title,
+                    content: selectedVideo.content,
+                    created_at: selectedVideo.created_at,
+                    updated_at: selectedVideo.created_at,  // Use created_at as fallback
+                    collection_id: collection.id,
+                } : null}
+                canEdit={isOrgAdmin}
+                collectionId={collection.id}
                 onSaveSuccess={() => {
                     router.refresh();
                 }}
                 customCreateHandler={handleCreateOrgVideo}
                 customFinalizeHandler={handleFinalizeOrgVideo}
                 customUpdateHandler={handleUpdateOrgVideo}
-            />
-
-            {/* Video View Panel (for non-admin users) */}
-            <VideoViewPanel
-                isOpen={isVideoViewOpen}
-                onClose={() => {
-                    setIsVideoViewOpen(false);
-                    setViewingVideoItem(null);
-                }}
-                resource={viewingVideoItem}
             />
         </div>
     );

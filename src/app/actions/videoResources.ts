@@ -25,14 +25,23 @@ async function isPlatformAdmin(userId: string): Promise<boolean> {
 // USER VIDEO RESOURCES (Personal Collections)
 // ============================================
 
+// Detect video platform from URL
+function detectVideoPlatform(url: string): string {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('vimeo.com')) return 'vimeo';
+    if (url.includes('wistia.com') || url.includes('fast.wistia.net')) return 'wistia';
+    return 'other';
+}
+
 /**
  * Create a video resource for user collections
- * Returns upload URL for client-side upload to Mux
+ * Returns upload URL for client-side upload to Mux, OR creates directly for external URLs
  */
 export async function createVideoResource(data: {
     title: string;
     description?: string;
     collectionId?: string;
+    externalUrl?: string;
 }): Promise<{ success: boolean; id?: string; uploadUrl?: string; uploadId?: string; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -43,6 +52,39 @@ export async function createVideoResource(data: {
     }
 
     try {
+        // If external URL provided, create immediately with status 'ready'
+        if (data.externalUrl) {
+            const { data: inserted, error } = await supabase
+                .from('user_context_items')
+                .insert({
+                    user_id: user.id,
+                    collection_id: data.collectionId || null,
+                    type: 'VIDEO',
+                    title: data.title,
+                    content: {
+                        externalUrl: data.externalUrl,
+                        externalPlatform: detectVideoPlatform(data.externalUrl),
+                        status: 'ready',
+                        description: data.description || null
+                    }
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('[createVideoResource] DB Error:', error);
+                return { success: false, error: `Failed to create: ${error.message}` };
+            }
+
+            console.log('[createVideoResource] Success! Created external video resource:', inserted.id);
+            revalidatePath('/dashboard');
+
+            return {
+                success: true,
+                id: inserted.id
+            };
+        }
+
         // 1. Get Mux upload URL
         const { uploadUrl, uploadId } = await getMuxUploadUrl();
 
@@ -220,7 +262,7 @@ export async function finalizeVideoUpload(
  */
 export async function updateVideoResource(
     id: string,
-    updates: { title?: string; description?: string }
+    updates: { title?: string; description?: string; externalUrl?: string }
 ): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -245,11 +287,19 @@ export async function updateVideoResource(
     if (updates.title) {
         updateData.title = updates.title;
     }
-    if (updates.description !== undefined) {
-        updateData.content = {
-            ...current.content,
-            description: updates.description
-        };
+
+    // Handle content updates (description and/or externalUrl)
+    if (updates.description !== undefined || updates.externalUrl !== undefined) {
+        updateData.content = { ...current.content };
+
+        if (updates.description !== undefined) {
+            updateData.content.description = updates.description;
+        }
+
+        if (updates.externalUrl !== undefined) {
+            updateData.content.externalUrl = updates.externalUrl;
+            updateData.content.externalPlatform = detectVideoPlatform(updates.externalUrl);
+        }
     }
 
     const { error } = await supabase
@@ -362,7 +412,8 @@ export async function getVideoStatus(id: string): Promise<{
  */
 export async function createExpertVideoResource(
     title: string,
-    description?: string
+    description?: string,
+    externalUrl?: string
 ): Promise<{ success: boolean; id?: string; uploadUrl?: string; uploadId?: string; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -380,11 +431,46 @@ export async function createExpertVideoResource(
     }
 
     try {
-        // 1. Get Mux upload URL
-        const { uploadUrl, uploadId } = await getMuxUploadUrl();
-
         // 2. Use admin client to bypass RLS
         const admin = createAdminClient();
+
+        // If external URL provided, create immediately with status 'ready'
+        if (externalUrl) {
+            const { data: inserted, error } = await admin
+                .from('user_context_items')
+                .insert({
+                    user_id: user.id,
+                    collection_id: EXPERT_RESOURCES_COLLECTION_ID,
+                    type: 'VIDEO',
+                    title,
+                    content: {
+                        externalUrl,
+                        externalPlatform: detectVideoPlatform(externalUrl),
+                        status: 'ready',
+                        description: description || null,
+                        isPlatformOwned: true
+                    },
+                    created_by: user.id
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('[createExpertVideoResource] DB Error:', error);
+                return { success: false, error: `Failed to create: ${error.message}` };
+            }
+
+            console.log('[createExpertVideoResource] Success! Created external expert video:', inserted.id);
+            revalidatePath('/author/resources');
+
+            return {
+                success: true,
+                id: inserted.id
+            };
+        }
+
+        // 1. Get Mux upload URL
+        const { uploadUrl, uploadId } = await getMuxUploadUrl();
 
         // 3. Create record with collection_id='expert-resources'
         const { data: inserted, error } = await admin
@@ -579,7 +665,7 @@ export async function finalizeExpertVideoUpload(
  */
 export async function updateExpertVideoResource(
     id: string,
-    updates: { title?: string; description?: string }
+    updates: { title?: string; description?: string; externalUrl?: string }
 ): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -612,11 +698,19 @@ export async function updateExpertVideoResource(
     if (updates.title) {
         updateData.title = updates.title;
     }
-    if (updates.description !== undefined) {
-        updateData.content = {
-            ...current.content,
-            description: updates.description
-        };
+
+    // Handle content updates (description and/or externalUrl)
+    if (updates.description !== undefined || updates.externalUrl !== undefined) {
+        updateData.content = { ...current.content };
+
+        if (updates.description !== undefined) {
+            updateData.content.description = updates.description;
+        }
+
+        if (updates.externalUrl !== undefined) {
+            updateData.content.externalUrl = updates.externalUrl;
+            updateData.content.externalPlatform = detectVideoPlatform(updates.externalUrl);
+        }
     }
 
     const { error } = await admin

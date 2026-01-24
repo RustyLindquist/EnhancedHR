@@ -5,8 +5,7 @@ import { Layers, Upload, StickyNote, Lightbulb, Video } from 'lucide-react';
 import { UserContextItem, ContextItemType } from '@/types';
 import TopContextPanel from '@/components/TopContextPanel';
 import AddNotePanel from '@/components/AddNotePanel';
-import AddVideoPanel from '@/components/AddVideoPanel';
-import VideoViewPanel from '@/components/VideoViewPanel';
+import VideoPanel from '@/components/VideoPanel';
 import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
 import ResourceViewPanel from '@/components/ResourceViewPanel';
 import { useRouter } from 'next/navigation';
@@ -65,11 +64,10 @@ export default function ExpertResourcesCanvas({
     const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState<UserContextItem | null>(null);
     const [addType, setAddType] = useState<'CUSTOM_CONTEXT' | 'FILE'>('CUSTOM_CONTEXT');
-    // Video panel state
+    // Video panel state - unified for view and edit
     const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
-    const [editingVideoItem, setEditingVideoItem] = useState<UserContextItem | null>(null);
-    const [isVideoViewOpen, setIsVideoViewOpen] = useState(false);
-    const [viewingVideoItem, setViewingVideoItem] = useState<UserContextItem | null>(null);
+    const [selectedVideo, setSelectedVideo] = useState<UserContextItem | null>(null);
+    const [videoPanelMode, setVideoPanelMode] = useState<'view' | 'edit'>('view');
 
     const handleAddNote = useCallback(() => {
         setSelectedResource(null);
@@ -87,13 +85,9 @@ export default function ExpertResourcesCanvas({
 
         // Handle VIDEO type
         if (resource.type === 'VIDEO') {
-            if (isPlatformAdmin) {
-                setEditingVideoItem(resource);
-                setIsVideoPanelOpen(true);
-            } else {
-                setViewingVideoItem(resource);
-                setIsVideoViewOpen(true);
-            }
+            setSelectedVideo(resource);
+            setVideoPanelMode('view');  // Always open in view mode, Edit button shown if canEdit
+            setIsVideoPanelOpen(true);
             return;
         }
 
@@ -149,20 +143,21 @@ export default function ExpertResourcesCanvas({
     }, []);
 
     // Video handlers for Expert Resources
-    const handleCreateExpertVideo = useCallback(async (title: string, description?: string) => {
-        return createExpertVideoResource(title, description);
+    const handleCreateExpertVideo = useCallback(async (title: string, description?: string, externalUrl?: string) => {
+        return createExpertVideoResource(title, description, externalUrl);
     }, []);
 
     const handleFinalizeExpertVideo = useCallback(async (itemId: string, uploadId: string) => {
         return finalizeExpertVideoUpload(itemId, uploadId);
     }, []);
 
-    const handleUpdateExpertVideo = useCallback(async (id: string, updates: { title?: string; description?: string }) => {
+    const handleUpdateExpertVideo = useCallback(async (id: string, updates: { title?: string; description?: string; externalUrl?: string }) => {
         return updateExpertVideoResource(id, updates);
     }, []);
 
     const handleAddVideo = useCallback(() => {
-        setEditingVideoItem(null);
+        setSelectedVideo(null);
+        setVideoPanelMode('edit');  // New video opens in edit mode
         setIsVideoPanelOpen(true);
     }, []);
 
@@ -339,30 +334,22 @@ export default function ExpertResourcesCanvas({
                 resource={selectedResource}
             />
 
-            {/* Add/Edit Video Panel */}
-            <AddVideoPanel
+            {/* Unified Video Panel (view/edit) */}
+            <VideoPanel
                 isOpen={isVideoPanelOpen}
                 onClose={() => {
                     setIsVideoPanelOpen(false);
-                    setEditingVideoItem(null);
+                    setSelectedVideo(null);
                 }}
-                itemToEdit={editingVideoItem}
+                mode={videoPanelMode}
+                video={selectedVideo}
+                canEdit={isPlatformAdmin}
                 onSaveSuccess={() => {
                     router.refresh();
                 }}
                 customCreateHandler={handleCreateExpertVideo}
                 customFinalizeHandler={handleFinalizeExpertVideo}
                 customUpdateHandler={handleUpdateExpertVideo}
-            />
-
-            {/* Video View Panel (for non-admin experts) */}
-            <VideoViewPanel
-                isOpen={isVideoViewOpen}
-                onClose={() => {
-                    setIsVideoViewOpen(false);
-                    setViewingVideoItem(null);
-                }}
-                resource={viewingVideoItem}
             />
         </div>
     );
