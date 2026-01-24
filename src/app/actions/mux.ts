@@ -7,22 +7,40 @@ const mux = new Mux({
     tokenSecret: process.env.MUX_TOKEN_SECRET,
 });
 
+// Get the CORS origin for Mux uploads
+// Uses the production URL if available, otherwise allows any origin
+function getMuxCorsOrigin(): string {
+    const prodUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
+    if (prodUrl) {
+        // Return the production domain
+        return prodUrl;
+    }
+    // Fallback to wildcard for local development
+    return '*';
+}
+
 export async function getMuxUploadUrl() {
+    const corsOrigin = getMuxCorsOrigin();
+    console.log('[Mux] Creating upload with CORS origin:', corsOrigin);
+
     try {
         const upload = await mux.video.uploads.create({
             new_asset_settings: {
                 playback_policy: ['public'],
                 encoding_tier: 'smart',
             },
-            cors_origin: '*', // In production, restrict this to your domain
+            cors_origin: corsOrigin,
         });
+
+        console.log('[Mux] Upload created successfully, id:', upload.id);
 
         return {
             uploadUrl: upload.url,
             uploadId: upload.id,
         };
     } catch (error: any) {
-        console.error('Error creating Mux upload:', error);
+        console.error('[Mux] Error creating upload:', error);
+        console.error('[Mux] Error details:', JSON.stringify(error, null, 2));
 
         // Extract user-friendly error message from Mux API response
         const muxMessage = error?.error?.messages?.[0] || error?.message;
@@ -30,7 +48,7 @@ export async function getMuxUploadUrl() {
             throw new Error('Mux video limit reached. Please delete unused videos or upgrade your Mux plan.');
         }
 
-        throw new Error('Failed to create upload URL');
+        throw new Error(`Failed to create upload URL: ${muxMessage || 'Unknown error'}`);
     }
 }
 
