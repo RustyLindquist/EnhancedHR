@@ -20,7 +20,7 @@ const SOURCE_TYPE_MAP: Record<ContextItemType, string> = {
     'FILE': 'file',
     'PROFILE': 'profile',
     'AI_INSIGHT': 'custom_context', // Insights are treated as custom context
-    'VIDEO': 'video', // Video resources (no embeddings generated for videos)
+    'VIDEO': 'video', // Video resources with AI-generated transcripts
 };
 
 /**
@@ -260,6 +260,98 @@ export async function embedFileChunks(
 
     } catch (error) {
         console.error('Error in embedFileChunks:', error);
+        return {
+            success: false,
+            embeddingCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+// ============================================
+// Video Context Embeddings
+// ============================================
+
+/**
+ * Create embeddings for a video context item
+ * Uses title + description + transcript as combined content
+ */
+export async function embedVideoContext(
+    userId: string,
+    videoId: string,
+    title: string,
+    description: string | undefined,
+    transcript: string,
+    collectionId?: string | null,
+    orgId?: string | null
+): Promise<{ success: boolean; embeddingCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        // Build combined context
+        const parts: string[] = [];
+        parts.push(`Video Title: ${title}`);
+        if (description) {
+            parts.push(`\nDescription: ${description}`);
+        }
+        if (transcript) {
+            parts.push(`\nTranscript:\n${transcript}`);
+        }
+        const combinedContent = parts.join('\n');
+
+        // Don't embed empty content
+        if (!combinedContent || combinedContent.trim().length === 0) {
+            return { success: true, embeddingCount: 0 };
+        }
+
+        // Chunk content if it's long (transcripts can be very long)
+        const chunks = combinedContent.length > 1200 ? chunkText(combinedContent, 1000, 200) : [combinedContent];
+
+        // Generate and store embeddings for each chunk
+        let embeddingCount = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = await generateEmbedding(chunk);
+
+            if (!embedding || embedding.length === 0) {
+                console.warn(`[embedVideoContext] Failed to generate embedding for chunk ${i + 1}/${chunks.length}`);
+                continue;
+            }
+
+            const { error } = await admin
+                .from('unified_embeddings')
+                .insert({
+                    user_id: userId,
+                    collection_id: collectionId || null,
+                    org_id: orgId || null,
+                    source_type: 'video',
+                    source_id: videoId,
+                    content: chunk,
+                    embedding: embedding,
+                    metadata: {
+                        title: title,
+                        hasTranscript: !!transcript,
+                        transcriptLength: transcript?.length || 0,
+                        chunk_index: i,
+                        total_chunks: chunks.length,
+                        item_type: 'VIDEO'
+                    }
+                });
+
+            if (error) {
+                console.error(`[embedVideoContext] Error inserting embedding for chunk ${i}:`, error);
+                // Continue with other chunks
+            } else {
+                embeddingCount++;
+            }
+        }
+
+        console.log(`[embedVideoContext] Created ${embeddingCount} embeddings for video "${title}" (${videoId})`);
+        return { success: true, embeddingCount };
+
+    } catch (error) {
+        console.error('[embedVideoContext] Error:', error);
         return {
             success: false,
             embeddingCount: 0,

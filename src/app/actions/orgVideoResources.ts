@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getOrgContext } from '@/lib/org-context';
 import { getMuxUploadUrl, getMuxAssetId, waitForMuxAssetReady, deleteMuxAsset } from './mux';
 import { revalidatePath } from 'next/cache';
+import { processVideoForRAG, regenerateVideoTranscript } from '@/lib/video-transcript';
+import { deleteContextEmbeddings } from '@/lib/context-embeddings';
 
 // ============================================
 // ORG VIDEO RESOURCES (Org Collection videos)
@@ -99,6 +101,14 @@ export async function createOrgVideoResource(
 
             revalidatePath('/org/collections');
             revalidatePath(`/org/collections/${collectionId}`);
+
+            // Fire-and-forget transcript generation for external URLs
+            if (inserted.id) {
+                processVideoForRAG(inserted.id, user.id, {
+                    collectionId: collectionId,
+                    orgId: orgContext.orgId
+                }).catch(err => console.error('[createOrgVideoResource] Transcript generation failed:', err));
+            }
 
             return {
                 success: true,
@@ -284,6 +294,12 @@ export async function finalizeOrgVideoUpload(
             revalidatePath(`/org/collections/${currentForReady.collection_id}`);
         }
 
+        // Fire-and-forget transcript generation
+        processVideoForRAG(itemId, user.id, {
+            collectionId: currentForReady?.collection_id,
+            orgId: orgContext.orgId
+        }).catch(err => console.error('[finalizeOrgVideoUpload] Transcript generation failed:', err));
+
         return {
             success: true,
             playbackId: result.playbackId,
@@ -360,6 +376,8 @@ export async function updateOrgVideoResource(
         }
     }
 
+    const currentContent = current.content;
+
     const { error } = await admin
         .from('user_context_items')
         .update(updateData)
@@ -368,6 +386,12 @@ export async function updateOrgVideoResource(
     if (error) {
         console.error('[updateOrgVideoResource] Error:', error);
         return { success: false, error: `Failed to update: ${error.message}` };
+    }
+
+    // If external URL changed, regenerate transcript
+    if (updates.externalUrl && updates.externalUrl !== currentContent.externalUrl) {
+        regenerateVideoTranscript(id, user.id)
+            .catch(err => console.error('[updateOrgVideoResource] Re-transcription failed:', err));
     }
 
     revalidatePath('/org/collections');
@@ -417,7 +441,10 @@ export async function deleteOrgVideoResource(id: string): Promise<{ success: boo
         return { success: false, error: 'Video does not belong to your organization' };
     }
 
-    // 2. Delete Mux asset if it exists
+    // 2. Clean up embeddings
+    await deleteContextEmbeddings(id);
+
+    // 3. Delete Mux asset if it exists
     const muxAssetId = resource.content?.muxAssetId;
     if (muxAssetId) {
         const deleted = await deleteMuxAsset(muxAssetId);
@@ -428,7 +455,7 @@ export async function deleteOrgVideoResource(id: string): Promise<{ success: boo
         }
     }
 
-    // 3. Delete database record
+    // 4. Delete database record
     const { error } = await admin
         .from('user_context_items')
         .delete()

@@ -221,6 +221,14 @@ export interface VideoContent {
         duration?: number;
         status: 'uploading' | 'processing' | 'ready' | 'error';
         description?: string;
+        // External URL support
+        externalUrl?: string;
+        externalPlatform?: string;
+        // AI Transcript fields for RAG context
+        transcript?: string;
+        transcriptStatus?: 'pending' | 'generating' | 'ready' | 'failed';
+        transcriptError?: string;
+        transcriptGeneratedAt?: string;
     };
     created_at: string;
     collections?: string[];
