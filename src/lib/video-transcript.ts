@@ -3,13 +3,17 @@
 /**
  * Video Transcript Service
  *
- * Generates AI transcripts for video content items and creates embeddings
+ * Generates transcripts for video content items and creates embeddings
  * for RAG retrieval. This enables videos to contribute to AI context.
+ *
+ * For YouTube videos: First tries to fetch existing captions via YouTube API
+ * For other videos: Uses AI multimodal parsing via OpenRouter + Gemini
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import { embedVideoContext, deleteContextEmbeddings } from '@/lib/context-embeddings';
+import { isYouTubeUrl, fetchYouTubeTranscript, fetchYouTubeMetadata } from '@/lib/youtube';
 
 // Types
 type TranscriptStatus = 'pending' | 'generating' | 'ready' | 'failed';
@@ -146,26 +150,66 @@ export async function processVideoForRAG(
 
         console.log('[processVideoForRAG] Generating transcript for video:', videoId);
 
-        // Generate transcript using existing function
-        const transcriptResult = await generateTranscriptFromVideo(videoUrl);
+        let transcript: string | null = null;
+        let transcriptSource: 'youtube' | 'ai' = 'ai';
 
-        if (!transcriptResult.success || !transcriptResult.transcript) {
-            console.error('[processVideoForRAG] Transcript generation failed:', transcriptResult.error);
+        // For YouTube videos, try to fetch existing captions first
+        if (await isYouTubeUrl(videoUrl)) {
+            console.log('[processVideoForRAG] YouTube video detected, trying to fetch existing captions...');
+
+            const youtubeResult = await fetchYouTubeTranscript(videoUrl);
+
+            if (youtubeResult.success && youtubeResult.transcript) {
+                console.log('[processVideoForRAG] Successfully fetched YouTube captions');
+                transcript = youtubeResult.transcript;
+                transcriptSource = 'youtube';
+
+                // Also try to fetch metadata to potentially update description
+                const metadataResult = await fetchYouTubeMetadata(videoUrl);
+                if (metadataResult.success && metadataResult.metadata) {
+                    console.log('[processVideoForRAG] Fetched YouTube metadata:', metadataResult.metadata.title);
+                    // Could update video description here if needed
+                }
+            } else {
+                console.log('[processVideoForRAG] YouTube captions not available:', youtubeResult.error);
+                console.log('[processVideoForRAG] Falling back to AI transcript generation...');
+            }
+        }
+
+        // If no transcript yet (not YouTube or YouTube captions failed), use AI parsing
+        if (!transcript) {
+            const transcriptResult = await generateTranscriptFromVideo(videoUrl);
+
+            if (!transcriptResult.success || !transcriptResult.transcript) {
+                console.error('[processVideoForRAG] AI transcript generation failed:', transcriptResult.error);
+                await updateTranscriptStatus(videoId, 'failed', {
+                    error: transcriptResult.error || 'Failed to generate transcript'
+                });
+                return {
+                    success: false,
+                    error: transcriptResult.error || 'Failed to generate transcript'
+                };
+            }
+
+            transcript = transcriptResult.transcript;
+            transcriptSource = 'ai';
+        }
+
+        console.log(`[processVideoForRAG] Transcript ready (source: ${transcriptSource}), length: ${transcript.length}`);
+
+        if (!transcript) {
             await updateTranscriptStatus(videoId, 'failed', {
-                error: transcriptResult.error || 'Failed to generate transcript'
+                error: 'No transcript generated'
             });
-            return {
-                success: false,
-                error: transcriptResult.error || 'Failed to generate transcript'
-            };
+            return { success: false, error: 'No transcript generated' };
         }
 
         // Update with transcript
         await updateTranscriptStatus(videoId, 'ready', {
-            transcript: transcriptResult.transcript
+            transcript: transcript
         });
 
-        console.log('[processVideoForRAG] Transcript generated, creating embeddings');
+        console.log('[processVideoForRAG] Transcript saved, creating embeddings');
 
         // Create embeddings
         const embeddingResult = await embedVideoContext(
@@ -173,7 +217,7 @@ export async function processVideoForRAG(
             videoId,
             video.title,
             video.content.description,
-            transcriptResult.transcript,
+            transcript,
             options?.collectionId || video.collection_id,
             options?.orgId || video.org_id
         );
@@ -186,7 +230,7 @@ export async function processVideoForRAG(
 
         return {
             success: true,
-            transcript: transcriptResult.transcript,
+            transcript: transcript,
             embeddingCount: embeddingResult.embeddingCount
         };
 
