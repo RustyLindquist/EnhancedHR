@@ -39,8 +39,7 @@ import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
 import TopContextPanel from './TopContextPanel';
 import GlobalTopPanel from './GlobalTopPanel';
-import AddVideoPanel from './AddVideoPanel';
-import VideoViewPanel from './VideoViewPanel';
+import VideoPanel from './VideoPanel';
 import PrometheusDashboardWidget from './PrometheusDashboardWidget';
 import PrometheusHelpContent from './PrometheusHelpContent';
 import HelpPanel from './help/HelpPanel';
@@ -1031,9 +1030,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [editingContextItem, setEditingContextItem] = useState<UserContextItem | null>(null);
     const [contextTypeToAdd, setContextTypeToAdd] = useState<ContextItemType>('CUSTOM_CONTEXT');
 
-    // --- VIDEO EDITOR STATE ---
-    const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
-    const [editingVideoItem, setEditingVideoItem] = useState<UserContextItem | null>(null);
+    // --- VIDEO PANEL STATE ---
+    const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState<UserContextItem | null>(null);
+    const [videoPanelMode, setVideoPanelMode] = useState<'view' | 'edit'>('edit');
 
     // --- NOTES STATE ---
     const [notes, setNotes] = useState<Note[]>([]);
@@ -1059,14 +1059,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     // --- VIDEO HANDLERS ---
-    const handleOpenVideoEditor = (item: UserContextItem | null = null) => {
-        setEditingVideoItem(item);
-        setIsVideoEditorOpen(true);
+    const handleOpenVideoPanel = (item: UserContextItem | null = null, mode: 'view' | 'edit' = 'edit') => {
+        setSelectedVideo(item);
+        setVideoPanelMode(item ? 'view' : 'edit');  // Existing videos open in view mode, new opens in edit
+        setIsVideoPanelOpen(true);
     };
 
-    const handleCloseVideoEditor = () => {
-        setIsVideoEditorOpen(false);
-        setEditingVideoItem(null);
+    const handleCloseVideoPanel = () => {
+        setIsVideoPanelOpen(false);
+        setSelectedVideo(null);
         // Refresh items after close (in case of save)
         if (activeCollectionId === 'personal-context' || customCollections.some(c => c.id === activeCollectionId)) {
             fetchCollectionItems(activeCollectionId).then(res => setCollectionItems(res.items));
@@ -3771,7 +3772,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     <Plus size={14} /> File
                                                 </button>
                                                 <button
-                                                    onClick={() => handleOpenVideoEditor()}
+                                                    onClick={() => handleOpenVideoPanel()}
                                                     className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-white/10 transition-all hover:scale-105"
                                                 >
                                                     <Plus size={14} /> Video
@@ -4682,12 +4683,14 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                     onDeleteSuccess={handleNoteDeleted}
                 />
 
-                {/* --- Video Editor Panel --- */}
-                <AddVideoPanel
-                    isOpen={isVideoEditorOpen}
-                    onClose={handleCloseVideoEditor}
+                {/* --- Video Panel (view/edit) --- */}
+                <VideoPanel
+                    isOpen={isVideoPanelOpen}
+                    onClose={handleCloseVideoPanel}
+                    mode={videoPanelMode}
+                    video={selectedVideo}
+                    canEdit={true}
                     collectionId={activeCollectionId}
-                    itemToEdit={editingVideoItem}
                     onSaveSuccess={() => {
                         setRefreshTrigger(prev => prev + 1);
                         if (onCollectionUpdate) onCollectionUpdate();

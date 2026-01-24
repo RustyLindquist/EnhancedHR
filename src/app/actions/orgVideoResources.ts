@@ -10,15 +10,24 @@ import { revalidatePath } from 'next/cache';
 // ORG VIDEO RESOURCES (Org Collection videos)
 // ============================================
 
+// Detect video platform from URL
+function detectVideoPlatform(url: string): string {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('vimeo.com')) return 'vimeo';
+    if (url.includes('wistia.com') || url.includes('fast.wistia.net')) return 'wistia';
+    return 'other';
+}
+
 /**
  * Create a video resource for an org collection
- * Returns upload URL for client-side upload to Mux
+ * Returns upload URL for client-side upload to Mux, OR creates directly for external URLs
  * Org admin or platform admin only
  */
 export async function createOrgVideoResource(
     collectionId: string,
     title: string,
-    description?: string
+    description?: string,
+    externalUrl?: string
 ): Promise<{ success: boolean; id?: string; uploadUrl?: string; uploadId?: string; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -59,6 +68,44 @@ export async function createOrgVideoResource(
     }
 
     try {
+        // If external URL provided, create immediately with status 'ready'
+        if (externalUrl) {
+            const { data: inserted, error } = await admin
+                .from('user_context_items')
+                .insert({
+                    user_id: user.id,
+                    org_id: orgContext.orgId,
+                    collection_id: collectionId,
+                    type: 'VIDEO',
+                    title,
+                    content: {
+                        externalUrl,
+                        externalPlatform: detectVideoPlatform(externalUrl),
+                        status: 'ready',
+                        description: description || null,
+                        isOrgOwned: true
+                    },
+                    created_by: user.id
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('[createOrgVideoResource] DB Error:', error);
+                return { success: false, error: `Failed to create: ${error.message}` };
+            }
+
+            console.log('[createOrgVideoResource] Success! Created external org video:', inserted.id);
+
+            revalidatePath('/org/collections');
+            revalidatePath(`/org/collections/${collectionId}`);
+
+            return {
+                success: true,
+                id: inserted.id
+            };
+        }
+
         // 1. Get Mux upload URL
         const { uploadUrl, uploadId } = await getMuxUploadUrl();
 
@@ -258,7 +305,7 @@ export async function finalizeOrgVideoUpload(
  */
 export async function updateOrgVideoResource(
     id: string,
-    updates: { title?: string; description?: string }
+    updates: { title?: string; description?: string; externalUrl?: string }
 ): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -298,11 +345,19 @@ export async function updateOrgVideoResource(
     if (updates.title) {
         updateData.title = updates.title;
     }
-    if (updates.description !== undefined) {
-        updateData.content = {
-            ...current.content,
-            description: updates.description
-        };
+
+    // Handle content updates (description and/or externalUrl)
+    if (updates.description !== undefined || updates.externalUrl !== undefined) {
+        updateData.content = { ...current.content };
+
+        if (updates.description !== undefined) {
+            updateData.content.description = updates.description;
+        }
+
+        if (updates.externalUrl !== undefined) {
+            updateData.content.externalUrl = updates.externalUrl;
+            updateData.content.externalPlatform = detectVideoPlatform(updates.externalUrl);
+        }
     }
 
     const { error } = await admin

@@ -1,0 +1,586 @@
+'use client';
+
+import React, { useState, useCallback, useEffect } from 'react';
+import { Video, Calendar, Clock, Loader2, Upload, Link as LinkIcon, CheckCircle, AlertCircle, Pencil } from 'lucide-react';
+import MuxPlayer from '@mux/mux-player-react';
+import MuxUploader from '@mux/mux-uploader-react';
+import GlobalTopPanel from './GlobalTopPanel';
+import { UserContextItem } from '@/types';
+import {
+    createVideoResource,
+    finalizeVideoUpload,
+    updateVideoResource,
+} from '@/app/actions/videoResources';
+
+type VideoSourceType = 'upload' | 'url';
+
+interface VideoContent {
+    muxAssetId?: string;
+    muxPlaybackId?: string;
+    muxUploadId?: string;
+    externalUrl?: string;
+    externalPlatform?: string;
+    status?: 'uploading' | 'processing' | 'ready' | 'error';
+    duration?: number;
+    description?: string;
+}
+
+interface VideoPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    mode?: 'view' | 'edit';
+    video?: UserContextItem | null;
+    canEdit?: boolean;
+    collectionId?: string;
+    onSaveSuccess?: () => void;
+    // Custom handlers for different contexts (Expert Resources, Org Collections)
+    customCreateHandler?: (title: string, description?: string, externalUrl?: string) => Promise<{
+        success: boolean;
+        id?: string;
+        uploadUrl?: string;
+        uploadId?: string;
+        error?: string
+    }>;
+    customFinalizeHandler?: (itemId: string, uploadId: string) => Promise<{
+        success: boolean;
+        playbackId?: string;
+        error?: string
+    }>;
+    customUpdateHandler?: (id: string, updates: { title?: string; description?: string; externalUrl?: string }) => Promise<{
+        success: boolean;
+        error?: string
+    }>;
+}
+
+// Detect video platform from URL
+function detectVideoPlatform(url: string): string {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('vimeo.com')) return 'vimeo';
+    if (url.includes('wistia.com') || url.includes('fast.wistia.net')) return 'wistia';
+    return 'other';
+}
+
+// Validate video URL
+function isValidVideoUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        return ['http:', 'https:'].includes(parsed.protocol);
+    } catch {
+        return false;
+    }
+}
+
+// Format duration
+function formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+export default function VideoPanel({
+    isOpen,
+    onClose,
+    mode: initialMode = 'view',
+    video,
+    canEdit = false,
+    collectionId,
+    onSaveSuccess,
+    customCreateHandler,
+    customFinalizeHandler,
+    customUpdateHandler,
+}: VideoPanelProps) {
+    // Mode state
+    const [currentMode, setCurrentMode] = useState<'view' | 'edit'>(initialMode);
+
+    // Form state
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [videoSource, setVideoSource] = useState<VideoSourceType>('upload');
+    const [externalUrl, setExternalUrl] = useState('');
+
+    // Upload state
+    const [uploadUrl, setUploadUrl] = useState<string | null>(null);
+    const [uploadId, setUploadId] = useState<string | null>(null);
+    const [itemId, setItemId] = useState<string | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<'idle' | 'preparing' | 'uploading' | 'processing' | 'ready' | 'error'>('idle');
+    const [error, setError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const isNewVideo = !video;
+    const videoContent = video?.content as VideoContent | undefined;
+
+    // Initialize state from video prop
+    useEffect(() => {
+        if (video) {
+            setTitle(video.title);
+            setDescription(videoContent?.description || '');
+            setItemId(video.id);
+
+            // Determine video source type
+            if (videoContent?.externalUrl) {
+                setVideoSource('url');
+                setExternalUrl(videoContent.externalUrl);
+            } else {
+                setVideoSource('upload');
+            }
+
+            setUploadStatus(videoContent?.status || 'ready');
+        } else if (isOpen) {
+            // Reset for new video
+            setTitle('');
+            setDescription('');
+            setVideoSource('upload');
+            setExternalUrl('');
+            setUploadUrl(null);
+            setUploadId(null);
+            setItemId(null);
+            setUploadStatus('idle');
+            setError(null);
+        }
+
+        // Set initial mode
+        setCurrentMode(video ? initialMode : 'edit');
+    }, [video, isOpen, initialMode, videoContent]);
+
+    // Handle create with Mux upload
+    const handlePrepareUpload = async () => {
+        if (!title.trim()) return;
+
+        setUploadStatus('preparing');
+        setError(null);
+
+        try {
+            const createFn = customCreateHandler || (async (t: string, d?: string) => {
+                return createVideoResource({ title: t, description: d, collectionId });
+            });
+            const result = await createFn(title.trim(), description.trim() || undefined);
+
+            if (result.success && result.uploadUrl && result.uploadId && result.id) {
+                setUploadUrl(result.uploadUrl);
+                setUploadId(result.uploadId);
+                setItemId(result.id);
+                setUploadStatus('uploading');
+            } else {
+                setError(result.error || 'Failed to prepare upload');
+                setUploadStatus('error');
+            }
+        } catch (err) {
+            setError('Failed to prepare upload');
+            setUploadStatus('error');
+        }
+    };
+
+    // Handle Mux upload completion
+    const handleUploadComplete = useCallback(async () => {
+        if (!itemId || !uploadId) return;
+
+        setUploadStatus('processing');
+
+        try {
+            const finalizeFn = customFinalizeHandler || finalizeVideoUpload;
+            const result = await finalizeFn(itemId, uploadId);
+
+            if (result.success) {
+                setUploadStatus('ready');
+                onSaveSuccess?.();
+            } else {
+                setError(result.error || 'Failed to process video');
+                setUploadStatus('error');
+            }
+        } catch (err) {
+            setError('Failed to process video');
+            setUploadStatus('error');
+        }
+    }, [itemId, uploadId, customFinalizeHandler, onSaveSuccess]);
+
+    // Handle save (for URL-based videos or editing existing)
+    const handleSave = async () => {
+        if (!title.trim()) return;
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            if (isNewVideo && videoSource === 'url') {
+                // Create new video with external URL
+                if (!externalUrl.trim() || !isValidVideoUrl(externalUrl.trim())) {
+                    setError('Please enter a valid video URL');
+                    setIsSaving(false);
+                    return;
+                }
+
+                const createFn = customCreateHandler || (async (t: string, d?: string, url?: string) => {
+                    return createVideoResource({ title: t, description: d, collectionId, externalUrl: url });
+                });
+                const result = await createFn(title.trim(), description.trim() || undefined, externalUrl.trim());
+
+                if (result.success) {
+                    onSaveSuccess?.();
+                    onClose();
+                } else {
+                    setError(result.error || 'Failed to create video');
+                }
+            } else if (itemId) {
+                // Update existing video
+                const updateFn = customUpdateHandler || updateVideoResource;
+                const updates: { title?: string; description?: string; externalUrl?: string } = {
+                    title: title.trim(),
+                    description: description.trim() || undefined,
+                };
+
+                if (videoSource === 'url') {
+                    updates.externalUrl = externalUrl.trim();
+                }
+
+                const result = await updateFn(itemId, updates);
+
+                if (result.success) {
+                    onSaveSuccess?.();
+                    onClose();
+                } else {
+                    setError(result.error || 'Failed to update video');
+                }
+            }
+        } catch (err) {
+            setError('Failed to save video');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Handle close
+    const handleClose = () => {
+        setTitle('');
+        setDescription('');
+        setVideoSource('upload');
+        setExternalUrl('');
+        setUploadUrl(null);
+        setUploadId(null);
+        setItemId(null);
+        setUploadStatus('idle');
+        setError(null);
+        setCurrentMode(initialMode);
+        onClose();
+    };
+
+    // Render title
+    const renderTitle = () => (
+        <>
+            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                <Video size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-white">
+                {currentMode === 'edit'
+                    ? (isNewVideo ? 'Add Video' : 'Edit Video')
+                    : 'Video'
+                }
+            </h2>
+        </>
+    );
+
+    // Render header actions
+    const renderHeaderActions = () => {
+        if (currentMode === 'view' && canEdit) {
+            return (
+                <button
+                    onClick={() => setCurrentMode('edit')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                    <Pencil size={14} />
+                    Edit
+                </button>
+            );
+        }
+
+        if (currentMode === 'edit') {
+            // For URL mode or editing existing, show Save button
+            if (videoSource === 'url' || (!isNewVideo && uploadStatus === 'ready')) {
+                return (
+                    <button
+                        onClick={handleSave}
+                        disabled={!title.trim() || isSaving || (videoSource === 'url' && !isValidVideoUrl(externalUrl))}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all"
+                    >
+                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        Save
+                    </button>
+                );
+            }
+        }
+
+        return null;
+    };
+
+    // Render status badge
+    const renderStatusBadge = () => {
+        switch (uploadStatus) {
+            case 'preparing':
+                return <span className="flex items-center gap-2 text-blue-400"><Loader2 className="animate-spin" size={16} /> Preparing...</span>;
+            case 'uploading':
+                return <span className="flex items-center gap-2 text-blue-400"><Upload size={16} /> Ready to upload</span>;
+            case 'processing':
+                return <span className="flex items-center gap-2 text-amber-400"><Loader2 className="animate-spin" size={16} /> Processing video...</span>;
+            case 'ready':
+                return <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} /> Ready</span>;
+            case 'error':
+                return <span className="flex items-center gap-2 text-red-400"><AlertCircle size={16} /> Error</span>;
+            default:
+                return null;
+        }
+    };
+
+    // Render VIEW mode content
+    const renderViewMode = () => {
+        if (!video) return null;
+
+        const playbackId = videoContent?.muxPlaybackId;
+        const externalVideoUrl = videoContent?.externalUrl;
+        const duration = videoContent?.duration;
+        const status = videoContent?.status;
+
+        const formattedDate = new Date(video.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        return (
+            <div className="max-w-4xl mx-auto space-y-6 pb-32 pt-[30px]">
+                {/* Title */}
+                <div>
+                    <h1 className="text-2xl font-bold text-white mb-2">{video.title}</h1>
+                    <div className="flex items-center gap-4 text-slate-400 text-sm">
+                        <div className="flex items-center gap-2">
+                            <Calendar size={14} />
+                            <span>{formattedDate}</span>
+                        </div>
+                        {duration && (
+                            <div className="flex items-center gap-2">
+                                <Clock size={14} />
+                                <span>{formatDuration(duration)}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Video Player */}
+                {(playbackId || externalVideoUrl) && status === 'ready' ? (
+                    <div className="bg-black rounded-2xl overflow-hidden shadow-2xl">
+                        <MuxPlayer
+                            streamType="on-demand"
+                            playbackId={playbackId || undefined}
+                            src={externalVideoUrl || undefined}
+                            metadata={{
+                                video_id: video.id,
+                                video_title: video.title,
+                            }}
+                            primaryColor="#A855F7"
+                            accentColor="#7C3AED"
+                            style={{ width: '100%', aspectRatio: '16/9' }}
+                        />
+                    </div>
+                ) : status === 'processing' ? (
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-12 text-center">
+                        <Loader2 size={48} className="mx-auto text-purple-400 mb-4 animate-spin" />
+                        <p className="text-slate-400">Video is processing...</p>
+                        <p className="text-slate-500 text-sm mt-2">This may take a few minutes</p>
+                    </div>
+                ) : status === 'uploading' ? (
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-12 text-center">
+                        <Loader2 size={48} className="mx-auto text-blue-400 mb-4 animate-spin" />
+                        <p className="text-slate-400">Video is uploading...</p>
+                    </div>
+                ) : status === 'error' ? (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-12 text-center">
+                        <Video size={48} className="mx-auto text-red-400 mb-4" />
+                        <p className="text-red-400">Video processing failed</p>
+                        <p className="text-slate-500 text-sm mt-2">Please try uploading again</p>
+                    </div>
+                ) : (
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-12 text-center">
+                        <Video size={48} className="mx-auto text-slate-500 mb-4" />
+                        <p className="text-slate-400">Video not available</p>
+                    </div>
+                )}
+
+                {/* Description */}
+                {videoContent?.description && (
+                    <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
+                        <div className="h-1 bg-gradient-to-r from-purple-500 to-violet-500" />
+                        <div className="p-6">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Description</h3>
+                            <p className="text-slate-300 leading-relaxed">{videoContent.description}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // Render EDIT mode content
+    const renderEditMode = () => {
+        return (
+            <div className="max-w-2xl mx-auto space-y-6 pb-32 pt-[30px]">
+                {/* Title Input */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Title *</label>
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Enter video title..."
+                        className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                        disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+                    />
+                </div>
+
+                {/* Description Input */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Description</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Enter video description..."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none"
+                        disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+                    />
+                </div>
+
+                {/* Video Source Selector - only for new videos or if editing with no existing video */}
+                {(isNewVideo || (!videoContent?.muxPlaybackId && !videoContent?.externalUrl)) && (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-3">Video Source</label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setVideoSource('upload')}
+                                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                                    videoSource === 'upload'
+                                        ? 'bg-purple-500/20 border-2 border-purple-500 text-purple-300'
+                                        : 'bg-black/30 border border-white/10 text-slate-400 hover:bg-white/5'
+                                }`}
+                            >
+                                <Upload size={18} />
+                                Upload Video
+                            </button>
+                            <button
+                                onClick={() => setVideoSource('url')}
+                                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                                    videoSource === 'url'
+                                        ? 'bg-purple-500/20 border-2 border-purple-500 text-purple-300'
+                                        : 'bg-black/30 border border-white/10 text-slate-400 hover:bg-white/5'
+                                }`}
+                            >
+                                <LinkIcon size={18} />
+                                Video URL
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Upload Section */}
+                {videoSource === 'upload' && isNewVideo && (
+                    <div className="space-y-4">
+                        {uploadStatus === 'idle' && (
+                            <button
+                                onClick={handlePrepareUpload}
+                                disabled={!title.trim()}
+                                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Upload size={20} />
+                                Prepare Upload
+                            </button>
+                        )}
+
+                        {(uploadStatus === 'uploading' || uploadStatus === 'processing') && uploadUrl && (
+                            <div className="bg-black/30 border border-white/10 rounded-xl p-6">
+                                <MuxUploader
+                                    endpoint={uploadUrl}
+                                    onSuccess={handleUploadComplete}
+                                    className="mux-uploader-custom"
+                                />
+                                <style jsx global>{`
+                                    mux-uploader {
+                                        --uploader-font-family: inherit;
+                                        --uploader-background-color: rgba(255, 255, 255, 0.05);
+                                        --uploader-border: 1px dashed rgba(255, 255, 255, 0.2);
+                                        --uploader-border-radius: 0.75rem;
+                                        --button-background-color: #A855F7;
+                                        --button-border-radius: 9999px;
+                                        --button-color: #fff;
+                                    }
+                                `}</style>
+                            </div>
+                        )}
+
+                        {/* Status */}
+                        {uploadStatus !== 'idle' && (
+                            <div className="flex items-center justify-between">
+                                {renderStatusBadge()}
+                            </div>
+                        )}
+
+                        {/* Done Button - after successful upload */}
+                        {uploadStatus === 'ready' && (
+                            <button
+                                onClick={handleClose}
+                                className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-400 hover:to-emerald-400 transition-all"
+                            >
+                                Done
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* URL Input Section */}
+                {videoSource === 'url' && (
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Video URL</label>
+                            <input
+                                type="url"
+                                value={externalUrl}
+                                onChange={(e) => setExternalUrl(e.target.value)}
+                                placeholder="https://youtube.com/watch?v=..."
+                                className="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                                Supports: YouTube, Vimeo, Wistia
+                            </p>
+                        </div>
+
+                        {/* URL Preview */}
+                        {externalUrl && isValidVideoUrl(externalUrl) && (
+                            <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                                <div className="flex items-center gap-2 text-purple-300 text-sm">
+                                    <CheckCircle size={16} />
+                                    <span>Detected: {detectVideoPlatform(externalUrl).charAt(0).toUpperCase() + detectVideoPlatform(externalUrl).slice(1)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+                        {error}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <GlobalTopPanel
+            isOpen={isOpen}
+            onClose={handleClose}
+            title={renderTitle()}
+            headerActions={renderHeaderActions()}
+        >
+            {currentMode === 'view' ? renderViewMode() : renderEditMode()}
+        </GlobalTopPanel>
+    );
+}
