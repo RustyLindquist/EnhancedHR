@@ -329,11 +329,14 @@ export default function VideoPanel({
                 return;
             }
 
-            setItemId(initResult.id);
-            setProxyStoragePath(initResult.storagePath);
+            // Extract values to local constants for TypeScript narrowing
+            const { uploadUrl, id: videoId, storagePath } = initResult;
+
+            setItemId(videoId);
+            setProxyStoragePath(storagePath);
 
             // 2. Upload file to Supabase Storage
-            console.log('[VideoPanel] Uploading to Supabase:', initResult.storagePath);
+            console.log('[VideoPanel] Uploading to Supabase:', storagePath);
 
             const xhr = new XMLHttpRequest();
 
@@ -354,7 +357,7 @@ export default function VideoPanel({
                 };
                 xhr.onerror = () => reject(new Error('Upload failed'));
 
-                xhr.open('PUT', initResult.uploadUrl);
+                xhr.open('PUT', uploadUrl);
                 xhr.setRequestHeader('Content-Type', selectedFile.type);
                 xhr.send(selectedFile);
             });
@@ -363,14 +366,14 @@ export default function VideoPanel({
             setUploadStatus('processing');
 
             // 3. Complete proxy upload (creates Mux asset from Supabase URL)
-            const completeResult = await completeProxyVideoUpload(initResult.id, initResult.storagePath);
+            const completeResult = await completeProxyVideoUpload(videoId, storagePath);
 
             if (completeResult.success && completeResult.playbackId) {
                 setUploadStatus('ready');
 
                 // Create video object for view mode
                 const newVideo: UserContextItem = {
-                    id: initResult.id,
+                    id: videoId,
                     user_id: '',
                     collection_id: collectionId || null,
                     type: 'VIDEO',
