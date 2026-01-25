@@ -1,6 +1,7 @@
 'use server';
 
 import Mux from '@mux/mux-node';
+import { headers } from 'next/headers';
 
 const mux = new Mux({
     tokenId: process.env.MUX_TOKEN_ID,
@@ -8,19 +9,43 @@ const mux = new Mux({
 });
 
 // Get the CORS origin for Mux uploads
-// Uses the production URL if available, otherwise allows any origin
-function getMuxCorsOrigin(): string {
+// Detects the actual browser origin from request headers for accurate CORS matching
+async function getMuxCorsOrigin(): Promise<string> {
+    // First check for explicit production URL
     const prodUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
     if (prodUrl) {
-        // Return the production domain
         return prodUrl;
     }
-    // Fallback to wildcard for local development
-    return '*';
+
+    // Try to detect origin from request headers
+    try {
+        const headersList = await headers();
+
+        // Check Origin header first (most reliable for CORS)
+        const origin = headersList.get('origin');
+        if (origin) {
+            console.log('[Mux] Detected origin from header:', origin);
+            return origin;
+        }
+
+        // Fall back to Referer header
+        const referer = headersList.get('referer');
+        if (referer) {
+            const url = new URL(referer);
+            const detectedOrigin = `${url.protocol}//${url.host}`;
+            console.log('[Mux] Detected origin from referer:', detectedOrigin);
+            return detectedOrigin;
+        }
+    } catch (e) {
+        console.log('[Mux] Could not detect origin from headers:', e);
+    }
+
+    // Final fallback for local development
+    return 'http://localhost:3000';
 }
 
 export async function getMuxUploadUrl() {
-    const corsOrigin = getMuxCorsOrigin();
+    const corsOrigin = await getMuxCorsOrigin();
     console.log('[Mux] Creating upload with CORS origin:', corsOrigin);
 
     try {
