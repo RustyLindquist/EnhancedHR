@@ -408,6 +408,46 @@ export async function deleteModule(moduleId: string) {
     return { success: true };
 }
 
+export async function deleteCourse(courseId: string) {
+    const admin = await createAdminClient();
+
+    // Check if course was published (for membership downgrade)
+    const { data: course } = await admin
+        .from('courses')
+        .select('author_id, status')
+        .eq('id', courseId)
+        .single();
+
+    // Due to cascade deletes in the database, we just need to delete the course
+    // Related modules, lessons, resources, user_progress will cascade delete
+    const { error } = await admin
+        .from('courses')
+        .delete()
+        .eq('id', courseId);
+
+    if (error) {
+        console.error('Error deleting course:', error);
+        return { success: false, error: error.message };
+    }
+
+    // Handle membership downgrade if the deleted course was published
+    if (course?.author_id && course?.status === 'published') {
+        try {
+            const { countPublishedCourses, downgradeExpertMembership } = await import('@/lib/expert-membership');
+            const remaining = await countPublishedCourses(course.author_id);
+            if (remaining === 0) {
+                await downgradeExpertMembership(course.author_id);
+            }
+        } catch (membershipError) {
+            // Non-blocking: don't fail the course delete if membership downgrade fails
+            console.error('[deleteCourse] Membership downgrade error:', membershipError);
+        }
+    }
+
+    revalidatePath('/admin/courses');
+    return { success: true };
+}
+
 // ============================================
 // Lesson Actions
 // ============================================
