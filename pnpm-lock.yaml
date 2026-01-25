@@ -21,7 +21,7 @@ importers:
         specifier: ^3.9.1
         version: 3.10.2(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@mux/mux-uploader-react':
-        specifier: ^1.4.0
+        specifier: ^1.4.1
         version: 1.4.1(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@react-pdf/renderer':
         specifier: ^4.3.1
