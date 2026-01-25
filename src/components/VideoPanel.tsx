@@ -305,7 +305,9 @@ export default function VideoPanel({
         }
     }, []);
 
-    // Handle proxy upload - upload file to Supabase, then trigger Mux processing
+    // Handle proxy upload - upload file via server proxy, then trigger Mux processing
+    // Server proxy is used because some ISPs (like Xfinity) block direct browser-to-Supabase uploads
+    // The flow is: Browser -> Our Server -> Supabase Storage -> Mux pulls from URL
     const handleProxyUpload = useCallback(async () => {
         if (!selectedFile || !title.trim()) return;
 
@@ -314,7 +316,7 @@ export default function VideoPanel({
         setProxyUploadProgress(0);
 
         try {
-            // 1. Initialize proxy upload (get Supabase upload URL)
+            // 1. Initialize proxy upload (creates DB record, returns storage path)
             const initResult = await initProxyVideoUpload({
                 title: title.trim(),
                 description: description.trim() || undefined,
@@ -323,20 +325,21 @@ export default function VideoPanel({
                 contentType: selectedFile.type,
             });
 
-            if (!initResult.success || !initResult.uploadUrl || !initResult.id || !initResult.storagePath) {
+            if (!initResult.success || !initResult.id || !initResult.storagePath) {
                 setError(initResult.error || 'Failed to initialize upload');
                 setUploadStatus('error');
                 return;
             }
 
             // Extract values to local constants for TypeScript narrowing
-            const { uploadUrl, id: videoId, storagePath } = initResult;
+            const { id: videoId, storagePath } = initResult;
 
             setItemId(videoId);
             setProxyStoragePath(storagePath);
 
-            // 2. Upload file to Supabase Storage
-            console.log('[VideoPanel] Uploading to Supabase:', storagePath);
+            // 2. Upload file via our server proxy (same-origin, avoids ISP TLS interference)
+            // Our server then uploads to Supabase Storage server-to-server
+            console.log('[VideoPanel] Uploading via server proxy:', storagePath);
 
             const xhr = new XMLHttpRequest();
 
@@ -350,19 +353,35 @@ export default function VideoPanel({
             await new Promise<void>((resolve, reject) => {
                 xhr.onload = () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve();
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                resolve();
+                            } else {
+                                reject(new Error(response.error || 'Upload failed'));
+                            }
+                        } catch {
+                            resolve(); // If response isn't JSON but status is OK
+                        }
                     } else {
-                        reject(new Error(`Upload failed with status ${xhr.status}`));
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            reject(new Error(response.error || `Upload failed with status ${xhr.status}`));
+                        } catch {
+                            reject(new Error(`Upload failed with status ${xhr.status}`));
+                        }
                     }
                 };
-                xhr.onerror = () => reject(new Error('Upload failed'));
+                xhr.onerror = () => reject(new Error('Upload failed - network error'));
 
-                xhr.open('PUT', uploadUrl);
+                // POST to our server proxy instead of directly to Supabase
+                xhr.open('POST', '/api/upload/video');
                 xhr.setRequestHeader('Content-Type', selectedFile.type);
+                xhr.setRequestHeader('X-Storage-Path', storagePath);
                 xhr.send(selectedFile);
             });
 
-            console.log('[VideoPanel] File uploaded to Supabase, starting Mux processing');
+            console.log('[VideoPanel] File uploaded via proxy, starting Mux processing');
             setUploadStatus('processing');
 
             // 3. Complete proxy upload (creates Mux asset from Supabase URL)
