@@ -341,12 +341,12 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'VIDEO' ? 'border-purple-500/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'VIDEO' ? 'bg-gradient-to-br from-[#4A2F4A] to-[#7A3579]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
+                className={`relative group w-full flex flex-col rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'VIDEO' ? 'border-purple-500/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'VIDEO' ? 'bg-gradient-to-br from-[#4A2F4A] to-[#7A3579]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
             >
 
             {/* ========== NEW LAYOUT FOR COURSE/MODULE/LESSON ========== */}
             {isNewLayoutCard ? (
-                <div className="flex flex-col min-h-full">
+                <div className="flex-1 flex flex-col min-h-0">
                     {/* Header Row - Separate dark pill at top with its own padding */}
                     <div data-header-actions className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm relative z-10 mx-3 mt-3">
                         <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70">
@@ -552,11 +552,11 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
             </div>
             ) : (
-            <>
-            {/* ========== LEGACY LAYOUT FOR OTHER CARDS ========== */}
+            /* ========== LEGACY LAYOUT FOR OTHER CARDS ========== */
+            <div className="flex-1 flex flex-col min-h-0">
 
             {/* --- Top Section --- */}
-            <div className={`relative ${topHeight} w-full overflow-hidden ${isMediaCard ? 'bg-black' : config.barColor} transition-all duration-300`}>
+            <div className={`relative w-full overflow-hidden ${isTextHeavy ? 'flex-[0.45]' : 'flex-[0.6]'} min-h-0 ${isMediaCard ? 'bg-black' : config.barColor} transition-all duration-300`}>
 
                 {/* Background Image for Media Cards */}
                 {isMediaCard && imageUrl && (
@@ -671,7 +671,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
             </div>
 
             {/* --- Bottom Section (Body) --- */}
-            <div className={`${bottomHeight} px-5 py-4 flex flex-col justify-between relative ${(config as any).bodyColor || 'bg-[#0B1120]'} transition-all duration-300`}>
+            <div className={`${isTextHeavy ? 'flex-[0.55]' : 'flex-[0.4]'} min-h-0 px-5 py-4 flex flex-col relative ${(config as any).bodyColor || 'bg-[#0B1120]'} transition-all duration-300`}>
 
                 {/* Description / Content Preview */}
                 <div className="flex-1 min-h-0 relative z-10">
@@ -695,7 +695,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </div>
 
                 {/* Footer (Meta + Action) */}
-                <div className={`flex items-center justify-between mt-4 pt-2 border-t border-white/10 gap-2 relative z-10`}>
+                <div className={`flex items-center justify-between mt-auto pt-2 border-t border-white/10 gap-2 relative z-10`}>
                     {/* Left side content - meta for cards that show it on left */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {/* Meta (date/duration) on left for cards that don't show date on right */}
@@ -788,7 +788,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
 
             {/* Color Band for Non-Media Cards (Top Border or distinct style?) */}
             {/* The design seems to have a colored top section. I used config.barColor for that. */}
-            </>
+            </div>
             )}
             </div>
         </InteractiveCardWrapper>

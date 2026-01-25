@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Filter, FileText, Eye, ChevronDown, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { Plus, Search, Filter, FileText, Eye, ChevronDown, X, Trash2, AlertTriangle, CircleDot } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { deleteCourse, updateCourseDetails } from '@/app/actions/course-builder';
 
 interface Course {
     id: string;
@@ -25,6 +25,11 @@ export default function AdminCoursesPage() {
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [statusMenuCourse, setStatusMenuCourse] = useState<Course | null>(null);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const statusMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         async function fetchCourses() {
@@ -41,6 +46,58 @@ export default function AdminCoursesPage() {
         }
         fetchCourses();
     }, []);
+
+    // Close status menu when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+                setStatusMenuCourse(null);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleDeleteCourse = async () => {
+        if (!courseToDelete) return;
+        setIsDeleting(true);
+        try {
+            const result = await deleteCourse(courseToDelete.id);
+            if (result.success) {
+                setCourses(courses.filter(c => c.id !== courseToDelete.id));
+                setCourseToDelete(null);
+            } else {
+                console.error('Failed to delete course:', result.error);
+                alert('Failed to delete course: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error deleting course:', error);
+            alert('An error occurred while deleting the course');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleStatusChange = async (course: Course, newStatus: 'draft' | 'pending_review' | 'published' | 'archived') => {
+        setIsUpdatingStatus(true);
+        try {
+            const result = await updateCourseDetails(Number(course.id), { status: newStatus });
+            if (result.success) {
+                setCourses(courses.map(c =>
+                    c.id === course.id ? { ...c, status: newStatus } : c
+                ));
+                setStatusMenuCourse(null);
+            } else {
+                console.error('Failed to update status:', result.error);
+                alert('Failed to update status: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('An error occurred while updating the status');
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
 
     // Get unique categories and statuses for filter dropdowns
     const categories = useMemo(() => {
@@ -320,6 +377,64 @@ export default function AdminCoursesPage() {
                                     </td>
                                     <td className="p-5 text-right">
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {/* Status Toggle */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setStatusMenuCourse(statusMenuCourse?.id === course.id ? null : course)}
+                                                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                                    title="Change Status"
+                                                >
+                                                    <CircleDot size={16} />
+                                                </button>
+                                                {statusMenuCourse?.id === course.id && (
+                                                    <div
+                                                        ref={statusMenuRef}
+                                                        className="absolute right-0 top-full mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 min-w-[160px] py-1"
+                                                    >
+                                                        <button
+                                                            onClick={() => handleStatusChange(course, 'draft')}
+                                                            disabled={isUpdatingStatus}
+                                                            className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 flex items-center gap-2 ${
+                                                                course.status === 'draft' ? 'text-yellow-400' : 'text-slate-300'
+                                                            }`}
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                                            Draft
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusChange(course, 'pending_review')}
+                                                            disabled={isUpdatingStatus}
+                                                            className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 flex items-center gap-2 ${
+                                                                course.status === 'pending_review' ? 'text-blue-400' : 'text-slate-300'
+                                                            }`}
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                            Pending Review
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusChange(course, 'published')}
+                                                            disabled={isUpdatingStatus}
+                                                            className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 flex items-center gap-2 ${
+                                                                course.status === 'published' ? 'text-green-400' : 'text-slate-300'
+                                                            }`}
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                            Published
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusChange(course, 'archived')}
+                                                            disabled={isUpdatingStatus}
+                                                            className={`w-full text-left px-3 py-2 text-xs font-bold hover:bg-white/5 flex items-center gap-2 ${
+                                                                course.status === 'archived' ? 'text-orange-400' : 'text-slate-300'
+                                                            }`}
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                                                            Archived
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* View Public Page */}
                                             <Link
                                                 href={`/?courseId=${course.id}`}
                                                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
@@ -327,12 +442,21 @@ export default function AdminCoursesPage() {
                                             >
                                                 <Eye size={16} />
                                             </Link>
+                                            {/* Edit */}
                                             <Link
                                                 href={`/admin/courses/${course.id}/builder`}
                                                 className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/20 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light hover:text-brand-black transition-colors"
                                             >
                                                 Edit
                                             </Link>
+                                            {/* Delete */}
+                                            <button
+                                                onClick={() => setCourseToDelete(course)}
+                                                className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                                title="Delete Course"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -348,6 +472,41 @@ export default function AdminCoursesPage() {
                     </table>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {courseToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-fade-in-up">
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 text-red-500">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h2 className="text-xl font-bold text-white mb-2">Delete Course?</h2>
+                            <p className="text-slate-400">
+                                Are you sure you want to delete <span className="text-white font-medium">{courseToDelete.title}</span>?
+                                <br />
+                                This will permanently delete all modules, lessons, and resources.
+                            </p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setCourseToDelete(null)}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteCourse}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2.5 bg-red-500 text-white hover:bg-red-600 rounded-xl font-bold transition-colors disabled:opacity-50"
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Course'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

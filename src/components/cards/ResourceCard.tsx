@@ -83,10 +83,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                     setIsDraggable(false);
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
-                className={`relative group w-full aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''}`}
+                className={`relative group w-full flex flex-col aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''}`}
             >
+            <div className="flex-1 flex flex-col min-h-0">
             {/* --- Top Section (Header with title centered) --- */}
-            <div className="relative h-[45%] w-full overflow-hidden bg-red-900/50 transition-all duration-300">
+            <div className="relative flex-[0.45] min-h-0 w-full overflow-hidden bg-red-900/50 transition-all duration-300">
                 {/* Header Bar */}
                 <div data-header-actions className="absolute top-0 left-0 w-full p-3 z-20 flex flex-col gap-2">
                     <div className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
@@ -131,7 +132,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             </div>
 
             {/* --- Bottom Section (Body) --- */}
-            <div className="h-[55%] px-5 py-4 flex flex-col justify-between relative bg-[#0B1120] transition-all duration-300">
+            <div className="flex-[0.55] min-h-0 px-5 py-4 flex flex-col relative bg-[#0B1120] transition-all duration-300">
                 {/* Description / Content Preview */}
                 <div className="flex-1 overflow-hidden min-h-0">
                     <div className="mb-2">
@@ -145,7 +146,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                 </div>
 
                 {/* Footer (File Size + Download) */}
-                <div className="flex items-center justify-between mt-4 pt-2 border-t border-white/5 gap-2">
+                <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5 gap-2">
                     {/* Left side - file size */}
                     <div className="flex items-center gap-3 text-slate-500 overflow-hidden min-w-0">
                         {fileSize && (
@@ -167,6 +168,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                         <Download size={16} />
                     </button>
                 </div>
+            </div>
             </div>
             </div>
         </InteractiveCardWrapper>
