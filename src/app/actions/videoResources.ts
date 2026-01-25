@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getMuxUploadUrl, getMuxAssetId, getMuxAssetDetails, waitForMuxAssetReady, deleteMuxAsset } from './mux';
+import { getMuxUploadUrl, getMuxAssetId, getMuxAssetDetails, waitForMuxAssetReady, deleteMuxAsset, createMuxAssetFromUrl } from './mux';
 import { revalidatePath } from 'next/cache';
 import { resolveCollectionId } from './context';
 import { processVideoForRAG, regenerateVideoTranscript } from '@/lib/video-transcript';
@@ -453,6 +453,265 @@ export async function regenerateTranscriptForVideo(videoId: string): Promise<{ s
     }
 
     return regenerateVideoTranscript(videoId, user.id);
+}
+
+// ============================================
+// PROXY UPLOAD (Network-resilient fallback)
+// ============================================
+
+const TEMP_VIDEO_BUCKET = 'temp-video-uploads';
+
+/**
+ * Initialize a proxy video upload via Supabase Storage
+ * Used as fallback when direct Mux upload fails (e.g., ISP TLS interference)
+ * Returns signed upload URL for client to upload to Supabase
+ */
+export async function initProxyVideoUpload(data: {
+    title: string;
+    description?: string;
+    collectionId?: string;
+    filename: string;
+    contentType: string;
+}): Promise<{
+    success: boolean;
+    id?: string;
+    uploadUrl?: string;
+    storagePath?: string;
+    error?: string
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        console.error('[initProxyVideoUpload] Unauthorized: No user found');
+        return { success: false, error: 'Unauthorized: No user found' };
+    }
+
+    try {
+        // Resolve collection alias to UUID
+        const resolvedCollectionId = await resolveCollectionId(supabase, data.collectionId, user.id);
+
+        // Generate unique filename to avoid collisions
+        const timestamp = Date.now();
+        const sanitizedFilename = data.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const storagePath = `${user.id}/${timestamp}-${sanitizedFilename}`;
+
+        // Create signed upload URL for Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from(TEMP_VIDEO_BUCKET)
+            .createSignedUploadUrl(storagePath);
+
+        if (uploadError || !uploadData) {
+            console.error('[initProxyVideoUpload] Storage error:', uploadError);
+            return { success: false, error: `Failed to create upload URL: ${uploadError?.message}` };
+        }
+
+        // Create record in user_context_items with status='uploading'
+        const { data: inserted, error } = await supabase
+            .from('user_context_items')
+            .insert({
+                user_id: user.id,
+                collection_id: resolvedCollectionId,
+                type: 'VIDEO',
+                title: data.title,
+                content: {
+                    muxAssetId: null,
+                    muxPlaybackId: null,
+                    muxUploadId: null,
+                    duration: null,
+                    status: 'uploading',
+                    description: data.description || null,
+                    proxyUpload: true,
+                    storagePath: storagePath
+                }
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[initProxyVideoUpload] DB Error:', error);
+            return { success: false, error: `Failed to create: ${error.message}` };
+        }
+
+        console.log('[initProxyVideoUpload] Success! Created proxy upload record:', inserted.id);
+
+        return {
+            success: true,
+            id: inserted.id,
+            uploadUrl: uploadData.signedUrl,
+            storagePath: storagePath
+        };
+
+    } catch (error) {
+        console.error('[initProxyVideoUpload] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to initialize proxy upload'
+        };
+    }
+}
+
+/**
+ * Complete proxy video upload after file is uploaded to Supabase
+ * Creates Mux asset from Supabase URL and cleans up temp file
+ */
+export async function completeProxyVideoUpload(
+    itemId: string,
+    storagePath: string
+): Promise<{ success: boolean; playbackId?: string; duration?: number; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
+    }
+
+    try {
+        // Verify ownership and get current content
+        const { data: current } = await supabase
+            .from('user_context_items')
+            .select('content, collection_id')
+            .eq('id', itemId)
+            .eq('user_id', user.id)
+            .single();
+
+        if (!current) {
+            return { success: false, error: 'Video not found' };
+        }
+
+        // Get public URL for Mux to pull from
+        const { data: publicUrlData } = supabase.storage
+            .from(TEMP_VIDEO_BUCKET)
+            .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+            await updateVideoStatus(supabase, itemId, user.id, current.content, 'error');
+            return { success: false, error: 'Failed to get public URL' };
+        }
+
+        console.log('[completeProxyVideoUpload] Public URL:', publicUrlData.publicUrl);
+
+        // Update status to processing
+        await updateVideoStatus(supabase, itemId, user.id, current.content, 'processing');
+
+        // Create Mux asset from URL (Mux pulls the video from Supabase)
+        const asset = await createMuxAssetFromUrl(publicUrlData.publicUrl, itemId);
+
+        if (!asset?.id) {
+            await updateVideoStatus(supabase, itemId, user.id, current.content, 'error');
+            return { success: false, error: 'Failed to create Mux asset' };
+        }
+
+        console.log('[completeProxyVideoUpload] Mux asset created:', asset.id);
+
+        // Update with Mux asset ID
+        await supabase
+            .from('user_context_items')
+            .update({
+                content: {
+                    ...current.content,
+                    muxAssetId: asset.id,
+                    status: 'processing'
+                }
+            })
+            .eq('id', itemId)
+            .eq('user_id', user.id);
+
+        // Wait for Mux to process the video
+        const result = await waitForMuxAssetReady(asset.id);
+
+        // Clean up temp file from Supabase (fire-and-forget)
+        cleanupTempVideoFile(supabase, storagePath).catch(err =>
+            console.warn('[completeProxyVideoUpload] Cleanup failed:', err)
+        );
+
+        if (!result.ready) {
+            await updateVideoStatus(supabase, itemId, user.id, current.content, 'error');
+            return { success: false, error: 'Video processing failed' };
+        }
+
+        // Update record with playbackId, duration, status='ready'
+        const { error: updateError } = await supabase
+            .from('user_context_items')
+            .update({
+                content: {
+                    ...current.content,
+                    muxAssetId: asset.id,
+                    muxPlaybackId: result.playbackId,
+                    duration: result.duration,
+                    status: 'ready',
+                    proxyUpload: true,
+                    storagePath: null // Clear after successful processing
+                }
+            })
+            .eq('id', itemId)
+            .eq('user_id', user.id);
+
+        if (updateError) {
+            console.error('[completeProxyVideoUpload] Update error:', updateError);
+            return { success: false, error: 'Failed to update video record' };
+        }
+
+        console.log('[completeProxyVideoUpload] Success! Video ready:', itemId);
+
+        revalidatePath('/dashboard');
+        revalidatePath('/academy');
+
+        // Fire-and-forget transcript generation
+        processVideoForRAG(itemId, user.id, { collectionId: current.collection_id })
+            .catch(err => console.error('[completeProxyVideoUpload] Transcript generation failed:', err));
+
+        return {
+            success: true,
+            playbackId: result.playbackId,
+            duration: result.duration
+        };
+
+    } catch (error) {
+        console.error('[completeProxyVideoUpload] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to complete proxy upload'
+        };
+    }
+}
+
+/**
+ * Helper to update video status
+ */
+async function updateVideoStatus(
+    supabase: any,
+    itemId: string,
+    userId: string,
+    currentContent: any,
+    status: string
+) {
+    await supabase
+        .from('user_context_items')
+        .update({
+            content: {
+                ...currentContent,
+                status
+            }
+        })
+        .eq('id', itemId)
+        .eq('user_id', userId);
+}
+
+/**
+ * Clean up temporary video file from Supabase Storage
+ */
+async function cleanupTempVideoFile(supabase: any, storagePath: string): Promise<void> {
+    const { error } = await supabase.storage
+        .from(TEMP_VIDEO_BUCKET)
+        .remove([storagePath]);
+
+    if (error) {
+        console.error('[cleanupTempVideoFile] Error:', error);
+        throw error;
+    }
+
+    console.log('[cleanupTempVideoFile] Deleted temp file:', storagePath);
 }
 
 // ============================================
