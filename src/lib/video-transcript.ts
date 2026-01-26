@@ -14,6 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import { embedVideoContext, deleteContextEmbeddings } from '@/lib/context-embeddings';
 import { isYouTubeUrl, fetchYouTubeTranscript, fetchYouTubeMetadata } from '@/lib/youtube';
+import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 
 // Types
 type TranscriptStatus = 'pending' | 'generating' | 'ready' | 'failed';
@@ -172,11 +173,23 @@ export async function processVideoForRAG(
                 }
             } else {
                 console.log('[processVideoForRAG] YouTube captions not available:', youtubeResult.error);
-                console.log('[processVideoForRAG] Falling back to AI transcript generation...');
+                console.log('[processVideoForRAG] Trying audio extraction fallback...');
+
+                // Try audio extraction fallback for YouTube videos without captions
+                const audioTranscriptResult = await generateTranscriptFromYouTubeAudio(videoUrl);
+
+                if (audioTranscriptResult.success && audioTranscriptResult.transcript) {
+                    console.log('[processVideoForRAG] Successfully generated transcript via audio extraction');
+                    transcript = audioTranscriptResult.transcript;
+                    transcriptSource = 'ai';
+                } else {
+                    console.log('[processVideoForRAG] Audio extraction failed:', audioTranscriptResult.error);
+                    console.log('[processVideoForRAG] Falling back to standard AI transcript generation...');
+                }
             }
         }
 
-        // If no transcript yet (not YouTube or YouTube captions failed), use AI parsing
+        // If no transcript yet (not YouTube or all YouTube methods failed), use AI parsing
         if (!transcript) {
             const transcriptResult = await generateTranscriptFromVideo(videoUrl);
 
