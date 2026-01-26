@@ -143,9 +143,14 @@ export default function CoursePromotionButton({
                                             {result.success ? 'Course Promoted Successfully!' : 'Promotion Failed'}
                                         </p>
                                         {result.success && result.productionCourseId && (
-                                            <p className="text-sm text-slate-400 mt-1">
-                                                Production Course ID: {result.productionCourseId}
-                                            </p>
+                                            <>
+                                                <p className="text-sm text-slate-400 mt-1">
+                                                    Production Course ID: {result.productionCourseId}
+                                                </p>
+                                                <p className="text-sm text-blue-400 mt-2">
+                                                    Transcript generation and embedding processing has started automatically.
+                                                </p>
+                                            </>
                                         )}
                                         {result.error && (
                                             <p className="text-sm text-red-300 mt-1">{result.error}</p>
@@ -184,15 +189,25 @@ export default function CoursePromotionButton({
                                     </button>
                                 </>
                             ) : (
-                                <button
-                                    onClick={() => {
-                                        setShowModal(false);
-                                        setResult(null);
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors"
-                                >
-                                    Close
-                                </button>
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            setResult(null);
+                                        }}
+                                        className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                    {result.success && (
+                                        <a
+                                            href="/admin/promotions"
+                                            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors text-center"
+                                        >
+                                            Track Progress
+                                        </a>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
