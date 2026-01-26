@@ -204,3 +204,57 @@ export async function getProfileForOnboardingAction(): Promise<{
 
     return { profile };
 }
+
+// Get Collection Surface preference
+export async function getCollectionSurfacePreferenceAction(): Promise<{
+    success: boolean;
+    isOpen?: boolean;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('collection_surface_open')
+        .eq('id', user.id)
+        .single();
+
+    if (error) {
+        console.error('Get collection surface preference error:', error);
+        return { success: false, error: error.message };
+    }
+
+    // Default to false (closed) if not set
+    return { success: true, isOpen: profile?.collection_surface_open ?? false };
+}
+
+// Update Collection Surface preference
+export async function updateCollectionSurfacePreferenceAction(isOpen: boolean): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    const admin = await createAdminClient();
+    const { error } = await admin
+        .from('profiles')
+        .update({ collection_surface_open: isOpen })
+        .eq('id', user.id);
+
+    if (error) {
+        console.error('Update collection surface preference error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
