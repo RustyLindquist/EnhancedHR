@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
+import { fetchYouTubeMetadata, fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
 
 // ============================================
 // Course Metadata Actions
@@ -806,6 +807,14 @@ export async function getCourseForBuilder(courseId: number) {
 }
 
 // ============================================
+// YouTube Metadata Action
+// ============================================
+
+export async function fetchYouTubeMetadataAction(videoUrl: string) {
+    return await fetchYouTubeMetadata(videoUrl);
+}
+
+// ============================================
 // AI Transcript Generation
 // ============================================
 
@@ -819,6 +828,18 @@ export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
 
     if (!user) {
         return { success: false, error: 'Not authenticated' };
+    }
+
+    // Check if this is a YouTube URL and try to get transcript directly
+    if (await isYouTubeUrl(videoUrl)) {
+        console.log('[Transcript] Detected YouTube URL, attempting direct transcript fetch');
+        const ytResult = await fetchYouTubeTranscript(videoUrl);
+        if (ytResult.success && ytResult.transcript) {
+            console.log('[Transcript] Successfully fetched YouTube transcript');
+            return { success: true, transcript: ytResult.transcript };
+        }
+        console.log('[Transcript] YouTube transcript not available, falling back to AI generation');
+        // Continue to AI generation fallback
     }
 
     // Check if this is a Mux playback ID (short alphanumeric string)
