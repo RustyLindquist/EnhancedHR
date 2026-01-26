@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
 import BackgroundSystem from '@/components/BackgroundSystem';
@@ -9,6 +9,7 @@ import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection } from '@/types';
 import { ContextScope } from '@/lib/ai/types';
 import { useRouter } from 'next/navigation';
+import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
 
 export default function OrgCoursesLayout({
     children,
@@ -27,7 +28,28 @@ export default function OrgCoursesLayout({
     const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
     const [userOrgId, setUserOrgId] = useState<string | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(false); // Default closed
+
+    // Fetch Collection Surface preference on mount
+    useEffect(() => {
+        async function loadCollectionSurfacePreference() {
+            const result = await getCollectionSurfacePreferenceAction();
+            if (result.success && result.isOpen !== undefined) {
+                setIsCollectionSurfaceOpen(result.isOpen);
+            }
+        }
+        loadCollectionSurfacePreference();
+    }, []);
+
+    // Handler for toggling collection surface (persists to database)
+    const handleToggleCollectionSurface = useCallback(() => {
+        const newState = !isCollectionSurfaceOpen;
+        setIsCollectionSurfaceOpen(newState);
+        // Persist preference (fire-and-forget)
+        updateCollectionSurfacePreferenceAction(newState).catch(err => {
+            console.error('Failed to save collection surface preference:', err);
+        });
+    }, [isCollectionSurfaceOpen]);
 
     // Load user data and collections
     useEffect(() => {
@@ -122,7 +144,7 @@ export default function OrgCoursesLayout({
                             activeFlareId={null}
                             customCollections={customCollections}
                             isOpen={isCollectionSurfaceOpen}
-                            onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                            onToggle={handleToggleCollectionSurface}
                             onCollectionClick={(id) => {
                                 handleSelectCollection(id);
                             }}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import NavigationPanel from '@/components/NavigationPanel';
 import AIPanel from '@/components/AIPanel';
@@ -10,6 +10,7 @@ import { DEFAULT_COLLECTIONS } from '@/constants';
 import { Course } from '@/types';
 import { fetchCoursesAction } from '@/app/actions/courses';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
 
 interface StandardPageLayoutProps {
     children: React.ReactNode;
@@ -22,7 +23,7 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(false); // Default closed
 
     useEffect(() => {
         async function loadCourses() {
@@ -31,6 +32,27 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
         }
         loadCourses();
     }, []);
+
+    // Fetch Collection Surface preference on mount
+    useEffect(() => {
+        async function loadCollectionSurfacePreference() {
+            const result = await getCollectionSurfacePreferenceAction();
+            if (result.success && result.isOpen !== undefined) {
+                setIsCollectionSurfaceOpen(result.isOpen);
+            }
+        }
+        loadCollectionSurfacePreference();
+    }, []);
+
+    // Handler for toggling collection surface (persists to database)
+    const handleToggleCollectionSurface = useCallback(() => {
+        const newState = !isCollectionSurfaceOpen;
+        setIsCollectionSurfaceOpen(newState);
+        // Persist preference (fire-and-forget)
+        updateCollectionSurfacePreferenceAction(newState).catch(err => {
+            console.error('Failed to save collection surface preference:', err);
+        });
+    }, [isCollectionSurfaceOpen]);
 
     const handleSelectCollection = (id: string) => {
         // Redirect to dashboard with collection param
@@ -67,7 +89,7 @@ export default function StandardPageLayout({ children, activeNavId = 'dashboard'
                             activeFlareId={null}
                             customCollections={DEFAULT_COLLECTIONS}
                             isOpen={isCollectionSurfaceOpen}
-                            onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                            onToggle={handleToggleCollectionSurface}
                             onCollectionClick={(id) => {
                                 handleSelectCollection(id);
                             }}
