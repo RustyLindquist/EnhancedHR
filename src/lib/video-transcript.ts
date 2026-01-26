@@ -13,7 +13,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import { embedVideoContext, deleteContextEmbeddings } from '@/lib/context-embeddings';
-import { isYouTubeUrl, fetchYouTubeTranscript, fetchYouTubeMetadata } from '@/lib/youtube';
+import { isYouTubeUrl, fetchYouTubeTranscriptWithFallback, fetchYouTubeMetadata } from '@/lib/youtube';
 import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 
 // Types
@@ -154,14 +154,14 @@ export async function processVideoForRAG(
         let transcript: string | null = null;
         let transcriptSource: 'youtube' | 'ai' = 'ai';
 
-        // For YouTube videos, try to fetch existing captions first
+        // For YouTube videos, try to fetch existing captions first (Innertube -> Supadata fallback)
         if (await isYouTubeUrl(videoUrl)) {
-            console.log('[processVideoForRAG] YouTube video detected, trying to fetch existing captions...');
+            console.log('[processVideoForRAG] YouTube video detected, trying transcript extraction...');
 
-            const youtubeResult = await fetchYouTubeTranscript(videoUrl);
+            const youtubeResult = await fetchYouTubeTranscriptWithFallback(videoUrl);
 
             if (youtubeResult.success && youtubeResult.transcript) {
-                console.log('[processVideoForRAG] Successfully fetched YouTube captions');
+                console.log(`[processVideoForRAG] Successfully fetched YouTube transcript via ${youtubeResult.source}`);
                 transcript = youtubeResult.transcript;
                 transcriptSource = 'youtube';
 
@@ -172,7 +172,7 @@ export async function processVideoForRAG(
                     // Could update video description here if needed
                 }
             } else {
-                console.log('[processVideoForRAG] YouTube captions not available:', youtubeResult.error);
+                console.log('[processVideoForRAG] YouTube transcript extraction failed (Innertube + Supadata):', youtubeResult.error);
                 console.log('[processVideoForRAG] Trying audio extraction fallback...');
 
                 // Try audio extraction fallback for YouTube videos without captions

@@ -2,9 +2,14 @@
  * Video Processing API Endpoint
  *
  * Processes YouTube videos for imported courses by:
- * 1. Fetching transcripts from YouTube
+ * 1. Fetching transcripts from YouTube (Innertube -> Supadata -> AI fallback)
  * 2. Updating lesson content with transcripts
  * 3. Generating and storing embeddings for AI context
+ *
+ * Transcript extraction fallback chain:
+ * 1. Innertube API (youtube-transcript library) - Free, fast
+ * 2. Supadata API - Paid, better success rate for restricted videos
+ * 3. AI multimodal parsing (Gemini) - Last resort, processes video directly
  *
  * POST /api/course-import/process-videos
  * Body: { courseId, secretKey }
@@ -12,8 +17,9 @@
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
+import { fetchYouTubeTranscriptWithFallback, isYouTubeUrl } from '@/lib/youtube';
 import { embedVideoContext } from '@/lib/context-embeddings';
+import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 
 interface ProcessVideosRequest {
     courseId: number;
@@ -93,47 +99,80 @@ export async function POST(request: Request) {
             try {
                 // Check if it's a YouTube URL
                 const isYouTube = await isYouTubeUrl(lesson.video_url);
+                let transcript: string | null = null;
+                let transcriptSource: string = 'none';
 
                 if (isYouTube) {
                     console.log(`[Video Processing] Processing YouTube video: ${lesson.title}`);
 
-                    // Fetch transcript
-                    const transcriptResult = await fetchYouTubeTranscript(lesson.video_url);
+                    // Try YouTube transcript extraction (Innertube -> Supadata fallback)
+                    const transcriptResult = await fetchYouTubeTranscriptWithFallback(lesson.video_url);
 
                     if (transcriptResult.success && transcriptResult.transcript) {
-                        // Update lesson with transcript in content field
-                        const { error: updateError } = await supabase
-                            .from('lessons')
-                            .update({ content: transcriptResult.transcript })
-                            .eq('id', lesson.id);
-
-                        if (updateError) {
-                            console.warn(`[Video Processing] Failed to update lesson ${lesson.id}:`, updateError);
-                        } else {
-                            console.log(`[Video Processing] Updated transcript for: ${lesson.title}`);
-                        }
-
-                        // Generate embeddings for the transcript
-                        // Using course-level embeddings (no user_id)
-                        const embedResult = await embedVideoContext(
-                            '', // No user_id for course content
-                            lesson.id,
-                            lesson.title,
-                            lesson.description || undefined,
-                            transcriptResult.transcript,
-                            null, // No collection_id
-                            null  // No org_id for platform courses
-                        );
-
-                        if (embedResult.success) {
-                            embeddingCount += embedResult.embeddingCount;
-                            console.log(`[Video Processing] Created ${embedResult.embeddingCount} embeddings for: ${lesson.title}`);
-                        }
+                        transcript = transcriptResult.transcript;
+                        transcriptSource = transcriptResult.source || 'youtube';
+                        console.log(`[Video Processing] Got transcript from ${transcriptSource} for: ${lesson.title}`);
                     } else {
-                        console.warn(`[Video Processing] No transcript available for: ${lesson.title} - ${transcriptResult.error}`);
+                        console.log(`[Video Processing] YouTube methods failed for: ${lesson.title} - ${transcriptResult.error}`);
+                        console.log(`[Video Processing] Trying AI multimodal fallback...`);
+
+                        // Fall back to AI multimodal parsing
+                        const aiResult = await generateTranscriptFromVideo(lesson.video_url);
+                        if (aiResult.success && aiResult.transcript) {
+                            transcript = aiResult.transcript;
+                            transcriptSource = 'ai';
+                            console.log(`[Video Processing] Got transcript from AI for: ${lesson.title}`);
+                        } else {
+                            console.warn(`[Video Processing] All transcript methods failed for: ${lesson.title} - ${aiResult.error}`);
+                        }
                     }
                 } else {
-                    console.log(`[Video Processing] Skipping non-YouTube video: ${lesson.title}`);
+                    console.log(`[Video Processing] Non-YouTube video, using AI: ${lesson.title}`);
+
+                    // For non-YouTube videos, use AI multimodal parsing directly
+                    const aiResult = await generateTranscriptFromVideo(lesson.video_url);
+                    if (aiResult.success && aiResult.transcript) {
+                        transcript = aiResult.transcript;
+                        transcriptSource = 'ai';
+                    }
+                }
+
+                // If we got a transcript, save it and create embeddings
+                if (transcript) {
+                    // Update lesson with transcript in content field
+                    const { error: updateError } = await supabase
+                        .from('lessons')
+                        .update({ content: transcript })
+                        .eq('id', lesson.id);
+
+                    if (updateError) {
+                        console.warn(`[Video Processing] Failed to update lesson ${lesson.id}:`, updateError);
+                    } else {
+                        console.log(`[Video Processing] Updated transcript (${transcriptSource}) for: ${lesson.title}`);
+                    }
+
+                    // Generate embeddings for the transcript
+                    // Using course-level embeddings (no user_id)
+                    const embedResult = await embedVideoContext(
+                        '', // No user_id for course content
+                        lesson.id,
+                        lesson.title,
+                        lesson.description || undefined,
+                        transcript,
+                        null, // No collection_id
+                        null  // No org_id for platform courses
+                    );
+
+                    if (embedResult.success) {
+                        embeddingCount += embedResult.embeddingCount;
+                        console.log(`[Video Processing] Created ${embedResult.embeddingCount} embeddings for: ${lesson.title}`);
+                    } else {
+                        console.warn(`[Video Processing] Embedding creation failed for: ${lesson.title} - ${embedResult.error}`);
+                    }
+                } else {
+                    const errorMsg = `No transcript generated for: ${lesson.title}`;
+                    console.warn(`[Video Processing] ${errorMsg}`);
+                    errors.push(errorMsg);
                 }
 
                 processedCount++;
@@ -147,8 +186,9 @@ export async function POST(request: Request) {
                     })
                     .eq('course_id', courseId);
 
-            } catch (lessonError: any) {
-                const errorMsg = `Lesson "${lesson.title}": ${lessonError.message}`;
+            } catch (lessonError: unknown) {
+                const errorMessage = lessonError instanceof Error ? lessonError.message : 'Unknown error';
+                const errorMsg = `Lesson "${lesson.title}": ${errorMessage}`;
                 console.error(`[Video Processing] Error:`, errorMsg);
                 errors.push(errorMsg);
                 // Continue with other lessons

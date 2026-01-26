@@ -76,8 +76,15 @@ Video Added to Collection
          |                   |     |
          |                  Yes    No
          |                   |     |
-         v                   |     v
-  AI Multimodal Parsing <----+-----+
+         |                   |     v
+         |                   | Supadata API Fallback
+         |                   |     |
+         |                   | Success?
+         |                   |   |     |
+         |                   |  Yes    No
+         |                   |   |     |
+         v                   v   v     v
+  AI Multimodal Parsing <--------+-----+
   (Gemini 2.0 Flash via OpenRouter)
          |
          v
@@ -96,7 +103,10 @@ Video Added to Collection
 
 1. **Fire-and-Forget Pattern**: Video CRUD operations succeed immediately; transcript generation runs asynchronously. If it fails, video still exists with `transcriptStatus: 'failed'` and user can retry.
 
-2. **YouTube First Strategy**: For YouTube URLs, we first try to fetch existing captions via the Innertube API (free, fast). Only if unavailable, we fall back to AI multimodal parsing.
+2. **YouTube Fallback Chain**: For YouTube URLs, we use a multi-level fallback:
+   - First: Innertube API (youtube-transcript library) - Free, fast
+   - Second: Supadata API - Paid service with better success rate for restricted videos
+   - Last: AI multimodal parsing via Gemini - Works on any video but more expensive
 
 3. **Transcript Status Tracking**: The `content` JSONB field stores transcript state so UI can show progress and allow retries.
 
@@ -209,11 +219,20 @@ Migration `20260124100000_add_video_to_embeddings.sql` adds 'video' to `embeddin
 ALTER TYPE embedding_source_type ADD VALUE IF NOT EXISTS 'video';
 ```
 
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `YOUTUBE_API_KEY` | Optional | YouTube Data API v3 key for metadata (title, duration, thumbnail) |
+| `SUPADATA_API_KEY` | Optional | Supadata API key for YouTube transcript fallback (better success rate) |
+| `OPENROUTER_API_KEY` | Required | OpenRouter API key for AI multimodal transcript generation |
+
 ## Permissions & Security
 
 - **Transcript Generation**: Runs with admin client (bypasses RLS for embedding writes)
 - **Embedding Reads**: Filtered by `match_unified_embeddings` based on scope (collection, org, user)
 - **YouTube API**: Uses server-side API key; never exposed to client
+- **Supadata API**: Uses server-side API key; never exposed to client
 - **AI Parsing**: Uses OpenRouter API key from environment
 
 ## Integration Points
@@ -244,7 +263,7 @@ Video embeddings participate in RAG retrieval through the same `match_unified_em
 
 | Platform | Transcript Support | Notes |
 |----------|-------------------|-------|
-| YouTube | Full | Innertube API for captions, Data API for metadata |
+| YouTube | Full (3-level fallback) | Innertube API → Supadata API → AI multimodal parsing |
 | Vimeo | AI Only | No public transcript API; uses AI multimodal parsing |
 | Wistia | AI Only | Requires API key for any access; uses AI multimodal parsing |
 | Mux | AI Only | Uses AI multimodal parsing on playback URL |

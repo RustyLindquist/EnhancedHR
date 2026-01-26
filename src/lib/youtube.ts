@@ -4,7 +4,12 @@
  * YouTube Service
  *
  * Fetches transcripts and metadata from YouTube videos.
- * Uses Innertube API for transcripts (more reliable than official API for auto-generated captions)
+ *
+ * Transcript extraction fallback chain:
+ * 1. Innertube API (youtube-transcript library) - Free, fast, but blocked for some videos
+ * 2. Supadata API - Paid service with better success rate for videos without public captions
+ * 3. AI multimodal parsing - Last resort, uses Gemini to watch and transcribe
+ *
  * Uses YouTube Data API v3 for metadata (title, description, duration, thumbnail)
  */
 
@@ -12,6 +17,9 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 // YouTube Data API v3 key
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyC4UfqwJM0toBikRdFo7jtx_eDZGOBW3Ng';
+
+// Supadata API key for transcript fallback
+const SUPADATA_API_KEY = process.env.SUPADATA_API_KEY;
 
 // Types
 export interface YouTubeTranscriptSegment {
@@ -39,7 +47,7 @@ export interface YouTubeVideoData {
 /**
  * Extract YouTube video ID from various URL formats
  */
-function extractYouTubeVideoId(url: string): string | null {
+export async function extractYouTubeVideoId(url: string): Promise<string | null> {
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
         /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
@@ -77,7 +85,7 @@ export async function fetchYouTubeTranscript(videoIdOrUrl: string): Promise<{
     error?: string;
 }> {
     try {
-        const videoId = extractYouTubeVideoId(videoIdOrUrl);
+        const videoId = await extractYouTubeVideoId(videoIdOrUrl);
         if (!videoId) {
             return { success: false, error: 'Invalid YouTube URL or video ID' };
         }
@@ -136,7 +144,7 @@ export async function fetchYouTubeMetadata(videoIdOrUrl: string): Promise<{
     error?: string;
 }> {
     try {
-        const videoId = extractYouTubeVideoId(videoIdOrUrl);
+        const videoId = await extractYouTubeVideoId(videoIdOrUrl);
         if (!videoId) {
             return { success: false, error: 'Invalid YouTube URL or video ID' };
         }
@@ -227,4 +235,133 @@ function parseISO8601Duration(duration: string): number {
     const seconds = parseInt(match[3] || '0', 10);
 
     return hours * 3600 + minutes * 60 + seconds;
+}
+
+/**
+ * Fetch transcript from YouTube using Supadata API
+ * This is a fallback when the Innertube API (youtube-transcript library) fails
+ * Supadata has a higher success rate for videos without public captions
+ */
+export async function fetchYouTubeTranscriptSupadata(videoIdOrUrl: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    error?: string;
+}> {
+    if (!SUPADATA_API_KEY) {
+        return { success: false, error: 'Supadata API key not configured' };
+    }
+
+    try {
+        const videoId = await extractYouTubeVideoId(videoIdOrUrl);
+        if (!videoId) {
+            return { success: false, error: 'Invalid YouTube URL or video ID' };
+        }
+
+        console.log('[YouTube/Supadata] Fetching transcript for video:', videoId);
+
+        // Supadata API endpoint for YouTube transcripts
+        const response = await fetch(
+            `https://api.supadata.ai/v1/youtube/transcript?video_id=${videoId}`,
+            {
+                method: 'GET',
+                headers: {
+                    'x-api-key': SUPADATA_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[YouTube/Supadata] API error:', response.status, errorData);
+            return {
+                success: false,
+                error: errorData.error || `Supadata API error: ${response.status}`
+            };
+        }
+
+        const data = await response.json();
+
+        // Supadata returns transcript as an array of segments or a content string
+        let transcript: string;
+        if (data.content) {
+            // Direct content string
+            transcript = data.content;
+        } else if (Array.isArray(data.transcript)) {
+            // Array of segments with text
+            transcript = data.transcript.map((seg: { text?: string }) => seg.text || '').join(' ');
+        } else if (typeof data === 'string') {
+            transcript = data;
+        } else {
+            return { success: false, error: 'Unexpected response format from Supadata' };
+        }
+
+        if (!transcript || transcript.trim().length === 0) {
+            return { success: false, error: 'No transcript content returned from Supadata' };
+        }
+
+        console.log('[YouTube/Supadata] Successfully fetched transcript, length:', transcript.length);
+
+        return {
+            success: true,
+            transcript: transcript.trim(),
+        };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[YouTube/Supadata] Failed to fetch transcript:', errorMessage);
+        return { success: false, error: `Supadata error: ${errorMessage}` };
+    }
+}
+
+/**
+ * Fetch transcript with full fallback chain:
+ * 1. Innertube API (youtube-transcript library) - Free, fast
+ * 2. Supadata API - Paid, better success rate for restricted videos
+ *
+ * Returns transcript source in result for logging/debugging
+ */
+export async function fetchYouTubeTranscriptWithFallback(videoIdOrUrl: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    segments?: YouTubeTranscriptSegment[];
+    source?: 'innertube' | 'supadata';
+    error?: string;
+}> {
+    // Try Innertube API first (free, fast)
+    console.log('[YouTube] Trying Innertube API for transcript...');
+    const innertubeResult = await fetchYouTubeTranscript(videoIdOrUrl);
+
+    if (innertubeResult.success && innertubeResult.transcript) {
+        return {
+            ...innertubeResult,
+            source: 'innertube',
+        };
+    }
+
+    console.log('[YouTube] Innertube failed:', innertubeResult.error);
+
+    // Try Supadata API as fallback
+    if (SUPADATA_API_KEY) {
+        console.log('[YouTube] Trying Supadata API as fallback...');
+        const supadataResult = await fetchYouTubeTranscriptSupadata(videoIdOrUrl);
+
+        if (supadataResult.success && supadataResult.transcript) {
+            return {
+                success: true,
+                transcript: supadataResult.transcript,
+                source: 'supadata',
+            };
+        }
+
+        console.log('[YouTube] Supadata failed:', supadataResult.error);
+
+        // Return combined error
+        return {
+            success: false,
+            error: `Innertube: ${innertubeResult.error}; Supadata: ${supadataResult.error}`,
+        };
+    }
+
+    // No Supadata configured, return original error
+    return innertubeResult;
 }
