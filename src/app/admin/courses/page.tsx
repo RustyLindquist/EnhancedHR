@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Search, Filter, FileText, Eye, ChevronDown, X, Trash2, AlertTriangle, CircleDot } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { deleteCourse, updateCourseDetails } from '@/app/actions/course-builder';
+import CoursePromotionButton from '@/components/admin/CoursePromotionButton';
 
 interface Course {
     id: string;
@@ -449,6 +450,14 @@ export default function AdminCoursesPage() {
                                             >
                                                 Edit
                                             </Link>
+                                            {/* Promote to Production (dev only) */}
+                                            <CoursePromotionButton
+                                                course={{
+                                                    id: Number(course.id),
+                                                    title: course.title,
+                                                    status: course.status || 'draft'
+                                                }}
+                                            />
                                             {/* Delete */}
                                             <button
                                                 onClick={() => setCourseToDelete(course)}
