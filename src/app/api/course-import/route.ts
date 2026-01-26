@@ -87,18 +87,19 @@ export async function POST(request: Request) {
         const supabase = createAdminClient();
 
         // 2. Create course record (without id, let DB generate it)
+        // Note: author_id is intentionally set to null because the local user ID
+        // doesn't exist in production. The author name is still preserved.
         const courseData = {
             title: course.title,
             description: course.description || course.subtitle || null,
             image_url: course.thumbnail_url || course.image_url || null,
             status: 'draft', // Always start as draft on production
-            author_id: course.author_id || null,
+            author_id: null, // Don't link to profile - local IDs don't exist in prod
             author: course.author || 'Unknown',
             duration: course.estimated_duration || course.duration || null,
             category: course.category || 'General',
             badges: course.badges || [],
             skills: course.skills || [],
-            // Note: price, difficulty_level, tags may not exist in schema
         };
 
         console.log('[Course Import] Creating course:', courseData.title);
