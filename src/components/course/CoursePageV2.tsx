@@ -95,18 +95,20 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
         // Parse duration string (e.g., "2h 30m" -> minutes)
-        const durationMatch = course.duration.match(/(\d+)h?\s*(\d+)?m?/);
         let totalMinutes = 0;
-        if (durationMatch) {
-            const hours = parseInt(durationMatch[1]) || 0;
-            const mins = parseInt(durationMatch[2]) || 0;
-            totalMinutes = hours * 60 + mins;
+        if (course.duration) {
+            const durationMatch = course.duration.match(/(\d+)h?\s*(\d+)?m?/);
+            if (durationMatch) {
+                const hours = parseInt(durationMatch[1]) || 0;
+                const mins = parseInt(durationMatch[2]) || 0;
+                totalMinutes = hours * 60 + mins;
+            }
         }
 
         const remainingMinutes = Math.round(totalMinutes * (1 - progressPercent / 100));
 
         return {
-            totalDuration: course.duration,
+            totalDuration: course.duration || '',
             progressPercent,
             remainingMinutes,
             totalLessons,
