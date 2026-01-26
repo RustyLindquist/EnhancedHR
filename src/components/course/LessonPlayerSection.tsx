@@ -7,6 +7,25 @@ import { Lesson, Course, DragItem } from '../../types';
 import { useTrialTracker } from '../../hooks/useTrialTracker';
 import QuizPlayer from '../QuizPlayer';
 
+// Check if URL is a YouTube URL (client-side check)
+function isYouTubeUrl(url: string): boolean {
+    return url.includes('youtube.com') || url.includes('youtu.be');
+}
+
+// Extract YouTube video ID from URL
+function extractYouTubeVideoId(url: string): string | null {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
+
 interface LessonPlayerSectionProps {
     lesson: Lesson;
     lessonNumber: string;
@@ -120,8 +139,8 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                         />
                     ) : lesson.video_url && !isLocked ? (
                         <>
-                            {/* Play button overlay */}
-                            {showPlayOverlay && !videoError && (
+                            {/* Play button overlay - hide for YouTube since it has its own controls */}
+                            {showPlayOverlay && !videoError && !isYouTubeUrl(lesson.video_url) && (
                                 <div
                                     className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900/80 to-slate-800/80 z-20 cursor-pointer"
                                     onClick={() => {
@@ -159,29 +178,48 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                                     </button>
                                 </div>
                             ) : (
-                                <MuxPlayer
-                                    ref={playerRef}
-                                    streamType="on-demand"
-                                    playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
-                                    src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
-                                    metadata={{
-                                        video_id: lesson.id,
-                                        video_title: lesson.title,
-                                        viewer_user_id: userId,
-                                    }}
-                                    primaryColor="#78C0F0"
-                                    secondaryColor="#000000"
-                                    accentColor="#FF9300"
-                                    className="w-full h-full"
-                                    onTimeUpdate={handleTimeUpdate}
-                                    onPlay={handlePlay}
-                                    onPause={handlePause}
-                                    onEnded={handleVideoEnded}
-                                    onError={(err) => {
-                                        console.error("MuxPlayer Error:", err);
-                                        setVideoError(true);
-                                    }}
-                                />
+                                (() => {
+                                    const isYouTube = isYouTubeUrl(lesson.video_url);
+                                    const youtubeId = isYouTube ? extractYouTubeVideoId(lesson.video_url) : null;
+
+                                    if (isYouTube && youtubeId) {
+                                        return (
+                                            <iframe
+                                                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0&modestbranding=1`}
+                                                className="w-full h-full"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                allowFullScreen
+                                                title={lesson.title}
+                                            />
+                                        );
+                                    }
+
+                                    return (
+                                        <MuxPlayer
+                                            ref={playerRef}
+                                            streamType="on-demand"
+                                            playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
+                                            src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
+                                            metadata={{
+                                                video_id: lesson.id,
+                                                video_title: lesson.title,
+                                                viewer_user_id: userId,
+                                            }}
+                                            primaryColor="#78C0F0"
+                                            secondaryColor="#000000"
+                                            accentColor="#FF9300"
+                                            className="w-full h-full"
+                                            onTimeUpdate={handleTimeUpdate}
+                                            onPlay={handlePlay}
+                                            onPause={handlePause}
+                                            onEnded={handleVideoEnded}
+                                            onError={(err) => {
+                                                console.error("MuxPlayer Error:", err);
+                                                setVideoError(true);
+                                            }}
+                                        />
+                                    );
+                                })()
                             )}
                         </>
                     ) : isLocked ? (

@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useTransition, useCallback } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, Youtube } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo } from '@/app/actions/course-builder';
+import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo, fetchYouTubeMetadataAction } from '@/app/actions/course-builder';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
 import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
-type VideoSourceType = 'url' | 'upload' | 'mux_id';
+type VideoSourceType = 'youtube' | 'url' | 'upload';
 
 interface LessonEditorPanelProps {
     isOpen: boolean;
@@ -55,8 +55,16 @@ export default function LessonEditorPanel({
     const [duration, setDuration] = useState(lessonDuration);
 
     // Video source selection
-    const [videoSource, setVideoSource] = useState<VideoSourceType>('url');
+    const [videoSource, setVideoSource] = useState<VideoSourceType>('youtube');
     const [isUploading, setIsUploading] = useState(false);
+
+    // YouTube metadata state
+    const [youtubeMetadata, setYoutubeMetadata] = useState<{
+        title?: string;
+        thumbnail?: string;
+        duration?: number;
+    } | null>(null);
+    const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
 
     // Quiz data state
     const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
@@ -77,8 +85,51 @@ export default function LessonEditorPanel({
             setShowDeleteConfirm(false);
             setIsUploading(false);
             setIsGeneratingTranscript(false);
+            setYoutubeMetadata(null);
+            setIsFetchingMetadata(false);
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData]);
+
+    // Helper function to format duration
+    const formatDuration = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins >= 60) {
+            const hrs = Math.floor(mins / 60);
+            const remainingMins = mins % 60;
+            return `${hrs}h ${remainingMins}m`;
+        }
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins} min`;
+    };
+
+    // Handler for fetching YouTube metadata
+    const handleFetchYouTubeMetadata = useCallback(async () => {
+        if (!videoUrl) return;
+
+        setIsFetchingMetadata(true);
+        setError(null);
+
+        try {
+            const result = await fetchYouTubeMetadataAction(videoUrl);
+            if (result.success && result.metadata) {
+                setYoutubeMetadata({
+                    title: result.metadata.title,
+                    thumbnail: result.metadata.thumbnail,
+                    duration: result.metadata.duration,
+                });
+                // Auto-fill duration field
+                if (result.metadata.duration) {
+                    setDuration(formatDuration(result.metadata.duration));
+                }
+            } else {
+                setError(result.error || 'Failed to fetch video details');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch YouTube details');
+        } finally {
+            setIsFetchingMetadata(false);
+        }
+    }, [videoUrl]);
 
     const handleGenerateTranscript = useCallback(async () => {
         if (!videoUrl) {
@@ -265,6 +316,17 @@ export default function LessonEditorPanel({
                         {/* Video Source Tabs */}
                         <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
                             <button
+                                onClick={() => setVideoSource('youtube')}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    videoSource === 'youtube'
+                                        ? 'bg-red-500/20 text-red-400'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                <Youtube size={14} />
+                                YouTube
+                            </button>
+                            <button
                                 onClick={() => setVideoSource('url')}
                                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     videoSource === 'url'
@@ -273,7 +335,7 @@ export default function LessonEditorPanel({
                                 }`}
                             >
                                 <Link2 size={14} />
-                                URL / Mux ID
+                                Mux / URL
                             </button>
                             <button
                                 onClick={() => setVideoSource('upload')}
@@ -287,6 +349,67 @@ export default function LessonEditorPanel({
                                 Upload
                             </button>
                         </div>
+
+                        {/* YouTube URL Input */}
+                        {videoSource === 'youtube' && (
+                            <div className="space-y-4">
+                                <div className="flex gap-3">
+                                    <div className="flex-1 flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <Youtube size={16} className="text-red-400" />
+                                        <input
+                                            type="text"
+                                            value={videoUrl}
+                                            onChange={(e) => {
+                                                setVideoUrl(e.target.value);
+                                                setYoutubeMetadata(null);
+                                            }}
+                                            placeholder="https://youtube.com/watch?v=..."
+                                            className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleFetchYouTubeMetadata}
+                                        disabled={!videoUrl || isFetchingMetadata}
+                                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isFetchingMetadata ? (
+                                            <>
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Fetching...
+                                            </>
+                                        ) : (
+                                            'Fetch Details'
+                                        )}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-600">
+                                    Enter a YouTube URL. Click "Fetch Details" to auto-fill duration and preview the video.
+                                </p>
+
+                                {/* YouTube Preview */}
+                                {youtubeMetadata && (
+                                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                                        <div className="flex gap-4">
+                                            {youtubeMetadata.thumbnail && (
+                                                <img
+                                                    src={youtubeMetadata.thumbnail}
+                                                    alt="Video thumbnail"
+                                                    className="w-32 h-20 object-cover rounded-lg"
+                                                />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-white truncate">{youtubeMetadata.title}</p>
+                                                {youtubeMetadata.duration && (
+                                                    <p className="text-xs text-slate-400 mt-1">
+                                                        Duration: {formatDuration(youtubeMetadata.duration)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* URL Input */}
                         {videoSource === 'url' && (
