@@ -25,7 +25,7 @@ import {
   ClipboardList,
   UserCircle
 } from 'lucide-react';
-import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile, Resource } from './types';
+import { Course, NavItemConfig, CollectionPortalConfig, BackgroundTheme, Collection, Module, AuthorProfile } from './types';
 
 // Default Tech/Abstract Image for fallback
 export const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=2070&auto=format&fit=crop";
@@ -86,15 +86,6 @@ export const generateMockSyllabus = (courseId: number): Module[] => {
       type: lIdx === 3 ? 'quiz' : 'video'
     }))
   }));
-};
-
-export const generateMockResources = (courseId: number): Resource[] => {
-  return [
-    { id: `r-${courseId}-1`, title: 'Course Syllabus & Guide', type: 'PDF', size: '1.2 MB', url: '#' },
-    { id: `r-${courseId}-2`, title: 'Lecture Notes: Week 1', type: 'DOC', size: '450 KB', url: '#' },
-    { id: `r-${courseId}-3`, title: 'Case Study Data Set', type: 'XLS', size: '2.8 MB', url: '#' },
-    { id: `r-${courseId}-4`, title: 'External References', type: 'LINK', url: '#' }
-  ];
 };
 
 export const MOCK_COURSES: Course[] = [

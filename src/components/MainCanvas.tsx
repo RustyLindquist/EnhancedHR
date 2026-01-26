@@ -18,7 +18,7 @@ import { CoursePageV2 } from './course'; // New unified course page
 import UserDashboardV3 from './Dashboard/UserDashboardV3';
 import EmployeeDashboard from './Dashboard/EmployeeDashboard';
 import OrgAdminDashboard from './Dashboard/OrgAdminDashboard';
-import { COURSE_CATEGORIES, COLLECTION_NAV_ITEMS, generateMockResources } from '../constants'; // Import generator
+import { COLLECTION_NAV_ITEMS } from '../constants';
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
 import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, ToolConversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note, Tool } from '../types';
@@ -855,6 +855,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // --- STATE MANAGEMENT ---
     const [courses, setCourses] = useState<Course[]>(initialCourses);
+
+    // Dynamically compute categories from actual courses (ensures all courses are visible)
+    const dynamicCategories = useMemo(() => {
+        const categories = courses
+            .map(c => c.category)
+            .filter((cat): cat is string => Boolean(cat));
+        return [...new Set(categories)].sort();
+    }, [courses]);
+
     const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
     const [collectionItems, setCollectionItems] = useState<CollectionItemDetail[]>([]);
     const [isLoadingCollection, setIsLoadingCollection] = useState(false);
@@ -1861,11 +1870,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 
-            // Use real resources if available, fall back to mock for courses without resources
-            const resources = dbResources && dbResources.length > 0
-                ? dbResources
-                : generateMockResources(courseId);
-            setSelectedCourseResources(resources);
+            // Use real resources only (no mock fallback)
+            setSelectedCourseResources(dbResources || []);
         } catch (error) {
             console.error("Failed to load course details", error);
         }
@@ -1981,10 +1987,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 
-            const resources = dbResources && dbResources.length > 0
-                ? dbResources
-                : generateMockResources(courseId);
-            setSelectedCourseResources(resources);
+            // Use real resources only (no mock fallback)
+            setSelectedCourseResources(dbResources || []);
 
             // Set the module to open and go directly to player
             setResumeModuleId(moduleId);
@@ -2039,10 +2043,8 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 
-            const resources = dbResources && dbResources.length > 0
-                ? dbResources
-                : generateMockResources(courseId);
-            setSelectedCourseResources(resources);
+            // Use real resources only (no mock fallback)
+            setSelectedCourseResources(dbResources || []);
 
             // Set the lesson and module to open
             setResumeLessonId(lessonId);
@@ -3469,7 +3471,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                 <div className="col-span-1">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Categories</h3>
                                     <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
-                                        {COURSE_CATEGORIES.map(cat => (
+                                        {dynamicCategories.map(cat => (
                                             <label key={cat} className="flex items-center gap-3 cursor-pointer group">
                                                 <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.category === cat ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
                                                     {pendingFilters.category === cat && <Check size={12} className="text-black" />}
@@ -4263,7 +4265,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     >
                                                         All
                                                     </button>
-                                                    {COURSE_CATEGORIES.map((category) => (
+                                                    {dynamicCategories.map((category) => (
                                                         <button
                                                             key={category}
                                                             onClick={() => {
@@ -4281,7 +4283,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     ))}
                                                 </div>
 
-                                                {COURSE_CATEGORIES.map((category, catIndex) => {
+                                                {dynamicCategories.map((category, catIndex) => {
                                                     const categoryCourses = visibleCourses.filter(c => c.category === category);
                                                     if (categoryCourses.length === 0) return null;
 
@@ -4399,7 +4401,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             >
                                                                 All
                                                             </button>
-                                                            {COURSE_CATEGORIES.map((category) => (
+                                                            {dynamicCategories.map((category) => (
                                                                 <button
                                                                     key={category}
                                                                     onClick={() => {

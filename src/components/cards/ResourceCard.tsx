@@ -34,6 +34,9 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
 
+    // Check if we have a valid downloadable URL (not empty, not just '#')
+    const hasValidUrl = fileUrl && fileUrl !== '#' && fileUrl.trim() !== '';
+
     const handleDragIntentChange = React.useCallback((isDragging: boolean) => {
         setIsDraggable(isDragging);
         if (isDragging) {
@@ -46,12 +49,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
             setShouldPreventClick(false);
             return;
         }
+        if (!hasValidUrl && !onDownload) {
+            return; // No valid URL and no custom handler
+        }
         if (onDownload) {
             onDownload();
-        } else if (fileUrl) {
+        } else if (hasValidUrl) {
             // Default download behavior
             const link = document.createElement('a');
-            link.href = fileUrl;
+            link.href = fileUrl!;
             link.download = title;
             link.target = '_blank';
             document.body.appendChild(link);
@@ -163,7 +169,13 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                             e.stopPropagation();
                             handleDownload();
                         }}
-                        className="text-slate-500 hover:text-white transition-colors flex-shrink-0 p-1"
+                        disabled={!hasValidUrl && !onDownload}
+                        title={hasValidUrl || onDownload ? 'Download' : 'No file available'}
+                        className={`flex-shrink-0 p-1 transition-colors ${
+                            hasValidUrl || onDownload
+                                ? 'text-slate-500 hover:text-white cursor-pointer'
+                                : 'text-slate-700 cursor-not-allowed'
+                        }`}
                     >
                         <Download size={16} />
                     </button>
