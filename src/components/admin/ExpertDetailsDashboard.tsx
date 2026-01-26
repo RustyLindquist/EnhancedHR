@@ -10,8 +10,9 @@ import {
     User, Phone, Linkedin, Calendar, BookOpen,
     TrendingUp, CheckCircle, XCircle, AlertCircle,
     ExternalLink, Trash2, FileText, ChevronDown, ChevronRight, ArrowLeft,
-    Edit3, Save, Loader2, Briefcase, Globe
+    Edit3, Save, Loader2, Briefcase, Globe, Eye
 } from 'lucide-react';
+import Link from 'next/link';
 
 // Custom X (formerly Twitter) icon
 const XIcon = ({ size = 16 }: { size?: number }) => (
@@ -806,6 +807,16 @@ export default function ExpertDetailsDashboard({
                                             }`}>
                                             {course.status}
                                         </span>
+                                        <Link
+                                            href={`/dashboard?courseId=${course.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Preview Course"
+                                        >
+                                            <Eye size={14} />
+                                        </Link>
                                         <ExternalLink size={14} className="text-slate-500 group-hover:text-white transition-colors" />
                                     </div>
                                 </div>

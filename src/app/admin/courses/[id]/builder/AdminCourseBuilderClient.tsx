@@ -131,8 +131,9 @@ export default function AdminCourseBuilderClient({
                         Bulk Video Upload
                     </button>
                     <Link
-                        href={`/?courseId=${initialCourse.id}`}
+                        href={`/dashboard?courseId=${initialCourse.id}`}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors"
                     >
                         <Eye size={16} />
