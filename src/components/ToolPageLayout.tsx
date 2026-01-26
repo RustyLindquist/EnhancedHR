@@ -15,6 +15,7 @@ import { fetchCoursesAction } from '@/app/actions/courses';
 import { addNoteToCollectionAction } from '@/app/actions/notes';
 import { getCollectionCountsAction } from '@/app/actions/collections';
 import { createClient } from '@/lib/supabase/client';
+import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
 
 // Drag item for notes
 interface NoteDragItem {
@@ -57,7 +58,7 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
     const [rightOpen, setRightOpen] = useState(true);
     const [currentTheme, setCurrentTheme] = useState<BackgroundTheme>(BACKGROUND_THEMES[0]);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(false); // Default closed
     const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
 
     // Help Panel State
@@ -86,6 +87,27 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
         }
         loadData();
     }, []);
+
+    // Fetch Collection Surface preference on mount
+    useEffect(() => {
+        async function loadCollectionSurfacePreference() {
+            const result = await getCollectionSurfacePreferenceAction();
+            if (result.success && result.isOpen !== undefined) {
+                setIsCollectionSurfaceOpen(result.isOpen);
+            }
+        }
+        loadCollectionSurfacePreference();
+    }, []);
+
+    // Handler for toggling collection surface (persists to database)
+    const handleToggleCollectionSurface = useCallback(() => {
+        const newState = !isCollectionSurfaceOpen;
+        setIsCollectionSurfaceOpen(newState);
+        // Persist preference (fire-and-forget)
+        updateCollectionSurfacePreferenceAction(newState).catch(err => {
+            console.error('Failed to save collection surface preference:', err);
+        });
+    }, [isCollectionSurfaceOpen]);
 
     // Track mouse position during drag
     useEffect(() => {
@@ -191,7 +213,7 @@ export default function ToolPageLayout({ children, activeNavId = 'tools', toolSl
                             activeFlareId={flaringPortalId}
                             customCollections={DEFAULT_COLLECTIONS}
                             isOpen={isCollectionSurfaceOpen}
-                            onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                            onToggle={handleToggleCollectionSurface}
                             onCollectionClick={(id) => {
                                 handleSelectCollection(id);
                             }}

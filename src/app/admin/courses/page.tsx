@@ -437,7 +437,9 @@ export default function AdminCoursesPage() {
                                             </div>
                                             {/* View Public Page */}
                                             <Link
-                                                href={`/?courseId=${course.id}`}
+                                                href={`/dashboard?courseId=${course.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                                                 title="View Public Page"
                                             >

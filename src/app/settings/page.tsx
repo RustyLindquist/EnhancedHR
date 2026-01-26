@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Brain, Palette, Check, Upload } from 'lucide-react';
+import { Brain, Palette, Check, Upload, Layers } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
 import { createClient } from '@/lib/supabase/client';
@@ -12,6 +12,7 @@ import { BackgroundTheme } from '@/types';
 interface UserSettings {
     enable_insights: boolean;
     auto_insights: boolean;
+    collection_surface_open: boolean;
 }
 
 interface SettingToggleProps {
@@ -87,7 +88,8 @@ export default function SettingsPage() {
     const router = useRouter();
     const [settings, setSettings] = useState<UserSettings>({
         enable_insights: true,
-        auto_insights: false
+        auto_insights: false,
+        collection_surface_open: false
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -117,14 +119,15 @@ export default function SettingsPage() {
 
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('enable_insights, auto_insights')
+                    .select('enable_insights, auto_insights, collection_surface_open')
                     .eq('id', user.id)
                     .single();
 
                 if (profile) {
                     setSettings({
                         enable_insights: profile.enable_insights ?? true,
-                        auto_insights: profile.auto_insights ?? false
+                        auto_insights: profile.auto_insights ?? false,
+                        collection_surface_open: profile.collection_surface_open ?? false
                     });
                 }
             } catch (error) {
@@ -258,6 +261,22 @@ export default function SettingsPage() {
                                 enabled={settings.auto_insights}
                                 onChange={(value) => updateSetting('auto_insights', value)}
                                 isLoading={isSaving === 'auto_insights'}
+                            />
+                        </div>
+                    </SettingsSection>
+
+                    {/* Interface Section */}
+                    <SettingsSection
+                        icon={<Layers size={24} />}
+                        title="Interface"
+                    >
+                        <div className="divide-y divide-white/5">
+                            <SettingToggle
+                                label="Show Collection Surface"
+                                description="The Collection Surface is the panel at the bottom of your screen where you can drag and drop content cards to save them to collections. When expanded, you can quickly organize content by dragging cards onto collection icons. When collapsed, it's hidden to give you more screen space. You can always expand or collapse it using the toggle button at the bottom of the screen."
+                                enabled={settings.collection_surface_open}
+                                onChange={(value) => updateSetting('collection_surface_open', value)}
+                                isLoading={isSaving === 'collection_surface_open'}
                             />
                         </div>
                     </SettingsSection>

@@ -4,10 +4,44 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
 import { fetchYouTubeMetadata, fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
+import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 
 // ============================================
 // Course Metadata Actions
 // ============================================
+
+/**
+ * Get distinct categories from published courses
+ * Used to populate the category dropdown dynamically
+ */
+export async function getPublishedCategories(): Promise<{
+    success: boolean;
+    categories?: string[];
+    error?: string;
+}> {
+    const admin = await createAdminClient();
+
+    const { data, error } = await admin
+        .from('courses')
+        .select('category')
+        .eq('status', 'published')
+        .not('category', 'is', null);
+
+    if (error) {
+        console.error('[getPublishedCategories] Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    // Get unique categories, sorted alphabetically
+    const categories = [...new Set(data.map(c => c.category).filter(Boolean))].sort();
+
+    // Always include 'General' as a fallback option
+    if (!categories.includes('General')) {
+        categories.unshift('General');
+    }
+
+    return { success: true, categories };
+}
 
 export async function updateCourseImage(courseId: number, imageUrl: string | null) {
     const admin = await createAdminClient();
@@ -500,6 +534,32 @@ export async function createLesson(moduleId: string, data: {
     return { success: true, lesson };
 }
 
+/**
+ * Auto-generate transcript for a lesson video (fire-and-forget)
+ * Called when a new video_url is added to a lesson
+ */
+async function generateLessonTranscript(lessonId: string, videoUrl: string): Promise<void> {
+    console.log('[generateLessonTranscript] Starting for lesson:', lessonId);
+
+    try {
+        const result = await generateTranscriptFromVideo(videoUrl);
+
+        if (result.success && result.transcript) {
+            const admin = await createAdminClient();
+            await admin
+                .from('lessons')
+                .update({ content: result.transcript })
+                .eq('id', lessonId);
+
+            console.log('[generateLessonTranscript] Transcript saved, length:', result.transcript.length);
+        } else {
+            console.error('[generateLessonTranscript] Failed:', result.error);
+        }
+    } catch (err) {
+        console.error('[generateLessonTranscript] Error:', err);
+    }
+}
+
 export async function updateLesson(lessonId: string, data: {
     title?: string;
     video_url?: string;
@@ -510,10 +570,10 @@ export async function updateLesson(lessonId: string, data: {
 }) {
     const admin = await createAdminClient();
 
-    // Get module to find course_id
-    const { data: lesson } = await admin
+    // Get current lesson to check if video_url changed
+    const { data: currentLesson } = await admin
         .from('lessons')
-        .select('module_id, modules(course_id)')
+        .select('video_url, module_id, modules(course_id)')
         .eq('id', lessonId)
         .single();
 
@@ -527,9 +587,18 @@ export async function updateLesson(lessonId: string, data: {
         return { success: false, error: error.message };
     }
 
-    if (lesson?.modules) {
-        revalidatePath(`/admin/courses/${(lesson.modules as any).course_id}/builder`);
+    if (currentLesson?.modules) {
+        revalidatePath(`/admin/courses/${(currentLesson.modules as any).course_id}/builder`);
     }
+
+    // Fire-and-forget transcript generation if video_url is new/changed
+    // Only trigger if video_url is provided and different from current
+    if (data.video_url && data.video_url !== currentLesson?.video_url) {
+        console.log('[updateLesson] Video URL changed, triggering auto-transcript generation');
+        generateLessonTranscript(lessonId, data.video_url)
+            .catch(err => console.error('[updateLesson] Transcript generation failed:', err));
+    }
+
     return { success: true };
 }
 
@@ -838,8 +907,22 @@ export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
             console.log('[Transcript] Successfully fetched YouTube transcript');
             return { success: true, transcript: ytResult.transcript };
         }
-        console.log('[Transcript] YouTube transcript not available, falling back to AI generation');
-        // Continue to AI generation fallback
+        console.log('[Transcript] YouTube transcript not available:', ytResult.error);
+
+        // Try audio extraction fallback for YouTube videos
+        console.log('[Transcript] Attempting audio extraction fallback for YouTube video...');
+        const audioResult = await generateTranscriptFromYouTubeAudio(videoUrl);
+        if (audioResult.success && audioResult.transcript) {
+            console.log('[Transcript] Successfully generated transcript via audio extraction');
+            return { success: true, transcript: audioResult.transcript };
+        }
+        console.log('[Transcript] Transcription service failed:', audioResult.error);
+        // For YouTube URLs, don't fall through to OpenRouter - it can't access YouTube videos
+        // Return the actual error from the transcription service
+        return {
+            success: false,
+            error: audioResult.error || 'Unable to generate transcript for this video. Please try again or manually enter the transcript.'
+        };
     }
 
     // Check if this is a Mux playback ID (short alphanumeric string)

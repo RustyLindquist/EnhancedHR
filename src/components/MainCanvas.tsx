@@ -49,6 +49,7 @@ import ToolsCollectionView from './tools/ToolsCollectionView';
 import OrgCollectionsView from './org/OrgCollectionsView';
 import { fetchToolsAction } from '@/app/actions/tools';
 import { deleteOrgCollection } from '@/app/actions/org';
+import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
 
 // Org Collection type for display
 interface OrgCollectionInfo {
@@ -1031,9 +1032,30 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const [isDragging, setIsDragging] = useState(false);
     const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
-    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(true);
+    const [isCollectionSurfaceOpen, setIsCollectionSurfaceOpen] = useState(false); // Default closed
 
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // Fetch Collection Surface preference on mount
+    useEffect(() => {
+        async function loadCollectionSurfacePreference() {
+            const result = await getCollectionSurfacePreferenceAction();
+            if (result.success && result.isOpen !== undefined) {
+                setIsCollectionSurfaceOpen(result.isOpen);
+            }
+        }
+        loadCollectionSurfacePreference();
+    }, []);
+
+    // Handler for toggling collection surface (persists to database)
+    const handleToggleCollectionSurface = useCallback(() => {
+        const newState = !isCollectionSurfaceOpen;
+        setIsCollectionSurfaceOpen(newState);
+        // Persist preference (fire-and-forget)
+        updateCollectionSurfacePreferenceAction(newState).catch(err => {
+            console.error('Failed to save collection surface preference:', err);
+        });
+    }, [isCollectionSurfaceOpen]);
 
     // --- CONTEXT EDITOR STATE ---
     const [isContextEditorOpen, setIsContextEditorOpen] = useState(false);
@@ -2733,7 +2755,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                         onCollectionClick={() => { }}
                         customCollections={customCollections}
                         isOpen={isCollectionSurfaceOpen}
-                        onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                        onToggle={handleToggleCollectionSurface}
                         onDropCourse={(portalId) => {
                             if (draggedItem) {
                                 if (portalId === 'new') {
@@ -3964,8 +3986,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     )}
 
                                     {/* --- SEARCH & FILTER BUTTON (CONDITIONALLY HIDDEN) --- */}
-                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes, Org Collections */}
-                                    {!(activeCollectionId === 'favorites' ||
+                                    {/* Hide for Favorites, Watchlist, Personal Context, Dashboard, Prometheus, Help, Notes, Org Collections, Academy (has its own) */}
+                                    {!(activeCollectionId === 'academy' ||
+                                        activeCollectionId === 'favorites' ||
                                         activeCollectionId === 'conversations' ||
                                         activeCollectionId === 'notes' ||
                                         activeCollectionId === 'research' ||
@@ -4007,6 +4030,17 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             className="px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20 hover:text-white"
                                         >
                                             Certifications
+                                        </button>
+                                    )}
+
+                                    {/* --- SEARCH & FILTER BUTTON (Academy - Far Right, Blue, with Icon) --- */}
+                                    {activeCollectionId === 'academy' && (
+                                        <button
+                                            onClick={handleOpenDrawer}
+                                            className={`ml-auto flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${isDrawerOpen ? 'bg-brand-blue-light text-brand-black border-brand-blue-light' : 'bg-brand-blue-light/20 text-brand-blue-light border-brand-blue-light/50 hover:bg-brand-blue-light/30'}`}
+                                        >
+                                            <Search size={14} />
+                                            Search & Filter
                                         </button>
                                     )}
 
@@ -4604,7 +4638,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                 activeFlareId={flaringPortalId}
                                 customCollections={customCollections}
                                 isOpen={isCollectionSurfaceOpen}
-                                onToggle={() => setIsCollectionSurfaceOpen(!isCollectionSurfaceOpen)}
+                                onToggle={handleToggleCollectionSurface}
                                 onCollectionClick={(id) => {
                                     if (id === 'new') {
                                         onOpenModal();
