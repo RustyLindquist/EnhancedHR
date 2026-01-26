@@ -55,25 +55,45 @@ export async function promoteCourseToProduction(courseId: number): Promise<Promo
         }
 
         // Fetch modules
-        const { data: modules } = await supabase
+        const { data: modules, error: modulesError } = await supabase
             .from('modules')
             .select('*')
             .eq('course_id', courseId)
-            .order('order_index');
+            .order('order', { ascending: true });
+
+        if (modulesError) {
+            console.error('Error fetching modules:', modulesError);
+        }
+        console.log(`[Promotion] Found ${modules?.length || 0} modules for course ${courseId}`);
 
         // Fetch lessons for all modules
         const moduleIds = modules?.map(m => m.id) || [];
-        const { data: lessons } = await supabase
-            .from('lessons')
-            .select('*')
-            .in('module_id', moduleIds)
-            .order('order_index');
+        let lessons: any[] = [];
+
+        if (moduleIds.length > 0) {
+            const { data: lessonsData, error: lessonsError } = await supabase
+                .from('lessons')
+                .select('*')
+                .in('module_id', moduleIds)
+                .order('order', { ascending: true });
+
+            if (lessonsError) {
+                console.error('Error fetching lessons:', lessonsError);
+            }
+            lessons = lessonsData || [];
+            console.log(`[Promotion] Found ${lessons.length} lessons`);
+        }
 
         // Fetch resources
-        const { data: resources } = await supabase
-            .from('course_resources')
+        const { data: resources, error: resourcesError } = await supabase
+            .from('resources')
             .select('*')
             .eq('course_id', courseId);
+
+        if (resourcesError) {
+            console.error('Error fetching resources:', resourcesError);
+        }
+        console.log(`[Promotion] Found ${resources?.length || 0} resources`);
 
         // Send to production
         const response = await fetch(`${prodUrl}/api/course-import`, {
