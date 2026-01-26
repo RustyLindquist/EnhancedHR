@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
 import { fetchYouTubeMetadata, fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
+import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 
 // ============================================
 // Course Metadata Actions
@@ -838,8 +839,22 @@ export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
             console.log('[Transcript] Successfully fetched YouTube transcript');
             return { success: true, transcript: ytResult.transcript };
         }
-        console.log('[Transcript] YouTube transcript not available, falling back to AI generation');
-        // Continue to AI generation fallback
+        console.log('[Transcript] YouTube transcript not available:', ytResult.error);
+
+        // Try audio extraction fallback for YouTube videos
+        console.log('[Transcript] Attempting audio extraction fallback for YouTube video...');
+        const audioResult = await generateTranscriptFromYouTubeAudio(videoUrl);
+        if (audioResult.success && audioResult.transcript) {
+            console.log('[Transcript] Successfully generated transcript via audio extraction');
+            return { success: true, transcript: audioResult.transcript };
+        }
+        console.log('[Transcript] Transcription service failed:', audioResult.error);
+        // For YouTube URLs, don't fall through to OpenRouter - it can't access YouTube videos
+        // Return the actual error from the transcription service
+        return {
+            success: false,
+            error: audioResult.error || 'Unable to generate transcript for this video. Please try again or manually enter the transcript.'
+        };
     }
 
     // Check if this is a Mux playback ID (short alphanumeric string)
