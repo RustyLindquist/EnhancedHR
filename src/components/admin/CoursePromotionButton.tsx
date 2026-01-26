@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Rocket, Loader2, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { promoteCourseToProduction } from '@/app/actions/course-promotion';
 
@@ -30,6 +31,13 @@ export default function CoursePromotionButton({
     const [showModal, setShowModal] = useState(false);
     const [isPromoting, setIsPromoting] = useState(false);
     const [result, setResult] = useState<{ success: boolean; productionCourseId?: number; error?: string } | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    // Track mounting for portal
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     // Don't render anything in production
     if (!isDevelopment) {
@@ -66,9 +74,9 @@ export default function CoursePromotionButton({
                 <Rocket size={16} />
             </button>
 
-            {/* Confirmation Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            {/* Confirmation Modal - rendered via portal to escape parent containers */}
+            {showModal && mounted && createPortal(
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
                     <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-6">
                         {/* Header */}
                         <div className="flex items-start justify-between">
@@ -188,7 +196,8 @@ export default function CoursePromotionButton({
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
