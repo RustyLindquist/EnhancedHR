@@ -501,6 +501,32 @@ export async function createLesson(moduleId: string, data: {
     return { success: true, lesson };
 }
 
+/**
+ * Auto-generate transcript for a lesson video (fire-and-forget)
+ * Called when a new video_url is added to a lesson
+ */
+async function generateLessonTranscript(lessonId: string, videoUrl: string): Promise<void> {
+    console.log('[generateLessonTranscript] Starting for lesson:', lessonId);
+
+    try {
+        const result = await generateTranscriptFromVideo(videoUrl);
+
+        if (result.success && result.transcript) {
+            const admin = await createAdminClient();
+            await admin
+                .from('lessons')
+                .update({ content: result.transcript })
+                .eq('id', lessonId);
+
+            console.log('[generateLessonTranscript] Transcript saved, length:', result.transcript.length);
+        } else {
+            console.error('[generateLessonTranscript] Failed:', result.error);
+        }
+    } catch (err) {
+        console.error('[generateLessonTranscript] Error:', err);
+    }
+}
+
 export async function updateLesson(lessonId: string, data: {
     title?: string;
     video_url?: string;
@@ -511,10 +537,10 @@ export async function updateLesson(lessonId: string, data: {
 }) {
     const admin = await createAdminClient();
 
-    // Get module to find course_id
-    const { data: lesson } = await admin
+    // Get current lesson to check if video_url changed
+    const { data: currentLesson } = await admin
         .from('lessons')
-        .select('module_id, modules(course_id)')
+        .select('video_url, module_id, modules(course_id)')
         .eq('id', lessonId)
         .single();
 
@@ -528,9 +554,18 @@ export async function updateLesson(lessonId: string, data: {
         return { success: false, error: error.message };
     }
 
-    if (lesson?.modules) {
-        revalidatePath(`/admin/courses/${(lesson.modules as any).course_id}/builder`);
+    if (currentLesson?.modules) {
+        revalidatePath(`/admin/courses/${(currentLesson.modules as any).course_id}/builder`);
     }
+
+    // Fire-and-forget transcript generation if video_url is new/changed
+    // Only trigger if video_url is provided and different from current
+    if (data.video_url && data.video_url !== currentLesson?.video_url) {
+        console.log('[updateLesson] Video URL changed, triggering auto-transcript generation');
+        generateLessonTranscript(lessonId, data.video_url)
+            .catch(err => console.error('[updateLesson] Transcript generation failed:', err));
+    }
+
     return { success: true };
 }
 
