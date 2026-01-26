@@ -11,6 +11,8 @@ import {
     finalizeVideoUpload,
     updateVideoResource,
     regenerateTranscriptForVideo,
+    initProxyVideoUpload,
+    completeProxyVideoUpload,
 } from '@/app/actions/videoResources';
 
 type VideoSourceType = 'upload' | 'url';
@@ -147,6 +149,12 @@ export default function VideoPanel({
     // Track newly created video for switching to view mode after save
     const [savedVideo, setSavedVideo] = useState<UserContextItem | null>(null);
 
+    // Proxy upload state (fallback when direct Mux upload fails)
+    const [uploadMethod, setUploadMethod] = useState<'direct' | 'proxy'>('direct');
+    const [proxyStoragePath, setProxyStoragePath] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [proxyUploadProgress, setProxyUploadProgress] = useState<number>(0);
+
     const isNewVideo = !video && !savedVideo;
     // Use savedVideo (newly created/updated) or original video prop
     const displayVideo = savedVideo || video;
@@ -179,6 +187,11 @@ export default function VideoPanel({
             setItemId(null);
             setUploadStatus('idle');
             setError(null);
+            // Reset proxy state
+            setUploadMethod('direct');
+            setProxyStoragePath(null);
+            setSelectedFile(null);
+            setProxyUploadProgress(0);
         }
 
         // Set initial mode
@@ -253,6 +266,168 @@ export default function VideoPanel({
             setUploadStatus('error');
         }
     }, [itemId, uploadId, customFinalizeHandler, onSaveSuccess, collectionId, title, description]);
+
+    // Handle MuxUploader error - switch to proxy fallback
+    const handleMuxUploadError = useCallback((event: any) => {
+        console.log('[VideoPanel] MuxUploader error event:', event);
+        console.log('[VideoPanel] MuxUploader error detail:', event?.detail);
+
+        // Check if this is a network/TLS error (status 0 or SSL errors)
+        const errorDetail = event?.detail;
+        const errorMessage = errorDetail?.message || '';
+
+        // Network errors manifest as:
+        // - status 0 (no response from server)
+        // - "responded with 0" in message
+        // - SSL/TLS errors
+        // - ERR_ prefixed errors
+        const isNetworkError =
+            errorDetail?.status === 0 ||
+            errorMessage.includes('responded with 0') ||
+            errorMessage.includes('status 0') ||
+            errorMessage.toLowerCase().includes('ssl') ||
+            errorMessage.includes('ERR_') ||
+            errorMessage.toLowerCase().includes('network') ||
+            errorMessage.toLowerCase().includes('failed to fetch');
+
+        console.log('[VideoPanel] Is network error:', isNetworkError, '| Message:', errorMessage);
+
+        if (isNetworkError) {
+            console.log('[VideoPanel] Network error detected, switching to proxy upload');
+            setError('Direct upload failed due to network issues. Switching to alternative upload method...');
+            setUploadMethod('proxy');
+            setUploadStatus('idle');
+            // Keep the title/description so user doesn't have to re-enter
+        } else {
+            // For other errors, show the error message
+            setError(errorMessage || 'Upload failed. Please try again.');
+            setUploadStatus('error');
+        }
+    }, []);
+
+    // Handle proxy upload - upload file via server proxy, then trigger Mux processing
+    // Server proxy is used because some ISPs (like Xfinity) block direct browser-to-Supabase uploads
+    // The flow is: Browser -> Our Server -> Supabase Storage -> Mux pulls from URL
+    const handleProxyUpload = useCallback(async () => {
+        if (!selectedFile || !title.trim()) return;
+
+        setUploadStatus('uploading');
+        setError(null);
+        setProxyUploadProgress(0);
+
+        try {
+            // 1. Initialize proxy upload (creates DB record, returns storage path)
+            const initResult = await initProxyVideoUpload({
+                title: title.trim(),
+                description: description.trim() || undefined,
+                collectionId,
+                filename: selectedFile.name,
+                contentType: selectedFile.type,
+            });
+
+            if (!initResult.success || !initResult.id || !initResult.storagePath) {
+                setError(initResult.error || 'Failed to initialize upload');
+                setUploadStatus('error');
+                return;
+            }
+
+            // Extract values to local constants for TypeScript narrowing
+            const { id: videoId, storagePath } = initResult;
+
+            setItemId(videoId);
+            setProxyStoragePath(storagePath);
+
+            // 2. Upload file via our server proxy (same-origin, avoids ISP TLS interference)
+            // Our server then uploads to Supabase Storage server-to-server
+            console.log('[VideoPanel] Uploading via server proxy:', storagePath);
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const progress = Math.round((e.loaded / e.total) * 100);
+                    setProxyUploadProgress(progress);
+                }
+            });
+
+            await new Promise<void>((resolve, reject) => {
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                resolve();
+                            } else {
+                                reject(new Error(response.error || 'Upload failed'));
+                            }
+                        } catch {
+                            resolve(); // If response isn't JSON but status is OK
+                        }
+                    } else {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            reject(new Error(response.error || `Upload failed with status ${xhr.status}`));
+                        } catch {
+                            reject(new Error(`Upload failed with status ${xhr.status}`));
+                        }
+                    }
+                };
+                xhr.onerror = () => reject(new Error('Upload failed - network error'));
+
+                // POST to our server proxy instead of directly to Supabase
+                xhr.open('POST', '/api/upload/video');
+                xhr.setRequestHeader('Content-Type', selectedFile.type);
+                xhr.setRequestHeader('X-Storage-Path', storagePath);
+                xhr.send(selectedFile);
+            });
+
+            console.log('[VideoPanel] File uploaded via proxy, starting Mux processing');
+            setUploadStatus('processing');
+
+            // 3. Complete proxy upload (creates Mux asset from Supabase URL)
+            const completeResult = await completeProxyVideoUpload(videoId, storagePath);
+
+            if (completeResult.success && completeResult.playbackId) {
+                setUploadStatus('ready');
+
+                // Create video object for view mode
+                const newVideo: UserContextItem = {
+                    id: videoId,
+                    user_id: '',
+                    collection_id: collectionId || null,
+                    type: 'VIDEO',
+                    title: title.trim(),
+                    content: {
+                        muxPlaybackId: completeResult.playbackId,
+                        duration: completeResult.duration,
+                        status: 'ready',
+                        description: description.trim() || null
+                    },
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                setSavedVideo(newVideo);
+                setCurrentMode('view');
+                onSaveSuccess?.();
+            } else {
+                setError(completeResult.error || 'Failed to process video');
+                setUploadStatus('error');
+            }
+        } catch (err) {
+            console.error('[VideoPanel] Proxy upload error:', err);
+            setError(err instanceof Error ? err.message : 'Upload failed');
+            setUploadStatus('error');
+        }
+    }, [selectedFile, title, description, collectionId, onSaveSuccess]);
+
+    // Handle file selection for proxy upload
+    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedFile(file);
+            setError(null);
+        }
+    }, []);
 
     // Handle save (for URL-based videos or editing existing)
     const handleSave = async () => {
@@ -399,6 +574,11 @@ export default function VideoPanel({
         setSavedVideo(null);
         setIsRegeneratingTranscript(false);
         setCurrentMode(initialMode);
+        // Reset proxy state
+        setUploadMethod('direct');
+        setProxyStoragePath(null);
+        setSelectedFile(null);
+        setProxyUploadProgress(0);
         onClose();
     };
 
@@ -724,40 +904,118 @@ export default function VideoPanel({
                 {/* Upload Section */}
                 {videoSource === 'upload' && isNewVideo && (
                     <div className="space-y-4">
-                        {uploadStatus === 'idle' && (
-                            <button
-                                onClick={handlePrepareUpload}
-                                disabled={!title.trim()}
-                                className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all flex items-center justify-center gap-2"
-                            >
-                                <Upload size={20} />
-                                Prepare Upload
-                            </button>
+                        {/* Direct Mux Upload (default) */}
+                        {uploadMethod === 'direct' && (
+                            <>
+                                {uploadStatus === 'idle' && (
+                                    <button
+                                        onClick={handlePrepareUpload}
+                                        disabled={!title.trim()}
+                                        className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Upload size={20} />
+                                        Prepare Upload
+                                    </button>
+                                )}
+
+                                {(uploadStatus === 'uploading' || uploadStatus === 'processing') && uploadUrl && (
+                                    <div className="bg-black/30 border border-white/10 rounded-xl p-6">
+                                        <MuxUploader
+                                            endpoint={uploadUrl}
+                                            onSuccess={handleUploadComplete}
+                                            onUploadError={handleMuxUploadError}
+                                            className="mux-uploader-custom"
+                                        />
+                                        <style jsx global>{`
+                                            mux-uploader {
+                                                --uploader-font-family: inherit;
+                                                --uploader-background-color: rgba(255, 255, 255, 0.05);
+                                                --uploader-border: 1px dashed rgba(255, 255, 255, 0.2);
+                                                --uploader-border-radius: 0.75rem;
+                                                --button-background-color: #A855F7;
+                                                --button-border-radius: 9999px;
+                                                --button-color: #fff;
+                                            }
+                                        `}</style>
+                                    </div>
+                                )}
+                            </>
                         )}
 
-                        {(uploadStatus === 'uploading' || uploadStatus === 'processing') && uploadUrl && (
-                            <div className="bg-black/30 border border-white/10 rounded-xl p-6">
-                                <MuxUploader
-                                    endpoint={uploadUrl}
-                                    onSuccess={handleUploadComplete}
-                                    className="mux-uploader-custom"
-                                />
-                                <style jsx global>{`
-                                    mux-uploader {
-                                        --uploader-font-family: inherit;
-                                        --uploader-background-color: rgba(255, 255, 255, 0.05);
-                                        --uploader-border: 1px dashed rgba(255, 255, 255, 0.2);
-                                        --uploader-border-radius: 0.75rem;
-                                        --button-background-color: #A855F7;
-                                        --button-border-radius: 9999px;
-                                        --button-color: #fff;
-                                    }
-                                `}</style>
-                            </div>
+                        {/* Proxy Upload (fallback when direct fails) */}
+                        {uploadMethod === 'proxy' && (
+                            <>
+                                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                    <p className="text-amber-300 text-sm">
+                                        Using alternative upload method due to network restrictions.
+                                        This may take slightly longer but is more reliable.
+                                    </p>
+                                </div>
+
+                                {uploadStatus === 'idle' && (
+                                    <div className="space-y-4">
+                                        <div className="bg-black/30 border-2 border-dashed border-white/20 rounded-xl p-6">
+                                            <input
+                                                type="file"
+                                                accept="video/*"
+                                                onChange={handleFileSelect}
+                                                className="hidden"
+                                                id="proxy-video-input"
+                                            />
+                                            <label
+                                                htmlFor="proxy-video-input"
+                                                className="flex flex-col items-center cursor-pointer"
+                                            >
+                                                <Upload size={32} className="text-purple-400 mb-3" />
+                                                <span className="text-white font-medium">
+                                                    {selectedFile ? selectedFile.name : 'Click to select video'}
+                                                </span>
+                                                {selectedFile && (
+                                                    <span className="text-slate-400 text-sm mt-1">
+                                                        {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                                                    </span>
+                                                )}
+                                            </label>
+                                        </div>
+
+                                        <button
+                                            onClick={handleProxyUpload}
+                                            disabled={!title.trim() || !selectedFile}
+                                            className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Upload size={20} />
+                                            Upload Video
+                                        </button>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'uploading' && (
+                                    <div className="bg-black/30 border border-white/10 rounded-xl p-6 space-y-3">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-400">Uploading...</span>
+                                            <span className="text-white font-medium">{proxyUploadProgress}%</span>
+                                        </div>
+                                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-purple-500 to-violet-500 transition-all duration-300"
+                                                style={{ width: `${proxyUploadProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'processing' && (
+                                    <div className="bg-black/30 border border-white/10 rounded-xl p-6 text-center">
+                                        <Loader2 size={32} className="mx-auto text-purple-400 mb-3 animate-spin" />
+                                        <p className="text-white font-medium">Processing video...</p>
+                                        <p className="text-slate-400 text-sm mt-1">This may take a few minutes</p>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {/* Status */}
-                        {uploadStatus !== 'idle' && (
+                        {uploadStatus !== 'idle' && uploadMethod === 'direct' && (
                             <div className="flex items-center justify-between">
                                 {renderStatusBadge()}
                             </div>
