@@ -10,6 +10,39 @@ import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 // Course Metadata Actions
 // ============================================
 
+/**
+ * Get distinct categories from published courses
+ * Used to populate the category dropdown dynamically
+ */
+export async function getPublishedCategories(): Promise<{
+    success: boolean;
+    categories?: string[];
+    error?: string;
+}> {
+    const admin = await createAdminClient();
+
+    const { data, error } = await admin
+        .from('courses')
+        .select('category')
+        .eq('status', 'published')
+        .not('category', 'is', null);
+
+    if (error) {
+        console.error('[getPublishedCategories] Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    // Get unique categories, sorted alphabetically
+    const categories = [...new Set(data.map(c => c.category).filter(Boolean))].sort();
+
+    // Always include 'General' as a fallback option
+    if (!categories.includes('General')) {
+        categories.unshift('General');
+    }
+
+    return { success: true, categories };
+}
+
 export async function updateCourseImage(courseId: number, imageUrl: string | null) {
     const admin = await createAdminClient();
 
