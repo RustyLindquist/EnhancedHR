@@ -87,6 +87,21 @@ export async function getMuxAssetId(uploadId: string) {
     }
 }
 
+// Poll for the asset ID with retries - the asset may not be created immediately after upload
+export async function waitForMuxAssetId(uploadId: string, maxAttempts: number = 30): Promise<string | null> {
+    for (let i = 0; i < maxAttempts; i++) {
+        const assetId = await getMuxAssetId(uploadId);
+        if (assetId) {
+            console.log(`[Mux] Got asset ID on attempt ${i + 1}:`, assetId);
+            return assetId;
+        }
+        // Wait 2 seconds between checks
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    console.error('[Mux] Timed out waiting for asset ID');
+    return null;
+}
+
 export async function createMuxAssetFromUrl(url: string, passthrough?: string) {
     try {
         const asset = await mux.video.assets.create({
