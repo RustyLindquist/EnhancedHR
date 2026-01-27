@@ -159,3 +159,153 @@ export async function deleteMuxAsset(assetId: string): Promise<boolean> {
         return false;
     }
 }
+
+/**
+ * Get playback ID from an upload ID by querying Mux API
+ * Upload ID → Asset ID → Playback ID
+ */
+export async function getPlaybackIdFromUploadId(uploadId: string): Promise<string | null> {
+    try {
+        // Get upload details - this gives us the asset_id
+        const upload = await mux.video.uploads.retrieve(uploadId);
+        const assetId = upload.asset_id;
+
+        if (!assetId) {
+            console.log(`[Mux] Upload ${uploadId} has no asset yet`);
+            return null;
+        }
+
+        // Get asset details - this gives us the playback_id
+        const asset = await mux.video.assets.retrieve(assetId);
+        const playbackId = asset.playback_ids?.[0]?.id;
+
+        return playbackId || null;
+    } catch (error) {
+        console.error(`[Mux] Error getting playback ID for upload ${uploadId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Check if a string looks like a Mux upload ID (UUID format)
+ * Upload IDs are UUIDs with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ * Playback IDs are shorter alphanumeric strings without hyphens
+ */
+function isUploadId(str: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+/**
+ * Find all course lessons with broken video URLs (upload IDs instead of playback IDs)
+ * Returns diagnostic info without making changes
+ */
+export async function findBrokenVideoUrls(): Promise<{
+    broken: Array<{ id: string; title: string; courseId: string; videoUrl: string }>;
+    total: number;
+}> {
+    // Import here to avoid circular dependencies
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+
+    // Get all lessons with video URLs that aren't external URLs
+    const { data: lessons, error } = await admin
+        .from('course_lessons')
+        .select('id, title, video_url, course_id')
+        .not('video_url', 'is', null)
+        .not('video_url', 'ilike', 'http%');
+
+    if (error || !lessons) {
+        console.error('[Mux] Error fetching lessons:', error);
+        return { broken: [], total: 0 };
+    }
+
+    // Filter to only those with upload IDs (UUID format)
+    const broken = lessons
+        .filter(lesson => lesson.video_url && isUploadId(lesson.video_url))
+        .map(lesson => ({
+            id: lesson.id,
+            title: lesson.title,
+            courseId: lesson.course_id,
+            videoUrl: lesson.video_url,
+        }));
+
+    return { broken, total: lessons.length };
+}
+
+/**
+ * Fix a single lesson's video URL by converting upload ID to playback ID
+ */
+export async function fixLessonVideoUrl(lessonId: string, uploadId: string): Promise<{
+    success: boolean;
+    playbackId?: string;
+    error?: string;
+}> {
+    const playbackId = await getPlaybackIdFromUploadId(uploadId);
+
+    if (!playbackId) {
+        return { success: false, error: 'Could not retrieve playback ID from Mux' };
+    }
+
+    // Import here to avoid circular dependencies
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const admin = createAdminClient();
+
+    const { error } = await admin
+        .from('course_lessons')
+        .update({ video_url: playbackId })
+        .eq('id', lessonId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, playbackId };
+}
+
+/**
+ * Fix all broken video URLs in course lessons
+ * Converts upload IDs to playback IDs via Mux API
+ */
+export async function fixBrokenVideoUrls(): Promise<{
+    fixed: number;
+    failed: number;
+    results: Array<{ lessonId: string; title: string; oldUrl: string; newUrl?: string; error?: string }>;
+}> {
+    const { broken } = await findBrokenVideoUrls();
+
+    console.log(`[Mux] Found ${broken.length} lessons with upload IDs that need fixing`);
+
+    const results: Array<{ lessonId: string; title: string; oldUrl: string; newUrl?: string; error?: string }> = [];
+    let fixed = 0;
+    let failed = 0;
+
+    for (const lesson of broken) {
+        console.log(`[Mux] Fixing lesson "${lesson.title}" (${lesson.id}): ${lesson.videoUrl}`);
+
+        const result = await fixLessonVideoUrl(lesson.id, lesson.videoUrl);
+
+        if (result.success && result.playbackId) {
+            fixed++;
+            results.push({
+                lessonId: lesson.id,
+                title: lesson.title,
+                oldUrl: lesson.videoUrl,
+                newUrl: result.playbackId,
+            });
+            console.log(`[Mux] ✓ Fixed: ${lesson.videoUrl} → ${result.playbackId}`);
+        } else {
+            failed++;
+            results.push({
+                lessonId: lesson.id,
+                title: lesson.title,
+                oldUrl: lesson.videoUrl,
+                error: result.error,
+            });
+            console.log(`[Mux] ✗ Failed: ${result.error}`);
+        }
+    }
+
+    console.log(`[Mux] Fix complete: ${fixed} fixed, ${failed} failed`);
+
+    return { fixed, failed, results };
+}
