@@ -14,6 +14,29 @@ import { generateEmbedding, generateFileEmbedding } from '@/lib/ai/embedding';
 import { chunkText } from '@/lib/file-parser';
 import { ContextItemType } from '@/types';
 
+/**
+ * Check if a string is a valid UUID
+ * Required because unified_embeddings.collection_id is UUID type,
+ * but some collections use string IDs (e.g., 'expert-resources')
+ */
+function isValidUUID(str: string | null | undefined): boolean {
+    if (!str) return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+}
+
+/**
+ * Sanitize collection_id for database insertion
+ * Returns null for non-UUID collection IDs (like 'expert-resources')
+ * The embeddings will still be findable via source_id matching
+ */
+function sanitizeCollectionId(collectionId: string | null | undefined): string | null {
+    if (!collectionId || !isValidUUID(collectionId)) {
+        return null;
+    }
+    return collectionId;
+}
+
 // Mapping from ContextItemType to unified_embeddings source_type
 const SOURCE_TYPE_MAP: Record<ContextItemType, string> = {
     'CUSTOM_CONTEXT': 'custom_context',
@@ -64,7 +87,7 @@ export async function embedContextItem(
                 .from('unified_embeddings')
                 .insert({
                     user_id: userId,
-                    collection_id: collectionId || null,
+                    collection_id: sanitizeCollectionId(collectionId),
                     source_type: sourceType,
                     source_id: itemId,
                     content: chunk,
@@ -237,7 +260,7 @@ export async function embedFileChunks(
                 .from('unified_embeddings')
                 .insert({
                     user_id: userId,
-                    collection_id: collectionId || null,
+                    collection_id: sanitizeCollectionId(collectionId),
                     source_type: 'file',
                     source_id: fileId,
                     content: chunk,
@@ -323,7 +346,7 @@ export async function embedVideoContext(
                 .from('unified_embeddings')
                 .insert({
                     user_id: userId,
-                    collection_id: collectionId || null,
+                    collection_id: sanitizeCollectionId(collectionId),
                     org_id: orgId || null,
                     source_type: 'video',
                     source_id: videoId,

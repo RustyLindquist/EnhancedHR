@@ -72,7 +72,7 @@ interface VideoPanelProps {
     video?: UserContextItem | null;
     canEdit?: boolean;
     collectionId?: string;
-    onSaveSuccess?: () => void;
+    onSaveSuccess?: (video?: UserContextItem) => void;
     // Custom handlers for different contexts (Expert Resources, Org Collections)
     customCreateHandler?: (title: string, description?: string, externalUrl?: string) => Promise<{
         success: boolean;
@@ -176,8 +176,9 @@ export default function VideoPanel({
             }
 
             setUploadStatus(videoContent?.status || 'ready');
-        } else if (isOpen) {
-            // Reset for new video
+            setCurrentMode(initialMode);
+        } else if (isOpen && !savedVideo) {
+            // Reset for new video (but not if we just saved one)
             setTitle('');
             setDescription('');
             setVideoSource('upload');
@@ -192,11 +193,10 @@ export default function VideoPanel({
             setProxyStoragePath(null);
             setSelectedFile(null);
             setProxyUploadProgress(0);
+            setCurrentMode('edit');
         }
-
-        // Set initial mode
-        setCurrentMode(video ? initialMode : 'edit');
-    }, [video, isOpen, initialMode, videoContent]);
+        // If savedVideo exists, keep current mode (view after save)
+    }, [video, isOpen, initialMode, videoContent, savedVideo]);
 
     // Handle create with Mux upload
     const handlePrepareUpload = async () => {
@@ -256,7 +256,7 @@ export default function VideoPanel({
                 };
                 setSavedVideo(newVideo);
                 setCurrentMode('view');
-                onSaveSuccess?.();
+                onSaveSuccess?.(newVideo);
             } else {
                 setError(result.error || 'Failed to process video');
                 setUploadStatus('error');
@@ -408,7 +408,7 @@ export default function VideoPanel({
                 };
                 setSavedVideo(newVideo);
                 setCurrentMode('view');
-                onSaveSuccess?.();
+                onSaveSuccess?.(newVideo);
             } else {
                 setError(completeResult.error || 'Failed to process video');
                 setUploadStatus('error');
@@ -470,7 +470,7 @@ export default function VideoPanel({
                     setSavedVideo(newVideo);
                     setItemId(result.id);
                     setCurrentMode('view');
-                    onSaveSuccess?.();
+                    onSaveSuccess?.(newVideo);
                 } else {
                     setError(result.error || 'Failed to create video');
                 }
@@ -490,36 +490,24 @@ export default function VideoPanel({
 
                 if (result.success) {
                     // Update the local video object and switch to view mode
-                    if (savedVideo) {
-                        setSavedVideo({
-                            ...savedVideo,
-                            title: title.trim(),
-                            content: {
-                                ...savedVideo.content as VideoContent,
-                                description: description.trim() || null,
-                                ...(videoSource === 'url' && {
-                                    externalUrl: externalUrl.trim(),
-                                    externalPlatform: detectVideoPlatform(externalUrl.trim())
-                                })
-                            }
-                        });
-                    } else if (video) {
-                        // Create updated video from original
-                        setSavedVideo({
-                            ...video,
-                            title: title.trim(),
-                            content: {
-                                ...(video.content as VideoContent),
-                                description: description.trim() || null,
-                                ...(videoSource === 'url' && {
-                                    externalUrl: externalUrl.trim(),
-                                    externalPlatform: detectVideoPlatform(externalUrl.trim())
-                                })
-                            }
-                        });
+                    const baseVideo = savedVideo || video;
+                    const updatedVideo = baseVideo ? {
+                        ...baseVideo,
+                        title: title.trim(),
+                        content: {
+                            ...(baseVideo.content as VideoContent),
+                            description: description.trim() || null,
+                            ...(videoSource === 'url' && {
+                                externalUrl: externalUrl.trim(),
+                                externalPlatform: detectVideoPlatform(externalUrl.trim())
+                            })
+                        }
+                    } : null;
+                    if (updatedVideo) {
+                        setSavedVideo(updatedVideo);
                     }
                     setCurrentMode('view');
-                    onSaveSuccess?.();
+                    onSaveSuccess?.(updatedVideo || undefined);
                 } else {
                     setError(result.error || 'Failed to update video');
                 }

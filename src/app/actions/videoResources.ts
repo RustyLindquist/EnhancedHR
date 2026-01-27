@@ -1078,16 +1078,27 @@ export async function deleteExpertVideoResource(id: string): Promise<{ success: 
 
     const admin = createAdminClient();
 
-    // 1. Get record to find Mux asset ID
-    const { data: resource } = await admin
+    // 1. Get record by ID first (without collection_id filter to handle legacy data)
+    const { data: resource, error: fetchError } = await admin
         .from('user_context_items')
-        .select('content')
+        .select('content, collection_id, type')
         .eq('id', id)
-        .eq('collection_id', EXPERT_RESOURCES_COLLECTION_ID)
         .single();
 
-    if (!resource) {
+    if (fetchError || !resource) {
+        console.error('[deleteExpertVideoResource] Resource not found:', id, fetchError);
         return { success: false, error: 'Video not found' };
+    }
+
+    // Verify it's a VIDEO type
+    if (resource.type !== 'VIDEO') {
+        console.error('[deleteExpertVideoResource] Resource is not a video:', resource.type);
+        return { success: false, error: 'Resource is not a video' };
+    }
+
+    // Log if collection_id doesn't match expected (for debugging legacy data)
+    if (resource.collection_id !== EXPERT_RESOURCES_COLLECTION_ID) {
+        console.warn('[deleteExpertVideoResource] Video has unexpected collection_id:', resource.collection_id, 'expected:', EXPERT_RESOURCES_COLLECTION_ID);
     }
 
     // 2. Clean up embeddings
@@ -1105,12 +1116,11 @@ export async function deleteExpertVideoResource(id: string): Promise<{ success: 
         }
     }
 
-    // 4. Delete database record
+    // 4. Delete database record by ID only (handles legacy data with different collection_id)
     const { error } = await admin
         .from('user_context_items')
         .delete()
-        .eq('id', id)
-        .eq('collection_id', EXPERT_RESOURCES_COLLECTION_ID);
+        .eq('id', id);
 
     if (error) {
         console.error('[deleteExpertVideoResource] Error:', error);

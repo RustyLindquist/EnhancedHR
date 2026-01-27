@@ -8,6 +8,7 @@ import AddNotePanel from '@/components/AddNotePanel';
 import VideoPanel from '@/components/VideoPanel';
 import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
 import ResourceViewPanel from '@/components/ResourceViewPanel';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
 import { createExpertResource, updateExpertResource, deleteExpertResource, createExpertFileResource } from '@/app/actions/expertResources';
 import {
@@ -68,6 +69,10 @@ export default function ExpertResourcesCanvas({
     const [isVideoPanelOpen, setIsVideoPanelOpen] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState<UserContextItem | null>(null);
     const [videoPanelMode, setVideoPanelMode] = useState<'view' | 'edit'>('view');
+    // Delete confirmation modal state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [resourceToDelete, setResourceToDelete] = useState<UserContextItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleAddNote = useCallback(() => {
         setSelectedResource(null);
@@ -123,20 +128,40 @@ export default function ExpertResourcesCanvas({
         return updateExpertResource(id, updates);
     }, []);
 
-    const handleDeleteResource = useCallback(async (resourceId: string, resourceType?: string) => {
-        if (!confirm('Are you sure you want to delete this resource?')) {
-            return;
+    const handleDeleteClick = useCallback((resource: UserContextItem) => {
+        setResourceToDelete(resource);
+        setIsDeleteModalOpen(true);
+    }, []);
+
+    const handleConfirmDelete = useCallback(async () => {
+        if (!resourceToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            // Use video delete for VIDEO type, otherwise use regular delete
+            const result = resourceToDelete.type === 'VIDEO'
+                ? await deleteExpertVideoResource(resourceToDelete.id)
+                : await deleteExpertResource(resourceToDelete.id);
+
+            if (result.success) {
+                // Update local state immediately for instant UI feedback
+                setResources(prev => prev.filter(r => r.id !== resourceToDelete.id));
+                setIsDeleteModalOpen(false);
+                setResourceToDelete(null);
+                // Also refresh to sync with server
+                router.refresh();
+            } else {
+                alert(result.error || 'Failed to delete resource');
+            }
+        } finally {
+            setIsDeleting(false);
         }
-        // Use video delete for VIDEO type, otherwise use regular delete
-        const result = resourceType === 'VIDEO'
-            ? await deleteExpertVideoResource(resourceId)
-            : await deleteExpertResource(resourceId);
-        if (result.success) {
-            router.refresh();
-        } else {
-            alert(result.error || 'Failed to delete resource');
-        }
-    }, [router]);
+    }, [resourceToDelete, router]);
+
+    const handleCancelDelete = useCallback(() => {
+        setIsDeleteModalOpen(false);
+        setResourceToDelete(null);
+    }, []);
 
     const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => {
         return createExpertFileResource(fileName, fileType, fileBuffer);
@@ -225,7 +250,7 @@ export default function ExpertResourcesCanvas({
                                 videoExternalUrl={resource.type === 'VIDEO' ? (resource.content as any).externalUrl : undefined}
                                 videoStatus={resource.type === 'VIDEO' ? (resource.content as any).status : undefined}
                                 onAction={() => handleResourceClick(resource)}
-                                onRemove={isPlatformAdmin ? () => handleDeleteResource(resource.id, resource.type) : undefined}
+                                onRemove={isPlatformAdmin ? () => handleDeleteClick(resource) : undefined}
                             />
                         </div>
                     ))}
@@ -345,12 +370,35 @@ export default function ExpertResourcesCanvas({
                 mode={videoPanelMode}
                 video={selectedVideo}
                 canEdit={isPlatformAdmin}
-                onSaveSuccess={() => {
+                onSaveSuccess={(video) => {
+                    // Add new video to local state for instant UI feedback
+                    if (video && !resources.some(r => r.id === video.id)) {
+                        setResources(prev => [video, ...prev]);
+                    } else if (video) {
+                        // Update existing video in local state
+                        setResources(prev => prev.map(r => r.id === video.id ? video : r));
+                    }
+                    // Also refresh to sync with server
                     router.refresh();
                 }}
                 customCreateHandler={handleCreateExpertVideo}
                 customFinalizeHandler={handleFinalizeExpertVideo}
                 customUpdateHandler={handleUpdateExpertVideo}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                title="Delete Resource"
+                itemTitle={resourceToDelete?.title || ''}
+                description={
+                    resourceToDelete?.type === 'VIDEO'
+                        ? "This will permanently delete this video and remove it from Mux. This action cannot be undone."
+                        : "This will permanently delete this resource. This action cannot be undone."
+                }
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+                confirmText={isDeleting ? "Deleting..." : "Delete"}
             />
         </div>
     );
