@@ -104,9 +104,17 @@ See `docs/frontend/patterns/` for documented layout patterns:
 
 ### Course/Learning Components
 - **CoursePlayer** (`/src/components/CoursePlayer.tsx`) - Video course player
-- **QuizPlayer** (`/src/components/QuizPlayer.tsx`) - Quiz/assessment interface
+- **QuizPlayer** (`/src/components/QuizPlayer.tsx`) - Quiz/assessment interface (legacy, superseded by AssessmentPanel)
 - **CourseLessonCard** (`/src/components/course/CourseLessonCard.tsx`) - Lesson card in course view
 - **ModuleContainer** (`/src/components/course/ModuleContainer.tsx`) - Expandable module container
+
+### Assessment Components (`/src/components/assessment/`)
+- **AssessmentPanel** - Main assessment panel wrapping DropdownPanel with quiz state management
+- **AssessmentPlaceholder** - Placeholder shown in video player area for quiz lessons
+- **AssessmentQuestionView** - Single question display with immediate feedback after answer selection
+- **AssessmentProgressDots** - Clickable navigation dots showing answered/current status
+- **AssessmentCompletionScreen** - Animated score display with pass/fail styling and celebration effects
+- **AssessmentConfirmDialog** - Save/discard confirmation dialog for mid-assessment close
 
 ### Admin/Management Components
 - **ExpertManagementDashboard** (`/src/components/admin/ExpertManagementDashboard.tsx`) - Expert management interface
@@ -123,6 +131,7 @@ See `docs/frontend/patterns/` for documented layout patterns:
 
 | Date | Component | Added By |
 |------|-----------|----------|
+| 2026-01-27 | Assessment components (AssessmentPanel, AssessmentPlaceholder, AssessmentQuestionView, AssessmentProgressDots, AssessmentCompletionScreen, AssessmentConfirmDialog) | Frontend Agent |
 | 2026-01-04 | Initial bootstrap - 40+ components cataloged | Frontend Agent |
 
 ---

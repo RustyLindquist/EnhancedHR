@@ -3,7 +3,7 @@ id: course-player-and-progress
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-23
+last_updated: 2026-01-27
 surfaces:
   routes:
     - /dashboard?collection=academy
@@ -41,8 +41,9 @@ invariants:
   - Course player saves progress per lesson (is_completed/last_accessed/view_time_seconds); course card is_saved depends on collections, not progress.
   - user_assessment_attempts rows are owned by user_id; insert only by owner.
   - Quiz passing score does NOT gate lesson completion; learners receive credit regardless of score.
-  - Quiz explanations are only shown AFTER submission, not during question answering.
+  - Quiz explanations are only shown AFTER submission in legacy QuizPlayer. In AssessmentPanel, feedback is shown immediately per question.
   - Each quiz question must have exactly one correct answer marked.
+  - Assessment Panel provides immediate per-question feedback (correct/incorrect indicator) unlike the legacy QuizPlayer which showed all feedback after submission.
 ---
 
 ## Overview
@@ -99,11 +100,12 @@ Course creators (Admins, Org Admins, and Experts) can build quizzes using the Qu
   - Add/remove questions
   - Add/remove answer options (minimum 2 per question)
   - Mark correct answer (radio behavior - one per question)
+  - Helper text "Check the circle next to the correct answer" guides creators
   - Add optional explanations per question
   - Reorder questions with up/down arrows
 
-### Quiz Player
-Learners take quizzes via the QuizPlayer component:
+### Quiz Player (Legacy)
+The legacy QuizPlayer component is still available but has been superseded by the Assessment Panel:
 - **Location**: `src/components/QuizPlayer.tsx`
 - **Features**:
   - Displays questions with selectable options
@@ -111,6 +113,36 @@ Learners take quizzes via the QuizPlayer component:
   - Shows score and pass/fail status after submission
   - Displays explanations for each question
   - Retry button to attempt again
+
+### Assessment Panel (Current)
+The Assessment Panel is the primary interface for taking quizzes, using a slide-down dropdown UI:
+- **Location**: `src/components/assessment/`
+- **Components**:
+  - `AssessmentPanel.tsx` - Main panel wrapping DropdownPanel with assessment state management
+  - `AssessmentPlaceholder.tsx` - Placeholder shown in video player area when quiz lesson is selected
+  - `AssessmentQuestionView.tsx` - Single question display with immediate feedback after answer selection
+  - `AssessmentProgressDots.tsx` - Clickable navigation dots showing progress through questions
+  - `AssessmentCompletionScreen.tsx` - Score display with pass/fail styling, animations, and navigation
+  - `AssessmentConfirmDialog.tsx` - Save/discard confirmation when closing mid-assessment
+  - `index.ts` - Barrel export for all components
+
+**Key Behaviors**:
+- Quiz lessons show `AssessmentPlaceholder` in the video player area instead of a video
+- Clicking "Start Assessment" opens `AssessmentPanel` as a slide-down dropdown from the top
+- **Immediate Feedback**: Users see correct/incorrect immediately after selecting each answer
+- **Progress Persistence**: Closing mid-assessment offers Save/Discard options via confirm dialog
+- **Navigation**: Clickable progress dots allow jumping between questions; dots show answered status
+- **Completion Screen**: Shows animated score with pass/fail styling (green glow for pass, red for fail)
+- **Auto-Open**: When a quiz lesson is selected in CoursePageV2, the assessment panel auto-opens
+
+**Animation Details**:
+- Uses `DropdownPanel` which wraps `GlobalTopPanel` for the slide-down animation
+- Custom CSS animations in `globals.css`: `scale-in`, `green-glow`, `celebrate`, `count-up`, `dot-pulse`
+
+**Integration with CoursePageV2**:
+- State managed in `CoursePageV2.tsx` via `assessmentPanelOpen`, `assessmentProgress`, and `savedAssessmentProgress`
+- `LessonPlayerSection.tsx` renders `AssessmentPlaceholder` for quiz lessons instead of video player
+- Quiz completion triggers lesson completion and navigation to next lesson
 
 ## User Surfaces
 - Academy collection view (course cards show saved state and ratings).
@@ -165,6 +197,11 @@ Read paths:
 - Mark lesson complete and reload course: lesson should appear completed; row is_completed=true.
 - Submit an assessment: ensure user_assessment_attempts row inserted with score/passed flags.
 - Add a note in player: note appears in notes table and can be added to a collection.
+- Select a quiz lesson: AssessmentPlaceholder appears instead of video, Assessment Panel auto-opens with slide-down animation.
+- Answer a question in Assessment Panel: immediate feedback shows (green check/red X) without needing to submit.
+- Close Assessment Panel mid-quiz: confirm dialog appears; Save preserves progress, Discard resets.
+- Resume saved assessment: progress dots reflect answered questions, can navigate between questions.
+- Complete assessment: completion screen shows animated score, pass/fail styling, and "Continue to Next Lesson" button.
 
 ## Change Guide
 - Changing progress semantics (per course vs per lesson): adjust unique constraint and update writers/readers accordingly; migration required.
@@ -192,5 +229,6 @@ Read paths:
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/ai-context-engine.md
+- docs/features/app-shell.md (portal pattern and GlobalTopPanel for Assessment Panel)
 - supabase/migrations/20251230000002_add_module_description.sql (module metadata)
 - supabase/migrations/20251227000004_create_notes.sql (notes used in player)
