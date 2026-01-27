@@ -490,6 +490,7 @@ export async function deleteCourse(courseId: string) {
 export async function createLesson(moduleId: string, data: {
     title: string;
     type: 'video' | 'quiz' | 'article';
+    quiz_data?: any;
 }) {
     const admin = await createAdminClient();
 
@@ -518,7 +519,8 @@ export async function createLesson(moduleId: string, data: {
             title: data.title,
             type: data.type,
             order: nextOrder,
-            duration: '0m'
+            duration: '0m',
+            quiz_data: data.type === 'quiz' ? data.quiz_data : undefined
         })
         .select()
         .single();

@@ -167,7 +167,8 @@ export default function LessonEditorPanel({
             if (isNewLesson) {
                 result = await createLesson(moduleId, {
                     title: title.trim(),
-                    type
+                    type,
+                    quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else if (lessonId) {
                 result = await updateLesson(lessonId, {

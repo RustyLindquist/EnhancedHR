@@ -80,7 +80,7 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                         ) : (
                             <>
                                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 mb-1">
-                                    <span className="text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] truncate max-w-[200px]">{currentModule?.title || 'Module'}</span>
+                                    <span className="text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] truncate max-w-[300px]">{course.title}</span>
                                     <ChevronRight size={12} className="flex-shrink-0 text-slate-600" />
                                 </div>
                                 <h1 className="text-2xl lg:text-3xl font-light text-white truncate tracking-tight drop-shadow-lg">
