@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Database, AlertTriangle, CheckCircle, Terminal, RefreshCw, Server } from 'lucide-react';
+import { Play, Database, AlertTriangle, CheckCircle, Terminal, RefreshCw, Server, Video, Search } from 'lucide-react';
 
 export default function SystemPage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -119,6 +119,39 @@ export default function SystemPage() {
                                     {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
                                     Run Diagnostics
                                 </button>
+                            </div>
+
+                            {/* Fix Video URLs Card */}
+                            <div className="p-6 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-orange-500/20 text-orange-400">
+                                            <Video className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold">Fix Broken Video URLs</h3>
+                                            <p className="text-sm text-slate-400">Convert Mux upload IDs to playback IDs in course lessons.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => runAction('/api/admin/fix-video-urls', 'GET')}
+                                        disabled={isLoading}
+                                        className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                        Find Broken
+                                    </button>
+                                    <button
+                                        onClick={() => runAction('/api/admin/fix-video-urls', 'POST')}
+                                        disabled={isLoading}
+                                        className="flex-1 py-3 px-4 bg-orange-600 hover:bg-orange-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                        Fix All
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
