@@ -1,4 +1,7 @@
-import React, { ReactNode } from 'react';
+'use client';
+
+import React, { ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 
 interface DeleteConfirmationModalProps {
@@ -21,9 +24,15 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
     description,
     confirmText = "Delete"
 }) => {
-    if (!isOpen) return null;
+    const [mounted, setMounted] = useState(false);
 
-    return (
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!isOpen || !mounted) return null;
+
+    const content = (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 animate-fade-in">
             <div className="bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-scale-in">
                 {/* Header */}
@@ -72,6 +81,9 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
             </div>
         </div>
     );
+
+    // Use portal to render at document body level, ensuring full viewport coverage
+    return createPortal(content, document.body);
 };
 
 export default DeleteConfirmationModal;

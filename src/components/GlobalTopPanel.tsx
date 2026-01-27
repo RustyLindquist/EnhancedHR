@@ -22,6 +22,8 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     const [mounted, setMounted] = useState(false);
     // Internal state to control the actual panel position, allowing animation on mount
     const [internalIsOpen, setInternalIsOpen] = useState(false);
+    // Track whether we should render the portal (true while open or animating closed)
+    const [shouldRender, setShouldRender] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -30,6 +32,8 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     // Synchronize internal state with isOpen prop, with a micro-delay for animation
     useEffect(() => {
         if (isOpen) {
+            // Start rendering immediately when opening
+            setShouldRender(true);
             // Use double requestAnimationFrame to ensure the closed state is painted first
             // This allows the CSS transition to animate from closed to open
             const frame = requestAnimationFrame(() => {
@@ -40,6 +44,11 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
             return () => cancelAnimationFrame(frame);
         } else {
             setInternalIsOpen(false);
+            // Stop rendering after the close animation completes (500ms transition)
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+            }, 550); // Slightly longer than animation duration to ensure it completes
+            return () => clearTimeout(timer);
         }
     }, [isOpen]);
 
@@ -94,7 +103,8 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     );
 
     // Use portal to render at document body level, outside any stacking context
-    if (!mounted) return null;
+    // Only render when the panel should be visible (open or animating closed)
+    if (!mounted || !shouldRender) return null;
     return createPortal(content, document.body);
 };
 
