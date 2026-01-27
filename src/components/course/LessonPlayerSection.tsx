@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Sparkles, Bookmark, Monitor, Lock, Play } fr
 import MuxPlayer from '@mux/mux-player-react';
 import { Lesson, Course, DragItem } from '../../types';
 import { useTrialTracker } from '../../hooks/useTrialTracker';
-import QuizPlayer from '../QuizPlayer';
+import AssessmentPlaceholder from '../assessment/AssessmentPlaceholder';
 
 // Check if URL is a YouTube URL (client-side check)
 function isYouTubeUrl(url: string): boolean {
@@ -38,6 +38,9 @@ interface LessonPlayerSectionProps {
     onAskPrometheus: (prompt: string) => void;
     onAddToCollection: (item: DragItem) => void;
     userId: string;
+    // Assessment panel props
+    onStartAssessment?: () => void;
+    hasAssessmentProgress?: boolean;
 }
 
 const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
@@ -51,7 +54,9 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
     hasPrevious,
     onAskPrometheus,
     onAddToCollection,
-    userId
+    userId,
+    onStartAssessment,
+    hasAssessmentProgress = false
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
@@ -105,12 +110,6 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         onAddToCollection(dragItem);
     };
 
-    const handleQuizComplete = (score: number, passed: boolean) => {
-        // Mark lesson as complete regardless of pass/fail
-        // The passing score is for learner self-assessment, not a gate for completion
-        onLessonComplete(lesson.id);
-    };
-
     // Reset video error and show overlay when lesson changes
     React.useEffect(() => {
         setVideoError(false);
@@ -132,10 +131,10 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                 {/* Video/Quiz Container */}
                 <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5">
                     {isQuiz && lesson.quiz_data ? (
-                        <QuizPlayer
-                            lessonId={lesson.id}
-                            quizData={lesson.quiz_data}
-                            onComplete={handleQuizComplete}
+                        <AssessmentPlaceholder
+                            lessonTitle={lesson.title}
+                            hasProgress={hasAssessmentProgress}
+                            onStartAssessment={onStartAssessment || (() => {})}
                         />
                     ) : lesson.video_url && !isLocked ? (
                         <>
