@@ -82,14 +82,14 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
 
                         {/* Credentials - directly under photo */}
                         <section className="mt-6 w-[320px]">
-                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
                                 Credentials & Expertise
                             </h3>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {instructor.credentials.map((cred, idx) => (
-                                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
-                                        <Award size={18} className="text-brand-blue-light mt-0.5" />
-                                        <span className="text-slate-300 text-sm font-medium">{cred}</span>
+                                    <div key={idx} className="flex items-center gap-2">
+                                        <Award size={14} className="text-brand-blue-light flex-shrink-0" />
+                                        <span className="text-slate-400 text-sm">{cred}</span>
                                     </div>
                                 ))}
                             </div>
