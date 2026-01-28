@@ -532,6 +532,23 @@ export async function getExpertsWithPublishedCourses(): Promise<{
         return { experts: [], error: coursesError.message };
     }
 
+    // Fetch expert_credentials for all experts
+    const expertIds = expertsData?.map(e => e.id) || [];
+    const { data: expertCredentialsData } = await supabase
+        .from('expert_credentials')
+        .select('expert_id, title, type, display_order')
+        .in('expert_id', expertIds.length > 0 ? expertIds : [''])
+        .order('display_order', { ascending: true });
+
+    // Group credentials by expert_id
+    const credentialsByExpert: Record<string, string[]> = {};
+    expertCredentialsData?.forEach(cred => {
+        if (!credentialsByExpert[cred.expert_id]) {
+            credentialsByExpert[cred.expert_id] = [];
+        }
+        credentialsByExpert[cred.expert_id].push(cred.title);
+    });
+
     // Count published courses per author
     const courseCountByAuthor: Record<string, number> = {};
     coursesData?.forEach(course => {
@@ -544,9 +561,11 @@ export async function getExpertsWithPublishedCourses(): Promise<{
     const expertsWithPublishedCourses: ExpertWithPublishedCourses[] = (expertsData || [])
         .filter(expert => courseCountByAuthor[expert.id] > 0)
         .map(expert => {
-            // Parse credentials - it may be a JSON string array or a plain string
-            let credentialsArray: string[] = [];
-            if (expert.credentials) {
+            // First check expert_credentials table, then fall back to profiles.credentials
+            let credentialsArray: string[] = credentialsByExpert[expert.id] || [];
+
+            // If no credentials in expert_credentials table, try parsing from profiles.credentials
+            if (credentialsArray.length === 0 && expert.credentials) {
                 try {
                     const parsed = JSON.parse(expert.credentials);
                     credentialsArray = Array.isArray(parsed) ? parsed : [expert.credentials];
@@ -611,9 +630,17 @@ export async function getExpertById(expertId: string): Promise<{
 
     const publishedCourseCount = coursesData?.length || 0;
 
-    // Parse credentials
-    let credentialsArray: string[] = [];
-    if (expertData.credentials) {
+    // Fetch expert_credentials from the expert_credentials table
+    const { data: expertCredentialsData } = await supabase
+        .from('expert_credentials')
+        .select('title, type, display_order')
+        .eq('expert_id', expertId)
+        .order('display_order', { ascending: true });
+
+    // First use expert_credentials table, then fall back to profiles.credentials
+    let credentialsArray: string[] = expertCredentialsData?.map(c => c.title) || [];
+
+    if (credentialsArray.length === 0 && expertData.credentials) {
         try {
             const parsed = JSON.parse(expertData.credentials);
             credentialsArray = Array.isArray(parsed) ? parsed : [expertData.credentials];
