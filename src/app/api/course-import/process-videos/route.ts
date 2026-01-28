@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchYouTubeTranscriptWithFallback, isYouTubeUrl } from '@/lib/youtube';
-import { embedVideoContext } from '@/lib/context-embeddings';
+import { embedPlatformLessonContent } from '@/lib/context-embeddings';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 
 interface ProcessVideosRequest {
@@ -153,14 +153,12 @@ export async function POST(request: Request) {
 
                     // Generate embeddings for the transcript
                     // Using course-level embeddings (no user_id)
-                    const embedResult = await embedVideoContext(
-                        '', // No user_id for course content
-                        lesson.id,
+                    const embedResult = await embedPlatformLessonContent(
+                        lesson.id.toString(),
+                        courseId,
                         lesson.title,
                         lesson.description || undefined,
-                        transcript,
-                        null, // No collection_id
-                        null  // No org_id for platform courses
+                        transcript
                     );
 
                     if (embedResult.success) {

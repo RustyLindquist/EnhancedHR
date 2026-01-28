@@ -66,7 +66,85 @@ export async function updateCourseImage(courseId: number, imageUrl: string | nul
     }
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
+}
+
+/**
+ * Upload course image to storage and update the course record
+ */
+export async function uploadCourseImageAction(
+    courseId: number,
+    formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    const file = formData.get('image') as File;
+    if (!file) {
+        return { success: false, error: 'No file provided' };
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        return { success: false, error: 'Invalid file type. Please use JPEG, PNG, or WebP.' };
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        return { success: false, error: 'File too large. Maximum size is 5MB.' };
+    }
+
+    const admin = await createAdminClient();
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `course-${courseId}/${timestamp}.${ext}`;
+
+    // Convert File to ArrayBuffer for upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = new Uint8Array(arrayBuffer);
+
+    // Upload to storage (course-images bucket)
+    const { error: uploadError } = await admin.storage
+        .from('course-images')
+        .upload(path, buffer, {
+            contentType: file.type,
+            upsert: true
+        });
+
+    if (uploadError) {
+        console.error('[uploadCourseImageAction] Upload error:', uploadError);
+        return { success: false, error: uploadError.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = admin.storage
+        .from('course-images')
+        .getPublicUrl(path);
+
+    // Update course with new image URL
+    const { error: updateError } = await admin
+        .from('courses')
+        .update({ image_url: urlData.publicUrl })
+        .eq('id', courseId);
+
+    if (updateError) {
+        console.error('[uploadCourseImageAction] Update error:', updateError);
+        return { success: false, error: updateError.message };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
+    revalidatePath(`/courses/${courseId}`);
+
+    return { success: true, url: urlData.publicUrl };
 }
 
 export async function updateCourseDetails(courseId: number, data: {
