@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useTransition, useCallback } from 'react';
+import React, { useState, useTransition, useCallback, useRef } from 'react';
 import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, Youtube } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo, fetchYouTubeMetadataAction } from '@/app/actions/course-builder';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
+import TranscriptRequiredModal from '@/components/TranscriptRequiredModal';
+import LessonVideoPreview from '@/components/admin/LessonVideoPreview';
 import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
@@ -47,6 +49,12 @@ export default function LessonEditorPanel({
     const [showSuccess, setShowSuccess] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Transcript modal state
+    const [showTranscriptModal, setShowTranscriptModal] = useState(false);
+    const [transcriptModalMode, setTranscriptModalMode] = useState<'required' | 'video-changed'>('required');
+    const [originalVideoUrl, setOriginalVideoUrl] = useState(lessonVideoUrl);
+    const transcriptRef = useRef<HTMLTextAreaElement>(null);
+
     // Form state
     const [title, setTitle] = useState(lessonTitle);
     const [type, setType] = useState<LessonType>(lessonType);
@@ -87,6 +95,8 @@ export default function LessonEditorPanel({
             setIsGeneratingTranscript(false);
             setYoutubeMetadata(null);
             setIsFetchingMetadata(false);
+            setShowTranscriptModal(false);
+            setOriginalVideoUrl(lessonVideoUrl); // Track original video URL for change detection
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData]);
 
@@ -155,21 +165,119 @@ export default function LessonEditorPanel({
         }
     }, [videoUrl]);
 
+    // Check if transcript has meaningful content (not just whitespace or short text)
+    const hasValidTranscript = useCallback((text: string) => {
+        return text.trim().length >= 10;
+    }, []);
+
+    // Check if video URL has changed
+    const hasVideoUrlChanged = useCallback(() => {
+        return videoUrl !== originalVideoUrl && originalVideoUrl !== '';
+    }, [videoUrl, originalVideoUrl]);
+
+    // Perform the actual save operation
+    const performSave = useCallback((contentToSave?: string) => {
+        setError(null);
+        startTransition(async () => {
+            const finalContent = contentToSave !== undefined ? contentToSave : content;
+            let result;
+            if (isNewLesson) {
+                result = await createLesson(moduleId, {
+                    title: title.trim(),
+                    type,
+                    video_url: type === 'video' ? videoUrl : undefined,
+                    content: finalContent || undefined,
+                    duration: duration || undefined,
+                    quiz_data: type === 'quiz' ? quizData : undefined
+                });
+            } else if (lessonId) {
+                result = await updateLesson(lessonId, {
+                    title: title.trim(),
+                    video_url: type === 'video' ? videoUrl : undefined,
+                    content: finalContent || undefined,
+                    duration: duration || undefined,
+                    quiz_data: type === 'quiz' ? quizData : undefined
+                });
+            } else {
+                setError('Lesson ID is missing');
+                return;
+            }
+
+            if (result.success) {
+                setShowSuccess(true);
+                setOriginalVideoUrl(videoUrl); // Update original URL after successful save
+                setTimeout(() => {
+                    setShowSuccess(false);
+                    onSave();
+                }, 1000);
+            } else {
+                setError(result.error || 'Failed to save lesson');
+            }
+        });
+    }, [moduleId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave]);
+
     const handleSave = useCallback(() => {
         if (!title.trim()) {
             setError('Lesson title is required');
             return;
         }
 
+        // For video lessons, check transcript requirements
+        if (type === 'video') {
+            const transcriptExists = hasValidTranscript(content);
+            const videoChanged = hasVideoUrlChanged();
+
+            // Case 1: No valid transcript - prompt to add one
+            if (!transcriptExists && videoUrl) {
+                setTranscriptModalMode('required');
+                setShowTranscriptModal(true);
+                return;
+            }
+
+            // Case 2: Video changed with existing transcript - ask what to do
+            if (videoChanged && transcriptExists) {
+                setTranscriptModalMode('video-changed');
+                setShowTranscriptModal(true);
+                return;
+            }
+        }
+
+        // All checks passed, proceed with save
+        performSave();
+    }, [title, type, content, videoUrl, isNewLesson, hasValidTranscript, hasVideoUrlChanged, performSave]);
+
+    // Modal callback: User wants to enter transcript manually
+    const handleEnterManually = useCallback(() => {
+        setShowTranscriptModal(false);
+        // Focus on transcript textarea after a short delay
+        setTimeout(() => {
+            transcriptRef.current?.focus();
+        }, 100);
+    }, []);
+
+    // Modal callback: User wants to generate transcript with AI
+    const handleGenerateWithAI = useCallback(async () => {
+        // Save the lesson first, then trigger generation
+        setShowTranscriptModal(false);
+
+        // Perform save, then generate transcript in background
         setError(null);
         startTransition(async () => {
             let result;
+            let targetLessonId = lessonId;
+
+            // Create or update the lesson first
             if (isNewLesson) {
                 result = await createLesson(moduleId, {
                     title: title.trim(),
                     type,
+                    video_url: type === 'video' ? videoUrl : undefined,
+                    content: content || undefined,
+                    duration: duration || undefined,
                     quiz_data: type === 'quiz' ? quizData : undefined
                 });
+                // Get the new lesson ID from the result
+                targetLessonId = (result as any).lesson?.id;
             } else if (lessonId) {
                 result = await updateLesson(lessonId, {
                     title: title.trim(),
@@ -185,6 +293,32 @@ export default function LessonEditorPanel({
 
             if (result.success) {
                 setShowSuccess(true);
+                setOriginalVideoUrl(videoUrl);
+
+                // Start background transcript generation
+                setIsGeneratingTranscript(true);
+                try {
+                    const transcriptResult = await generateTranscriptFromVideo(videoUrl);
+                    if (transcriptResult.success && transcriptResult.transcript) {
+                        setContent(transcriptResult.transcript);
+                        // Save again with the transcript
+                        if (targetLessonId) {
+                            await updateLesson(targetLessonId, {
+                                title: title.trim(),
+                                video_url: videoUrl,
+                                content: transcriptResult.transcript,
+                                duration: duration || undefined,
+                            });
+                        }
+                    } else {
+                        setError('Transcript generation failed: ' + (transcriptResult.error || 'Unknown error'));
+                    }
+                } catch (err: any) {
+                    setError('Transcript generation failed: ' + (err.message || 'Unknown error'));
+                } finally {
+                    setIsGeneratingTranscript(false);
+                }
+
                 setTimeout(() => {
                     setShowSuccess(false);
                     onSave();
@@ -193,7 +327,13 @@ export default function LessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave]);
+    }, [moduleId, lessonId, isNewLesson, title, type, videoUrl, content, duration, quizData, onSave]);
+
+    // Modal callback: Keep current transcript (for video-changed mode)
+    const handleKeepCurrent = useCallback(() => {
+        setShowTranscriptModal(false);
+        performSave();
+    }, [performSave]);
 
     const handleDelete = useCallback(() => {
         if (!lessonId) return;
@@ -465,11 +605,17 @@ export default function LessonEditorPanel({
                             </div>
                         )}
 
-                        {/* Current Video Preview */}
-                        {videoUrl && !isNewLesson && (
-                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                                <p className="text-xs text-slate-500 mb-2">Current Video ID</p>
-                                <code className="text-sm text-brand-blue-light">{videoUrl}</code>
+                        {/* Video Preview */}
+                        {videoUrl && (
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    Video Preview
+                                </label>
+                                <LessonVideoPreview
+                                    videoUrl={videoUrl}
+                                    lessonTitle={title || 'Lesson Video'}
+                                    isProcessing={isUploading}
+                                />
                             </div>
                         )}
                     </div>
@@ -531,6 +677,7 @@ export default function LessonEditorPanel({
                         )}
 
                         <textarea
+                            ref={transcriptRef}
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder={
@@ -606,6 +753,17 @@ export default function LessonEditorPanel({
                     </div>
                 )}
             </div>
+
+            {/* Transcript Required Modal */}
+            <TranscriptRequiredModal
+                isOpen={showTranscriptModal}
+                mode={transcriptModalMode}
+                onClose={() => setShowTranscriptModal(false)}
+                onEnterManually={handleEnterManually}
+                onGenerateWithAI={handleGenerateWithAI}
+                onKeepCurrent={handleKeepCurrent}
+                isGenerating={isPending}
+            />
         </DropdownPanel>
     );
 }

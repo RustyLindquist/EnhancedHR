@@ -3,7 +3,7 @@ id: admin-portal
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-23
+last_updated: 2026-01-27
 surfaces:
   routes:
     - /admin/*
@@ -56,6 +56,25 @@ Admins can create and edit quiz assessments for lessons:
   - Reorder questions with up/down arrows
 
 See `docs/features/course-player-and-progress.md` for quiz data model and behavior details.
+
+### Drag-and-Drop Lesson Reordering
+Admins can reorder lessons within and between modules using drag-and-drop:
+- **Location**: Admin Course Builder (CourseBuilderView.tsx)
+- **Library**: @dnd-kit (core, sortable, utilities)
+- **Features**:
+  - **Drag Handle**: Full-width blue bar at top of lesson cards, appears on hover, shows "Drag to Reorder" text with grip icons
+  - **Within-Module Reorder**: Drag lessons to reposition within the same module
+  - **Cross-Module Move**: Drag lessons between different expanded modules
+  - **Empty Module Drop**: Empty modules accept drops via the "Add Lesson" button which transforms into a drop target during drag
+  - **Optimistic Updates**: UI updates immediately during drag; reverts on error
+- **Server Actions**:
+  - `reorderLessons(lessonIds: string[])` - Batch reorder lessons within a module
+  - `moveLessonToModule(lessonId, targetModuleId, newOrder?)` - Move lesson to different module
+  - `reorderModules(moduleIds: string[])` - Batch reorder modules within a course
+- **Technical Details**:
+  - Custom collision detection prioritizes add-lesson buttons, then module zones, then closest-center for lesson-to-lesson
+  - Unique drop zone IDs: `add-lesson-drop-${moduleId}` vs `module-drop-${moduleId}` to avoid conflicts
+  - Components: `SortableLessonCardAdmin`, `LessonDragOverlay`, `DroppableModuleZone`, `DroppableAddLessonButton`
 
 ## Core Concepts & Objects
 - **Admin user**: profile with role='admin'.

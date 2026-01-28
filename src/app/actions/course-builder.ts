@@ -490,6 +490,9 @@ export async function deleteCourse(courseId: string) {
 export async function createLesson(moduleId: string, data: {
     title: string;
     type: 'video' | 'quiz' | 'article';
+    video_url?: string;
+    content?: string;
+    duration?: string;
     quiz_data?: any;
 }) {
     const admin = await createAdminClient();
@@ -519,8 +522,10 @@ export async function createLesson(moduleId: string, data: {
             title: data.title,
             type: data.type,
             order: nextOrder,
-            duration: '0m',
-            quiz_data: data.type === 'quiz' ? data.quiz_data : undefined
+            duration: data.duration || '0m',
+            video_url: data.video_url,
+            content: data.content,
+            quiz_data: data.quiz_data
         })
         .select()
         .single();
@@ -593,13 +598,8 @@ export async function updateLesson(lessonId: string, data: {
         revalidatePath(`/admin/courses/${(currentLesson.modules as any).course_id}/builder`);
     }
 
-    // Fire-and-forget transcript generation if video_url is new/changed
-    // Only trigger if video_url is provided and different from current
-    if (data.video_url && data.video_url !== currentLesson?.video_url) {
-        console.log('[updateLesson] Video URL changed, triggering auto-transcript generation');
-        generateLessonTranscript(lessonId, data.video_url)
-            .catch(err => console.error('[updateLesson] Transcript generation failed:', err));
-    }
+    // NOTE: Auto-transcript generation removed - users now control when transcripts are generated
+    // via the TranscriptRequiredModal which prompts them to enter manually or generate with AI
 
     return { success: true };
 }
@@ -1402,6 +1402,158 @@ Write the course description now:`;
     } catch (error: any) {
         console.error('Error generating course description:', error);
         return { success: false, error: error.message || 'Failed to generate description' };
+    }
+}
+
+// ============================================
+// Module Description Actions
+// ============================================
+
+// ============================================
+// Lesson Reordering Actions
+// ============================================
+
+/**
+ * Reorder lessons within a module (batch update)
+ * @param lessonIds - Array of lesson IDs in the new order
+ */
+export async function reorderLessons(lessonIds: string[]): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const admin = await createAdminClient();
+
+    try {
+        // Update each lesson's order based on position in array
+        const updates = lessonIds.map((lessonId, index) =>
+            admin
+                .from('lessons')
+                .update({ order: index })
+                .eq('id', lessonId)
+        );
+
+        await Promise.all(updates);
+
+        // Get any lesson to find course_id for revalidation
+        if (lessonIds.length > 0) {
+            const { data: lesson } = await admin
+                .from('lessons')
+                .select('module_id, modules(course_id)')
+                .eq('id', lessonIds[0])
+                .single();
+
+            if (lesson?.modules) {
+                revalidatePath(`/admin/courses/${(lesson.modules as any).course_id}/builder`);
+            }
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error reordering lessons:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Move a lesson to a different module
+ * @param lessonId - The lesson to move
+ * @param targetModuleId - The module to move it to
+ * @param newOrder - The position in the target module (optional, defaults to end)
+ */
+export async function moveLessonToModule(
+    lessonId: string,
+    targetModuleId: string,
+    newOrder?: number
+): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const admin = await createAdminClient();
+
+    try {
+        // If no order specified, put it at the end
+        if (newOrder === undefined) {
+            const { data: existingLessons } = await admin
+                .from('lessons')
+                .select('order')
+                .eq('module_id', targetModuleId)
+                .order('order', { ascending: false })
+                .limit(1);
+
+            newOrder = existingLessons && existingLessons.length > 0
+                ? (existingLessons[0].order || 0) + 1
+                : 0;
+        }
+
+        // Update the lesson's module and order
+        const { error } = await admin
+            .from('lessons')
+            .update({
+                module_id: targetModuleId,
+                order: newOrder
+            })
+            .eq('id', lessonId);
+
+        if (error) {
+            return { success: false, error: error.message };
+        }
+
+        // Get course_id for revalidation
+        const { data: module } = await admin
+            .from('modules')
+            .select('course_id')
+            .eq('id', targetModuleId)
+            .single();
+
+        if (module) {
+            revalidatePath(`/admin/courses/${module.course_id}/builder`);
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error moving lesson to module:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Reorder modules within a course (batch update)
+ * @param moduleIds - Array of module IDs in the new order
+ */
+export async function reorderModules(moduleIds: string[]): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const admin = await createAdminClient();
+
+    try {
+        // Update each module's order based on position in array
+        const updates = moduleIds.map((moduleId, index) =>
+            admin
+                .from('modules')
+                .update({ order: index })
+                .eq('id', moduleId)
+        );
+
+        await Promise.all(updates);
+
+        // Get any module to find course_id for revalidation
+        if (moduleIds.length > 0) {
+            const { data: module } = await admin
+                .from('modules')
+                .select('course_id')
+                .eq('id', moduleIds[0])
+                .single();
+
+            if (module) {
+                revalidatePath(`/admin/courses/${module.course_id}/builder`);
+            }
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error reordering modules:', error);
+        return { success: false, error: error.message };
     }
 }
 
