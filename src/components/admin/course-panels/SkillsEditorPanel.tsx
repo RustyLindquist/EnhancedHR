@@ -144,7 +144,7 @@ export default function SkillsEditorPanel({
                                 AI-Powered Skill Generation
                             </h4>
                             <p className="text-xs text-slate-500 mt-1">
-                                Analyze course transcripts to automatically generate relevant skills
+                                Uses the Course RAG to analyze all lesson content and generate relevant skills
                             </p>
                         </div>
                         <button
@@ -160,7 +160,7 @@ export default function SkillsEditorPanel({
                             ) : (
                                 <>
                                     <Sparkles size={14} />
-                                    Generate from Transcript
+                                    Generate from Course Content
                                 </>
                             )}
                         </button>
