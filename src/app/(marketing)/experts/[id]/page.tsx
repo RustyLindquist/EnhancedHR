@@ -3,7 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, Linkedin, BookOpen, Clock, Award, GraduationCap, Briefcase, Star, BookMarked, Trophy } from 'lucide-react';
+import { BookOpen, Clock, Award, GraduationCap, Briefcase, Star, BookMarked, Trophy } from 'lucide-react';
+import ExpertDetailsHeader from '@/components/ExpertDetailsHeader';
 
 // Credential type icons mapping
 const credentialIcons: Record<string, React.ReactNode> = {
@@ -66,20 +67,11 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
     return (
         <div className="min-h-screen bg-brand-black">
             {/* Header */}
-            <div className="max-w-7xl mx-auto px-6 pt-8">
-                <Link
-                    href="/experts"
-                    className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
-                >
-                    <ArrowLeft size={16} />
-                    Back to Experts
-                </Link>
-            </div>
+            <ExpertDetailsHeader linkedinUrl={expert.linkedin_url} />
 
             {/* Hero Section */}
             <section className="relative py-20">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-brand-blue-light/5 rounded-full blur-[100px]"></div>
                 </div>
 
                 <div className="relative max-w-7xl mx-auto px-6">
@@ -90,12 +82,12 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
                                 <Image
                                     src={expert.avatar_url}
                                     alt={expert.full_name || 'Expert'}
-                                    width={200}
-                                    height={200}
-                                    className="w-48 h-48 rounded-2xl object-cover border-2 border-white/10 shadow-2xl"
+                                    width={576}
+                                    height={576}
+                                    className="w-[576px] h-[576px] rounded-2xl object-cover border-2 border-white/10 shadow-2xl"
                                 />
                             ) : (
-                                <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-brand-blue-light/20 to-brand-orange/20 flex items-center justify-center text-6xl font-bold text-white border-2 border-white/10">
+                                <div className="w-[576px] h-[576px] rounded-2xl bg-gradient-to-br from-brand-blue-light/20 to-brand-orange/20 flex items-center justify-center text-[180px] font-bold text-white border-2 border-white/10">
                                     {(expert.full_name || 'E').charAt(0)}
                                 </div>
                             )}
@@ -103,7 +95,7 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
 
                         {/* Right: Details */}
                         <div className="flex-1">
-                            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+                            <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
                                 {expert.full_name || 'Expert'}
                             </h1>
 
@@ -118,26 +110,6 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
                                     {expert.author_bio}
                                 </p>
                             )}
-
-                            {/* Links */}
-                            <div className="flex items-center gap-4">
-                                {expert.linkedin_url && (
-                                    <a
-                                        href={expert.linkedin_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0077B5]/20 text-[#0077B5] hover:bg-[#0077B5]/30 transition-colors text-sm font-medium"
-                                    >
-                                        <Linkedin size={18} />
-                                        LinkedIn Profile
-                                    </a>
-                                )}
-
-                                <div className="flex items-center gap-2 text-slate-500 text-sm">
-                                    <BookOpen size={16} />
-                                    <span>{courses.length} {courses.length === 1 ? 'Course' : 'Courses'}</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
