@@ -226,9 +226,14 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
 
                         {/* Options */}
                         <div className="space-y-2 pl-4">
-                            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                Answer Options
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Answer Options
+                                </span>
+                                <span className="text-xs text-slate-600">
+                                    — Check the circle next to the correct answer
+                                </span>
+                            </div>
                             {question.options.map((option, oIndex) => (
                                 <div
                                     key={option.id}

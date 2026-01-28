@@ -11,6 +11,7 @@ import CourseDescriptionSection from './CourseDescriptionSection';
 import LessonPlayerSection from './LessonPlayerSection';
 import ModuleContainer from './ModuleContainer';
 import CourseResourcesSection from './CourseResourcesSection';
+import AssessmentPanel from '../assessment/AssessmentPanel';
 
 interface CoursePageV2Props {
     course: Course;
@@ -53,6 +54,14 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
     // UI state
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
+
+    // Assessment panel state
+    const [assessmentPanelOpen, setAssessmentPanelOpen] = useState(false);
+    const [savedAssessmentProgress, setSavedAssessmentProgress] = useState<{
+        lessonId: string;
+        responses: Record<string, string>;
+        currentIndex: number;
+    } | null>(null);
 
     // Author credentials state
     const [authorCredentials, setAuthorCredentials] = useState<ExpertCredential[]>([]);
@@ -415,6 +424,66 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         setCompletedLessons(prev => new Set([...prev, lessonId]));
     }, [markLessonComplete]);
 
+    // Assessment panel handlers
+    const handleOpenAssessmentPanel = useCallback(() => {
+        setAssessmentPanelOpen(true);
+    }, []);
+
+    const handleCloseAssessmentPanel = useCallback(() => {
+        setAssessmentPanelOpen(false);
+    }, []);
+
+    const handleAssessmentComplete = useCallback((score: number, passed: boolean) => {
+        // Mark lesson as complete regardless of pass/fail
+        if (activeLessonId) {
+            handleLessonComplete(activeLessonId);
+        }
+        // Clear saved progress for this lesson
+        if (savedAssessmentProgress?.lessonId === activeLessonId) {
+            setSavedAssessmentProgress(null);
+        }
+    }, [activeLessonId, handleLessonComplete, savedAssessmentProgress?.lessonId]);
+
+    const handleAssessmentContinueToNext = useCallback(() => {
+        setAssessmentPanelOpen(false);
+        // Clear saved progress for this lesson
+        if (savedAssessmentProgress?.lessonId === activeLessonId) {
+            setSavedAssessmentProgress(null);
+        }
+        // Navigate to next lesson after panel closes
+        setTimeout(() => {
+            goToNextLesson();
+        }, 500); // Wait for panel close animation
+    }, [goToNextLesson, savedAssessmentProgress?.lessonId, activeLessonId]);
+
+    const handleSaveAssessmentProgress = useCallback((responses: Record<string, string>, currentIndex: number) => {
+        if (activeLessonId) {
+            setSavedAssessmentProgress({
+                lessonId: activeLessonId,
+                responses,
+                currentIndex
+            });
+        }
+    }, [activeLessonId]);
+
+    // Auto-open assessment panel when quiz lesson is selected
+    useEffect(() => {
+        if (currentLesson?.type === 'quiz' && currentLesson?.quiz_data && viewMode === 'player') {
+            setAssessmentPanelOpen(true);
+        }
+    }, [currentLesson?.id, currentLesson?.type, currentLesson?.quiz_data, viewMode]);
+
+    // Get saved progress for current lesson
+    const currentLessonSavedProgress = useMemo(() => {
+        if (savedAssessmentProgress?.lessonId === activeLessonId) {
+            return {
+                responses: savedAssessmentProgress.responses,
+                currentIndex: savedAssessmentProgress.currentIndex
+            };
+        }
+        return undefined;
+    }, [savedAssessmentProgress, activeLessonId]);
+
     // Handle back button
     const handleBack = useCallback(() => {
         if (viewMode === 'player') {
@@ -492,6 +561,8 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                 onAskPrometheus={onAskPrometheus}
                                 onAddToCollection={onAddToCollection}
                                 userId={userId}
+                                onStartAssessment={handleOpenAssessmentPanel}
+                                hasAssessmentProgress={savedAssessmentProgress?.lessonId === currentLesson.id}
                             />
                         )
                     )}
@@ -541,6 +612,22 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                     />
                 )}
             </div>
+
+            {/* Assessment Panel */}
+            {currentLesson?.type === 'quiz' && currentLesson?.quiz_data && (
+                <AssessmentPanel
+                    isOpen={assessmentPanelOpen}
+                    onClose={handleCloseAssessmentPanel}
+                    lessonId={currentLesson.id}
+                    lessonTitle={currentLesson.title}
+                    quizData={currentLesson.quiz_data}
+                    onComplete={handleAssessmentComplete}
+                    onContinueToNext={handleAssessmentContinueToNext}
+                    hasNextLesson={hasNextLesson}
+                    savedProgress={currentLessonSavedProgress}
+                    onSaveProgress={handleSaveAssessmentProgress}
+                />
+            )}
         </div>
     );
 };

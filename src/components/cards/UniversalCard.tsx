@@ -490,7 +490,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 </h3>
 
                 {/* Video Thumbnail Area */}
-                <div className="flex-1 mt-3 rounded-xl overflow-hidden bg-black/60 relative min-h-[120px]">
+                <div className="flex-1 mt-3 rounded-xl overflow-hidden bg-black/30 relative min-h-[120px]">
                     {(() => {
                         // Get thumbnail URL from Mux playback ID or external URL
                         const thumbnailUrl = videoPlaybackId

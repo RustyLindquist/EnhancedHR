@@ -20,10 +20,37 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     children
 }) => {
     const [mounted, setMounted] = useState(false);
+    // Internal state to control the actual panel position, allowing animation on mount
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
+    // Track whether we should render the portal (true while open or animating closed)
+    const [shouldRender, setShouldRender] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Synchronize internal state with isOpen prop, with a micro-delay for animation
+    useEffect(() => {
+        if (isOpen) {
+            // Start rendering immediately when opening
+            setShouldRender(true);
+            // Use double requestAnimationFrame to ensure the closed state is painted first
+            // This allows the CSS transition to animate from closed to open
+            const frame = requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setInternalIsOpen(true);
+                });
+            });
+            return () => cancelAnimationFrame(frame);
+        } else {
+            setInternalIsOpen(false);
+            // Stop rendering after the close animation completes (500ms transition)
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+            }, 550); // Slightly longer than animation duration to ensure it completes
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
 
     const content = (
         <>
@@ -31,7 +58,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
             <div
                 className={`
                     fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] transition-opacity duration-500
-                    ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+                    ${internalIsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
                 `}
                 onClick={onClose}
             ></div>
@@ -44,7 +71,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[75vh]
             `}
                 style={{
-                    top: isOpen ? '0' : '-100%'
+                    top: internalIsOpen ? '0' : '-100%'
                 }}
             >
                 {/* Header - Padding increased to clear sidebars (Nav: 288px, AI: ~400px) */}
@@ -76,7 +103,8 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
     );
 
     // Use portal to render at document body level, outside any stacking context
-    if (!mounted) return null;
+    // Only render when the panel should be visible (open or animating closed)
+    if (!mounted || !shouldRender) return null;
     return createPortal(content, document.body);
 };
 

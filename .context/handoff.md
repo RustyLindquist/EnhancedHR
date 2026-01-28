@@ -6,7 +6,7 @@
 ## Last Session
 
 **Date**: 2026-01-27
-**Status**: In Progress - Drag-and-drop lesson reordering implemented
+**Status**: Complete - All work pushed and merged (PR #182)
 
 ## Quick Resume
 
@@ -18,134 +18,120 @@
 
 ## Summary
 
-Implemented drag-and-drop lesson reordering functionality for both the Admin Console and Expert Console course builders. This feature allows course authors and administrators to reorder lessons within modules and move lessons between modules using an intuitive drag-and-drop interface.
+Built 2 courses via direct database insertion (faster than browser automation), fixed a null duration crash in CoursePageV2, and added Supadata API as a fallback option in the YouTube transcript extraction pipeline. All changes merged in PR #182.
 
 ## Work Completed
 
-### Feature: Drag-and-Drop Lesson Reordering
+### Courses Created via Database
 
-| Component | File | Changes |
-|-----------|------|---------|
-| Expert Builder | `src/app/author/courses/[id]/builder/ExpertCourseBuilderClient.tsx` | Added dnd-kit integration, sortable lesson cards, drag overlay, droppable zones |
-| Admin Builder | `src/app/admin/courses/[id]/builder/CourseBuilderView.tsx` | Same dnd-kit implementation as Expert version |
-| Admin Actions | `src/app/actions/course-builder.ts` | Added `reorderLessons`, `moveLessonToModule`, `reorderModules` |
-| Expert Actions | `src/app/actions/expert-course-builder.ts` | Added `reorderExpertLessons`, `moveExpertLessonToModule`, `reorderExpertModules` |
-| Lesson Editor | `src/components/admin/course-panels/LessonEditorPanel.tsx` | Minor updates for drag integration |
+| ID | Title | Videos | Duration | Category |
+|----|-------|--------|----------|----------|
+| 618 | Extraordinary vs Extravagant | 18 | 29 min | Leadership Development |
+| 621 | Choose To Thrive | 10 | 27 min | Leadership Development |
 
-### Key Implementation Details
+Both courses use YouTube videos from Rusty Lindquist's playlists.
 
-1. **dnd-kit Library**: Uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`
+### Bug Fix: Null Duration Crash
 
-2. **UI Components Created**:
-   - `SortableLessonCard` / `SortableLessonCardAdmin` - Draggable lesson card with handle
-   - `LessonDragOverlay` - Visual feedback during drag
-   - `DroppableModuleZone` - Wraps module content for drop detection
-   - `DroppableAddLessonButton` - "Add Lesson" button transforms into drop target for empty modules
+**File**: `src/components/course/CoursePageV2.tsx` (line 98)
 
-3. **Drag Handle Design**: Full-width blue bar at top of lesson cards that appears on hover, showing "Drag to Reorder" text with grip icons on both sides
+**Problem**: `course.duration.match()` crashed when duration was null
 
-4. **Custom Collision Detection**: Prioritizes add-lesson buttons first, then module drop zones, then falls back to closest-center for lesson-to-lesson reordering
+**Fix**: Added null check before calling `.match()`
 
-5. **Drop Zone IDs**: Unique IDs (`add-lesson-drop-${moduleId}` vs `module-drop-${moduleId}`) to avoid conflicts
+### Feature: Supadata API Fallback for Transcripts
 
-6. **Optimistic Updates**: UI updates immediately during drag with database persistence; reverts on error
+Enhanced the transcript extraction pipeline with Supadata as a second-tier fallback:
 
-7. **Permission Checks**: Expert actions include `checkExpertCourseAccess()` to verify user owns the course
+**Fallback Chain (Updated)**:
+1. Innertube API (youtube-transcript library) - Free, fast
+2. **Supadata API (NEW)** - Paid, better success rate for restricted videos
+3. Audio extraction (for YouTube) - Download audio, transcribe
+4. AI multimodal (Gemini) - Watches video directly
 
-### Documentation Updated
+### Files Modified
 
-- `docs/features/admin-portal.md` - Added Drag-and-Drop Lesson Reordering section
-- `docs/features/author-portal.md` - Added Drag-and-Drop Lesson Reordering section
+| File | Change |
+|------|--------|
+| `src/lib/youtube.ts` | Added `fetchYouTubeTranscriptWithFallback()` and `fetchYouTubeTranscriptSupadata()` |
+| `src/app/api/course-import/process-videos/route.ts` | Integrated full fallback chain |
+| `src/lib/video-transcript.ts` | Uses new fallback function |
+| `src/components/course/CoursePageV2.tsx` | Null duration fix |
+| `docs/features/video-ai-context.md` | Updated with Supadata in fallback chain |
 
-### Dependencies Added
+## Environment Setup
 
-```json
-{
-  "@dnd-kit/core": "^x.x.x",
-  "@dnd-kit/sortable": "^x.x.x",
-  "@dnd-kit/utilities": "^x.x.x"
-}
+Add to `.env.local` for Supadata support (optional but recommended):
+
 ```
+SUPADATA_API_KEY=your_key_here
+```
+
+The Supadata API provides better success rates for YouTube videos with restricted caption access.
+
+## Documentation Created
+
+| Doc | Purpose |
+|-----|---------|
+| `docs/features/course-promotion.md` | Course promotion feature with transcript pipeline |
+| `docs/workflows/database-course-building.md` | Manual course creation via database |
 
 ## Verification
 
 ```bash
-# Check modified files
+# Check courses exist
+docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT id, title, duration FROM courses WHERE id IN (618, 621);"
+
+# Check lessons
+docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id IN (618, 621);"
+
+# Git status should be clean
 git status
-
-# View diff for course builder files
-git diff src/app/author/courses/[id]/builder/ExpertCourseBuilderClient.tsx
-git diff src/app/admin/courses/[id]/builder/CourseBuilderView.tsx
-
-# Test the feature
-# 1. Navigate to Admin Console -> Courses -> [Course] -> Builder
-# 2. Expand a module with lessons
-# 3. Hover over a lesson card to see the blue drag handle
-# 4. Drag lessons within the module to reorder
-# 5. Drag lessons to other expanded modules
-# 6. Drag lessons to the "Add Lesson" button in empty modules
 ```
 
-## Remaining
+## Next Steps
 
-### Uncommitted Changes
-- Expert Course Builder with drag-and-drop
-- Admin Course Builder with drag-and-drop
-- Course builder server actions
-- Expert course builder server actions
-- Lesson editor panel updates
-- New TranscriptRequiredModal component
+1. **Test course promotion** with transcript generation on the new courses
+2. **Verify transcripts** appear correctly after promotion
+3. **Test AI assistant** can access course content via embeddings
+4. **Consider Supadata API key** - add to production environment for better transcript success
 
-### To Finalize
-1. Test thoroughly in both Admin and Expert consoles
-2. Verify cross-module drag works correctly
-3. Verify empty module drop target works
-4. Commit and push changes
-5. Create PR for review
+## Pending Cleanup (After Migration Complete)
 
-## Next Session
+Once all courses are migrated to production, consider removing:
 
-### Setup
-- Run `/session-start` to load context
-- Review uncommitted changes with `git status`
+- Course promotion environment variables (`COURSE_IMPORT_SECRET`, `PROD_APP_URL`)
+- `src/app/api/course-import/` API routes
+- `src/components/admin/CoursePromotionModal.tsx`
+- Course promotion button in admin course list
 
-### Context to Remember
-- Drag-and-drop uses dnd-kit library
-- Two parallel implementations: Admin and Expert (with permission checks)
-- Custom collision detection handles add-lesson buttons and module zones
-- Optimistic UI updates with database persistence
+See `docs/features/course-promotion.md` for full cleanup instructions.
+
+## Context to Remember
+
+- Database course building is much faster than browser automation for bulk operations
+- Supadata API is a paid service - use sparingly or only when Innertube fails
+- Course durations must not be null (causes crash in CoursePageV2)
+- YouTube video IDs in the 0521-0543 range have gaps due to re-uploads
 
 ---
 
-## Technical Reference
+## Session Insights
 
-### Server Actions
+### Effective Patterns Used
 
-**Admin (course-builder.ts)**:
-```typescript
-reorderLessons(lessonIds: string[])
-moveLessonToModule(lessonId: string, targetModuleId: string, newOrder?: number)
-reorderModules(moduleIds: string[])
-```
+1. **Direct database insertion** for bulk course creation (18-28 lessons per course)
+2. **Multi-level API fallback** for robust transcript extraction
+3. **Null safety checks** for optional fields in UI components
 
-**Expert (expert-course-builder.ts)**:
-```typescript
-reorderExpertLessons(lessonIds: string[], courseId: number)
-moveExpertLessonToModule(lessonId: string, targetModuleId: string, courseId: number, newOrder?: number)
-reorderExpertModules(moduleIds: string[], courseId: number)
-```
+### Key Technical Decisions
 
-### Component Structure
+1. **Supadata placement**: Added as second fallback (after Innertube, before audio extraction) because:
+   - Faster than audio extraction
+   - Cheaper than AI multimodal
+   - Better success rate than Innertube for restricted videos
 
-```
-DndContext
-  ├── SortableContext (lessons in module)
-  │   └── SortableLessonCard
-  │       └── useSortable hook
-  ├── DroppableModuleZone
-  │   └── useDroppable hook
-  ├── DroppableAddLessonButton
-  │   └── useDroppable hook
-  └── DragOverlay
-      └── LessonDragOverlay
-```
+2. **Database-first approach**: Chose direct SQL over admin UI for course creation because:
+   - 10-18 videos per course would take significant time in UI
+   - Browser automation unreliable for large batches
+   - Direct SQL provides immediate feedback and easy corrections
