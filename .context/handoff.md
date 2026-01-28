@@ -5,8 +5,8 @@
 
 ## Last Session
 
-**Date**: 2026-01-18
-**Status**: Complete - All work pushed and merged
+**Date**: 2026-01-27
+**Status**: In Progress - Drag-and-drop lesson reordering implemented
 
 ## Quick Resume
 
@@ -18,80 +18,134 @@
 
 ## Summary
 
-Completed and merged Users and Groups Member Access feature, Organization Courses in org portal, and implemented a new Git Ops Agent with `/push` skill for context-isolated push operations. Session included comprehensive analysis of effective patterns for future sessions.
+Implemented drag-and-drop lesson reordering functionality for both the Admin Console and Expert Console course builders. This feature allows course authors and administrators to reorder lessons within modules and move lessons between modules using an intuitive drag-and-drop interface.
 
 ## Work Completed
 
-### Features Merged
-| PR | Feature | Files |
-|----|---------|-------|
-| #125 | Users and Groups Member Access | 8 files |
-| #126 | Organization Courses in Org Portal | 7 files |
-| #127/#128 | Playwright dependency + lockfile fix | 3 files |
-| #131 | Git Ops Agent + /push skill | 5 files |
+### Feature: Drag-and-Drop Lesson Reordering
 
-### New Agent: @git-ops-agent
-- **File**: `.claude/agents/git-ops-agent.md`
-- **Skill**: `/push "description"`
-- **Purpose**: Context-isolated push operations
-- **Features**: Package manager detection, build validation, escalation protocol
+| Component | File | Changes |
+|-----------|------|---------|
+| Expert Builder | `src/app/author/courses/[id]/builder/ExpertCourseBuilderClient.tsx` | Added dnd-kit integration, sortable lesson cards, drag overlay, droppable zones |
+| Admin Builder | `src/app/admin/courses/[id]/builder/CourseBuilderView.tsx` | Same dnd-kit implementation as Expert version |
+| Admin Actions | `src/app/actions/course-builder.ts` | Added `reorderLessons`, `moveLessonToModule`, `reorderModules` |
+| Expert Actions | `src/app/actions/expert-course-builder.ts` | Added `reorderExpertLessons`, `moveExpertLessonToModule`, `reorderExpertModules` |
+| Lesson Editor | `src/components/admin/course-panels/LessonEditorPanel.tsx` | Minor updates for drag integration |
 
-### Key Files Changed
-- `.claude/agents/git-ops-agent.md` — New agent specification
-- `.claude/skills/push/SKILL.md` — New push skill
-- `.claude/agents/AGENT_INVENTORY.md` — Added git-ops-agent
-- `.claude/skills/SKILLS_INDEX.md` — Added push skill
-- `CLAUDE.md` — Updated agent table
-- `src/app/org/courses/` — Org courses pages
-- `src/app/org/layout.tsx` — Added Courses nav link
+### Key Implementation Details
+
+1. **dnd-kit Library**: Uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`
+
+2. **UI Components Created**:
+   - `SortableLessonCard` / `SortableLessonCardAdmin` - Draggable lesson card with handle
+   - `LessonDragOverlay` - Visual feedback during drag
+   - `DroppableModuleZone` - Wraps module content for drop detection
+   - `DroppableAddLessonButton` - "Add Lesson" button transforms into drop target for empty modules
+
+3. **Drag Handle Design**: Full-width blue bar at top of lesson cards that appears on hover, showing "Drag to Reorder" text with grip icons on both sides
+
+4. **Custom Collision Detection**: Prioritizes add-lesson buttons first, then module drop zones, then falls back to closest-center for lesson-to-lesson reordering
+
+5. **Drop Zone IDs**: Unique IDs (`add-lesson-drop-${moduleId}` vs `module-drop-${moduleId}`) to avoid conflicts
+
+6. **Optimistic Updates**: UI updates immediately during drag with database persistence; reverts on error
+
+7. **Permission Checks**: Expert actions include `checkExpertCourseAccess()` to verify user owns the course
+
+### Documentation Updated
+
+- `docs/features/admin-portal.md` - Added Drag-and-Drop Lesson Reordering section
+- `docs/features/author-portal.md` - Added Drag-and-Drop Lesson Reordering section
+
+### Dependencies Added
+
+```json
+{
+  "@dnd-kit/core": "^x.x.x",
+  "@dnd-kit/sortable": "^x.x.x",
+  "@dnd-kit/utilities": "^x.x.x"
+}
+```
 
 ## Verification
 
 ```bash
-# All PRs merged
-gh pr list --state merged --limit 5
-
-# Git status should be clean (except plans/test-results)
+# Check modified files
 git status
 
-# Test the /push skill
-# (Already tested - PR #131 was created by git-ops-agent)
+# View diff for course builder files
+git diff src/app/author/courses/[id]/builder/ExpertCourseBuilderClient.tsx
+git diff src/app/admin/courses/[id]/builder/CourseBuilderView.tsx
+
+# Test the feature
+# 1. Navigate to Admin Console -> Courses -> [Course] -> Builder
+# 2. Expand a module with lessons
+# 3. Hover over a lesson card to see the blue drag handle
+# 4. Drag lessons within the module to reorder
+# 5. Drag lessons to other expanded modules
+# 6. Drag lessons to the "Add Lesson" button in empty modules
 ```
 
 ## Remaining
 
-### Uncommitted (intentionally)
-- `.claude/plans/` — Local planning files
-- `test-results/` — Test artifacts
+### Uncommitted Changes
+- Expert Course Builder with drag-and-drop
+- Admin Course Builder with drag-and-drop
+- Course builder server actions
+- Expert course builder server actions
+- Lesson editor panel updates
+- New TranscriptRequiredModal component
 
-### Future Enhancements Identified
-1. Integrate `/push` check into `/handoff` skill
-2. Auto-suggest `/push` when context high + uncommitted changes
-3. Document effective prompting patterns from this session
+### To Finalize
+1. Test thoroughly in both Admin and Expert consoles
+2. Verify cross-module drag works correctly
+3. Verify empty module drop target works
+4. Commit and push changes
+5. Create PR for review
 
 ## Next Session
 
 ### Setup
 - Run `/session-start` to load context
-- Git status should be clean
+- Review uncommitted changes with `git status`
 
 ### Context to Remember
-- Git Ops Agent is live and tested
-- Use `/push "description"` for pushing when context is low
-- Escalation protocol: agent returns to orchestrator if it hits complexity outside its domain
+- Drag-and-drop uses dnd-kit library
+- Two parallel implementations: Admin and Expert (with permission checks)
+- Custom collision detection handles add-lesson buttons and module zones
+- Optimistic UI updates with database persistence
 
 ---
 
-## Session Insights (For Future Reference)
+## Technical Reference
 
-### Effective User Prompting Patterns
-1. **"Analysis before action"** — Ask for determination before executing
-2. **Full error reporting** — Paste complete error output
-3. **Verification requests** — "Check the plan and make sure everything is implemented"
-4. **Extended thinking** — Use "ultrathink" for complex analysis
+### Server Actions
 
-### Effective Agent Patterns
-1. **Context isolation** — Spawn agents for operations that must complete
-2. **Bounded autonomy** — Clear domain boundaries with escalation protocol
-3. **Package manager awareness** — Detect npm/pnpm/yarn before lockfile operations
-4. **Verification after merge** — Always check PR state after merge command
+**Admin (course-builder.ts)**:
+```typescript
+reorderLessons(lessonIds: string[])
+moveLessonToModule(lessonId: string, targetModuleId: string, newOrder?: number)
+reorderModules(moduleIds: string[])
+```
+
+**Expert (expert-course-builder.ts)**:
+```typescript
+reorderExpertLessons(lessonIds: string[], courseId: number)
+moveExpertLessonToModule(lessonId: string, targetModuleId: string, courseId: number, newOrder?: number)
+reorderExpertModules(moduleIds: string[], courseId: number)
+```
+
+### Component Structure
+
+```
+DndContext
+  ├── SortableContext (lessons in module)
+  │   └── SortableLessonCard
+  │       └── useSortable hook
+  ├── DroppableModuleZone
+  │   └── useDroppable hook
+  ├── DroppableAddLessonButton
+  │   └── useDroppable hook
+  └── DragOverlay
+      └── LessonDragOverlay
+```

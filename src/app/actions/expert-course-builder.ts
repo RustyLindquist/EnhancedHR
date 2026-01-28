@@ -683,6 +683,149 @@ async function generateResourceSummary(
     }
 }
 
+// ============================================
+// Lesson Reordering Actions
+// ============================================
+
+/**
+ * Reorder lessons within a module (batch update)
+ * @param lessonIds - Array of lesson IDs in the new order
+ * @param courseId - Course ID for permission check
+ */
+export async function reorderExpertLessons(
+    lessonIds: string[],
+    courseId: number
+): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    const supabase = await createClient();
+
+    try {
+        // Update each lesson's order based on position in array
+        const updates = lessonIds.map((lessonId, index) =>
+            supabase
+                .from('lessons')
+                .update({ order: index })
+                .eq('id', lessonId)
+        );
+
+        await Promise.all(updates);
+
+        revalidatePath(`/author/courses/${courseId}/builder`);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error reordering lessons:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Move a lesson to a different module
+ * @param lessonId - The lesson to move
+ * @param targetModuleId - The module to move it to
+ * @param courseId - Course ID for permission check
+ * @param newOrder - The position in the target module (optional, defaults to end)
+ */
+export async function moveExpertLessonToModule(
+    lessonId: string,
+    targetModuleId: string,
+    courseId: number,
+    newOrder?: number
+): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    const supabase = await createClient();
+
+    try {
+        // If no order specified, put it at the end
+        if (newOrder === undefined) {
+            const { data: existingLessons } = await supabase
+                .from('lessons')
+                .select('order')
+                .eq('module_id', targetModuleId)
+                .order('order', { ascending: false })
+                .limit(1);
+
+            newOrder = existingLessons && existingLessons.length > 0
+                ? (existingLessons[0].order || 0) + 1
+                : 0;
+        }
+
+        // Update the lesson's module and order
+        const { error } = await supabase
+            .from('lessons')
+            .update({
+                module_id: targetModuleId,
+                order: newOrder
+            })
+            .eq('id', lessonId);
+
+        if (error) {
+            return { success: false, error: error.message };
+        }
+
+        revalidatePath(`/author/courses/${courseId}/builder`);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error moving lesson to module:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Reorder modules within a course (batch update)
+ * @param moduleIds - Array of module IDs in the new order
+ * @param courseId - Course ID for permission check
+ */
+export async function reorderExpertModules(
+    moduleIds: string[],
+    courseId: number
+): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    const supabase = await createClient();
+
+    try {
+        // Update each module's order based on position in array
+        const updates = moduleIds.map((moduleId, index) =>
+            supabase
+                .from('modules')
+                .update({ order: index })
+                .eq('id', moduleId)
+        );
+
+        await Promise.all(updates);
+
+        revalidatePath(`/author/courses/${courseId}/builder`);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error reordering modules:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================
+// Resource Actions (continued)
+// ============================================
+
 export async function deleteExpertCourseResource(resourceId: string, courseId: number) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {

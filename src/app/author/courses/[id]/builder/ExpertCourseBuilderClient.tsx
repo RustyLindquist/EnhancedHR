@@ -2,12 +2,74 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, Send, AlertTriangle, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Star, BookOpen, Layers, X } from 'lucide-react';
+import { ArrowLeft, Eye, Send, AlertTriangle, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Star, BookOpen, Layers, X, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import ExpertCoursePageWrapper, { ExpertCoursePanelType } from './ExpertCoursePageWrapper';
 import ExpertCourseDescriptionPanel from './ExpertCourseDescriptionPanel';
-import { submitCourseForReview } from '@/app/actions/expert-course-builder';
+import { submitCourseForReview, reorderExpertLessons, moveExpertLessonToModule } from '@/app/actions/expert-course-builder';
+
+// Drag and drop imports
+import {
+    DndContext,
+    closestCenter,
+    pointerWithin,
+    rectIntersection,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverlay,
+    useDroppable,
+    CollisionDetection,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Custom collision detection that prioritizes module drop zones and add-lesson buttons
+const customCollisionDetection: CollisionDetection = (args) => {
+    // First check if we're over any droppable zones (module zones or add-lesson buttons)
+    const pointerCollisions = pointerWithin(args);
+
+    // Check for add-lesson button first (more specific target)
+    const addLessonButton = pointerCollisions.find(c =>
+        typeof c.id === 'string' && c.id.startsWith('add-lesson-drop-')
+    );
+    if (addLessonButton) {
+        return [addLessonButton];
+    }
+
+    // Then check for module drop zones
+    const moduleDropZone = pointerCollisions.find(c =>
+        typeof c.id === 'string' && c.id.startsWith('module-drop-')
+    );
+
+    // If we're directly over a module drop zone, prioritize it
+    if (moduleDropZone) {
+        // But also check if there's a lesson underneath - if so, prefer the lesson
+        const lessonCollisions = closestCenter(args);
+        const lessonCollision = lessonCollisions.find(c =>
+            typeof c.id === 'string' && !c.id.startsWith('module-drop-') && !c.id.startsWith('add-lesson-drop-')
+        );
+
+        // If there's a lesson collision, prefer it; otherwise use the module zone
+        if (lessonCollision) {
+            return [lessonCollision];
+        }
+        return [moduleDropZone];
+    }
+
+    // Fall back to closest center for lesson-to-lesson
+    return closestCenter(args);
+};
 
 // Import reusable admin panels (these work with any action as long as we pass the right props)
 import {
@@ -19,6 +81,224 @@ import {
 // Expert-specific module and lesson panels
 import ExpertModuleEditorPanel from './ExpertModuleEditorPanel';
 import ExpertLessonEditorPanel from './ExpertLessonEditorPanel';
+
+// Sortable Lesson Card Component
+interface SortableLessonCardProps {
+    lesson: Lesson;
+    moduleIndex: number;
+    lessonIndex: number;
+    moduleId: string;
+    onOpenPanel: (panel: ExpertCoursePanelType, moduleId?: string, lessonId?: string) => void;
+}
+
+function SortableLessonCard({ lesson, moduleIndex, lessonIndex, moduleId, onOpenPanel }: SortableLessonCardProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: lesson.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 50 : 'auto',
+    };
+
+    const isQuiz = lesson.type === 'quiz';
+    const isArticle = lesson.type === 'article';
+    const lessonNumber = `${moduleIndex + 1}.${lessonIndex + 1}`;
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`group relative rounded-xl cursor-pointer transition-all duration-300 bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-white/20 overflow-hidden ${isDragging ? 'shadow-2xl ring-2 ring-brand-blue-light/50' : ''}`}
+        >
+            {/* Drag Handle Bar - Full Width at Top */}
+            <div
+                {...attributes}
+                {...listeners}
+                className="w-full px-3 py-1.5 bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border-b border-brand-blue-light/20 cursor-grab active:cursor-grabbing flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <GripVertical size={12} className="text-brand-blue-light" />
+                <span className="text-[10px] font-medium text-brand-blue-light uppercase tracking-wider">
+                    Drag to Reorder
+                </span>
+                <GripVertical size={12} className="text-brand-blue-light" />
+            </div>
+
+            {/* Card Content - clickable area */}
+            <div
+                className="px-4 py-4"
+                onClick={() => onOpenPanel('lesson', moduleId, lesson.id)}
+            >
+                {/* Top Row */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        {isQuiz ? (
+                            <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[9px] font-bold uppercase rounded border border-brand-orange/30">
+                                QUIZ
+                            </span>
+                        ) : isArticle ? (
+                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[9px] font-bold uppercase rounded border border-purple-500/30">
+                                ARTICLE
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
+                                LESSON {lessonNumber}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[10px] font-medium text-slate-500">
+                        {lesson.duration || '0m'}
+                    </span>
+                </div>
+
+                {/* Lesson Title */}
+                <h4 className="text-sm font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors">
+                    {lesson.title || 'Untitled Lesson'}
+                </h4>
+
+                {/* Video Status Indicator */}
+                {!isQuiz && !isArticle && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                        <Video size={12} className="text-brand-blue-light" />
+                        <span className="text-[10px] text-slate-500">
+                            {(lesson as any).video_url ? 'Video attached' : 'No video'}
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {/* Hover Edit Overlay - hidden when dragging */}
+            {!isDragging && (
+                <div className="absolute inset-0 bg-brand-blue-light/5 border-2 border-brand-blue-light/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center pointer-events-none z-10">
+                    <div className="p-2 rounded-full bg-black/70 border border-brand-blue-light/50 shadow-lg">
+                        <Edit3 size={14} className="text-brand-blue-light" />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Drag Overlay Component - shows during drag
+function LessonDragOverlay({ lesson, moduleIndex, lessonIndex }: { lesson: Lesson; moduleIndex: number; lessonIndex: number }) {
+    const isQuiz = lesson.type === 'quiz';
+    const isArticle = lesson.type === 'article';
+    const lessonNumber = `${moduleIndex + 1}.${lessonIndex + 1}`;
+
+    return (
+        <div className="rounded-xl bg-slate-800 border-2 border-brand-blue-light shadow-2xl w-64">
+            <div className="px-4 py-[26px]">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        {isQuiz ? (
+                            <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[9px] font-bold uppercase rounded border border-brand-orange/30">
+                                QUIZ
+                            </span>
+                        ) : isArticle ? (
+                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[9px] font-bold uppercase rounded border border-purple-500/30">
+                                ARTICLE
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
+                                LESSON {lessonNumber}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[10px] font-medium text-slate-500">
+                        {lesson.duration || '0m'}
+                    </span>
+                </div>
+                <h4 className="text-sm font-semibold leading-tight text-white">
+                    {lesson.title || 'Untitled Lesson'}
+                </h4>
+            </div>
+        </div>
+    );
+}
+
+// Droppable Module Zone - allows dropping lessons into modules (especially empty ones)
+interface DroppableModuleZoneProps {
+    moduleId: string;
+    children: React.ReactNode;
+    isExpanded: boolean;
+    isEmpty: boolean;
+}
+
+function DroppableModuleZone({ moduleId, children, isExpanded, isEmpty }: DroppableModuleZoneProps) {
+    const { isOver, setNodeRef } = useDroppable({
+        id: `module-drop-${moduleId}`,
+        data: {
+            type: 'module',
+            moduleId: moduleId,
+        },
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={`
+                relative transition-all duration-200
+                ${isEmpty ? 'min-h-[140px]' : ''}
+                ${isOver && isExpanded ? 'ring-2 ring-brand-blue-light/50 ring-inset rounded-xl bg-brand-blue-light/5' : ''}
+            `}
+        >
+            {children}
+            {/* Empty state drop indicator */}
+            {isEmpty && isOver && isExpanded && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-brand-blue-light text-sm font-medium">
+                        Drop lesson here
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Droppable Add Lesson Button - acts as drop target when dragging lessons
+interface DroppableAddLessonButtonProps {
+    moduleId: string;
+    onClick: () => void;
+}
+
+function DroppableAddLessonButton({ moduleId, onClick }: DroppableAddLessonButtonProps) {
+    const { isOver, setNodeRef } = useDroppable({
+        id: `add-lesson-drop-${moduleId}`,
+        data: {
+            type: 'add-lesson-button',
+            moduleId: moduleId,
+        },
+    });
+
+    return (
+        <button
+            ref={setNodeRef}
+            onClick={onClick}
+            className={`
+                rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-2 transition-all group min-h-[120px]
+                ${isOver
+                    ? 'border-brand-blue-light bg-brand-blue-light/10 text-brand-blue-light'
+                    : 'border-white/10 hover:border-brand-blue-light/30 text-slate-500 hover:text-brand-blue-light'
+                }
+            `}
+        >
+            <div className={`p-2 rounded-lg transition-colors ${isOver ? 'bg-brand-blue-light/20' : 'bg-white/5 group-hover:bg-brand-blue-light/10'}`}>
+                <Plus size={16} />
+            </div>
+            <span className="text-xs font-medium">
+                {isOver ? 'Drop here' : 'Add Lesson'}
+            </span>
+        </button>
+    );
+}
 
 interface ExpertCourseBuilderClientProps {
     course: Course & { skills?: string[]; status?: string };
@@ -34,6 +314,14 @@ export default function ExpertCourseBuilderClient({
     const router = useRouter();
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // Local syllabus state for optimistic updates during drag
+    const [syllabus, setSyllabus] = useState(initialSyllabus);
+
+    // Sync syllabus with props when they change (e.g., after refresh)
+    React.useEffect(() => {
+        setSyllabus(initialSyllabus);
+    }, [initialSyllabus]);
+
     // Panel state
     const [activePanel, setActivePanel] = useState<ExpertCoursePanelType>(null);
     const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
@@ -48,6 +336,194 @@ export default function ExpertCourseBuilderClient({
     const [expandedModules, setExpandedModules] = useState<string[]>(
         initialSyllabus.length > 0 ? [initialSyllabus[0].id] : []
     );
+
+    // Drag and drop state
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+    const [activeDragModuleId, setActiveDragModuleId] = useState<string | null>(null);
+
+    // Configure drag sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement to start drag (prevents accidental drags)
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Find lesson and module info for drag overlay
+    const activeDragLesson = useMemo(() => {
+        if (!activeDragId || !activeDragModuleId) return null;
+        const module = syllabus.find(m => m.id === activeDragModuleId);
+        if (!module) return null;
+        const lessonIndex = module.lessons?.findIndex((l: Lesson) => l.id === activeDragId) ?? -1;
+        const lesson = module.lessons?.[lessonIndex];
+        if (!lesson) return null;
+        const moduleIndex = syllabus.findIndex(m => m.id === activeDragModuleId);
+        return { lesson, moduleIndex, lessonIndex };
+    }, [activeDragId, activeDragModuleId, syllabus]);
+
+    // Handle drag start
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        const { active } = event;
+        setActiveDragId(active.id as string);
+        // Find which module contains this lesson
+        for (const module of syllabus) {
+            if (module.lessons?.some((l: Lesson) => l.id === active.id)) {
+                setActiveDragModuleId(module.id);
+                break;
+            }
+        }
+    }, [syllabus]);
+
+    // Handle drag end
+    const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        setActiveDragId(null);
+        setActiveDragModuleId(null);
+
+        if (!over || active.id === over.id) return;
+
+        // Find which module contains the dragged lesson
+        let sourceModuleId: string | null = null;
+        let sourceModule: Module | null = null;
+
+        for (const module of syllabus) {
+            if (module.lessons?.some((l: Lesson) => l.id === active.id)) {
+                sourceModuleId = module.id;
+                sourceModule = module;
+                break;
+            }
+        }
+
+        if (!sourceModuleId || !sourceModule || !sourceModule.lessons) return;
+
+        // Check if dropped on a module zone or add-lesson button (for empty modules or end of module)
+        const overId = over.id as string;
+        if (overId.startsWith('module-drop-') || overId.startsWith('add-lesson-drop-')) {
+            const targetModuleId = overId.replace('module-drop-', '').replace('add-lesson-drop-', '');
+            const targetModule = syllabus.find(m => m.id === targetModuleId);
+
+            if (!targetModule) return;
+
+            // Don't do anything if dropped on the same module it came from
+            if (targetModuleId === sourceModuleId) return;
+
+            const draggedLesson = sourceModule.lessons.find((l: Lesson) => l.id === active.id);
+            if (!draggedLesson) return;
+
+            // Add to end of target module
+            const newSourceLessons = sourceModule.lessons.filter((l: Lesson) => l.id !== active.id);
+            const newTargetLessons = [...(targetModule.lessons || []), draggedLesson];
+
+            const newSyllabus = syllabus.map(m => {
+                if (m.id === sourceModuleId) {
+                    return { ...m, lessons: newSourceLessons };
+                }
+                if (m.id === targetModuleId) {
+                    return { ...m, lessons: newTargetLessons };
+                }
+                return m;
+            });
+            setSyllabus(newSyllabus);
+
+            // Persist to database (add to end)
+            const result = await moveExpertLessonToModule(
+                active.id as string,
+                targetModuleId,
+                initialCourse.id,
+                newTargetLessons.length - 1
+            );
+
+            if (!result.success) {
+                console.error('Failed to move lesson:', result.error);
+                setSyllabus(initialSyllabus);
+            }
+            return;
+        }
+
+        // Find which module contains the target lesson
+        let targetModuleId: string | null = null;
+        let targetModule: Module | null = null;
+
+        for (const module of syllabus) {
+            if (module.lessons?.some((l: Lesson) => l.id === over.id)) {
+                targetModuleId = module.id;
+                targetModule = module;
+                break;
+            }
+        }
+
+        if (!targetModuleId || !targetModule || !targetModule.lessons) return;
+
+        // Check if moving within the same module or across modules
+        if (sourceModuleId === targetModuleId) {
+            // Reorder within the same module
+            const oldIndex = sourceModule.lessons.findIndex((l: Lesson) => l.id === active.id);
+            const newIndex = sourceModule.lessons.findIndex((l: Lesson) => l.id === over.id);
+
+            if (oldIndex !== -1 && newIndex !== -1) {
+                // Optimistic update
+                const newLessons = arrayMove(sourceModule.lessons, oldIndex, newIndex);
+                const newSyllabus = syllabus.map(m =>
+                    m.id === sourceModuleId
+                        ? { ...m, lessons: newLessons }
+                        : m
+                );
+                setSyllabus(newSyllabus);
+
+                // Persist to database
+                const lessonIds = newLessons.map((l: Lesson) => l.id);
+                const result = await reorderExpertLessons(lessonIds, initialCourse.id);
+
+                if (!result.success) {
+                    // Revert on error
+                    console.error('Failed to reorder lessons:', result.error);
+                    setSyllabus(initialSyllabus);
+                }
+            }
+        } else {
+            // Move lesson to a different module
+            const draggedLesson = sourceModule.lessons.find((l: Lesson) => l.id === active.id);
+            if (!draggedLesson) return;
+
+            // Find the target position in the target module
+            const targetIndex = targetModule.lessons.findIndex((l: Lesson) => l.id === over.id);
+
+            // Optimistic update: remove from source, add to target
+            const newSourceLessons = sourceModule.lessons.filter((l: Lesson) => l.id !== active.id);
+            const newTargetLessons = [...targetModule.lessons];
+            newTargetLessons.splice(targetIndex, 0, draggedLesson);
+
+            const newSyllabus = syllabus.map(m => {
+                if (m.id === sourceModuleId) {
+                    return { ...m, lessons: newSourceLessons };
+                }
+                if (m.id === targetModuleId) {
+                    return { ...m, lessons: newTargetLessons };
+                }
+                return m;
+            });
+            setSyllabus(newSyllabus);
+
+            // Persist to database
+            const result = await moveExpertLessonToModule(
+                active.id as string,
+                targetModuleId,
+                initialCourse.id,
+                targetIndex
+            );
+
+            if (!result.success) {
+                // Revert on error
+                console.error('Failed to move lesson:', result.error);
+                setSyllabus(initialSyllabus);
+            }
+        }
+    }, [syllabus, initialCourse.id, initialSyllabus]);
 
     const handleRefresh = useCallback(() => {
         router.refresh();
@@ -277,8 +753,14 @@ export default function ExpertCourseBuilderClient({
                         </div>
 
                         {/* Module List */}
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={customCollisionDetection}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                        >
                         <div className="space-y-4">
-                            {initialSyllabus.map((module, index) => (
+                            {syllabus.map((module, index) => (
                                 <div
                                     key={module.id}
                                     className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden"
@@ -328,82 +810,34 @@ export default function ExpertCourseBuilderClient({
                                         ${expandedModules.includes(module.id) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
                                     `}>
                                         <div className="overflow-hidden">
-                                            <div className="px-5 pt-3 pb-5">
-                                                {/* Lessons Card Grid */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                                    {module.lessons?.map((lesson: Lesson, lessonIndex: number) => {
-                                                        const isQuiz = lesson.type === 'quiz';
-                                                        const isArticle = lesson.type === 'article';
-                                                        const lessonNumber = `${index + 1}.${lessonIndex + 1}`;
-
-                                                        return (
-                                                            <div
-                                                                key={lesson.id}
-                                                                onClick={() => handleOpenPanel('lesson', module.id, lesson.id)}
-                                                                className="group relative rounded-xl cursor-pointer transition-all duration-300 bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-white/20"
-                                                            >
-                                                                {/* Card Content */}
-                                                                <div className="px-4 py-[26px]">
-                                                                    {/* Top Row */}
-                                                                    <div className="flex items-center justify-between mb-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            {isQuiz ? (
-                                                                                <span className="px-2 py-0.5 bg-brand-orange/20 text-brand-orange text-[9px] font-bold uppercase rounded border border-brand-orange/30">
-                                                                                    QUIZ
-                                                                                </span>
-                                                                            ) : isArticle ? (
-                                                                                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[9px] font-bold uppercase rounded border border-purple-500/30">
-                                                                                    ARTICLE
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-[10px] font-bold tracking-wider text-brand-blue-light uppercase">
-                                                                                    LESSON {lessonNumber}
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <span className="text-[10px] font-medium text-slate-500">
-                                                                            {lesson.duration || '0m'}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Lesson Title */}
-                                                                    <h4 className="text-sm font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors">
-                                                                        {lesson.title || 'Untitled Lesson'}
-                                                                    </h4>
-
-                                                                    {/* Video Status Indicator */}
-                                                                    {!isQuiz && !isArticle && (
-                                                                        <div className="mt-2 flex items-center gap-1.5">
-                                                                            <Video size={12} className="text-brand-blue-light" />
-                                                                            <span className="text-[10px] text-slate-500">
-                                                                                {(lesson as any).video_url ? 'Video attached' : 'No video'}
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Hover Edit Overlay */}
-                                                                <div className="absolute inset-0 bg-brand-blue-light/5 border-2 border-brand-blue-light/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center pointer-events-none z-10">
-                                                                    <div className="p-2 rounded-full bg-black/70 border border-brand-blue-light/50 shadow-lg">
-                                                                        <Edit3 size={14} className="text-brand-blue-light" />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-
-                                                    {/* Add Lesson Button */}
-                                                    <button
-                                                        onClick={() => handleOpenPanel('lesson', module.id)}
-                                                        className="rounded-xl border-2 border-dashed border-white/10 hover:border-brand-blue-light/30 p-6 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-brand-blue-light transition-all group min-h-[120px]"
+                                            <DroppableModuleZone moduleId={module.id} isExpanded={expandedModules.includes(module.id)} isEmpty={!module.lessons || module.lessons.length === 0}>
+                                                <div className="px-5 pt-3 pb-5">
+                                                    {/* Lessons Card Grid with Drag and Drop */}
+                                                    <SortableContext
+                                                        items={module.lessons?.map((l: Lesson) => l.id) || []}
+                                                        strategy={rectSortingStrategy}
                                                     >
-                                                        <div className="p-2 rounded-lg bg-white/5 group-hover:bg-brand-blue-light/10 transition-colors">
-                                                            <Plus size={16} />
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                                            {module.lessons?.map((lesson: Lesson, lessonIndex: number) => (
+                                                                <SortableLessonCard
+                                                                    key={lesson.id}
+                                                                    lesson={lesson}
+                                                                    moduleIndex={index}
+                                                                    lessonIndex={lessonIndex}
+                                                                    moduleId={module.id}
+                                                                    onOpenPanel={handleOpenPanel}
+                                                                />
+                                                            ))}
+
+                                                            {/* Add Lesson Button - also acts as drop target */}
+                                                            <DroppableAddLessonButton
+                                                                moduleId={module.id}
+                                                                onClick={() => handleOpenPanel('lesson', module.id)}
+                                                            />
                                                         </div>
-                                                        <span className="text-xs font-medium">Add Lesson</span>
-                                                    </button>
+                                                    </SortableContext>
                                                 </div>
-                                            </div>
+                                            </DroppableModuleZone>
                                         </div>
                                     </div>
                                 </div>
@@ -420,6 +854,18 @@ export default function ExpertCourseBuilderClient({
                                 <span className="font-medium">Add Module</span>
                             </button>
                         </div>
+
+                        {/* Drag Overlay - Shows while dragging */}
+                        <DragOverlay>
+                            {activeDragLesson && (
+                                <LessonDragOverlay
+                                    lesson={activeDragLesson.lesson}
+                                    moduleIndex={activeDragLesson.moduleIndex}
+                                    lessonIndex={activeDragLesson.lessonIndex}
+                                />
+                            )}
+                        </DragOverlay>
+                        </DndContext>
                     </div>
 
                     {/* Resources Section */}
