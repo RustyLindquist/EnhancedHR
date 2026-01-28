@@ -101,6 +101,14 @@ Doc Agent MUST be spawned when:
 - Bug fix reveals undocumented workflow
 - User describes a workflow that should be documented
 
+## Developer / Ops Workflows
+
+These workflows are for developers and operations, not end users.
+
+| Workflow | Description | Doc |
+|----------|-------------|-----|
+| **Database Course Building** | Bulk course creation via direct database insertion | [database-course-building.md](./database-course-building.md) |
+
 ## Cross-References
 
 - **Feature docs**: `docs/features/*.md` — what features do
