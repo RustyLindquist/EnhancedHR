@@ -28,6 +28,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Dynamic Groups | dynamic-groups | Medium | Backend | doc-discovery | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
 | Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, and admin review/approval flows | Exists |
 | Platform Admin Portal | admin-portal | High | Backend | doc-discovery, plan-lint | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |
+| Course Promotion (Temporary) | course-promotion | Medium | Backend | doc-discovery | Coupled to courses schema, video-ai-context (transcript pipeline); temporary feature for content migration | Exists |
 | Membership & Billing | membership-billing | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to org membership, roles, and access across the app | Exists |
 
 ## Meta / Development Infrastructure

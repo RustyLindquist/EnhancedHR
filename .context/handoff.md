@@ -5,8 +5,8 @@
 
 ## Last Session
 
-**Date**: 2026-01-18
-**Status**: Complete - All work pushed and merged
+**Date**: 2026-01-27
+**Status**: Complete - All work pushed and merged (PR #182)
 
 ## Quick Resume
 
@@ -18,80 +18,120 @@
 
 ## Summary
 
-Completed and merged Users and Groups Member Access feature, Organization Courses in org portal, and implemented a new Git Ops Agent with `/push` skill for context-isolated push operations. Session included comprehensive analysis of effective patterns for future sessions.
+Built 2 courses via direct database insertion (faster than browser automation), fixed a null duration crash in CoursePageV2, and added Supadata API as a fallback option in the YouTube transcript extraction pipeline. All changes merged in PR #182.
 
 ## Work Completed
 
-### Features Merged
-| PR | Feature | Files |
-|----|---------|-------|
-| #125 | Users and Groups Member Access | 8 files |
-| #126 | Organization Courses in Org Portal | 7 files |
-| #127/#128 | Playwright dependency + lockfile fix | 3 files |
-| #131 | Git Ops Agent + /push skill | 5 files |
+### Courses Created via Database
 
-### New Agent: @git-ops-agent
-- **File**: `.claude/agents/git-ops-agent.md`
-- **Skill**: `/push "description"`
-- **Purpose**: Context-isolated push operations
-- **Features**: Package manager detection, build validation, escalation protocol
+| ID | Title | Videos | Duration | Category |
+|----|-------|--------|----------|----------|
+| 618 | Extraordinary vs Extravagant | 18 | 29 min | Leadership Development |
+| 621 | Choose To Thrive | 10 | 27 min | Leadership Development |
 
-### Key Files Changed
-- `.claude/agents/git-ops-agent.md` — New agent specification
-- `.claude/skills/push/SKILL.md` — New push skill
-- `.claude/agents/AGENT_INVENTORY.md` — Added git-ops-agent
-- `.claude/skills/SKILLS_INDEX.md` — Added push skill
-- `CLAUDE.md` — Updated agent table
-- `src/app/org/courses/` — Org courses pages
-- `src/app/org/layout.tsx` — Added Courses nav link
+Both courses use YouTube videos from Rusty Lindquist's playlists.
+
+### Bug Fix: Null Duration Crash
+
+**File**: `src/components/course/CoursePageV2.tsx` (line 98)
+
+**Problem**: `course.duration.match()` crashed when duration was null
+
+**Fix**: Added null check before calling `.match()`
+
+### Feature: Supadata API Fallback for Transcripts
+
+Enhanced the transcript extraction pipeline with Supadata as a second-tier fallback:
+
+**Fallback Chain (Updated)**:
+1. Innertube API (youtube-transcript library) - Free, fast
+2. **Supadata API (NEW)** - Paid, better success rate for restricted videos
+3. Audio extraction (for YouTube) - Download audio, transcribe
+4. AI multimodal (Gemini) - Watches video directly
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/lib/youtube.ts` | Added `fetchYouTubeTranscriptWithFallback()` and `fetchYouTubeTranscriptSupadata()` |
+| `src/app/api/course-import/process-videos/route.ts` | Integrated full fallback chain |
+| `src/lib/video-transcript.ts` | Uses new fallback function |
+| `src/components/course/CoursePageV2.tsx` | Null duration fix |
+| `docs/features/video-ai-context.md` | Updated with Supadata in fallback chain |
+
+## Environment Setup
+
+Add to `.env.local` for Supadata support (optional but recommended):
+
+```
+SUPADATA_API_KEY=your_key_here
+```
+
+The Supadata API provides better success rates for YouTube videos with restricted caption access.
+
+## Documentation Created
+
+| Doc | Purpose |
+|-----|---------|
+| `docs/features/course-promotion.md` | Course promotion feature with transcript pipeline |
+| `docs/workflows/database-course-building.md` | Manual course creation via database |
 
 ## Verification
 
 ```bash
-# All PRs merged
-gh pr list --state merged --limit 5
+# Check courses exist
+docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT id, title, duration FROM courses WHERE id IN (618, 621);"
 
-# Git status should be clean (except plans/test-results)
+# Check lessons
+docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id IN (618, 621);"
+
+# Git status should be clean
 git status
-
-# Test the /push skill
-# (Already tested - PR #131 was created by git-ops-agent)
 ```
 
-## Remaining
+## Next Steps
 
-### Uncommitted (intentionally)
-- `.claude/plans/` — Local planning files
-- `test-results/` — Test artifacts
+1. **Test course promotion** with transcript generation on the new courses
+2. **Verify transcripts** appear correctly after promotion
+3. **Test AI assistant** can access course content via embeddings
+4. **Consider Supadata API key** - add to production environment for better transcript success
 
-### Future Enhancements Identified
-1. Integrate `/push` check into `/handoff` skill
-2. Auto-suggest `/push` when context high + uncommitted changes
-3. Document effective prompting patterns from this session
+## Pending Cleanup (After Migration Complete)
 
-## Next Session
+Once all courses are migrated to production, consider removing:
 
-### Setup
-- Run `/session-start` to load context
-- Git status should be clean
+- Course promotion environment variables (`COURSE_IMPORT_SECRET`, `PROD_APP_URL`)
+- `src/app/api/course-import/` API routes
+- `src/components/admin/CoursePromotionModal.tsx`
+- Course promotion button in admin course list
 
-### Context to Remember
-- Git Ops Agent is live and tested
-- Use `/push "description"` for pushing when context is low
-- Escalation protocol: agent returns to orchestrator if it hits complexity outside its domain
+See `docs/features/course-promotion.md` for full cleanup instructions.
+
+## Context to Remember
+
+- Database course building is much faster than browser automation for bulk operations
+- Supadata API is a paid service - use sparingly or only when Innertube fails
+- Course durations must not be null (causes crash in CoursePageV2)
+- YouTube video IDs in the 0521-0543 range have gaps due to re-uploads
 
 ---
 
-## Session Insights (For Future Reference)
+## Session Insights
 
-### Effective User Prompting Patterns
-1. **"Analysis before action"** — Ask for determination before executing
-2. **Full error reporting** — Paste complete error output
-3. **Verification requests** — "Check the plan and make sure everything is implemented"
-4. **Extended thinking** — Use "ultrathink" for complex analysis
+### Effective Patterns Used
 
-### Effective Agent Patterns
-1. **Context isolation** — Spawn agents for operations that must complete
-2. **Bounded autonomy** — Clear domain boundaries with escalation protocol
-3. **Package manager awareness** — Detect npm/pnpm/yarn before lockfile operations
-4. **Verification after merge** — Always check PR state after merge command
+1. **Direct database insertion** for bulk course creation (18-28 lessons per course)
+2. **Multi-level API fallback** for robust transcript extraction
+3. **Null safety checks** for optional fields in UI components
+
+### Key Technical Decisions
+
+1. **Supadata placement**: Added as second fallback (after Innertube, before audio extraction) because:
+   - Faster than audio extraction
+   - Cheaper than AI multimodal
+   - Better success rate than Innertube for restricted videos
+
+2. **Database-first approach**: Chose direct SQL over admin UI for course creation because:
+   - 10-18 videos per course would take significant time in UI
+   - Browser automation unreliable for large batches
+   - Direct SQL provides immediate feedback and easy corrections
