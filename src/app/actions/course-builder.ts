@@ -5,6 +5,15 @@ import { revalidatePath } from 'next/cache';
 import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
 import { fetchYouTubeMetadata, fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
 import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
+import {
+    getAssetIdFromPlaybackId,
+    requestMuxAutoCaption,
+    waitForMuxCaptionReady,
+    fetchMuxVTT,
+    deleteMuxAssetByPlaybackId
+} from '@/app/actions/mux';
+import { parseVTTToTranscript } from '@/lib/vtt-parser';
+import { transcribeWithWhisper, isWhisperAvailable } from '@/lib/whisper-transcription';
 
 // ============================================
 // Course Metadata Actions
@@ -421,7 +430,31 @@ export async function deleteModule(moduleId: string) {
         .eq('id', moduleId)
         .single();
 
-    // Delete all lessons in this module first
+    // Fetch all lessons with video URLs to delete from Mux
+    const { data: lessons } = await admin
+        .from('lessons')
+        .select('id, video_url')
+        .eq('module_id', moduleId);
+
+    // Delete Mux videos for all lessons in this module
+    if (lessons && lessons.length > 0) {
+        for (const lesson of lessons) {
+            if (lesson.video_url) {
+                const videoUrl = lesson.video_url;
+                // Check if it's a Mux playback ID (alphanumeric, 10+ chars, no dots)
+                const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+                if (isMuxId) {
+                    console.log(`[deleteModule] Deleting Mux video for lesson ${lesson.id}: ${videoUrl}`);
+                    const muxResult = await deleteMuxAssetByPlaybackId(videoUrl);
+                    if (!muxResult.success) {
+                        console.error(`[deleteModule] Failed to delete Mux video: ${muxResult.error}`);
+                    }
+                }
+            }
+        }
+    }
+
+    // Delete all lessons in this module
     await admin
         .from('lessons')
         .delete()
@@ -452,6 +485,38 @@ export async function deleteCourse(courseId: string) {
         .select('author_id, status')
         .eq('id', courseId)
         .single();
+
+    // Fetch all modules for this course
+    const { data: modules } = await admin
+        .from('modules')
+        .select('id')
+        .eq('course_id', courseId);
+
+    // Delete Mux videos for all lessons in all modules of this course
+    if (modules && modules.length > 0) {
+        const moduleIds = modules.map(m => m.id);
+        const { data: lessons } = await admin
+            .from('lessons')
+            .select('id, video_url')
+            .in('module_id', moduleIds);
+
+        if (lessons && lessons.length > 0) {
+            for (const lesson of lessons) {
+                if (lesson.video_url) {
+                    const videoUrl = lesson.video_url;
+                    // Check if it's a Mux playback ID (alphanumeric, 10+ chars, no dots)
+                    const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+                    if (isMuxId) {
+                        console.log(`[deleteCourse] Deleting Mux video for lesson ${lesson.id}: ${videoUrl}`);
+                        const muxResult = await deleteMuxAssetByPlaybackId(videoUrl);
+                        if (!muxResult.success) {
+                            console.error(`[deleteCourse] Failed to delete Mux video: ${muxResult.error}`);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Due to cascade deletes in the database, we just need to delete the course
     // Related modules, lessons, resources, user_progress will cascade delete
@@ -607,12 +672,27 @@ export async function updateLesson(lessonId: string, data: {
 export async function deleteLesson(lessonId: string) {
     const admin = await createAdminClient();
 
-    // Get module/course info before deleting
+    // Get lesson info before deleting (including video_url for Mux cleanup)
     const { data: lesson } = await admin
         .from('lessons')
-        .select('module_id, modules(course_id)')
+        .select('module_id, video_url, modules(course_id)')
         .eq('id', lessonId)
         .single();
+
+    // Delete the Mux video if it exists and is a Mux playback ID
+    if (lesson?.video_url) {
+        const videoUrl = lesson.video_url;
+        // Check if it's a Mux playback ID (alphanumeric, 10+ chars, no dots)
+        const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+        if (isMuxId) {
+            console.log(`[deleteLesson] Deleting Mux video: ${videoUrl}`);
+            const muxResult = await deleteMuxAssetByPlaybackId(videoUrl);
+            if (!muxResult.success) {
+                console.error(`[deleteLesson] Failed to delete Mux video: ${muxResult.error}`);
+                // Continue with lesson deletion even if Mux deletion fails
+            }
+        }
+    }
 
     const { error } = await admin
         .from('lessons')
@@ -889,9 +969,18 @@ export async function fetchYouTubeMetadataAction(videoUrl: string) {
 // AI Transcript Generation
 // ============================================
 
+/**
+ * Check if a string is a Mux playback ID
+ * Playback IDs are 10+ character alphanumeric strings without dots or slashes
+ */
+function isMuxPlaybackId(str: string): boolean {
+    return /^[a-zA-Z0-9]{10,}$/.test(str) && !str.includes('.');
+}
+
 export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
     success: boolean;
     transcript?: string;
+    source?: 'youtube' | 'mux-caption' | 'whisper' | 'manual';
     error?: string;
 }> {
     const supabase = await createClient();
@@ -901,172 +990,146 @@ export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
         return { success: false, error: 'Not authenticated' };
     }
 
-    // Check if this is a YouTube URL and try to get transcript directly
+    // Strategy 1: YouTube - Use existing working pipeline
     if (await isYouTubeUrl(videoUrl)) {
-        console.log('[Transcript] Detected YouTube URL, attempting direct transcript fetch');
+        console.log('[Transcript] Detected YouTube URL, attempting transcript extraction');
+
+        // Try Innertube first (native captions)
         const ytResult = await fetchYouTubeTranscript(videoUrl);
         if (ytResult.success && ytResult.transcript) {
-            console.log('[Transcript] Successfully fetched YouTube transcript');
-            return { success: true, transcript: ytResult.transcript };
+            console.log('[Transcript] Successfully fetched YouTube transcript via Innertube');
+            return { success: true, transcript: ytResult.transcript, source: 'youtube' };
         }
-        console.log('[Transcript] YouTube transcript not available:', ytResult.error);
 
-        // Try audio extraction fallback for YouTube videos
-        console.log('[Transcript] Attempting audio extraction fallback for YouTube video...');
+        console.log('[Transcript] Innertube failed, trying Supadata fallback');
+
+        // Try audio extraction via Supadata
         const audioResult = await generateTranscriptFromYouTubeAudio(videoUrl);
         if (audioResult.success && audioResult.transcript) {
-            console.log('[Transcript] Successfully generated transcript via audio extraction');
-            return { success: true, transcript: audioResult.transcript };
+            console.log('[Transcript] Successfully generated transcript via Supadata');
+            return { success: true, transcript: audioResult.transcript, source: 'youtube' };
         }
-        console.log('[Transcript] Transcription service failed:', audioResult.error);
-        // For YouTube URLs, don't fall through to OpenRouter - it can't access YouTube videos
-        // Return the actual error from the transcription service
+
+        console.log('[Transcript] All YouTube methods failed:', audioResult.error);
         return {
             success: false,
-            error: audioResult.error || 'Unable to generate transcript for this video. Please try again or manually enter the transcript.'
+            error: audioResult.error || 'Unable to generate transcript for this YouTube video. Please try again or enter manually.'
         };
     }
 
-    // Check if this is a Mux playback ID (short alphanumeric string)
-    const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+    // Strategy 2: Mux playback ID - Try Mux captions, then Whisper
+    if (isMuxPlaybackId(videoUrl)) {
+        console.log('[Transcript] Detected Mux playback ID:', videoUrl);
 
-    let processableUrl = videoUrl;
-    if (isMuxId) {
-        // For Mux videos, use the MP4 rendition URL
-        // Mux provides static MP4 renditions at this URL pattern
-        processableUrl = `https://stream.mux.com/${videoUrl}/high.mp4`;
+        // Try Mux auto-caption first
+        const muxResult = await generateMuxCaptionTranscript(videoUrl);
+        if (muxResult.success && muxResult.transcript) {
+            console.log('[Transcript] Successfully generated transcript via Mux captions');
+            return { success: true, transcript: muxResult.transcript, source: 'mux-caption' };
+        }
+
+        console.log('[Transcript] Mux caption failed:', muxResult.error);
+
+        // Fallback to Whisper
+        if (await isWhisperAvailable()) {
+            console.log('[Transcript] Trying Whisper fallback');
+            const whisperResult = await transcribeWithWhisper(videoUrl);
+            if (whisperResult.success && whisperResult.transcript) {
+                console.log('[Transcript] Successfully generated transcript via Whisper');
+                return { success: true, transcript: whisperResult.transcript, source: 'whisper' };
+            }
+            console.log('[Transcript] Whisper failed:', whisperResult.error);
+        } else {
+            console.log('[Transcript] Whisper not available (OPENAI_API_KEY not set)');
+        }
+
+        return {
+            success: false,
+            error: 'Transcript generation failed. Please enter the transcript manually or try again later.'
+        };
     }
 
+    // Strategy 3: External URL - Not supported for auto-transcription
+    console.log('[Transcript] External URL detected, not supported for auto-transcription:', videoUrl);
+    return {
+        success: false,
+        error: 'Automatic transcription is not available for external video URLs. Please upload the video or enter the transcript manually.'
+    };
+}
+
+/**
+ * Generate transcript from Mux using auto-generated captions
+ */
+async function generateMuxCaptionTranscript(playbackId: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    error?: string;
+}> {
     try {
-        // Fetch the prompt and model from ai_prompt_library
-        const { data: promptConfig } = await supabase
-            .from('ai_prompt_library')
-            .select('prompt_text, model')
-            .eq('key', 'generate_transcript')
-            .single();
+        // Step 1: Get asset ID from playback ID
+        console.log('[Mux Caption] Looking up asset ID for playback ID:', playbackId);
+        const assetId = await getAssetIdFromPlaybackId(playbackId);
 
-        const prompt = promptConfig?.prompt_text || `You are a professional transcription assistant. Watch this video carefully and produce a detailed, accurate transcript.
-
-Guidelines:
-- Transcribe all spoken words exactly as said
-- Include speaker labels if there are multiple speakers (e.g., "Speaker 1:", "Speaker 2:")
-- Note any significant non-verbal sounds in brackets [applause], [music], [silence]
-- Break the transcript into logical paragraphs
-- Use proper punctuation and formatting
-- If there are slides or on-screen text that's important, note them in brackets
-- Maintain the natural flow and timing of speech
-
-Produce the full transcript now:`;
-
-        const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
-
-        // Use OpenRouter to call the model with video content
-        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
-
-        if (!OPENROUTER_API_KEY) {
-            return { success: false, error: 'OpenRouter API key not configured' };
+        if (!assetId) {
+            return { success: false, error: 'Could not find Mux asset for this video' };
         }
 
-        // For video processing, we'll use the model's multimodal capabilities
-        // OpenRouter supports passing video URLs to compatible models
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-                'X-Title': 'EnhancedHR'
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: prompt
-                            },
-                            {
-                                type: 'video_url',
-                                video_url: {
-                                    url: processableUrl
-                                }
-                            }
-                        ]
-                    }
-                ],
-                max_tokens: 8000
-            })
-        });
+        console.log('[Mux Caption] Found asset ID:', assetId);
 
-        if (!response.ok) {
-            const errorData = await response.text();
-            console.error('OpenRouter API error:', errorData);
+        // Step 2: Request auto-caption generation
+        console.log('[Mux Caption] Requesting auto-caption generation');
+        const captionResult = await requestMuxAutoCaption(assetId);
 
-            // If video_url isn't supported, try with just text and URL reference
-            const fallbackResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-                    'X-Title': 'EnhancedHR'
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `${prompt}\n\nVideo URL: ${processableUrl}\n\nNote: Please analyze this video and provide a transcript. If you cannot access the video directly, please indicate that and I will provide an alternative method.`
-                        }
-                    ],
-                    max_tokens: 8000
-                })
-            });
-
-            if (!fallbackResponse.ok) {
-                return { success: false, error: 'Failed to process video with AI' };
-            }
-
-            const fallbackData = await fallbackResponse.json();
-            const transcript = fallbackData.choices?.[0]?.message?.content || '';
-
-            // If the model says it can't access the video, return helpful error
-            if (transcript.toLowerCase().includes("cannot access") ||
-                transcript.toLowerCase().includes("unable to access") ||
-                transcript.toLowerCase().includes("don't have access")) {
-                return {
-                    success: false,
-                    error: 'The AI model cannot directly access video content. Please ensure the video URL is publicly accessible or try uploading to a supported video host.'
-                };
-            }
-
-            return { success: true, transcript };
+        if (!captionResult.success || !captionResult.trackIds?.length) {
+            return {
+                success: false,
+                error: captionResult.error || 'Failed to request caption generation'
+            };
         }
 
-        const data = await response.json();
-        const transcript = data.choices?.[0]?.message?.content || '';
+        console.log('[Mux Caption] Caption requested, track IDs:', captionResult.trackIds);
 
-        // Log the AI usage
-        const admin = await createAdminClient();
-        await admin.from('ai_logs').insert({
-            user_id: user.id,
-            agent_type: 'generate_transcript',
-            page_context: 'course_builder',
-            prompt: prompt.substring(0, 500),
-            response: transcript.substring(0, 1000),
-            metadata: {
-                video_url: videoUrl,
-                model: model
-            }
-        });
+        // Step 3: Poll for caption completion
+        console.log('[Mux Caption] Polling for caption completion (this may take 30-120 seconds)');
+        const readyResult = await waitForMuxCaptionReady(assetId, captionResult.trackIds);
 
+        if (!readyResult.ready || !readyResult.vttUrl) {
+            return {
+                success: false,
+                error: readyResult.error || 'Caption generation timed out'
+            };
+        }
+
+        console.log('[Mux Caption] Caption ready, VTT URL:', readyResult.vttUrl);
+
+        // Step 4: Fetch and parse VTT
+        console.log('[Mux Caption] Fetching VTT content');
+        const vttResult = await fetchMuxVTT(readyResult.vttUrl);
+
+        if (!vttResult.success || !vttResult.content) {
+            return {
+                success: false,
+                error: vttResult.error || 'Failed to fetch caption content'
+            };
+        }
+
+        // Step 5: Parse VTT to plain text
+        console.log('[Mux Caption] Parsing VTT to transcript');
+        const transcript = parseVTTToTranscript(vttResult.content);
+
+        if (!transcript || transcript.trim().length === 0) {
+            return { success: false, error: 'Caption content is empty' };
+        }
+
+        console.log('[Mux Caption] Transcript generated, length:', transcript.length);
         return { success: true, transcript };
 
     } catch (error: any) {
-        console.error('Error generating transcript:', error);
-        return { success: false, error: error.message || 'Failed to generate transcript' };
+        console.error('[Mux Caption] Error:', error);
+        return {
+            success: false,
+            error: error.message || 'Mux caption generation failed'
+        };
     }
 }
 

@@ -21,6 +21,34 @@ function detectVideoPlatform(url: string): string {
 }
 
 /**
+ * Check if a Mux asset is used by other video cards
+ * Returns true if other records exist with the same muxAssetId (excluding the current record)
+ */
+async function isMuxAssetUsedElsewhere(muxAssetId: string, currentRecordId: string): Promise<boolean> {
+    const admin = createAdminClient();
+
+    // Check user_context_items for other records with the same muxAssetId
+    const { data, error } = await admin
+        .from('user_context_items')
+        .select('id')
+        .eq('type', 'VIDEO')
+        .neq('id', currentRecordId)
+        .contains('content', { muxAssetId });
+
+    if (error) {
+        console.error('[isMuxAssetUsedElsewhere] Error checking for other uses:', error);
+        // If we can't check, assume it's used elsewhere to be safe
+        return true;
+    }
+
+    const isUsed = data && data.length > 0;
+    if (isUsed) {
+        console.log(`[isMuxAssetUsedElsewhere] Mux asset ${muxAssetId} is used by ${data.length} other record(s)`);
+    }
+    return isUsed;
+}
+
+/**
  * Create a video resource for an org collection
  * Returns upload URL for client-side upload to Mux, OR creates directly for external URLs
  * Org admin or platform admin only
@@ -403,8 +431,9 @@ export async function updateOrgVideoResource(
 }
 
 /**
- * Delete org video (also deletes Mux asset)
+ * Delete org video (also deletes Mux asset if not used elsewhere)
  * Org admin or platform admin only
+ * Only deletes the Mux asset if no other video cards reference the same asset
  */
 export async function deleteOrgVideoResource(id: string): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
@@ -444,14 +473,21 @@ export async function deleteOrgVideoResource(id: string): Promise<{ success: boo
     // 2. Clean up embeddings
     await deleteContextEmbeddings(id);
 
-    // 3. Delete Mux asset if it exists
+    // 3. Delete Mux asset only if not used by other video cards
     const muxAssetId = resource.content?.muxAssetId;
     if (muxAssetId) {
-        const deleted = await deleteMuxAsset(muxAssetId);
-        if (!deleted) {
-            console.warn('[deleteOrgVideoResource] Failed to delete Mux asset:', muxAssetId);
+        // Check if this Mux asset is used by any other video cards
+        const isUsedElsewhere = await isMuxAssetUsedElsewhere(muxAssetId, id);
+
+        if (isUsedElsewhere) {
+            console.log('[deleteOrgVideoResource] Mux asset is used by other video cards, skipping Mux deletion:', muxAssetId);
         } else {
-            console.log('[deleteOrgVideoResource] Deleted Mux asset:', muxAssetId);
+            const deleted = await deleteMuxAsset(muxAssetId);
+            if (!deleted) {
+                console.warn('[deleteOrgVideoResource] Failed to delete Mux asset:', muxAssetId);
+            } else {
+                console.log('[deleteOrgVideoResource] Deleted Mux asset:', muxAssetId);
+            }
         }
     }
 

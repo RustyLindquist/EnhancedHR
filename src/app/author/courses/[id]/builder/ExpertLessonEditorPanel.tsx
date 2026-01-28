@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useEffect, useRef } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, RefreshCw, Bot, User } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { createExpertLesson, updateExpertLesson, deleteExpertLesson } from '@/app/actions/expert-course-builder';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
@@ -13,6 +13,7 @@ import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
 type VideoSourceType = 'url' | 'upload';
+type TranscriptTab = 'ai' | 'user';
 
 interface ExpertLessonEditorPanelProps {
     isOpen: boolean;
@@ -68,12 +69,19 @@ export default function ExpertLessonEditorPanel({
     const [title, setTitle] = useState(lessonTitle);
     const [type, setType] = useState<LessonType>(lessonType);
     const [videoUrl, setVideoUrl] = useState(lessonVideoUrl);
-    const [content, setContent] = useState(lessonContent);
     const [duration, setDuration] = useState(lessonDuration);
     const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
 
+    // Dual transcript state
+    const [aiTranscript, setAiTranscript] = useState(lessonContent);
+    const [userTranscript, setUserTranscript] = useState('');
+    const [transcriptTab, setTranscriptTab] = useState<TranscriptTab>('ai');
+
+    // Legacy content computed from transcripts (user takes priority)
+    const content = userTranscript || aiTranscript;
+
     // Video source selection
-    const [videoSource, setVideoSource] = useState<VideoSourceType>('url');
+    const [videoSource, setVideoSource] = useState<VideoSourceType>('upload');
     const [isUploading, setIsUploading] = useState(false);
 
     // Transcript generation
@@ -85,7 +93,9 @@ export default function ExpertLessonEditorPanel({
             setTitle(lessonTitle);
             setType(lessonType);
             setVideoUrl(lessonVideoUrl);
-            setContent(lessonContent);
+            setAiTranscript(lessonContent);
+            setUserTranscript('');
+            setTranscriptTab('ai');
             setDuration(lessonDuration);
             setQuizData(lessonQuizData);
             setError(null);
@@ -110,7 +120,8 @@ export default function ExpertLessonEditorPanel({
             const result = await generateTranscriptFromVideo(videoUrl);
 
             if (result.success && result.transcript) {
-                setContent(result.transcript);
+                setAiTranscript(result.transcript);
+                setTranscriptTab('ai');
             } else {
                 setError(result.error || 'Failed to generate transcript');
             }
@@ -120,6 +131,44 @@ export default function ExpertLessonEditorPanel({
             setIsGeneratingTranscript(false);
         }
     }, [videoUrl]);
+
+    // Auto-generate transcript when video URL changes and we don't have one yet
+    const previousVideoUrlRef = useRef<string>('');
+    useEffect(() => {
+        // Only auto-generate if:
+        // 1. We have a video URL
+        // 2. The video URL is new (changed from previous)
+        // 3. We don't already have an AI transcript
+        // 4. We're not already generating
+        // 5. The panel is open
+        // 6. It's a video type lesson
+        if (
+            isOpen &&
+            type === 'video' &&
+            videoUrl &&
+            videoUrl !== previousVideoUrlRef.current &&
+            !aiTranscript &&
+            !isGeneratingTranscript
+        ) {
+            previousVideoUrlRef.current = videoUrl;
+            // Start auto-generation
+            handleGenerateTranscript();
+        }
+    }, [isOpen, type, videoUrl, aiTranscript, isGeneratingTranscript, handleGenerateTranscript]);
+
+    // Handle transcript content change based on active tab
+    const handleTranscriptChange = useCallback((value: string) => {
+        if (transcriptTab === 'user') {
+            setUserTranscript(value);
+        } else {
+            setAiTranscript(value);
+        }
+    }, [transcriptTab]);
+
+    // Get current transcript content based on active tab
+    const getCurrentTranscriptContent = useCallback(() => {
+        return transcriptTab === 'user' ? userTranscript : aiTranscript;
+    }, [transcriptTab, userTranscript, aiTranscript]);
 
     const handleUploadSuccess = useCallback((uploadId: string) => {
         setVideoUrl(uploadId);
@@ -188,8 +237,9 @@ export default function ExpertLessonEditorPanel({
             const transcriptExists = hasValidTranscript(content);
             const videoChanged = hasVideoUrlChanged();
 
-            // Case 1: No valid transcript - prompt to add one
-            if (!transcriptExists && videoUrl) {
+            // Case 1: No valid transcript and NOT generating - prompt to add one
+            // If generating, allow save since transcript is being auto-generated
+            if (!transcriptExists && videoUrl && !isGeneratingTranscript) {
                 setTranscriptModalMode('required');
                 setShowTranscriptModal(true);
                 return;
@@ -205,7 +255,7 @@ export default function ExpertLessonEditorPanel({
 
         // All checks passed, proceed with save
         performSave();
-    }, [title, type, content, videoUrl, hasValidTranscript, hasVideoUrlChanged, performSave]);
+    }, [title, type, content, videoUrl, isGeneratingTranscript, hasValidTranscript, hasVideoUrlChanged, performSave]);
 
     // Modal callback: User wants to enter transcript manually
     const handleEnterManually = useCallback(() => {
@@ -256,7 +306,8 @@ export default function ExpertLessonEditorPanel({
                 try {
                     const transcriptResult = await generateTranscriptFromVideo(videoUrl);
                     if (transcriptResult.success && transcriptResult.transcript) {
-                        setContent(transcriptResult.transcript);
+                        setAiTranscript(transcriptResult.transcript);
+                        setTranscriptTab('ai');
                         // Save again with the transcript
                         const targetLessonId = lessonId || (result as any).lesson?.id;
                         if (targetLessonId) {
@@ -410,18 +461,6 @@ export default function ExpertLessonEditorPanel({
                         <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
                             <button
                                 type="button"
-                                onClick={() => setVideoSource('url')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    videoSource === 'url'
-                                        ? 'bg-brand-blue-light/20 text-brand-blue-light'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
-                            >
-                                <Link2 size={14} />
-                                URL / Mux ID
-                            </button>
-                            <button
-                                type="button"
                                 onClick={() => setVideoSource('upload')}
                                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     videoSource === 'upload'
@@ -431,6 +470,18 @@ export default function ExpertLessonEditorPanel({
                             >
                                 <Upload size={14} />
                                 Upload
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setVideoSource('url')}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    videoSource === 'url'
+                                        ? 'bg-brand-blue-light/20 text-brand-blue-light'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                <Link2 size={14} />
+                                URL / Mux ID
                             </button>
                         </div>
 
@@ -516,33 +567,78 @@ export default function ExpertLessonEditorPanel({
                 {/* Transcript / Content - Only show for video and article types */}
                 {type !== 'quiz' && (
                     <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-3">
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 {type === 'video' ? 'Transcript / Script' : 'Article Content'}
                             </label>
-
-                            {/* Generate from Video button - only show for video type with a video URL */}
-                            {type === 'video' && videoUrl && (
-                                <button
-                                    type="button"
-                                    onClick={handleGenerateTranscript}
-                                    disabled={isGeneratingTranscript || isPending}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isGeneratingTranscript ? (
-                                        <>
-                                            <Loader2 size={12} className="animate-spin" />
-                                            Generating...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles size={12} />
-                                            Generate from Video
-                                        </>
-                                    )}
-                                </button>
-                            )}
                         </div>
+
+                        {/* Transcript Tabs - only for video type */}
+                        {type === 'video' && (
+                            <div className="mb-3">
+                                <div className="flex gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTranscriptTab('ai')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            transcriptTab === 'ai'
+                                                ? 'bg-purple-500/20 text-purple-300'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <Bot size={14} />
+                                        AI Generated
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTranscriptTab('user')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            transcriptTab === 'user'
+                                                ? 'bg-green-500/20 text-green-300'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <User size={14} />
+                                        Manual Entry
+                                    </button>
+                                </div>
+
+                                {/* Tab-specific info */}
+                                {transcriptTab === 'user' && (
+                                    <div className="mt-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                                        <p className="text-xs text-green-300">
+                                            Your manual transcript will be used instead of AI-generated content.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {transcriptTab === 'ai' && (
+                                    <div className="mt-2 flex items-center justify-between p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                                        <p className="text-xs text-purple-300">
+                                            {isGeneratingTranscript
+                                                ? 'AI transcript generation in progress...'
+                                                : aiTranscript
+                                                    ? 'AI-generated transcript from video source.'
+                                                    : videoUrl
+                                                        ? 'AI transcript will be generated automatically.'
+                                                        : 'Add a video to generate transcript.'}
+                                        </p>
+                                        {/* Regenerate button - only show when we have a transcript and video */}
+                                        {videoUrl && aiTranscript && !isGeneratingTranscript && (
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateTranscript}
+                                                disabled={isGeneratingTranscript || isPending}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <RefreshCw size={12} />
+                                                Regenerate
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Generation in progress indicator */}
                         {isGeneratingTranscript && (
@@ -557,20 +653,25 @@ export default function ExpertLessonEditorPanel({
 
                         <textarea
                             ref={transcriptRef}
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
+                            value={type === 'video' ? getCurrentTranscriptContent() : aiTranscript}
+                            onChange={(e) => type === 'video' ? handleTranscriptChange(e.target.value) : setAiTranscript(e.target.value)}
                             placeholder={
                                 type === 'video'
-                                    ? 'Paste video transcript here for AI search and summarization...'
+                                    ? transcriptTab === 'user'
+                                        ? 'Enter your manual transcript here...'
+                                        : 'AI-generated transcript will appear here...'
                                     : 'Write the article content...'
                             }
                             rows={6}
-                            disabled={isGeneratingTranscript}
-                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50"
+                            disabled={isGeneratingTranscript || (transcriptTab === 'ai' && type === 'video')}
+                            className={`w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none resize-none focus:border-brand-blue-light/50 disabled:opacity-50 ${
+                                transcriptTab === 'ai' && type === 'video' ? 'cursor-not-allowed' : ''
+                            }`}
                         />
                         {type === 'video' && (
                             <p className="text-xs text-slate-600 mt-2">
                                 Transcripts enable AI-powered search and help learners get answers about lesson content.
+                                {transcriptTab === 'ai' && ' Switch to "Manual Entry" to edit directly.'}
                             </p>
                         )}
                     </div>

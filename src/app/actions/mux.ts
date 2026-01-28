@@ -53,6 +53,8 @@ export async function getMuxUploadUrl() {
             new_asset_settings: {
                 playback_policy: ['public'],
                 encoding_tier: 'smart',
+                master_access: 'temporary',     // Enable audio track access for captions
+                mp4_support: 'standard',        // Enable MP4 renditions for Whisper fallback
             },
             cors_origin: corsOrigin,
         });
@@ -157,6 +159,41 @@ export async function deleteMuxAsset(assetId: string): Promise<boolean> {
     } catch (error) {
         console.error('Error deleting Mux asset:', error);
         return false;
+    }
+}
+
+/**
+ * Delete a Mux asset by its playback ID
+ * Looks up the asset ID first, then deletes
+ */
+export async function deleteMuxAssetByPlaybackId(playbackId: string): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    try {
+        console.log(`[Mux] Attempting to delete asset with playback ID: ${playbackId}`);
+
+        // First, get the asset ID from the playback ID
+        const assetId = await getAssetIdFromPlaybackId(playbackId);
+
+        if (!assetId) {
+            console.log(`[Mux] No asset found for playback ID: ${playbackId} - may already be deleted`);
+            return { success: true }; // Consider it a success if the asset doesn't exist
+        }
+
+        // Delete the asset
+        const deleted = await deleteMuxAsset(assetId);
+
+        if (deleted) {
+            console.log(`[Mux] Successfully deleted asset ${assetId} (playback ID: ${playbackId})`);
+            return { success: true };
+        } else {
+            console.error(`[Mux] Failed to delete asset ${assetId}`);
+            return { success: false, error: 'Failed to delete Mux asset' };
+        }
+    } catch (error: any) {
+        console.error('[Mux] Error deleting asset by playback ID:', error);
+        return { success: false, error: error.message || 'Unknown error' };
     }
 }
 
@@ -308,4 +345,163 @@ export async function fixBrokenVideoUrls(): Promise<{
     console.log(`[Mux] Fix complete: ${fixed} fixed, ${failed} failed`);
 
     return { fixed, failed, results };
+}
+
+/**
+ * Get asset ID from a playback ID
+ * Searches through Mux assets to find the matching one
+ */
+export async function getAssetIdFromPlaybackId(playbackId: string): Promise<string | null> {
+    try {
+        console.log(`[Mux] Looking up asset ID for playback ID: ${playbackId}`);
+
+        // List recent assets and find the one with matching playback ID
+        // The list returns a paginated result, iterate through it
+        const assetsPage = await mux.video.assets.list({ limit: 100 });
+
+        for await (const asset of assetsPage) {
+            if (asset.playback_ids?.some(p => p.id === playbackId)) {
+                console.log(`[Mux] Found asset ID: ${asset.id} for playback ID: ${playbackId}`);
+                return asset.id;
+            }
+        }
+
+        console.log(`[Mux] No asset found for playback ID: ${playbackId}`);
+        return null;
+    } catch (error) {
+        console.error('[Mux] Error looking up asset by playback ID:', error);
+        return null;
+    }
+}
+
+/**
+ * Request auto-generated captions for a Mux asset
+ * Uses Mux's generateSubtitles API which requires the audio track ID
+ * Returns the generated text track IDs for polling
+ */
+export async function requestMuxAutoCaption(assetId: string): Promise<{
+    success: boolean;
+    trackIds?: string[];
+    error?: string;
+}> {
+    try {
+        console.log(`[Mux] Requesting auto-caption for asset: ${assetId}`);
+
+        // First, get the asset to find the audio track ID
+        const asset = await mux.video.assets.retrieve(assetId);
+        const audioTrack = asset.tracks?.find(t => t.type === 'audio');
+
+        if (!audioTrack?.id) {
+            console.error('[Mux] No audio track found on asset');
+            return { success: false, error: 'No audio track found on asset' };
+        }
+
+        console.log(`[Mux] Found audio track: ${audioTrack.id}`);
+
+        // Use generateSubtitles to request auto-generated captions
+        const result = await mux.video.assets.generateSubtitles(assetId, audioTrack.id, {
+            generated_subtitles: [
+                {
+                    language_code: 'en',
+                    name: 'English (auto-generated)',
+                },
+            ],
+        });
+
+        // The result contains the generated text tracks
+        const trackIds = result.map(track => track.id).filter((id): id is string => !!id);
+        console.log(`[Mux] Auto-caption tracks created with IDs: ${trackIds.join(', ')}`);
+
+        return { success: true, trackIds };
+    } catch (error: any) {
+        console.error('[Mux] Error requesting auto-caption:', error);
+        return { success: false, error: error.message || 'Failed to request captions' };
+    }
+}
+
+/**
+ * Poll for caption track completion
+ * Returns the VTT URL when ready
+ * Can accept a single trackId or array of trackIds (will return first ready track)
+ */
+export async function waitForMuxCaptionReady(
+    assetId: string,
+    trackIdOrIds: string | string[],
+    maxAttempts: number = 40  // ~2 minutes at 3 second intervals
+): Promise<{
+    ready: boolean;
+    vttUrl?: string;
+    playbackId?: string;
+    trackId?: string;
+    error?: string;
+}> {
+    const trackIds = Array.isArray(trackIdOrIds) ? trackIdOrIds : [trackIdOrIds];
+    console.log(`[Mux] Waiting for caption track(s) ${trackIds.join(', ')} on asset ${assetId} to be ready...`);
+
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const asset = await mux.video.assets.retrieve(assetId);
+
+            // Check all provided track IDs
+            for (const trackId of trackIds) {
+                const track = asset.tracks?.find(t => t.id === trackId);
+
+                if (track?.status === 'ready') {
+                    const playbackId = asset.playback_ids?.[0]?.id;
+                    if (!playbackId) {
+                        console.error('[Mux] Caption track ready but no playback ID found');
+                        return { ready: false, error: 'No playback ID found' };
+                    }
+
+                    // Mux VTT URL format
+                    const vttUrl = `https://stream.mux.com/${playbackId}/text/${trackId}.vtt`;
+                    console.log(`[Mux] Caption track ready! VTT URL: ${vttUrl}`);
+                    return { ready: true, vttUrl, playbackId, trackId };
+                }
+
+                if (track?.status === 'errored') {
+                    console.error(`[Mux] Caption generation failed for track ${trackId}`);
+                    return { ready: false, error: 'Caption generation failed' };
+                }
+            }
+
+            // Log status of first track for progress indication
+            const firstTrack = asset.tracks?.find(t => trackIds.includes(t.id || ''));
+            console.log(`[Mux] Caption track status: ${firstTrack?.status || 'unknown'}, attempt ${i + 1}/${maxAttempts}`);
+
+            // Wait 3 seconds between checks
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch (error: any) {
+            console.error('[Mux] Error checking caption status:', error);
+        }
+    }
+
+    console.error('[Mux] Caption generation timed out');
+    return { ready: false, error: 'Caption generation timed out' };
+}
+
+/**
+ * Fetch VTT content from Mux
+ */
+export async function fetchMuxVTT(vttUrl: string): Promise<{
+    success: boolean;
+    content?: string;
+    error?: string;
+}> {
+    try {
+        console.log(`[Mux] Fetching VTT content from: ${vttUrl}`);
+
+        const response = await fetch(vttUrl);
+        if (!response.ok) {
+            console.error(`[Mux] Failed to fetch VTT: ${response.status} ${response.statusText}`);
+            return { success: false, error: `Failed to fetch VTT: ${response.status}` };
+        }
+
+        const content = await response.text();
+        console.log(`[Mux] Successfully fetched VTT content (${content.length} characters)`);
+        return { success: true, content };
+    } catch (error: any) {
+        console.error('[Mux] Error fetching VTT:', error);
+        return { success: false, error: error.message };
+    }
 }
