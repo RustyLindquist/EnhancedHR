@@ -2,14 +2,18 @@
  * Video Processing API Endpoint
  *
  * Processes YouTube videos for imported courses by:
- * 1. Fetching transcripts from YouTube (Innertube -> Supadata -> AI fallback)
+ * 1. Fetching transcripts from YouTube using multiple fallback methods
  * 2. Updating lesson content with transcripts
- * 3. Generating and storing embeddings for AI context
+ * 3. Generating and storing embeddings for AI context (Course Assistant RAG)
  *
  * Transcript extraction fallback chain:
- * 1. Innertube API (youtube-transcript library) - Free, fast
- * 2. Supadata API - Paid, better success rate for restricted videos
- * 3. AI multimodal parsing (Gemini) - Last resort, processes video directly
+ * 1. Innertube API (youtube-transcript library) - Free, fast, requires captions enabled
+ * 2. Supadata transcript API - For videos with restricted caption access
+ * 3. Supadata audio transcription - Extracts audio and transcribes (for videos without captions)
+ *
+ * Note: This endpoint runs without user authentication context (server-to-server).
+ * It uses generateTranscriptFromYouTubeAudio instead of generateTranscriptFromVideo
+ * because the latter requires user authentication which isn't available here.
  *
  * POST /api/course-import/process-videos
  * Body: { courseId, secretKey }
@@ -19,7 +23,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchYouTubeTranscriptWithFallback, isYouTubeUrl } from '@/lib/youtube';
 import { embedPlatformLessonContent } from '@/lib/context-embeddings';
-import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
+import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 
 interface ProcessVideosRequest {
     courseId: number;
@@ -113,28 +117,23 @@ export async function POST(request: Request) {
                         transcriptSource = transcriptResult.source || 'youtube';
                         console.log(`[Video Processing] Got transcript from ${transcriptSource} for: ${lesson.title}`);
                     } else {
-                        console.log(`[Video Processing] YouTube methods failed for: ${lesson.title} - ${transcriptResult.error}`);
-                        console.log(`[Video Processing] Trying AI multimodal fallback...`);
+                        console.log(`[Video Processing] YouTube Innertube/Supadata failed for: ${lesson.title} - ${transcriptResult.error}`);
+                        console.log(`[Video Processing] Trying Supadata audio transcription fallback...`);
 
-                        // Fall back to AI multimodal parsing
-                        const aiResult = await generateTranscriptFromVideo(lesson.video_url);
-                        if (aiResult.success && aiResult.transcript) {
-                            transcript = aiResult.transcript;
-                            transcriptSource = 'ai';
-                            console.log(`[Video Processing] Got transcript from AI for: ${lesson.title}`);
+                        // Fall back to Supadata audio transcription (doesn't require auth)
+                        const audioResult = await generateTranscriptFromYouTubeAudio(lesson.video_url);
+                        if (audioResult.success && audioResult.transcript) {
+                            transcript = audioResult.transcript;
+                            transcriptSource = 'supadata-audio';
+                            console.log(`[Video Processing] Got transcript from Supadata audio for: ${lesson.title}`);
                         } else {
-                            console.warn(`[Video Processing] All transcript methods failed for: ${lesson.title} - ${aiResult.error}`);
+                            console.warn(`[Video Processing] All transcript methods failed for: ${lesson.title} - ${audioResult.error}`);
                         }
                     }
                 } else {
-                    console.log(`[Video Processing] Non-YouTube video, using AI: ${lesson.title}`);
-
-                    // For non-YouTube videos, use AI multimodal parsing directly
-                    const aiResult = await generateTranscriptFromVideo(lesson.video_url);
-                    if (aiResult.success && aiResult.transcript) {
-                        transcript = aiResult.transcript;
-                        transcriptSource = 'ai';
-                    }
+                    console.log(`[Video Processing] Non-YouTube video, skipping: ${lesson.title}`);
+                    // Non-YouTube videos are not supported in course import
+                    // They would need to be uploaded to Mux for transcript generation
                 }
 
                 // If we got a transcript, save it and create embeddings
