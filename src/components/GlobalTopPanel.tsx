@@ -92,8 +92,12 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                     </div>
                 </div>
 
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden dropdown-scrollbar">
+                {/* Scrollable Content - onDragOver/onDrop prevent browser default file drop behavior */}
+                <div
+                    className="flex-1 overflow-y-auto overflow-x-hidden dropdown-scrollbar"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => e.preventDefault()}
+                >
                     <div className="w-full h-full px-10 md:pl-[300px] md:pr-[400px] pb-[50px]">
                         {children}
                     </div>
