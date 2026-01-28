@@ -1228,10 +1228,10 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
     }
 
     try {
-        // Fetch course title
+        // Fetch course title and description
         const { data: course } = await supabase
             .from('courses')
-            .select('title')
+            .select('title, description')
             .eq('id', courseId)
             .single();
 
@@ -1239,35 +1239,49 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
             return { success: false, error: 'Course not found' };
         }
 
-        // Fetch all modules for this course
-        const { data: modules } = await supabase
-            .from('modules')
-            .select('id, title')
-            .eq('course_id', courseId)
-            .order('order');
+        // Use the Course RAG to get comprehensive course content
+        // This leverages the same embeddings used by the Course Assistant
+        const { generateQueryEmbedding } = await import('@/lib/ai/embedding');
 
-        if (!modules || modules.length === 0) {
-            return { success: false, error: 'No modules found for this course' };
+        // Generate embedding for a broad query to get diverse course content
+        const skillsQuery = `What are all the main topics, concepts, and skills taught in this course? What will learners be able to do after completing the course?`;
+        const queryEmbedding = await generateQueryEmbedding(skillsQuery);
+
+        if (!queryEmbedding || queryEmbedding.length === 0) {
+            return { success: false, error: 'Failed to generate search embedding' };
         }
 
-        // Fetch all lessons with content
-        const { data: lessons } = await supabase
-            .from('lessons')
-            .select('id, title, content, module_id')
-            .in('module_id', modules.map(m => m.id))
-            .order('order');
+        // Query the unified embeddings for this course's content
+        // Using the same RAG approach as the Course Assistant
+        const { data: contextItems, error: ragError } = await supabase.rpc('match_unified_embeddings', {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.3, // Lower threshold to get more content
+            match_count: 15,      // Get more chunks to cover the whole course
+            filter_scope: {
+                allowedCourseIds: [courseId],
+                includePersonalContext: false  // Only course content, not user's personal notes
+            }
+        });
 
-        // Compile transcripts
-        const transcriptsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
-
-        if (transcriptsWithContent.length === 0) {
-            return { success: false, error: 'No lesson transcripts found. Please add transcripts to lessons first.' };
+        if (ragError) {
+            console.error('[generateSkills] RAG error:', ragError);
+            return { success: false, error: 'Failed to retrieve course content' };
         }
 
-        // Build the transcript compilation
-        const transcriptText = transcriptsWithContent.map(lesson => {
-            const module = modules.find(m => m.id === lesson.module_id);
-            return `## ${module?.title || 'Module'} - ${lesson.title}\n\n${lesson.content}`;
+        if (!contextItems || contextItems.length === 0) {
+            return { success: false, error: 'No course content found. Please ensure the course has lesson transcripts indexed.' };
+        }
+
+        // Build context from RAG results
+        const courseContext = contextItems.map((item: any) => {
+            const lessonTitle = item.metadata?.lesson_title || '';
+            const moduleTitle = item.metadata?.module_title || '';
+            const prefix = moduleTitle && lessonTitle
+                ? `[${moduleTitle} > ${lessonTitle}]`
+                : lessonTitle
+                    ? `[${lessonTitle}]`
+                    : '';
+            return `${prefix}\n${item.content}`;
         }).join('\n\n---\n\n');
 
         // Fetch the prompt and model from ai_prompt_library
@@ -1277,16 +1291,16 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
             .eq('key', 'generate_skills')
             .single();
 
-        const defaultPrompt = `You are an expert instructional designer specializing in HR professional development. Your task is to analyze course content and extract the key skills learners will gain.
+        const defaultPrompt = `You are an expert instructional designer specializing in professional development. Your task is to analyze course content and extract the key skills learners will gain.
 
-Analyze the provided course transcript(s) and generate a list of 4-8 specific, actionable skills.
+Based on the course content provided below, generate a list of 4-8 specific, actionable skills that learners will develop by completing this course.
 
 Guidelines for generating skills:
 1. Use action verbs that indicate measurable outcomes (Apply, Analyze, Create, Evaluate, Implement, Design, Develop, etc.)
-2. Be specific and concrete - avoid vague skills like "understand HR better" or "learn about compliance"
+2. Be specific and concrete - avoid vague skills like "understand better" or "learn about topics"
 3. Focus on practical, workplace-applicable skills that professionals can immediately use
 4. Each skill should be completable in one clear sentence (10-20 words ideal)
-5. Skills should directly relate to content covered in the transcripts
+5. Skills should directly relate to content covered in the course
 6. Consider both technical/hard skills and strategic/soft skills where applicable
 7. Frame skills from the learner's perspective using active voice
 8. Ensure skills are differentiated - each should cover a distinct competency
@@ -1294,12 +1308,13 @@ Guidelines for generating skills:
 Format your response as a JSON array of strings only, with no additional text or explanation.
 
 Example format:
-["Apply data-driven approaches to measure employee engagement effectiveness", "Design compensation structures that balance internal equity with market competitiveness", "Analyze turnover patterns to identify root causes and develop retention strategies"]
+["Apply data-driven approaches to measure employee engagement effectiveness", "Design compensation structures that balance internal equity with market competitiveness", "Analyze patterns to identify root causes and develop improvement strategies"]
 
 Course Title: {course_title}
+Course Description: {course_description}
 
-Transcripts:
-{transcripts}
+Course Content (from transcripts):
+{course_context}
 
 Generate the skills list now (JSON array only):`;
 
@@ -1307,7 +1322,9 @@ Generate the skills list now (JSON array only):`;
 
         // Interpolate variables
         prompt = prompt.replace(/\{course_title\}/g, course.title);
-        prompt = prompt.replace(/\{transcripts\}/g, transcriptText);
+        prompt = prompt.replace(/\{course_description\}/g, course.description || 'Not provided');
+        prompt = prompt.replace(/\{transcripts\}/g, courseContext); // Legacy support
+        prompt = prompt.replace(/\{course_context\}/g, courseContext);
 
         const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
 
@@ -1379,7 +1396,8 @@ Generate the skills list now (JSON array only):`;
             metadata: {
                 course_id: courseId,
                 model: model,
-                skills_count: skills.length
+                skills_count: skills.length,
+                rag_chunks_used: contextItems.length
             }
         });
 
