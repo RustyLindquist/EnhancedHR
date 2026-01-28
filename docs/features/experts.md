@@ -3,7 +3,7 @@ id: experts
 owner: product-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-22
+last_updated: 2026-01-28
 surfaces:
   routes:
     - /experts
@@ -54,9 +54,31 @@ Experts feature manages the expert registration flow and public expert directory
 
 ## User Surfaces
 - **Public expert directory** (`/experts`): Cards for approved experts with published courses.
-- **Expert detail page** (`/experts/[id]`): Bio/credentials and course list.
+- **Expert detail page** (`/experts/[id]}` and Academy view): Bio/credentials and course list.
 - **Expert Console** (`/author/*`): Course building and management (accessible to pending/approved/rejected experts).
 - **Account settings**: Shows expert status messaging (pending/approved/rejected).
+
+### Expert Detail Page UI (Academy View)
+
+The Academy expert details page (`InstructorPage.tsx`) uses a two-column layout:
+
+**Header (CanvasHeader)**
+- Context: "Academy"
+- Title: "Expert Details"
+- Right side: Stats (Students, Courses, Expert Rating)
+
+**Left Column**
+- Profile photo: 320×320px, rounded corners, border
+- Credentials: Simple list with icons (no containers)
+
+**Right Column**
+- Expert name (text-2xl/3xl) with social icons right-aligned
+- Professional title (brand-blue-light)
+- Featured badge (if applicable)
+- Bio: Full width, text-sm, supports line breaks (whitespace-pre-line)
+
+**Below Profile Section**
+- Courses grid (3 columns on large screens)
 
 ## Core Concepts & Objects
 - **Expert**: A user who has clicked "Become an Expert" (author_status != 'none').
@@ -67,9 +89,20 @@ Experts feature manages the expert registration flow and public expert directory
 - **Authored courses**: Courses where author_id matches expert profile.
 
 ## Data Model
-- `profiles`: author_status enum ('none' | 'pending' | 'approved' | 'rejected'), author_bio, linkedin_url fields.
+- `profiles`: author_status enum ('none' | 'pending' | 'approved' | 'rejected'), author_bio, linkedin_url, expert_title, credentials fields.
 - `courses`: author_id FK profiles, status ('draft' | 'published' | etc).
-- `expert_credentials`: id uuid PK, user_id FK profiles, title/org/dates.
+- `expert_credentials`: id uuid PK, expert_id FK profiles, title, type, display_order.
+
+### Credential Fetching Pattern
+
+Credentials are fetched with a fallback strategy:
+
+1. **Primary**: Query `expert_credentials` table by expert_id, ordered by display_order
+2. **Fallback**: If no records found, parse `profiles.credentials` field (JSON array or comma-separated string)
+
+This pattern is implemented in `src/app/actions/experts.ts`:
+- `getExpertsWithPublishedCourses()` — Bulk fetch for directory
+- `getExpertById()` — Single expert fetch for detail page
 
 Write paths:
 - `becomeExpert()` action sets author_status='pending' (in src/app/actions/expert-application.ts).
