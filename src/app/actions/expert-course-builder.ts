@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 import { parseFileContent } from '@/lib/file-parser';
+import { deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
 
 // ============================================
 // Permission Check Helper
@@ -451,7 +452,31 @@ export async function deleteExpertModule(moduleId: string, courseId: number) {
 
     const supabase = await createClient();
 
-    // Delete all lessons in this module first
+    // Fetch all lessons with video URLs to delete from Mux
+    const { data: lessons } = await supabase
+        .from('lessons')
+        .select('id, video_url')
+        .eq('module_id', moduleId);
+
+    // Delete Mux videos for all lessons in this module
+    if (lessons && lessons.length > 0) {
+        for (const lesson of lessons) {
+            if (lesson.video_url) {
+                const videoUrl = lesson.video_url;
+                // Check if it's a Mux playback ID (alphanumeric, 10+ chars, no dots)
+                const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+                if (isMuxId) {
+                    console.log(`[deleteExpertModule] Deleting Mux video for lesson ${lesson.id}: ${videoUrl}`);
+                    const muxResult = await deleteMuxAssetByPlaybackId(videoUrl);
+                    if (!muxResult.success) {
+                        console.error(`[deleteExpertModule] Failed to delete Mux video: ${muxResult.error}`);
+                    }
+                }
+            }
+        }
+    }
+
+    // Delete all lessons in this module
     await supabase
         .from('lessons')
         .delete()
@@ -561,6 +586,28 @@ export async function deleteExpertLesson(lessonId: string, courseId: number) {
     }
 
     const supabase = await createClient();
+
+    // Get lesson info before deleting (including video_url for Mux cleanup)
+    const { data: lesson } = await supabase
+        .from('lessons')
+        .select('video_url')
+        .eq('id', lessonId)
+        .single();
+
+    // Delete the Mux video if it exists and is a Mux playback ID
+    if (lesson?.video_url) {
+        const videoUrl = lesson.video_url;
+        // Check if it's a Mux playback ID (alphanumeric, 10+ chars, no dots)
+        const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+        if (isMuxId) {
+            console.log(`[deleteExpertLesson] Deleting Mux video: ${videoUrl}`);
+            const muxResult = await deleteMuxAssetByPlaybackId(videoUrl);
+            if (!muxResult.success) {
+                console.error(`[deleteExpertLesson] Failed to delete Mux video: ${muxResult.error}`);
+                // Continue with lesson deletion even if Mux deletion fails
+            }
+        }
+    }
 
     const { error } = await supabase
         .from('lessons')
