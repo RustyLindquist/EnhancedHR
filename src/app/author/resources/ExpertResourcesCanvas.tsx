@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Layers, Upload, StickyNote, Lightbulb, Video } from 'lucide-react';
 import { UserContextItem, ContextItemType } from '@/types';
 import TopContextPanel from '@/components/TopContextPanel';
@@ -60,6 +60,12 @@ export default function ExpertResourcesCanvas({
 }: ExpertResourcesCanvasProps) {
     const router = useRouter();
     const [resources, setResources] = useState(initialResources);
+
+    // Sync local state when server data changes (e.g., after router.refresh())
+    useEffect(() => {
+        setResources(initialResources);
+    }, [initialResources]);
+
     const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
     const [isNotePanelOpen, setIsNotePanelOpen] = useState(false);
     const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
