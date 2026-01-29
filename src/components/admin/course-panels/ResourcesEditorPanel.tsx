@@ -14,6 +14,8 @@ const SUPPORTED_FILE_TYPES = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/msword',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
     'text/plain',
@@ -81,8 +83,8 @@ export default function ResourcesEditorPanel({
     // File validation
     const validateFile = (file: File): string | null => {
         if (!SUPPORTED_FILE_TYPES.includes(file.type) &&
-            !file.name.match(/\.(pdf|docx?|xlsx?|txt|md|csv|json|jpe?g|png|gif|webp)$/i)) {
-            return 'Unsupported file type. Please upload PDF, Word, Excel, images, or text files.';
+            !file.name.match(/\.(pdf|docx?|pptx?|xlsx?|txt|md|csv|json|jpe?g|png|gif|webp)$/i)) {
+            return 'Unsupported file type. Please upload PDF, Word, PowerPoint, Excel, images, or text files.';
         }
         if (file.size > MAX_FILE_SIZE) {
             return 'File too large. Maximum size is 10MB.';
@@ -320,7 +322,7 @@ export default function ResourcesEditorPanel({
                                     ref={fileInputRef}
                                     type="file"
                                     onChange={handleFileInputChange}
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp"
+                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp"
                                     className="hidden"
                                 />
 
@@ -366,7 +368,7 @@ export default function ResourcesEditorPanel({
                                                 {isDragging ? 'Drop file here' : 'Click to upload or drag and drop'}
                                             </p>
                                             <p className="text-xs text-slate-500">
-                                                PDF, Word, Excel, images, or text files up to 10MB
+                                                PDF, Word, PowerPoint, Excel, images, or text files up to 10MB
                                             </p>
                                         </div>
                                     )}

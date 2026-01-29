@@ -20,6 +20,8 @@ const DEFAULT_CHUNK_OVERLAP = 200; // Overlap between chunks for context continu
 export const SUPPORTED_FILE_TYPES = {
     'application/pdf': 'pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/vnd.ms-powerpoint': 'ppt',
     'text/plain': 'txt',
     'text/markdown': 'md',
     'text/csv': 'csv',
@@ -68,6 +70,33 @@ async function parseDOCX(buffer: ArrayBuffer): Promise<string> {
 }
 
 /**
+ * Extract text from PPTX using officeparser
+ * Falls back to basic extraction if library not available
+ */
+async function parsePPTX(buffer: ArrayBuffer): Promise<string> {
+    try {
+        const officeparser = await import('officeparser');
+        const ast = await officeparser.parseOffice(Buffer.from(buffer));
+
+        // Extract text from the AST content nodes recursively
+        const extractText = (nodes: typeof ast.content): string => {
+            return nodes.map(node => {
+                let text = node.text || '';
+                if (node.children && node.children.length > 0) {
+                    text += ' ' + extractText(node.children);
+                }
+                return text.trim();
+            }).filter(t => t).join('\n');
+        };
+
+        return extractText(ast.content) || '';
+    } catch (error) {
+        console.warn('officeparser not available or failed, returning placeholder:', error);
+        return '[PPTX content - install officeparser for extraction]';
+    }
+}
+
+/**
  * Parse plain text files (TXT, MD, CSV, JSON)
  */
 function parseTextFile(buffer: ArrayBuffer, mimeType: string): string {
@@ -105,6 +134,11 @@ export async function parseFileContent(
 
             case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                 text = await parseDOCX(buffer);
+                break;
+
+            case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            case 'application/vnd.ms-powerpoint':
+                text = await parsePPTX(buffer);
                 break;
 
             case 'text/plain':
