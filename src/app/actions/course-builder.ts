@@ -14,6 +14,8 @@ import {
 } from '@/app/actions/mux';
 import { parseVTTToTranscript } from '@/lib/vtt-parser';
 import { transcribeWithWhisper, isWhisperAvailable } from '@/lib/whisper-transcription';
+import { uploadCourseResourceToStorage, parseFileContent, chunkText, deleteFileFromStorage } from '@/lib/file-parser';
+import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 
 // ============================================
 // Course Metadata Actions
@@ -839,13 +841,161 @@ export async function addCourseResource(courseId: number, data: {
     return { success: true, resource };
 }
 
+/**
+ * Upload a file as a course resource
+ * Handles: file upload to storage, text parsing, AI summary, and embedding generation
+ */
+export async function uploadCourseResourceFile(
+    courseId: number,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; resource?: { id: string; title: string; type: string; url: string }; error?: string }> {
+    const admin = await createAdminClient();
+
+    try {
+        // 1. Create File object for upload
+        const file = new File([fileBuffer], fileName, { type: fileType });
+
+        // 2. Upload to Supabase Storage
+        const uploadResult = await uploadCourseResourceToStorage(file, courseId);
+        if (!uploadResult.success) {
+            return { success: false, error: uploadResult.error || 'Failed to upload file' };
+        }
+
+        // 3. Parse file content for RAG
+        const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
+        const textContent = parseResult.success ? parseResult.text : '';
+
+        // 4. Generate AI summary if we have text content
+        let summary: string | null = null;
+        if (textContent && textContent.length > 50) {
+            try {
+                const truncatedText = textContent.substring(0, 2500);
+                const summaryPrompt = `Summarize the following document in 2-3 sentences, focusing on its main topic and key points:\n\n${truncatedText}`;
+                summary = await generateQuickAIResponse(summaryPrompt, 150);
+            } catch (err) {
+                console.warn('[uploadCourseResourceFile] Summary generation failed:', err);
+            }
+        }
+
+        // 5. Determine resource type from file extension/mime type
+        const resourceType = detectResourceType(fileName, fileType);
+
+        // 6. Format file size
+        const fileSizeFormatted = formatFileSize(fileBuffer.byteLength);
+
+        // 7. Insert resource record with all metadata
+        const { data: resource, error: insertError } = await admin
+            .from('resources')
+            .insert({
+                course_id: courseId,
+                title: fileName,
+                type: resourceType,
+                url: uploadResult.url,
+                size: fileSizeFormatted,
+                storage_path: uploadResult.path,
+                file_size_bytes: fileBuffer.byteLength,
+                mime_type: fileType,
+                parsed_text_length: textContent.length,
+                parse_error: parseResult.success ? null : parseResult.error,
+                summary
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[uploadCourseResourceFile] Insert error:', insertError);
+            // Try to clean up uploaded file
+            await deleteFileFromStorage(uploadResult.path);
+            return { success: false, error: insertError.message };
+        }
+
+        // 8. Generate embeddings for RAG (async, don't block)
+        if (textContent && textContent.length > 0) {
+            const chunks = chunkText(textContent, 1000, 200);
+            embedCourseResource(
+                resource.id,
+                courseId,
+                fileName,
+                resourceType,
+                uploadResult.url,
+                textContent // Pass full text for embedding
+            ).then(result => {
+                if (result.success) {
+                    console.log(`[uploadCourseResourceFile] Created ${result.embeddingCount} embeddings for "${fileName}"`);
+                } else {
+                    console.error(`[uploadCourseResourceFile] Embedding failed: ${result.error}`);
+                }
+            }).catch(err => {
+                console.error('[uploadCourseResourceFile] Embedding error:', err);
+            });
+        }
+
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
+
+        return {
+            success: true,
+            resource: {
+                id: resource.id,
+                title: resource.title,
+                type: resource.type,
+                url: resource.url
+            }
+        };
+
+    } catch (error) {
+        console.error('[uploadCourseResourceFile] Unexpected error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to upload resource'
+        };
+    }
+}
+
+/**
+ * Detect resource type from filename and mime type
+ */
+function detectResourceType(fileName: string, mimeType: string): 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK' {
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf') || mimeType === 'application/pdf') return 'PDF';
+    if (lower.endsWith('.doc') || lower.endsWith('.docx') || mimeType.includes('word')) return 'DOC';
+    if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'XLS';
+    if (mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(lower)) return 'IMG';
+    return 'LINK'; // Default for unknown types
+}
+
+/**
+ * Format file size in human-readable format
+ */
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export async function deleteCourseResource(resourceId: string, courseId: number) {
     const admin = await createAdminClient();
+
+    // Get resource to check for storage_path
+    const { data: resource } = await admin
+        .from('resources')
+        .select('storage_path')
+        .eq('id', resourceId)
+        .single();
 
     // Delete embeddings first (before the resource record)
     deleteCourseResourceEmbeddings(resourceId).catch(err => {
         console.error('[deleteCourseResource] Failed to delete embeddings:', err);
     });
+
+    // Delete file from storage if it exists
+    if (resource?.storage_path) {
+        deleteFileFromStorage(resource.storage_path).catch(err => {
+            console.error('[deleteCourseResource] Failed to delete file from storage:', err);
+        });
+    }
 
     const { error } = await admin
         .from('resources')
@@ -858,6 +1008,7 @@ export async function deleteCourseResource(resourceId: string, courseId: number)
     }
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
 }
 
