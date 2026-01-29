@@ -7,6 +7,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Feature Name | Feature ID / Slug | Risk | Primary Agent | Key Skills | Coupling Notes | Doc Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | App Shell & Navigation | app-shell | High | Frontend | doc-discovery, style-validation | Touches nearly every feature; small UI/state changes can break multiple flows | Exists |
+| Browser Back Navigation | browser-back-navigation | Medium | Frontend | doc-discovery | Coupled to app-shell, dashboard, course-player; NavigationContext must wrap all app content | Exists |
 | User Accounts & Authentication | auth-accounts | High | Backend | doc-discovery, plan-lint | Coupled to roles/RLS, org membership, and admin gating | Missing |
 | Dashboard (Learning Hub) | dashboard | Medium | Frontend + Backend | doc-discovery, test-from-docs | Coupled to progress/credits, courses, conversations, and AI quick starts | Missing |
 | Academy (Course Catalog) | academy | Medium | Frontend | doc-discovery, component-inventory | Coupled to course detail/player and enrollment/progress | Exists |
