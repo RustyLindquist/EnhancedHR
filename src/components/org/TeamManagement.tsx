@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import { getOrgMembers, OrgMember, InviteInfo, getOrgSelectorData, switchPlatformAdminOrg } from '@/app/actions/org';
@@ -8,6 +10,7 @@ import UserCard from './UserCard';
 import UserDetailDashboard from './UserDetailDashboard';
 import { Layers, UserPlus, Users, ChevronDown, Check, Shield, Building2 } from 'lucide-react';
 import CanvasHeader from '../CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface OrgSelectorData {
     isPlatformAdmin: boolean;
@@ -30,6 +33,10 @@ export default function TeamManagement({ onBack, isAdmin = false }: TeamManageme
     const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
     const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
+
+    // Register browser back button handler to use parent's onBack
+    // Note: When a member is selected, UserDetailDashboard handles its own back
+    useBackHandler(onBack, { enabled: !selectedMember && !!onBack });
 
     // Platform admin org selector state
     const [orgSelectorData, setOrgSelectorData] = useState<OrgSelectorData | null>(null);

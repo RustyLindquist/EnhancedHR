@@ -13,6 +13,7 @@ import LearningTrendChart from '@/components/org/charts/LearningTrendChart';
 import EngagementTrendsChart from '@/components/org/charts/EngagementTrendsChart';
 import SkillsChart from '@/components/org/charts/SkillsChart';
 import CanvasHeader from '@/components/CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 // Loading Skeleton Components
 const DashboardSkeleton = () => (
@@ -134,6 +135,9 @@ export default function OrgAnalyticsCanvas({ initialGroupId, onBack }: OrgAnalyt
   const [groups, setGroups] = useState<GroupFilterOption[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Register browser back button handler to use parent's onBack
+  useBackHandler(onBack, { enabled: !!onBack });
 
   // Fetch groups on mount
   useEffect(() => {

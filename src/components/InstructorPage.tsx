@@ -1,7 +1,10 @@
+'use client';
+
 import React from 'react';
 import { Instructor, Course } from '../types';
 import { BookOpen, Globe, Linkedin, Award, Star, Users } from 'lucide-react';
 import CanvasHeader from './CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 // Custom X (formerly Twitter) icon
 const XIcon = ({ size = 20 }: { size?: number }) => (
@@ -19,6 +22,9 @@ interface InstructorPageProps {
 }
 
 const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, onBack, onCourseClick }) => {
+    // Register browser back button handler to use parent's onBack
+    useBackHandler(onBack);
+
     // Filter courses for this instructor
     // Note: In a real app, we might filter by author ID, but for now we'll match by name or just show all for demo if name doesn't match perfectly
     const instructorCourses = courses.filter(c => c.author === instructor.name);

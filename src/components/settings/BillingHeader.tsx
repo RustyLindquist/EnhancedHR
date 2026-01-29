@@ -2,9 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import CanvasHeader from '@/components/CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 export default function BillingHeader() {
     const router = useRouter();
+
+    // Register browser back button handler to go to settings
+    useBackHandler(() => router.push('/settings'));
 
     return (
         <CanvasHeader

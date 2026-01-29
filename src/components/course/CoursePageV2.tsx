@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BookOpen } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
+import { useBackHandler } from '@/hooks/useBackHandler';
 import { getAuthorCredentialsAction } from '@/app/actions/courses';
 import { ExpertCredential } from '@/app/actions/credentials';
 import CourseHeader from './CourseHeader';
@@ -492,6 +493,10 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             onBack();
         }
     }, [viewMode, transitionToDescription, onBack]);
+
+    // Register browser back button handler - conditionally based on view mode
+    // When in player mode, back goes to description; when in description mode, back calls onBack
+    useBackHandler(handleBack);
 
     // Initialize with initial lesson/module if provided
     useEffect(() => {
