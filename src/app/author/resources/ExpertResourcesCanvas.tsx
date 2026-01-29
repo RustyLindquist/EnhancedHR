@@ -187,26 +187,57 @@ export default function ExpertResourcesCanvas({
 
             const { signedUrl, token, storagePath } = await urlResponse.json();
             console.log('[Expert Upload] Phase 1 complete. Storage path:', storagePath);
+            console.log('[Expert Upload] Signed URL domain:', new URL(signedUrl).hostname);
 
-            // Phase 2: Upload directly to Supabase Storage using signed URL
+            // Phase 2: Upload directly to Supabase Storage using XMLHttpRequest for better large file handling
             currentPhase = 'phase2-upload-to-storage';
-            console.log('[Expert Upload] Phase 2: Uploading to Supabase Storage...');
+            console.log('[Expert Upload] Phase 2: Uploading to Supabase Storage via XMLHttpRequest...');
 
-            // Use Blob instead of ArrayBuffer for better browser handling of large files
             const fileBlob = new Blob([fileBuffer], { type: fileType });
 
-            const uploadResponse = await fetch(signedUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': fileType,
-                },
-                body: fileBlob
+            const uploadResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        console.log(`[Expert Upload] Phase 2 progress: ${percent}% (${(e.loaded / 1024 / 1024).toFixed(2)}MB / ${(e.total / 1024 / 1024).toFixed(2)}MB)`);
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    console.log('[Expert Upload] Phase 2 XHR load event. Status:', xhr.status);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve({ success: true });
+                    } else {
+                        console.error('[Expert Upload] Phase 2 failed. Status:', xhr.status, 'Response:', xhr.responseText);
+                        resolve({ success: false, error: `Storage upload failed: ${xhr.status} ${xhr.responseText}` });
+                    }
+                });
+
+                xhr.addEventListener('error', (e) => {
+                    console.error('[Expert Upload] Phase 2 XHR error event:', e);
+                    resolve({ success: false, error: 'Network error during upload. Check browser console for details.' });
+                });
+
+                xhr.addEventListener('timeout', () => {
+                    console.error('[Expert Upload] Phase 2 XHR timeout');
+                    resolve({ success: false, error: 'Upload timed out. The file may be too large or the connection too slow.' });
+                });
+
+                xhr.addEventListener('abort', () => {
+                    console.error('[Expert Upload] Phase 2 XHR aborted');
+                    resolve({ success: false, error: 'Upload was aborted' });
+                });
+
+                xhr.open('PUT', signedUrl);
+                xhr.timeout = 300000; // 5 minute timeout for large files
+                xhr.setRequestHeader('Content-Type', fileType);
+                xhr.send(fileBlob);
             });
 
-            if (!uploadResponse.ok) {
-                const errorText = await uploadResponse.text();
-                console.error('[Expert Upload] Phase 2 failed:', uploadResponse.status, errorText);
-                return { success: false, error: `Storage upload failed: ${uploadResponse.status} ${errorText}` };
+            if (!uploadResult.success) {
+                return uploadResult;
             }
             console.log('[Expert Upload] Phase 2 complete. File uploaded to storage.');
 
