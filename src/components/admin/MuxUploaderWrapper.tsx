@@ -7,7 +7,7 @@ import { getMuxUploadUrl, waitForMuxAssetId, waitForMuxAssetReady } from '@/app/
 
 interface MuxUploaderWrapperProps {
     onUploadStart?: () => void;
-    onSuccess?: (playbackId: string) => void;
+    onSuccess?: (playbackId: string, duration?: number) => void;
     onError?: (error: any) => void;
 }
 
@@ -58,11 +58,11 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
                 throw new Error('Asset processing failed or timed out');
             }
 
-            console.log('Asset ready, playback ID:', result.playbackId);
+            console.log('Asset ready, playback ID:', result.playbackId, 'duration:', result.duration);
             setIsProcessing(false);
 
-            // Return the playback ID instead of the upload ID
-            if (onSuccess) onSuccess(result.playbackId);
+            // Return the playback ID and duration
+            if (onSuccess) onSuccess(result.playbackId, result.duration);
         } catch (err: any) {
             console.error('Error processing upload:', err);
             setIsProcessing(false);
