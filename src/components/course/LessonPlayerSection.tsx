@@ -204,6 +204,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                                                 video_title: lesson.title,
                                                 viewer_user_id: userId,
                                             }}
+                                            renditionOrder="desc"
                                             primaryColor="#78C0F0"
                                             secondaryColor="#000000"
                                             accentColor="#FF9300"

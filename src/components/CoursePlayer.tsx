@@ -162,6 +162,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                         video_title: currentLesson.title,
                                         viewer_user_id: userId,
                                     }}
+                                    renditionOrder="desc"
                                     primaryColor="#78C0F0"
                                     secondaryColor="#000000"
                                     accentColor="#FF9300"
