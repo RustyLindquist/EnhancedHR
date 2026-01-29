@@ -28,7 +28,7 @@ const SUPPORTED_FILE_TYPES = [
     'image/webp'
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
 interface ResourcesEditorPanelProps {
     isOpen: boolean;
@@ -87,7 +87,7 @@ export default function ResourcesEditorPanel({
             return 'Unsupported file type. Please upload PDF, Word, PowerPoint, Excel, images, or text files.';
         }
         if (file.size > MAX_FILE_SIZE) {
-            return 'File too large. Maximum size is 10MB.';
+            return 'File too large. Maximum size is 25MB.';
         }
         return null;
     };
@@ -368,7 +368,7 @@ export default function ResourcesEditorPanel({
                                                 {isDragging ? 'Drop file here' : 'Click to upload or drag and drop'}
                                             </p>
                                             <p className="text-xs text-slate-500">
-                                                PDF, Word, PowerPoint, Excel, images, or text files up to 10MB
+                                                PDF, Word, PowerPoint, Excel, images, or text files up to 25MB
                                             </p>
                                         </div>
                                     )}

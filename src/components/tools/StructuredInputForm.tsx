@@ -59,9 +59,9 @@ const StructuredInputForm: React.FC<StructuredInputFormProps> = ({
             return;
         }
 
-        // Validate file size (10MB max)
-        if (file.size > 10 * 1024 * 1024) {
-            setParseError('File size must be less than 10MB');
+        // Validate file size (25MB max)
+        if (file.size > 25 * 1024 * 1024) {
+            setParseError('File size must be less than 25MB');
             return;
         }
 
@@ -212,7 +212,7 @@ const StructuredInputForm: React.FC<StructuredInputFormProps> = ({
                         <p className="text-sm text-slate-400">
                             Drag & drop a PDF or DOCX file, or <span className="text-teal-400">click to browse</span>
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">Max 10MB</p>
+                        <p className="text-xs text-slate-500 mt-1">Max 25MB</p>
                     </div>
                 ) : (
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
