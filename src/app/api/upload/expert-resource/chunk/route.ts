@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // Route segment config - allow larger body for chunks (but still under Vercel's limit)
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+// Increase body size limit for this route (default is 1MB for Vercel)
+export const dynamic = 'force-dynamic';
 
 const STORAGE_BUCKET = 'user-context-files';
 

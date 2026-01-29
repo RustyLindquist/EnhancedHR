@@ -246,8 +246,45 @@ export default function ExpertResourcesCanvas({
             if (!uploadSuccess && directUploadError === 'CORS_OR_NETWORK_ERROR') {
                 console.log('[Expert Upload] Direct upload failed (likely CORS). Trying chunked server upload...');
 
-                const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunks (under Vercel's limit)
+                const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (safely under limits)
                 const totalChunks = Math.ceil(fileBuffer.byteLength / CHUNK_SIZE);
+
+                // Helper to upload a single chunk using XMLHttpRequest
+                const uploadChunk = (chunkIndex: number, chunkData: ArrayBuffer): Promise<{ success: boolean; error?: string; data?: unknown }> => {
+                    return new Promise((resolve) => {
+                        const xhr = new XMLHttpRequest();
+
+                        xhr.addEventListener('load', () => {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                try {
+                                    const data = JSON.parse(xhr.responseText);
+                                    resolve({ success: true, data });
+                                } catch {
+                                    resolve({ success: true });
+                                }
+                            } else {
+                                resolve({ success: false, error: `Status ${xhr.status}: ${xhr.responseText}` });
+                            }
+                        });
+
+                        xhr.addEventListener('error', () => {
+                            resolve({ success: false, error: 'Network error uploading chunk' });
+                        });
+
+                        xhr.addEventListener('timeout', () => {
+                            resolve({ success: false, error: 'Chunk upload timed out' });
+                        });
+
+                        xhr.open('POST', '/api/upload/expert-resource/chunk');
+                        xhr.timeout = 120000; // 2 minute timeout per chunk
+                        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                        xhr.setRequestHeader('X-Storage-Path', storagePath);
+                        xhr.setRequestHeader('X-Chunk-Index', String(chunkIndex));
+                        xhr.setRequestHeader('X-Total-Chunks', String(totalChunks));
+                        xhr.setRequestHeader('X-File-Type', fileType);
+                        xhr.send(chunkData);
+                    });
+                };
 
                 for (let i = 0; i < totalChunks; i++) {
                     const start = i * CHUNK_SIZE;
@@ -256,23 +293,14 @@ export default function ExpertResourcesCanvas({
 
                     console.log(`[Expert Upload] Uploading chunk ${i + 1}/${totalChunks} (${((end - start) / 1024 / 1024).toFixed(2)}MB)`);
 
-                    const chunkResponse = await fetch('/api/upload/expert-resource/chunk', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/octet-stream',
-                            'X-Storage-Path': storagePath,
-                            'X-Chunk-Index': String(i),
-                            'X-Total-Chunks': String(totalChunks),
-                            'X-File-Type': fileType,
-                        },
-                        body: chunk
-                    });
+                    const chunkResult = await uploadChunk(i, chunk);
 
-                    if (!chunkResponse.ok) {
-                        const error = await chunkResponse.json();
-                        console.error(`[Expert Upload] Chunk ${i + 1} failed:`, error);
-                        return { success: false, error: error.error || 'Chunk upload failed' };
+                    if (!chunkResult.success) {
+                        console.error(`[Expert Upload] Chunk ${i + 1} failed:`, chunkResult.error);
+                        return { success: false, error: `Chunk ${i + 1}: ${chunkResult.error}` };
                     }
+
+                    console.log(`[Expert Upload] Chunk ${i + 1}/${totalChunks} complete`);
                 }
 
                 console.log('[Expert Upload] All chunks uploaded successfully.');
