@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useRef } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, Youtube, Bot, User, Clock, RefreshCw, X } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, Youtube, Bot, User, Clock, RefreshCw, X, Timer } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo, fetchYouTubeMetadataAction } from '@/app/actions/course-builder';
+import { getDurationFromPlaybackId } from '@/app/actions/mux';
+import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from '@/app/actions/video-metadata';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
 import TranscriptRequiredModal from '@/components/TranscriptRequiredModal';
@@ -155,6 +157,9 @@ export default function LessonEditorPanel({
     } | null>(null);
     const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
 
+    // Duration fetching state
+    const [isFetchingDuration, setIsFetchingDuration] = useState(false);
+
     // Quiz data state
     const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
 
@@ -226,6 +231,59 @@ export default function LessonEditorPanel({
             setIsFetchingMetadata(false);
         }
     }, [videoUrl]);
+
+    // Handler for fetching duration from various video platforms
+    const handleFetchVideoDuration = useCallback(async (url: string) => {
+        if (!url || url.trim() === '') return;
+
+        // Skip if it's a YouTube URL (handled separately via handleFetchYouTubeMetadata)
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            return;
+        }
+
+        // Skip if it looks like a Google Drive URL
+        if (url.includes('drive.google')) {
+            return;
+        }
+
+        setIsFetchingDuration(true);
+        const platform = await detectVideoPlatform(url);
+
+        try {
+            let durationSeconds: number | undefined;
+
+            switch (platform) {
+                case 'mux':
+                    const muxResult = await getDurationFromPlaybackId(url);
+                    if (muxResult.success && muxResult.duration !== undefined) {
+                        durationSeconds = muxResult.duration;
+                    }
+                    break;
+                case 'vimeo':
+                    const vimeoResult = await fetchVimeoMetadata(url);
+                    if (vimeoResult.success && vimeoResult.duration !== undefined) {
+                        durationSeconds = vimeoResult.duration;
+                    }
+                    break;
+                case 'wistia':
+                    const wistiaResult = await fetchWistiaMetadata(url);
+                    if (wistiaResult.success && wistiaResult.duration !== undefined) {
+                        durationSeconds = wistiaResult.duration;
+                    }
+                    break;
+                // YouTube handled separately via handleFetchYouTubeMetadata
+            }
+
+            if (durationSeconds !== undefined) {
+                setDuration(formatDuration(durationSeconds));
+            }
+            // Don't show error if duration fetch fails - it's optional
+        } catch (err) {
+            console.error('Failed to fetch video duration:', err);
+        } finally {
+            setIsFetchingDuration(false);
+        }
+    }, []);
 
     const handleGenerateTranscript = useCallback(async () => {
         if (!videoUrl) {
@@ -513,9 +571,13 @@ export default function LessonEditorPanel({
         });
     }, [lessonId, onDelete, onClose]);
 
-    const handleUploadSuccess = useCallback((uploadId: string) => {
-        setVideoUrl(uploadId);
+    const handleUploadSuccess = useCallback((playbackId: string, videoDuration?: number) => {
+        setVideoUrl(playbackId);
         setIsUploading(false);
+        // Set duration if provided from Mux
+        if (videoDuration !== undefined) {
+            setDuration(formatDuration(videoDuration));
+        }
     }, []);
 
     // Get current transcript content based on active tab
@@ -741,12 +803,16 @@ export default function LessonEditorPanel({
                                         type="text"
                                         value={videoUrl}
                                         onChange={(e) => setVideoUrl(e.target.value)}
-                                        placeholder="Mux Playback ID or Google Drive URL"
+                                        onBlur={(e) => handleFetchVideoDuration(e.target.value)}
+                                        placeholder="Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive URL"
                                         className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
                                     />
+                                    {isFetchingDuration && (
+                                        <Loader2 size={16} className="text-slate-400 animate-spin" />
+                                    )}
                                 </div>
                                 <p className="text-xs text-slate-600 mt-2">
-                                    Enter a Mux Playback ID (e.g., abc123xyz) or a Google Drive video URL
+                                    Enter a Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive video URL. Duration will be auto-fetched.
                                 </p>
                             </div>
                         )}
@@ -943,19 +1009,32 @@ export default function LessonEditorPanel({
                     </div>
                 )}
 
-                {/* Duration */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Duration
-                    </label>
-                    <input
-                        type="text"
-                        value={duration}
-                        onChange={(e) => setDuration(e.target.value)}
-                        placeholder="e.g., 10 Min"
-                        className="w-48 p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50"
-                    />
-                </div>
+                {/* Duration - Auto-extracted from video (only show for video type) */}
+                {type === 'video' && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Duration
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                                <Timer size={16} className="text-slate-400" />
+                                {isFetchingDuration ? (
+                                    <span className="text-slate-400 text-sm flex items-center gap-2">
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Fetching duration...
+                                    </span>
+                                ) : duration ? (
+                                    <span className="text-white font-medium">{duration}</span>
+                                ) : (
+                                    <span className="text-slate-600 text-sm">Auto-extracted from video</span>
+                                )}
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-2">
+                            Duration is automatically extracted from your video source
+                        </p>
+                    </div>
+                )}
 
                 {/* Delete Section */}
                 {!isNewLesson && lessonId && (
