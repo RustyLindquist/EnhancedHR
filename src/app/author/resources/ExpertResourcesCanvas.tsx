@@ -164,23 +164,61 @@ export default function ExpertResourcesCanvas({
     }, []);
 
     const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => {
-        // Use API route with FormData to bypass Vercel's 4.5MB serverless payload limit
-        const formData = new FormData();
-        const blob = new Blob([fileBuffer], { type: fileType });
-        const file = new File([blob], fileName, { type: fileType });
-        formData.append('file', file);
+        // Two-phase upload to bypass Vercel's payload limits:
+        // 1. Get signed URL from our API
+        // 2. Upload directly to Supabase Storage (bypasses Vercel)
+        // 3. Call API to process the file and create DB record
 
-        const response = await fetch('/api/upload/expert-resource', {
-            method: 'POST',
-            body: formData
-        });
+        try {
+            // Phase 1: Get signed upload URL
+            const urlResponse = await fetch(
+                `/api/upload/expert-resource?fileName=${encodeURIComponent(fileName)}&fileType=${encodeURIComponent(fileType)}`
+            );
 
-        if (!response.ok) {
-            const error = await response.json();
-            return { success: false, error: error.error || 'Upload failed' };
+            if (!urlResponse.ok) {
+                const error = await urlResponse.json();
+                return { success: false, error: error.error || 'Failed to get upload URL' };
+            }
+
+            const { signedUrl, token, storagePath } = await urlResponse.json();
+
+            // Phase 2: Upload directly to Supabase Storage using signed URL
+            const uploadResponse = await fetch(signedUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': fileType,
+                },
+                body: fileBuffer
+            });
+
+            if (!uploadResponse.ok) {
+                return { success: false, error: 'Failed to upload file to storage' };
+            }
+
+            // Phase 3: Process the uploaded file
+            const processResponse = await fetch('/api/upload/expert-resource', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    storagePath,
+                    fileName,
+                    fileType,
+                    fileSize: fileBuffer.byteLength
+                })
+            });
+
+            if (!processResponse.ok) {
+                const error = await processResponse.json();
+                return { success: false, error: error.error || 'Failed to process file' };
+            }
+
+            return processResponse.json();
+        } catch (error) {
+            console.error('Expert file upload error:', error);
+            return { success: false, error: error instanceof Error ? error.message : 'Upload failed' };
         }
-
-        return response.json();
     }, []);
 
     // Video handlers for Expert Resources
