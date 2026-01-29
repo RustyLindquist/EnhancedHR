@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { getGroupDetails, getGroupStats, getGroupMembersWithStats, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
 import { ContentAssignment, getDirectAssignments, removeAssignment } from '@/app/actions/assignments';
@@ -10,6 +12,7 @@ import { OrgMember } from '@/app/actions/org';
 import UniversalCard from '@/components/cards/UniversalCard';
 import UniversalCollectionCard, { CollectionItemDetail } from '@/components/UniversalCollectionCard';
 import { DragItem } from '@/types';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface GroupDetailCanvasProps {
     group: any;
@@ -44,6 +47,10 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
     const [pickerAssignmentType, setPickerAssignmentType] = useState<'required' | 'recommended'>('required');
     const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
+
+    // Register browser back button handler to use parent's onBack
+    // Note: When a member is selected, UserDetailDashboard handles its own back
+    useBackHandler(onBack, { enabled: !selectedMember });
 
     // Notify parent when viewing member changes
     useEffect(() => {
