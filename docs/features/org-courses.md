@@ -3,7 +3,7 @@ id: org-courses
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-23
+last_updated: 2026-01-28
 surfaces:
   routes:
     - /org-courses
@@ -97,9 +97,11 @@ A course with `org_id` set to the owning organization's UUID. Key differences fr
 
 ### Org Course Embeddings
 When an org course is published, embeddings are generated for:
-- Course overview (title, description, category, author)
+- Course overview (title, description, categories, author)
 - Modules (title, description)
 - Lessons (title, description, transcript)
+
+Note: Courses support multiple categories via the `categories` TEXT[] field. All categories are included in the embedding text.
 
 These embeddings are stored in `unified_embeddings` with:
 - `source_type = 'org_course'`

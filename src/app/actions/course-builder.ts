@@ -85,85 +85,7 @@ export async function updateCourseImage(courseId: number, imageUrl: string | nul
     }
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
-}
-
-/**
- * Upload course image to storage and update the course record
- */
-export async function uploadCourseImageAction(
-    courseId: number,
-    formData: FormData
-): Promise<{ success: boolean; url?: string; error?: string }> {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return { success: false, error: 'Not authenticated' };
-    }
-
-    const file = formData.get('image') as File;
-    if (!file) {
-        return { success: false, error: 'No file provided' };
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        return { success: false, error: 'Invalid file type. Please use JPEG, PNG, or WebP.' };
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        return { success: false, error: 'File too large. Maximum size is 5MB.' };
-    }
-
-    const admin = await createAdminClient();
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `course-${courseId}/${timestamp}.${ext}`;
-
-    // Convert File to ArrayBuffer for upload
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
-
-    // Upload to storage (course-images bucket)
-    const { error: uploadError } = await admin.storage
-        .from('course-images')
-        .upload(path, buffer, {
-            contentType: file.type,
-            upsert: true
-        });
-
-    if (uploadError) {
-        console.error('[uploadCourseImageAction] Upload error:', uploadError);
-        return { success: false, error: uploadError.message };
-    }
-
-    // Get public URL
-    const { data: urlData } = admin.storage
-        .from('course-images')
-        .getPublicUrl(path);
-
-    // Update course with new image URL
-    const { error: updateError } = await admin
-        .from('courses')
-        .update({ image_url: urlData.publicUrl })
-        .eq('id', courseId);
-
-    if (updateError) {
-        console.error('[uploadCourseImageAction] Update error:', updateError);
-        return { success: false, error: updateError.message };
-    }
-
-    revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
-    revalidatePath(`/courses/${courseId}`);
-
-    return { success: true, url: urlData.publicUrl };
 }
 
 export async function updateCourseDetails(courseId: number, data: {
@@ -179,13 +101,17 @@ export async function updateCourseDetails(courseId: number, data: {
     // Build update object, handling both old category and new categories fields
     const updateData: Record<string, unknown> = { ...data };
 
-    // If categories array is provided, use it; also update legacy category field for backwards compat
-    if (data.categories && data.categories.length > 0) {
+    // Validate categories if explicitly provided
+    if (data.categories !== undefined) {
+        if (data.categories.length === 0) {
+            return { success: false, error: 'At least one category is required' };
+        }
+        // If categories array is provided with values, use it; also update legacy category field for backwards compat
         updateData.categories = data.categories;
         updateData.category = data.categories[0]; // Keep legacy field in sync
     }
     // If only old category field is provided (backwards compat), also update categories array
-    else if (data.category && !data.categories) {
+    else if (data.category) {
         updateData.categories = [data.category];
     }
 
@@ -1412,10 +1338,10 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
     }
 
     try {
-        // Fetch course title and description
+        // Fetch course title
         const { data: course } = await supabase
             .from('courses')
-            .select('title, description')
+            .select('title')
             .eq('id', courseId)
             .single();
 
@@ -1423,85 +1349,36 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
             return { success: false, error: 'Course not found' };
         }
 
-        let courseContext = '';
+        // Fetch all modules for this course
+        const { data: modules } = await supabase
+            .from('modules')
+            .select('id, title')
+            .eq('course_id', courseId)
+            .order('order');
 
-        // Strategy 1: Try to use Course RAG (embeddings) for comprehensive content
-        try {
-            const { generateQueryEmbedding } = await import('@/lib/ai/embedding');
-            const skillsQuery = `What are all the main topics, concepts, and skills taught in this course? What will learners be able to do after completing the course?`;
-            const queryEmbedding = await generateQueryEmbedding(skillsQuery);
-
-            if (queryEmbedding && queryEmbedding.length > 0) {
-                const { data: contextItems, error: ragError } = await supabase.rpc('match_unified_embeddings', {
-                    query_embedding: queryEmbedding,
-                    match_threshold: 0.3,
-                    match_count: 15,
-                    filter_scope: {
-                        allowedCourseIds: [courseId],
-                        includePersonalContext: false
-                    }
-                });
-
-                if (!ragError && contextItems && contextItems.length > 0) {
-                    console.log(`[generateSkills] Using RAG context: ${contextItems.length} chunks`);
-                    courseContext = contextItems.map((item: any) => {
-                        const lessonTitle = item.metadata?.lesson_title || '';
-                        const moduleTitle = item.metadata?.module_title || '';
-                        const prefix = moduleTitle && lessonTitle
-                            ? `[${moduleTitle} > ${lessonTitle}]`
-                            : lessonTitle
-                                ? `[${lessonTitle}]`
-                                : '';
-                        return `${prefix}\n${item.content}`;
-                    }).join('\n\n---\n\n');
-                }
-            }
-        } catch (ragErr) {
-            console.warn('[generateSkills] RAG failed, falling back to direct query:', ragErr);
+        if (!modules || modules.length === 0) {
+            return { success: false, error: 'No modules found for this course' };
         }
 
-        // Strategy 2: Fallback to direct lesson content query if RAG failed
-        if (!courseContext) {
-            console.log('[generateSkills] Falling back to direct lesson content query');
+        // Fetch all lessons with content
+        const { data: lessons } = await supabase
+            .from('lessons')
+            .select('id, title, content, module_id')
+            .in('module_id', modules.map(m => m.id))
+            .order('order');
 
-            // Get modules for this course
-            const { data: modules } = await supabase
-                .from('modules')
-                .select('id, title')
-                .eq('course_id', courseId)
-                .order('order');
+        // Compile transcripts
+        const transcriptsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
 
-            if (!modules || modules.length === 0) {
-                return { success: false, error: 'No modules found for this course' };
-            }
-
-            // Get lessons with content
-            const { data: lessons } = await supabase
-                .from('lessons')
-                .select('id, title, content, module_id')
-                .in('module_id', modules.map(m => m.id))
-                .order('order');
-
-            const lessonsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
-
-            if (lessonsWithContent.length === 0) {
-                return { success: false, error: 'No lesson content found. Please ensure the course has transcripts.' };
-            }
-
-            courseContext = lessonsWithContent.map(lesson => {
-                const module = modules.find(m => m.id === lesson.module_id);
-                return `[${module?.title || 'Module'} > ${lesson.title}]\n${lesson.content}`;
-            }).join('\n\n---\n\n');
-
-            // Truncate if too long (keep first ~30k chars to stay within token limits)
-            if (courseContext.length > 30000) {
-                courseContext = courseContext.substring(0, 30000) + '\n\n[... truncated for length ...]';
-            }
+        if (transcriptsWithContent.length === 0) {
+            return { success: false, error: 'No lesson transcripts found. Please add transcripts to lessons first.' };
         }
 
-        if (!courseContext) {
-            return { success: false, error: 'No course content found. Please ensure the course has lesson transcripts.' };
-        }
+        // Build the transcript compilation
+        const transcriptText = transcriptsWithContent.map(lesson => {
+            const module = modules.find(m => m.id === lesson.module_id);
+            return `## ${module?.title || 'Module'} - ${lesson.title}\n\n${lesson.content}`;
+        }).join('\n\n---\n\n');
 
         // Fetch the prompt and model from ai_prompt_library
         const { data: promptConfig } = await supabase
@@ -1510,16 +1387,16 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
             .eq('key', 'generate_skills')
             .single();
 
-        const defaultPrompt = `You are an expert instructional designer specializing in professional development. Your task is to analyze course content and extract the key skills learners will gain.
+        const defaultPrompt = `You are an expert instructional designer specializing in HR professional development. Your task is to analyze course content and extract the key skills learners will gain.
 
-Based on the course content provided below, generate a list of 4-8 specific, actionable skills that learners will develop by completing this course.
+Analyze the provided course transcript(s) and generate a list of 4-8 specific, actionable skills.
 
 Guidelines for generating skills:
 1. Use action verbs that indicate measurable outcomes (Apply, Analyze, Create, Evaluate, Implement, Design, Develop, etc.)
-2. Be specific and concrete - avoid vague skills like "understand better" or "learn about topics"
+2. Be specific and concrete - avoid vague skills like "understand HR better" or "learn about compliance"
 3. Focus on practical, workplace-applicable skills that professionals can immediately use
 4. Each skill should be completable in one clear sentence (10-20 words ideal)
-5. Skills should directly relate to content covered in the course
+5. Skills should directly relate to content covered in the transcripts
 6. Consider both technical/hard skills and strategic/soft skills where applicable
 7. Frame skills from the learner's perspective using active voice
 8. Ensure skills are differentiated - each should cover a distinct competency
@@ -1527,13 +1404,12 @@ Guidelines for generating skills:
 Format your response as a JSON array of strings only, with no additional text or explanation.
 
 Example format:
-["Apply data-driven approaches to measure employee engagement effectiveness", "Design compensation structures that balance internal equity with market competitiveness", "Analyze patterns to identify root causes and develop improvement strategies"]
+["Apply data-driven approaches to measure employee engagement effectiveness", "Design compensation structures that balance internal equity with market competitiveness", "Analyze turnover patterns to identify root causes and develop retention strategies"]
 
 Course Title: {course_title}
-Course Description: {course_description}
 
-Course Content (from transcripts):
-{course_context}
+Transcripts:
+{transcripts}
 
 Generate the skills list now (JSON array only):`;
 
@@ -1541,9 +1417,7 @@ Generate the skills list now (JSON array only):`;
 
         // Interpolate variables
         prompt = prompt.replace(/\{course_title\}/g, course.title);
-        prompt = prompt.replace(/\{course_description\}/g, course.description || 'Not provided');
-        prompt = prompt.replace(/\{transcripts\}/g, courseContext); // Legacy support
-        prompt = prompt.replace(/\{course_context\}/g, courseContext);
+        prompt = prompt.replace(/\{transcripts\}/g, transcriptText);
 
         const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
 
@@ -1615,8 +1489,7 @@ Generate the skills list now (JSON array only):`;
             metadata: {
                 course_id: courseId,
                 model: model,
-                skills_count: skills.length,
-                context_length: courseContext.length
+                skills_count: skills.length
             }
         });
 

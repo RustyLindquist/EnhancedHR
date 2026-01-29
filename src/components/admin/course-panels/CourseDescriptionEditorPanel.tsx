@@ -51,11 +51,30 @@ export default function CourseDescriptionEditorPanel({
     const [isLoadingCategories, setIsLoadingCategories] = useState(true);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
+    // Sync form state when props change while panel is open
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(prev => ({
+                ...prev,
+                title: currentTitle,
+                description: currentDescription,
+                categories: currentCategories.length > 0 ? currentCategories : ['General'],
+                status: currentStatus
+            }));
+        }
+    }, [isOpen, currentTitle, currentDescription, currentCategories, currentStatus]);
+
     // Fetch categories from published courses on mount
     useEffect(() => {
+        let isStale = false;
+
         async function loadCategories() {
             setIsLoadingCategories(true);
             const result = await getPublishedCategories();
+
+            // Don't update state if effect was cleaned up
+            if (isStale) return;
+
             if (result.success && result.categories) {
                 let cats = result.categories;
                 // Add any current categories not in the list
@@ -68,7 +87,12 @@ export default function CourseDescriptionEditorPanel({
             }
             setIsLoadingCategories(false);
         }
+
         loadCategories();
+
+        return () => {
+            isStale = true;
+        };
     }, [currentCategories]);
 
     // Toggle a category selection

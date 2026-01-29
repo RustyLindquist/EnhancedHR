@@ -3,7 +3,7 @@ id: course-player-and-progress
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-27
+last_updated: 2026-01-28
 surfaces:
   routes:
     - /dashboard?collection=academy
@@ -156,7 +156,7 @@ The Assessment Panel is the primary interface for taking quizzes, using a slide-
 - **Assessment attempt**: `user_assessment_attempts` rows track quiz/assessment per lesson.
 
 ## Data Model
-- `courses`: id identity PK, title/author/category/description/image_url/duration/rating/badges/status/collections.
+- `courses`: id identity PK, title/author/categories (TEXT[])/description/image_url/duration/rating/badges/status/collections. Note: Legacy `category` field deprecated; use `categories` array.
 - `modules`: uuid PK, course_id FK, order/title/duration.
 - `lessons`: uuid PK, module_id FK, order/title/type/video_url/content/quiz_data.
 - `user_progress`: uuid PK, user_id (profiles) FK, course_id FK, lesson_id FK, is_completed bool, last_accessed timestamptz, view_time_seconds int; unique (user_id, lesson_id).
