@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // Route segment config - allow larger body for chunks (but still under Vercel's limit)
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-// Increase body size limit for this route (default is 1MB for Vercel)
 export const dynamic = 'force-dynamic';
 
 const STORAGE_BUCKET = 'user-context-files';
@@ -24,11 +23,10 @@ async function isPlatformAdmin(userId: string): Promise<boolean> {
     return profile?.role === 'admin';
 }
 
-// In-memory storage for chunks (in production, use Redis or similar)
-const chunkStorage = new Map<string, { chunks: Buffer[]; totalChunks: number; fileType: string }>();
-
 /**
- * POST - Receive a file chunk and store/upload it
+ * POST - Receive a file chunk and upload it directly to storage
+ * Each chunk is stored as a separate file: {storagePath}.chunk.{index}
+ * The final processing step will combine them
  */
 export async function POST(request: NextRequest) {
     try {
@@ -70,49 +68,75 @@ export async function POST(request: NextRequest) {
 
         console.log(`[chunk-upload] Received chunk ${chunkIndex + 1}/${totalChunks} for ${storagePath} (${chunkBuffer.length} bytes)`);
 
-        // Initialize or get existing chunk storage for this file
-        if (!chunkStorage.has(storagePath)) {
-            chunkStorage.set(storagePath, {
-                chunks: new Array(totalChunks).fill(null),
-                totalChunks,
-                fileType
+        // Upload this chunk to storage as a separate file
+        const chunkPath = `${storagePath}.chunk.${chunkIndex}`;
+        const admin = createAdminClient();
+
+        const { error: uploadError } = await admin.storage
+            .from(STORAGE_BUCKET)
+            .upload(chunkPath, chunkBuffer, {
+                contentType: 'application/octet-stream',
+                upsert: true
             });
+
+        if (uploadError) {
+            console.error(`[chunk-upload] Failed to upload chunk ${chunkIndex}:`, uploadError);
+            return NextResponse.json(
+                { success: false, error: uploadError.message },
+                { status: 500 }
+            );
         }
 
-        const fileChunks = chunkStorage.get(storagePath)!;
-        fileChunks.chunks[chunkIndex] = chunkBuffer;
+        console.log(`[chunk-upload] Chunk ${chunkIndex + 1}/${totalChunks} uploaded to ${chunkPath}`);
 
-        // Check if all chunks are received
-        const receivedChunks = fileChunks.chunks.filter(c => c !== null).length;
+        // If this is the last chunk, combine all chunks into the final file
+        if (chunkIndex === totalChunks - 1) {
+            console.log(`[chunk-upload] Last chunk received. Combining ${totalChunks} chunks...`);
 
-        if (receivedChunks === totalChunks) {
-            console.log(`[chunk-upload] All ${totalChunks} chunks received. Assembling and uploading...`);
+            // Download all chunks and combine
+            const chunks: Buffer[] = [];
+            for (let i = 0; i < totalChunks; i++) {
+                const chunkFilePath = `${storagePath}.chunk.${i}`;
+                const { data: chunkData, error: downloadError } = await admin.storage
+                    .from(STORAGE_BUCKET)
+                    .download(chunkFilePath);
+
+                if (downloadError || !chunkData) {
+                    console.error(`[chunk-upload] Failed to download chunk ${i}:`, downloadError);
+                    return NextResponse.json(
+                        { success: false, error: `Failed to combine chunks: chunk ${i} missing` },
+                        { status: 500 }
+                    );
+                }
+
+                chunks.push(Buffer.from(await chunkData.arrayBuffer()));
+            }
 
             // Combine all chunks
-            const completeFile = Buffer.concat(fileChunks.chunks);
-            console.log(`[chunk-upload] Complete file size: ${completeFile.length} bytes`);
+            const completeFile = Buffer.concat(chunks);
+            console.log(`[chunk-upload] Combined file size: ${completeFile.length} bytes`);
 
-            // Upload to Supabase Storage using admin client
-            const admin = createAdminClient();
-            const { error: uploadError } = await admin.storage
+            // Upload the complete file
+            const { error: finalUploadError } = await admin.storage
                 .from(STORAGE_BUCKET)
                 .upload(storagePath, completeFile, {
                     contentType: fileType,
                     upsert: true
                 });
 
-            // Clean up chunk storage
-            chunkStorage.delete(storagePath);
-
-            if (uploadError) {
-                console.error('[chunk-upload] Upload error:', uploadError);
+            if (finalUploadError) {
+                console.error('[chunk-upload] Failed to upload combined file:', finalUploadError);
                 return NextResponse.json(
-                    { success: false, error: uploadError.message },
+                    { success: false, error: finalUploadError.message },
                     { status: 500 }
                 );
             }
 
-            console.log(`[chunk-upload] Successfully uploaded complete file to ${storagePath}`);
+            // Clean up chunk files
+            const chunkPaths = Array.from({ length: totalChunks }, (_, i) => `${storagePath}.chunk.${i}`);
+            await admin.storage.from(STORAGE_BUCKET).remove(chunkPaths);
+
+            console.log(`[chunk-upload] Successfully combined and uploaded complete file to ${storagePath}`);
 
             return NextResponse.json({
                 success: true,
@@ -125,7 +149,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             complete: false,
-            chunksReceived: receivedChunks,
+            chunkIndex,
             totalChunks
         });
 
