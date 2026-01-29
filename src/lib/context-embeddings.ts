@@ -384,6 +384,99 @@ export async function embedVideoContext(
 }
 
 /**
+ * Embed a platform course lesson for RAG retrieval
+ * Creates embeddings linked to the course (not a user) for Course Assistant/Tutor access
+ *
+ * CRITICAL: Sets course_id so RAG queries can find this content
+ * This is for PLATFORM courses (promoted from local dev), NOT org courses.
+ */
+export async function embedPlatformLessonContent(
+    lessonId: string,
+    courseId: number,
+    title: string,
+    description: string | undefined,
+    transcript: string,
+    moduleTitle?: string
+): Promise<{ success: boolean; embeddingCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        // Build combined context (same pattern as embedVideoContext)
+        const parts: string[] = [];
+        if (moduleTitle) {
+            parts.push(`Module: ${moduleTitle}`);
+        }
+        parts.push(`Lesson: ${title}`);
+        if (description) {
+            parts.push(`Description: ${description}`);
+        }
+        if (transcript) {
+            parts.push(`Transcript:\n${transcript}`);
+        }
+        const combinedContent = parts.join('\n\n');
+
+        if (!combinedContent || combinedContent.trim().length === 0) {
+            return { success: true, embeddingCount: 0 };
+        }
+
+        // Chunk long content
+        const chunks = combinedContent.length > 1200
+            ? chunkText(combinedContent, 1000, 200)
+            : [combinedContent];
+
+        let embeddingCount = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = await generateEmbedding(chunk);
+
+            if (!embedding || embedding.length === 0) {
+                console.warn(`[embedPlatformLessonContent] Failed embedding chunk ${i + 1}/${chunks.length}`);
+                continue;
+            }
+
+            const { error } = await admin
+                .from('unified_embeddings')
+                .insert({
+                    user_id: null,           // CRITICAL: null, not empty string
+                    course_id: courseId,     // CRITICAL: enables RAG discovery
+                    collection_id: null,
+                    org_id: null,            // Platform courses, not org-specific
+                    source_type: 'lesson',   // CRITICAL: correct type for course content
+                    source_id: lessonId,
+                    content: chunk,
+                    embedding: embedding,
+                    metadata: {
+                        lesson_title: title,
+                        module_title: moduleTitle || null,
+                        has_transcript: !!transcript,
+                        transcript_length: transcript?.length || 0,
+                        chunk_index: i,
+                        total_chunks: chunks.length
+                    }
+                });
+
+            if (error) {
+                console.error(`[embedPlatformLessonContent] Insert error:`, error);
+            } else {
+                embeddingCount++;
+            }
+        }
+
+        console.log(`[embedPlatformLessonContent] Created ${embeddingCount} embeddings for "${title}" (course ${courseId})`);
+        return { success: true, embeddingCount };
+
+    } catch (error) {
+        console.error('[embedPlatformLessonContent] Error:', error);
+        return {
+            success: false,
+            embeddingCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
  * Get embedding statistics for a user
  * Useful for debugging and monitoring
  */
