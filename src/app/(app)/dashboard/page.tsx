@@ -16,6 +16,7 @@ import { BackgroundTheme, Course, Collection, ContextCard, DragItem } from '@/ty
 import { fetchCoursesAction } from '@/app/actions/courses';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
+import { useNavigationSafe } from '@/contexts/NavigationContext';
 
 import {
   LayoutDashboard, Users, BookOpen, Settings, LogOut, ChevronLeft, ChevronRight, Menu, X, User,
@@ -379,7 +380,14 @@ function HomeContent() {
     } else {
       // Track previous collection for back navigation (only if actually changing)
       if (id !== activeCollectionId) {
-        setPreviousCollectionId(activeCollectionId);
+        // Push current collection to navigation history stack
+        navigationHistoryRef.current.push(activeCollectionId);
+
+        // Register a back handler for this navigation step
+        // This pushes a history entry so browser back will intercept
+        if (navigation) {
+          navigation.registerBackHandler(handleGoBack);
+        }
 
         // Clear active conversation when navigating to a different collection
         // This ensures the AI panel starts fresh with the new context/agent/RAG
@@ -509,15 +517,23 @@ function HomeContent() {
 
   // Navigation & Collection State
   const [activeCollectionId, setActiveCollectionId] = useState<string>(collectionParam || 'dashboard');
-  const [previousCollectionId, setPreviousCollectionId] = useState<string | null>(null);
+  // Navigation history stack for multi-level back support
+  const navigationHistoryRef = useRef<string[]>([]);
+  // Keep previousCollectionId as a computed value for backwards compatibility
+  const previousCollectionId = navigationHistoryRef.current.length > 0
+    ? navigationHistoryRef.current[navigationHistoryRef.current.length - 1]
+    : null;
 
-  // Go back to previous collection
+  // Get navigation context for registering back handlers
+  const navigation = useNavigationSafe();
+
+  // Go back to previous collection (pops from navigation stack)
   const handleGoBack = useCallback(() => {
-    if (previousCollectionId) {
-      setActiveCollectionId(previousCollectionId);
-      setPreviousCollectionId(null); // Clear after going back (one-step only)
+    if (navigationHistoryRef.current.length > 0) {
+      const previousId = navigationHistoryRef.current.pop()!;
+      setActiveCollectionId(previousId);
     }
-  }, [previousCollectionId]);
+  }, []);
 
   // Open help panel with specific topic
   const handleOpenHelp = useCallback((topicId: string) => {

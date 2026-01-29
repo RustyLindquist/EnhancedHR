@@ -1,9 +1,11 @@
+'use client';
 
 import React, { useTransition } from 'react';
 import { OrgMember, toggleOrgMemberStatus, updateUserRole } from '@/app/actions/org';
 import { User, Clock, Award, MessageSquare, ArrowLeft, Trash2, Ban, Shield, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import RemoveUserButton from './RemoveUserButton';
 import CanvasHeader from '../CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface UserDetailDashboardProps {
     member: OrgMember;
@@ -13,6 +15,9 @@ interface UserDetailDashboardProps {
 export default function UserDetailDashboard({ member, onBack }: UserDetailDashboardProps) {
     const [isPending, startTransition] = useTransition();
     const isPaused = member.membership_status === 'inactive'; // Assuming inactive means paused for now
+
+    // Register browser back button handler to use parent's onBack
+    useBackHandler(onBack);
 
     return (
         <div className="flex flex-col w-full relative">

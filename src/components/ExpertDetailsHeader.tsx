@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Linkedin } from 'lucide-react';
 import CanvasHeader from '@/components/CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface ExpertDetailsHeaderProps {
     linkedinUrl?: string | null;
@@ -15,6 +16,9 @@ const ExpertDetailsHeader: React.FC<ExpertDetailsHeaderProps> = ({ linkedinUrl }
     const handleBack = () => {
         router.push('/experts');
     };
+
+    // Register browser back button handler to go to experts page
+    useBackHandler(handleBack);
 
     return (
         <CanvasHeader

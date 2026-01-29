@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Layers, Sparkles, Loader2 } from 'lucide-react';
 import { getOrgGroups, getUserGroupMemberships, EmployeeGroup } from '@/app/actions/groups';
@@ -6,6 +8,7 @@ import GroupCard from './GroupCard';
 import GroupManagement from './GroupManagement';
 import InviteMemberPanel from './InviteMemberPanel';
 import CanvasHeader from '../CanvasHeader';
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface UsersAndGroupsCanvasProps {
     onSelectAllUsers: () => void;
@@ -61,6 +64,9 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
     const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
     const [totalMembers, setTotalMembers] = useState(0);
     const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+
+    // Register browser back button handler to use parent's onBack
+    useBackHandler(onBack, { enabled: !!onBack });
 
     const fetchGroups = async () => {
         setLoading(true);
