@@ -189,56 +189,98 @@ export default function ExpertResourcesCanvas({
             console.log('[Expert Upload] Phase 1 complete. Storage path:', storagePath);
             console.log('[Expert Upload] Signed URL domain:', new URL(signedUrl).hostname);
 
-            // Phase 2: Upload directly to Supabase Storage using XMLHttpRequest for better large file handling
+            // Phase 2: Upload directly to Supabase Storage
+            // Try direct signed URL upload first, fall back to chunked server upload if CORS fails
             currentPhase = 'phase2-upload-to-storage';
-            console.log('[Expert Upload] Phase 2: Uploading to Supabase Storage via XMLHttpRequest...');
+            console.log('[Expert Upload] Phase 2: Uploading to Supabase Storage...');
 
             const fileBlob = new Blob([fileBuffer], { type: fileType });
 
-            const uploadResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
-                const xhr = new XMLHttpRequest();
+            // Try direct upload with signed URL
+            let uploadSuccess = false;
+            let directUploadError = '';
 
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        console.log(`[Expert Upload] Phase 2 progress: ${percent}% (${(e.loaded / 1024 / 1024).toFixed(2)}MB / ${(e.total / 1024 / 1024).toFixed(2)}MB)`);
-                    }
+            try {
+                const uploadResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            console.log(`[Expert Upload] Phase 2 progress: ${percent}% (${(e.loaded / 1024 / 1024).toFixed(2)}MB / ${(e.total / 1024 / 1024).toFixed(2)}MB)`);
+                        }
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        console.log('[Expert Upload] Phase 2 XHR load event. Status:', xhr.status);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve({ success: true });
+                        } else {
+                            resolve({ success: false, error: `Storage upload failed: ${xhr.status} ${xhr.responseText}` });
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => {
+                        resolve({ success: false, error: 'CORS_OR_NETWORK_ERROR' });
+                    });
+
+                    xhr.addEventListener('timeout', () => {
+                        resolve({ success: false, error: 'Upload timed out' });
+                    });
+
+                    xhr.open('PUT', signedUrl);
+                    xhr.timeout = 300000; // 5 minute timeout
+                    // Add authorization header with token (required for some Supabase configurations)
+                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                    xhr.setRequestHeader('Content-Type', fileType);
+                    xhr.send(fileBlob);
                 });
 
-                xhr.addEventListener('load', () => {
-                    console.log('[Expert Upload] Phase 2 XHR load event. Status:', xhr.status);
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve({ success: true });
-                    } else {
-                        console.error('[Expert Upload] Phase 2 failed. Status:', xhr.status, 'Response:', xhr.responseText);
-                        resolve({ success: false, error: `Storage upload failed: ${xhr.status} ${xhr.responseText}` });
-                    }
-                });
-
-                xhr.addEventListener('error', (e) => {
-                    console.error('[Expert Upload] Phase 2 XHR error event:', e);
-                    resolve({ success: false, error: 'Network error during upload. Check browser console for details.' });
-                });
-
-                xhr.addEventListener('timeout', () => {
-                    console.error('[Expert Upload] Phase 2 XHR timeout');
-                    resolve({ success: false, error: 'Upload timed out. The file may be too large or the connection too slow.' });
-                });
-
-                xhr.addEventListener('abort', () => {
-                    console.error('[Expert Upload] Phase 2 XHR aborted');
-                    resolve({ success: false, error: 'Upload was aborted' });
-                });
-
-                xhr.open('PUT', signedUrl);
-                xhr.timeout = 300000; // 5 minute timeout for large files
-                xhr.setRequestHeader('Content-Type', fileType);
-                xhr.send(fileBlob);
-            });
-
-            if (!uploadResult.success) {
-                return uploadResult;
+                uploadSuccess = uploadResult.success;
+                directUploadError = uploadResult.error || '';
+            } catch (e) {
+                directUploadError = 'CORS_OR_NETWORK_ERROR';
             }
+
+            // If direct upload failed due to CORS/network, try chunked upload through server
+            if (!uploadSuccess && directUploadError === 'CORS_OR_NETWORK_ERROR') {
+                console.log('[Expert Upload] Direct upload failed (likely CORS). Trying chunked server upload...');
+
+                const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunks (under Vercel's limit)
+                const totalChunks = Math.ceil(fileBuffer.byteLength / CHUNK_SIZE);
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, fileBuffer.byteLength);
+                    const chunk = fileBuffer.slice(start, end);
+
+                    console.log(`[Expert Upload] Uploading chunk ${i + 1}/${totalChunks} (${((end - start) / 1024 / 1024).toFixed(2)}MB)`);
+
+                    const chunkResponse = await fetch('/api/upload/expert-resource/chunk', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            'X-Storage-Path': storagePath,
+                            'X-Chunk-Index': String(i),
+                            'X-Total-Chunks': String(totalChunks),
+                            'X-File-Type': fileType,
+                        },
+                        body: chunk
+                    });
+
+                    if (!chunkResponse.ok) {
+                        const error = await chunkResponse.json();
+                        console.error(`[Expert Upload] Chunk ${i + 1} failed:`, error);
+                        return { success: false, error: error.error || 'Chunk upload failed' };
+                    }
+                }
+
+                console.log('[Expert Upload] All chunks uploaded successfully.');
+                uploadSuccess = true;
+            } else if (!uploadSuccess) {
+                return { success: false, error: directUploadError };
+            }
+
             console.log('[Expert Upload] Phase 2 complete. File uploaded to storage.');
 
             // Phase 3: Process the uploaded file
