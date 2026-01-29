@@ -15,6 +15,7 @@ const CardStack: React.FC<CardStackProps> = ({
   title,
   author,
   category,
+  categories,
   progress,
   image,
   description,
@@ -27,6 +28,8 @@ const CardStack: React.FC<CardStackProps> = ({
   onClick,
   depth = 'stack' // Default to full stack for courses
 }) => {
+  // Use categories array if available, fallback to single category for backwards compatibility
+  const displayCategories = categories?.length ? categories : (category ? [category] : ['General']);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -180,15 +183,26 @@ const CardStack: React.FC<CardStackProps> = ({
             )}
           </div>
 
-          {/* Category Tag on Image */}
-          <div className="absolute bottom-3 left-3">
-            <span className="
-                text-[10px] font-bold tracking-widest uppercase 
-                text-brand-blue-light bg-[#054C74]/90 border border-brand-blue-light/20 
-                px-2 py-1 rounded backdrop-blur-md shadow-lg
-              ">
-              {category}
-            </span>
+          {/* Category Tags on Image */}
+          <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[calc(100%-24px)]">
+            {displayCategories.slice(0, 2).map((cat, idx) => (
+              <span key={idx} className="
+                  text-[10px] font-bold tracking-widest uppercase
+                  text-brand-blue-light bg-[#054C74]/90 border border-brand-blue-light/20
+                  px-2 py-1 rounded backdrop-blur-md shadow-lg
+                ">
+                {cat}
+              </span>
+            ))}
+            {displayCategories.length > 2 && (
+              <span className="
+                  text-[10px] font-bold tracking-widest uppercase
+                  text-brand-blue-light bg-[#054C74]/90 border border-brand-blue-light/20
+                  px-2 py-1 rounded backdrop-blur-md shadow-lg
+                ">
+                +{displayCategories.length - 2}
+              </span>
+            )}
           </div>
         </div>
 

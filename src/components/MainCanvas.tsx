@@ -3291,7 +3291,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             description={course.description}
                             imageUrl={course.image}
                             meta={course.duration}
-                            categories={[course.category]}
+                            categories={course.categories || [course.category || 'General']}
                             rating={course.rating}
                             credits={{
                                 shrm: course.badges?.includes('SHRM'),
@@ -4374,7 +4374,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                                             meta={course.duration}
                                                                                             description={course.description}
                                                                                             rating={course.rating}
-                                                                                            categories={[course.category]}
+                                                                                            categories={course.categories || [course.category || 'General']}
                                                                                             credits={{
                                                                                                 shrm: course.badges?.includes('SHRM'),
                                                                                                 hrci: course.badges?.includes('HRCI')
@@ -4501,7 +4501,7 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                             meta={course.duration}
                                                                             description={course.description}
                                                                             rating={course.rating}
-                                                                            categories={[course.category]}
+                                                                            categories={course.categories || [course.category || 'General']}
                                                                             credits={{
                                                                                 shrm: course.badges?.includes('SHRM'),
                                                                                 hrci: course.badges?.includes('HRCI')
