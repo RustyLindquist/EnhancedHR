@@ -289,7 +289,8 @@ export async function createOrgCourse(
         .insert({
             title: 'Untitled Course',
             description: '',
-            category: 'General',
+            category: 'General', // @deprecated - use categories instead
+            categories: ['General'],
             status: 'draft',
             duration: '0m',
             rating: 0,

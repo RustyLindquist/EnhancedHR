@@ -3,7 +3,7 @@ id: academy
 owner: product-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-04
+last_updated: 2026-01-28
 surfaces:
   routes:
     - /dashboard?collection=academy
@@ -49,7 +49,9 @@ Academy provides course discovery, search, and entry into course players. It lis
 - **Lesson search**: server action searching lessons to jump into specific lessons.
 
 ## Data Model
-- `courses`: id, title, author, category, description, image_url, duration, rating, badges, status, created_at, collections (legacy).
+- `courses`: id, title, author, categories (TEXT[]), description, image_url, duration, rating, badges, status, created_at, collections (legacy).
+  - **categories**: Array of category strings (e.g., `['Leadership Development', 'HR Fundamentals']`). Courses can belong to multiple categories.
+  - **category** (deprecated): Legacy single-category field, maintained for backwards compatibility but not used in new queries.
 - `modules` and `lessons`: course content structure.
 
 Write paths:
@@ -84,7 +86,8 @@ Read paths:
 - Run lesson search; clicking result opens corresponding lesson/course.
 
 ## Change Guide
-- Adding categories/filters: extend query parameters and UI; ensure data present in courses.
+- Multi-category support: Courses now support multiple categories via the `categories` TEXT[] field. The legacy `category` field is deprecated but preserved for backwards compatibility.
+- Adding categories/filters: extend query parameters and UI; use `categories @> ARRAY[...]` for array containment queries.
 - Changing course status semantics: update fetchCoursesAction to filter appropriately and adjust docs.
 - If adding pagination, update tests and saved-state mapping.
 

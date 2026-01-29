@@ -36,12 +36,12 @@ curl -s "https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${V
 ### 3. Create Course Record
 
 ```sql
-INSERT INTO courses (title, description, author, category, featured_image, duration, status)
+INSERT INTO courses (title, description, author, categories, featured_image, duration, status)
 VALUES (
     'Course Title',
     'Course description here. Write compelling description that explains what the learner will gain.',
     'Rusty Lindquist',
-    'Leadership Development',
+    ARRAY['Leadership Development'],
     'https://img.youtube.com/vi/FIRST_VIDEO_ID/maxresdefault.jpg',
     '30 min',
     'published'
@@ -52,7 +52,7 @@ RETURNING id;
 **Notes:**
 - `featured_image`: Use `https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg` from first video
 - `duration`: Total course duration in "X min" format
-- `category`: Must match existing categories (Leadership Development, HR Fundamentals, etc.)
+- `categories`: TEXT array of categories (e.g., `ARRAY['Leadership Development', 'HR Fundamentals']`). Courses can belong to multiple categories.
 
 ### 4. Create Module Record
 
@@ -121,12 +121,12 @@ Created with 18 YouTube videos from the 0521-0543 range (some numbers missing du
 
 ```sql
 -- Course
-INSERT INTO courses (title, description, author, category, featured_image, duration, status)
+INSERT INTO courses (title, description, author, categories, featured_image, duration, status)
 VALUES (
     'Extraordinary vs Extravagant',
     'Learn the critical distinction between extraordinary and extravagant in leadership...',
     'Rusty Lindquist',
-    'Leadership Development',
+    ARRAY['Leadership Development'],
     'https://img.youtube.com/vi/S6qrXkXDBa8/maxresdefault.jpg',
     '29 min',
     'published'
@@ -150,12 +150,12 @@ Created with 10 YouTube videos from the 0256-0382 range:
 
 ```sql
 -- Course
-INSERT INTO courses (title, description, author, category, featured_image, duration, status)
+INSERT INTO courses (title, description, author, categories, featured_image, duration, status)
 VALUES (
     'Choose To Thrive',
     'A comprehensive exploration of how to move beyond surviving to truly thriving...',
     'Rusty Lindquist',
-    'Leadership Development',
+    ARRAY['Leadership Development'],
     'https://img.youtube.com/vi/qyMRl-dRb2I/maxresdefault.jpg',
     '27 min',
     'published'
@@ -170,7 +170,7 @@ VALUES (
 
 3. **Duration accuracy**: Course duration should reflect actual total, not just a sum (account for loading, etc.)
 
-4. **Category consistency**: Use existing categories from the database to maintain filtering consistency
+4. **Category consistency**: Use existing categories from the database to maintain filtering consistency. Query existing categories with: `SELECT DISTINCT unnest(categories) FROM courses WHERE status = 'published'`
 
 5. **Status**: Set to 'published' to make immediately available, or 'draft' for review
 

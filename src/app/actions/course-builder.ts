@@ -101,13 +101,17 @@ export async function updateCourseDetails(courseId: number, data: {
     // Build update object, handling both old category and new categories fields
     const updateData: Record<string, unknown> = { ...data };
 
-    // If categories array is provided, use it; also update legacy category field for backwards compat
-    if (data.categories && data.categories.length > 0) {
+    // Validate categories if explicitly provided
+    if (data.categories !== undefined) {
+        if (data.categories.length === 0) {
+            return { success: false, error: 'At least one category is required' };
+        }
+        // If categories array is provided with values, use it; also update legacy category field for backwards compat
         updateData.categories = data.categories;
         updateData.category = data.categories[0]; // Keep legacy field in sync
     }
     // If only old category field is provided (backwards compat), also update categories array
-    else if (data.category && !data.categories) {
+    else if (data.category) {
         updateData.categories = [data.category];
     }
 

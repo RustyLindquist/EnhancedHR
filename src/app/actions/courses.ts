@@ -159,6 +159,9 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
 
     const supabase = await createClient();
 
+    // Escape special LIKE characters to prevent injection and unintended matches
+    const escapedQuery = query.trim().replace(/[%_\\]/g, '\\$&');
+
     // Search lessons with course info via nested join through modules (only from published courses)
     const { data, error } = await supabase
         .from('lessons')
@@ -180,7 +183,7 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
                 )
             )
         `)
-        .ilike('title', `%${query.trim()}%`)
+        .ilike('title', `%${escapedQuery}%`)
         .eq('modules.courses.status', 'published')
         .limit(50);
 
