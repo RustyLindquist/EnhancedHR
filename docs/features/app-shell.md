@@ -97,6 +97,15 @@ Read paths:
 - AI panel uses active collection to set ContextResolver scope.
 - Help panel/help collection accessible from nav.
 
+## Browser Back Button Integration
+
+The app shell includes `NavigationProvider` (via `Providers.tsx`) which enables browser back button interception for in-app navigation. This allows same-URL navigation (like Dashboard collection switching) to respond to the browser back button.
+
+See `docs/features/browser-back-navigation.md` for full documentation including:
+- When to use `useBackHandler` hook vs direct `registerBackHandler`
+- Two navigation patterns (URL-based vs same-URL)
+- Edge cases handled (SSR, rapid presses, direct URL entry)
+
 ## Invariants
 - System collection aliases must stay in sync with collections feature.
   - Changing labels requires updates in NavigationPanel/MainCanvas/collections utilities.
@@ -104,6 +113,7 @@ Read paths:
 - Drag/drop must supply correct item type for collection actions.
 - Global panels (GlobalTopPanel, modals) must use React Portals to render at document body level for proper z-index stacking.
 - Slide-down panels that may mount with `isOpen=true` must use double `requestAnimationFrame` delay to ensure animation works (see GlobalTopPanel pattern).
+- NavigationProvider must wrap all app content for browser back button interception to work.
 
 ## Failure Modes & Recovery
 - Nav counts stale: ensure collection:refresh dispatched; verify getCollectionCountsAction runs.
@@ -141,3 +151,4 @@ Read paths:
 ## Related Docs
 - docs/features/collections-and-context.md
 - docs/features/dashboard.md
+- docs/features/browser-back-navigation.md - Browser back button interception for in-app navigation
