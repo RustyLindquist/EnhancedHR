@@ -772,6 +772,7 @@ export default function VideoPanel({
                                     video_id: displayVideo.id,
                                     video_title: displayVideo.title,
                                 }}
+                                renditionOrder="desc"
                                 primaryColor="#A855F7"
                                 accentColor="#7C3AED"
                                 style={{ width: '100%', aspectRatio: '16/9' }}
