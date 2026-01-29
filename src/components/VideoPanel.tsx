@@ -305,9 +305,10 @@ export default function VideoPanel({
         }
     }, []);
 
-    // Handle proxy upload - upload file via server proxy, then trigger Mux processing
+    // Handle proxy upload - upload file via server proxy using chunked uploads, then trigger Mux processing
     // Server proxy is used because some ISPs (like Xfinity) block direct browser-to-Supabase uploads
-    // The flow is: Browser -> Our Server -> Supabase Storage -> Mux pulls from URL
+    // Chunked uploads are used to bypass Vercel's ~4.5MB request body limit
+    // The flow is: Browser -> Our Server (chunks) -> Supabase Storage -> Mux pulls from URL
     const handleProxyUpload = useCallback(async () => {
         if (!selectedFile || !title.trim()) return;
 
@@ -337,51 +338,79 @@ export default function VideoPanel({
             setItemId(videoId);
             setProxyStoragePath(storagePath);
 
-            // 2. Upload file via our server proxy (same-origin, avoids ISP TLS interference)
-            // Our server then uploads to Supabase Storage server-to-server
-            console.log('[VideoPanel] Uploading via server proxy:', storagePath);
+            // 2. Upload file via chunked server proxy (bypasses Vercel body size limits)
+            console.log('[VideoPanel] Uploading via chunked server proxy:', storagePath);
 
-            const xhr = new XMLHttpRequest();
+            const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (safely under Vercel's limit)
+            const fileBuffer = await selectedFile.arrayBuffer();
+            const totalChunks = Math.ceil(fileBuffer.byteLength / CHUNK_SIZE);
 
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const progress = Math.round((e.loaded / e.total) * 100);
-                    setProxyUploadProgress(progress);
-                }
-            });
+            // Helper to upload a single chunk using XMLHttpRequest
+            const uploadChunk = (chunkIndex: number, chunkData: ArrayBuffer): Promise<{ success: boolean; error?: string }> => {
+                return new Promise((resolve) => {
+                    const xhr = new XMLHttpRequest();
 
-            await new Promise<void>((resolve, reject) => {
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                resolve();
-                            } else {
-                                reject(new Error(response.error || 'Upload failed'));
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                resolve({ success: data.success, error: data.error });
+                            } catch {
+                                resolve({ success: true });
                             }
-                        } catch {
-                            resolve(); // If response isn't JSON but status is OK
+                        } else {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                resolve({ success: false, error: data.error || `Status ${xhr.status}` });
+                            } catch {
+                                resolve({ success: false, error: `Status ${xhr.status}` });
+                            }
                         }
-                    } else {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            reject(new Error(response.error || `Upload failed with status ${xhr.status}`));
-                        } catch {
-                            reject(new Error(`Upload failed with status ${xhr.status}`));
-                        }
-                    }
-                };
-                xhr.onerror = () => reject(new Error('Upload failed - network error'));
+                    });
 
-                // POST to our server proxy instead of directly to Supabase
-                xhr.open('POST', '/api/upload/video');
-                xhr.setRequestHeader('Content-Type', selectedFile.type);
-                xhr.setRequestHeader('X-Storage-Path', storagePath);
-                xhr.send(selectedFile);
-            });
+                    xhr.addEventListener('error', () => {
+                        resolve({ success: false, error: 'Network error uploading chunk' });
+                    });
 
-            console.log('[VideoPanel] File uploaded via proxy, starting Mux processing');
+                    xhr.addEventListener('timeout', () => {
+                        resolve({ success: false, error: 'Chunk upload timed out' });
+                    });
+
+                    xhr.open('POST', '/api/upload/video/chunk');
+                    xhr.timeout = 120000; // 2 minute timeout per chunk
+                    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                    xhr.setRequestHeader('X-Storage-Path', storagePath);
+                    xhr.setRequestHeader('X-Chunk-Index', String(chunkIndex));
+                    xhr.setRequestHeader('X-Total-Chunks', String(totalChunks));
+                    xhr.setRequestHeader('X-File-Type', selectedFile.type);
+                    xhr.send(chunkData);
+                });
+            };
+
+            // Upload all chunks
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, fileBuffer.byteLength);
+                const chunk = fileBuffer.slice(start, end);
+
+                console.log(`[VideoPanel] Uploading chunk ${i + 1}/${totalChunks} (${((end - start) / 1024 / 1024).toFixed(2)}MB)`);
+
+                const chunkResult = await uploadChunk(i, chunk);
+
+                if (!chunkResult.success) {
+                    console.error(`[VideoPanel] Chunk ${i + 1} failed:`, chunkResult.error);
+                    setError(`Upload failed at chunk ${i + 1}: ${chunkResult.error}`);
+                    setUploadStatus('error');
+                    return;
+                }
+
+                // Update progress (weighted by chunk completion)
+                const progress = Math.round(((i + 1) / totalChunks) * 100);
+                setProxyUploadProgress(progress);
+                console.log(`[VideoPanel] Chunk ${i + 1}/${totalChunks} complete`);
+            }
+
+            console.log('[VideoPanel] All chunks uploaded, starting Mux processing');
             setUploadStatus('processing');
 
             // 3. Complete proxy upload (creates Mux asset from Supabase URL)
