@@ -341,9 +341,14 @@ export default function VideoPanel({
             // 2. Upload file via chunked server proxy (bypasses Vercel body size limits)
             console.log('[VideoPanel] Uploading via chunked server proxy:', storagePath);
 
-            const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks (safely under Vercel's limit)
+            const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunks (smaller to avoid ISP interference)
+            const MAX_RETRIES = 3; // Retry failed chunks up to 3 times
+            const RETRY_DELAY = 1000; // Wait 1 second between retries
             const fileBuffer = await selectedFile.arrayBuffer();
             const totalChunks = Math.ceil(fileBuffer.byteLength / CHUNK_SIZE);
+
+            // Helper to wait for a delay
+            const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
             // Helper to upload a single chunk using XMLHttpRequest
             const uploadChunk = (chunkIndex: number, chunkData: ArrayBuffer): Promise<{ success: boolean; error?: string }> => {
@@ -387,19 +392,38 @@ export default function VideoPanel({
                 });
             };
 
-            // Upload all chunks
+            // Upload all chunks with retry logic
             for (let i = 0; i < totalChunks; i++) {
                 const start = i * CHUNK_SIZE;
                 const end = Math.min(start + CHUNK_SIZE, fileBuffer.byteLength);
                 const chunk = fileBuffer.slice(start, end);
 
-                console.log(`[VideoPanel] Uploading chunk ${i + 1}/${totalChunks} (${((end - start) / 1024 / 1024).toFixed(2)}MB)`);
+                let chunkSuccess = false;
+                let lastError = '';
 
-                const chunkResult = await uploadChunk(i, chunk);
+                // Retry loop for each chunk
+                for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                    console.log(`[VideoPanel] Uploading chunk ${i + 1}/${totalChunks} (${((end - start) / 1024 / 1024).toFixed(2)}MB)${attempt > 1 ? ` - attempt ${attempt}` : ''}`);
 
-                if (!chunkResult.success) {
-                    console.error(`[VideoPanel] Chunk ${i + 1} failed:`, chunkResult.error);
-                    setError(`Upload failed at chunk ${i + 1}: ${chunkResult.error}`);
+                    const chunkResult = await uploadChunk(i, chunk);
+
+                    if (chunkResult.success) {
+                        chunkSuccess = true;
+                        break;
+                    }
+
+                    lastError = chunkResult.error || 'Unknown error';
+                    console.warn(`[VideoPanel] Chunk ${i + 1} attempt ${attempt} failed:`, lastError);
+
+                    if (attempt < MAX_RETRIES) {
+                        console.log(`[VideoPanel] Retrying chunk ${i + 1} in ${RETRY_DELAY}ms...`);
+                        await delay(RETRY_DELAY * attempt); // Exponential backoff
+                    }
+                }
+
+                if (!chunkSuccess) {
+                    console.error(`[VideoPanel] Chunk ${i + 1} failed after ${MAX_RETRIES} attempts:`, lastError);
+                    setError(`Upload failed at chunk ${i + 1} after ${MAX_RETRIES} attempts. Please try again or use a different network.`);
                     setUploadStatus('error');
                     return;
                 }
