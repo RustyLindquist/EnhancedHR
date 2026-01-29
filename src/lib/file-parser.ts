@@ -369,6 +369,62 @@ export async function uploadPlatformFileToStorage(
 }
 
 /**
+ * Upload a file to the course resources folder in Supabase Storage
+ * Files are stored at: courses/{courseId}/resources/{timestamp}_{filename}
+ *
+ * @param file - The file to upload
+ * @param courseId - The course ID
+ * @returns Upload result with path and URL
+ */
+export async function uploadCourseResourceToStorage(
+    file: File,
+    courseId: number
+): Promise<{ path: string; url: string; success: boolean; error?: string }> {
+    const admin = createAdminClient();
+
+    // Generate unique path in course resources folder
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `courses/${courseId}/resources/${timestamp}_${sanitizedName}`;
+
+    try {
+        const buffer = await file.arrayBuffer();
+
+        const { data, error } = await admin.storage
+            .from('user-context-files')
+            .upload(path, buffer, {
+                contentType: file.type,
+                upsert: false
+            });
+
+        if (error) {
+            console.error('Course resource storage upload error:', error);
+            return { path: '', url: '', success: false, error: error.message };
+        }
+
+        // Get public URL
+        const { data: urlData } = admin.storage
+            .from('user-context-files')
+            .getPublicUrl(path);
+
+        return {
+            path: data.path,
+            url: urlData.publicUrl,
+            success: true
+        };
+
+    } catch (error) {
+        console.error('Course resource file upload error:', error);
+        return {
+            path: '',
+            url: '',
+            success: false,
+            error: error instanceof Error ? error.message : 'Upload failed'
+        };
+    }
+}
+
+/**
  * Full file processing pipeline:
  * 1. Upload to storage
  * 2. Parse text content
