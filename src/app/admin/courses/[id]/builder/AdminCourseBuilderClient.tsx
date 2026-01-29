@@ -191,7 +191,7 @@ export default function AdminCourseBuilderClient({
                 courseId={initialCourse.id}
                 currentTitle={initialCourse.title}
                 currentDescription={initialCourse.description}
-                currentCategory={initialCourse.category}
+                currentCategories={initialCourse.categories || [initialCourse.category || 'General']}
                 currentStatus={initialCourse.status}
                 onSave={handlePanelSave}
             />

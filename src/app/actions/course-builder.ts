@@ -24,6 +24,7 @@ import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 /**
  * Get distinct categories from published courses
  * Used to populate the category dropdown dynamically
+ * Now supports multi-category courses - collects all unique categories from arrays
  */
 export async function getPublishedCategories(): Promise<{
     success: boolean;
@@ -32,19 +33,35 @@ export async function getPublishedCategories(): Promise<{
 }> {
     const admin = await createAdminClient();
 
+    // Fetch both old category field and new categories array
     const { data, error } = await admin
         .from('courses')
-        .select('category')
-        .eq('status', 'published')
-        .not('category', 'is', null);
+        .select('category, categories')
+        .eq('status', 'published');
 
     if (error) {
         console.error('[getPublishedCategories] Error:', error);
         return { success: false, error: error.message };
     }
 
-    // Get unique categories, sorted alphabetically
-    const categories = [...new Set(data.map(c => c.category).filter(Boolean))].sort();
+    // Collect unique categories from both old and new fields
+    const allCategories = new Set<string>();
+
+    data.forEach(course => {
+        // Add from new categories array
+        if (course.categories && Array.isArray(course.categories)) {
+            course.categories.forEach((cat: string) => {
+                if (cat) allCategories.add(cat);
+            });
+        }
+        // Also check legacy category field for backwards compat
+        else if (course.category) {
+            allCategories.add(course.category);
+        }
+    });
+
+    // Convert to sorted array
+    const categories = [...allCategories].sort();
 
     // Always include 'General' as a fallback option
     if (!categories.includes('General')) {
@@ -152,15 +169,29 @@ export async function uploadCourseImageAction(
 export async function updateCourseDetails(courseId: number, data: {
     title?: string;
     description?: string;
-    category?: string;
+    category?: string; // @deprecated - use categories instead
+    categories?: string[];
     status?: 'draft' | 'pending_review' | 'published' | 'archived';
     duration?: string;
 }) {
     const admin = await createAdminClient();
 
+    // Build update object, handling both old category and new categories fields
+    const updateData: Record<string, unknown> = { ...data };
+
+    // If categories array is provided, use it; also update legacy category field for backwards compat
+    if (data.categories && data.categories.length > 0) {
+        updateData.categories = data.categories;
+        updateData.category = data.categories[0]; // Keep legacy field in sync
+    }
+    // If only old category field is provided (backwards compat), also update categories array
+    else if (data.category && !data.categories) {
+        updateData.categories = [data.category];
+    }
+
     const { error } = await admin
         .from('courses')
-        .update(data)
+        .update(updateData)
         .eq('id', courseId);
 
     if (error) {
@@ -1041,7 +1072,8 @@ export async function createBlankCourse() {
         .insert({
             title: 'Untitled Course',
             description: '',
-            category: 'General',
+            category: 'General', // Legacy field for backwards compat
+            categories: ['General'], // New multi-category field
             status: 'draft',
             duration: '0m',
             rating: 0,
@@ -1140,7 +1172,8 @@ export async function getCourseForBuilder(courseId: number) {
             credentials: authorProfile.credentials
         } : undefined,
         progress: 0,
-        category: course.category,
+        category: course.category, // @deprecated - use categories instead
+        categories: course.categories || (course.category ? [course.category] : ['General']),
         image: course.image_url,
         description: course.description || '',
         duration: course.duration || '0m',

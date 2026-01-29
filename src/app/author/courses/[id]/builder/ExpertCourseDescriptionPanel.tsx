@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useEffect } from 'react';
-import { FileText, Loader2, CheckCircle, Plus, X } from 'lucide-react';
+import { FileText, Loader2, CheckCircle, Plus, X, Check } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateExpertCourseDetails } from '@/app/actions/expert-course-builder';
 import { getPublishedCategories } from '@/app/actions/course-builder';
@@ -12,7 +12,7 @@ interface ExpertCourseDescriptionPanelProps {
     courseId: number;
     currentTitle: string;
     currentDescription: string;
-    currentCategory: string;
+    currentCategories: string[]; // Changed from currentCategory: string
     onSave: () => void;
 }
 
@@ -22,23 +22,24 @@ export default function ExpertCourseDescriptionPanel({
     courseId,
     currentTitle,
     currentDescription,
-    currentCategory,
+    currentCategories,
     onSave
 }: ExpertCourseDescriptionPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [formData, setFormData] = useState({
         title: currentTitle,
         description: currentDescription,
-        category: currentCategory
+        categories: currentCategories.length > 0 ? currentCategories : ['General']
     });
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
 
     // Dynamic categories state
-    const [categories, setCategories] = useState<string[]>(['General']);
+    const [availableCategories, setAvailableCategories] = useState<string[]>(['General']);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
     // Fetch categories from published courses on mount
     useEffect(() => {
@@ -47,33 +48,68 @@ export default function ExpertCourseDescriptionPanel({
             const result = await getPublishedCategories();
             if (result.success && result.categories) {
                 let cats = result.categories;
-                // If current category not in list, add it
-                if (currentCategory && !cats.includes(currentCategory)) {
-                    cats = [...cats, currentCategory].sort();
-                }
-                setCategories(cats);
+                // Add any current categories not in the list
+                currentCategories.forEach(cat => {
+                    if (cat && !cats.includes(cat)) {
+                        cats = [...cats, cat];
+                    }
+                });
+                setAvailableCategories(cats.sort());
             }
             setIsLoadingCategories(false);
         }
         loadCategories();
-    }, [currentCategory]);
+    }, [currentCategories]);
+
+    // Toggle a category selection
+    const toggleCategory = useCallback((category: string) => {
+        setFormData(prev => {
+            const isSelected = prev.categories.includes(category);
+            if (isSelected) {
+                // Don't allow removing the last category
+                if (prev.categories.length <= 1) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    categories: prev.categories.filter(c => c !== category)
+                };
+            } else {
+                return {
+                    ...prev,
+                    categories: [...prev.categories, category].sort()
+                };
+            }
+        });
+    }, []);
 
     // Handle adding a new category
     const handleAddCategory = useCallback(() => {
         const trimmed = newCategoryName.trim();
         if (trimmed) {
-            if (!categories.includes(trimmed)) {
-                setCategories(prev => [...prev, trimmed].sort());
+            if (!availableCategories.includes(trimmed)) {
+                setAvailableCategories(prev => [...prev, trimmed].sort());
             }
-            setFormData(prev => ({ ...prev, category: trimmed }));
+            // Also select the new category
+            setFormData(prev => ({
+                ...prev,
+                categories: prev.categories.includes(trimmed)
+                    ? prev.categories
+                    : [...prev.categories, trimmed].sort()
+            }));
             setNewCategoryName('');
             setIsAddingCategory(false);
         }
-    }, [newCategoryName, categories]);
+    }, [newCategoryName, availableCategories]);
 
     const handleSave = useCallback(() => {
         if (!formData.title.trim()) {
             setError('Title is required');
+            return;
+        }
+
+        if (formData.categories.length === 0) {
+            setError('At least one category is required');
             return;
         }
 
@@ -82,7 +118,7 @@ export default function ExpertCourseDescriptionPanel({
             const result = await updateExpertCourseDetails(courseId, {
                 title: formData.title.trim(),
                 description: formData.description.trim(),
-                category: formData.category
+                categories: formData.categories
             });
 
             if (result.success) {
@@ -169,11 +205,33 @@ export default function ExpertCourseDescriptionPanel({
                     </p>
                 </div>
 
-                {/* Category */}
+                {/* Categories - Multi-select */}
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Category
+                        Categories
                     </label>
+
+                    {/* Selected categories display */}
+                    <div className="flex flex-wrap gap-2 mb-3 min-h-[32px]">
+                        {formData.categories.map(cat => (
+                            <span
+                                key={cat}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-blue-light/20 text-brand-blue-light text-sm font-medium"
+                            >
+                                {cat}
+                                {formData.categories.length > 1 && (
+                                    <button
+                                        onClick={() => toggleCategory(cat)}
+                                        className="hover:text-red-400 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </span>
+                        ))}
+                    </div>
+
+                    {/* Add category input or dropdown toggle */}
                     {isAddingCategory ? (
                         <div className="flex gap-2">
                             <input
@@ -187,14 +245,14 @@ export default function ExpertCourseDescriptionPanel({
                                         setNewCategoryName('');
                                     }
                                 }}
-                                placeholder="Enter new category name"
-                                className="flex-1 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50"
+                                placeholder="New category name"
+                                className="flex-1 p-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 text-sm"
                                 autoFocus
                             />
                             <button
                                 onClick={handleAddCategory}
                                 disabled={!newCategoryName.trim()}
-                                className="px-4 rounded-xl bg-brand-orange text-white font-medium hover:bg-brand-orange/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/80 transition-colors disabled:opacity-50"
                             >
                                 Add
                             </button>
@@ -203,33 +261,65 @@ export default function ExpertCourseDescriptionPanel({
                                     setIsAddingCategory(false);
                                     setNewCategoryName('');
                                 }}
-                                className="px-3 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                                className="px-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors"
                             >
                                 <X size={16} />
                             </button>
                         </div>
                     ) : (
-                        <div className="flex gap-2">
-                            <select
-                                value={formData.category}
-                                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                                disabled={isLoadingCategories}
-                                className="flex-1 p-4 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-brand-blue-light/50 appearance-none cursor-pointer disabled:opacity-50"
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat} value={cat} className="bg-slate-900">
-                                        {cat}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="relative">
                             <button
-                                onClick={() => setIsAddingCategory(true)}
-                                title="Add new category"
-                                className="px-3 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                                disabled={isLoadingCategories}
+                                className="w-full p-3 rounded-lg bg-white/5 border border-white/10 text-left text-slate-400 hover:border-white/20 transition-colors disabled:opacity-50 text-sm"
                             >
-                                <Plus size={16} />
+                                {isLoadingCategories ? 'Loading categories...' : 'Select categories...'}
                             </button>
+
+                            {/* Dropdown */}
+                            {showCategoryDropdown && (
+                                <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-slate-900 border border-white/10 shadow-xl max-h-60 overflow-y-auto">
+                                    {availableCategories.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => toggleCategory(cat)}
+                                            className={`
+                                                w-full flex items-center justify-between px-3 py-2 rounded-md text-left text-sm transition-colors
+                                                ${formData.categories.includes(cat)
+                                                    ? 'bg-brand-blue-light/20 text-brand-blue-light'
+                                                    : 'text-white hover:bg-white/5'
+                                                }
+                                            `}
+                                        >
+                                            <span>{cat}</span>
+                                            {formData.categories.includes(cat) && (
+                                                <Check size={16} />
+                                            )}
+                                        </button>
+                                    ))}
+
+                                    {/* Add new category button */}
+                                    <button
+                                        onClick={() => {
+                                            setShowCategoryDropdown(false);
+                                            setIsAddingCategory(true);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 mt-1 rounded-md text-left text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors border-t border-white/10 pt-3"
+                                    >
+                                        <Plus size={14} />
+                                        Add new category
+                                    </button>
+                                </div>
+                            )}
                         </div>
+                    )}
+
+                    {/* Click outside to close dropdown */}
+                    {showCategoryDropdown && (
+                        <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowCategoryDropdown(false)}
+                        />
                     )}
                 </div>
 

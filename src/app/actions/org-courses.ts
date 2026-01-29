@@ -149,7 +149,8 @@ export async function fetchOrgCoursesAction(
                 credentials: authorProfile.credentials
             } : undefined,
             progress: 0,
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description || '',
             duration: course.duration || '0m',

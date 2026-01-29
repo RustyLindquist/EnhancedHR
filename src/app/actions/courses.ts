@@ -117,7 +117,8 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
                 credentials: authorProfile.credentials
             } : undefined,
             progress: 0,
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description,
             duration: course.duration,

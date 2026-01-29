@@ -670,11 +670,13 @@ export default function ExpertCourseBuilderClient({
                                 </div>
                             )}
 
-                            {/* Category Badge */}
-                            <div className="absolute top-4 right-4 px-4 py-2.5 rounded-xl bg-black/70 backdrop-blur-sm border border-white/10">
-                                <span className="px-2.5 py-1 rounded-full bg-white/10 text-brand-orange text-[10px] font-bold uppercase tracking-wider">
-                                    {initialCourse.category || 'General'}
-                                </span>
+                            {/* Category Badges */}
+                            <div className="absolute top-4 right-4 px-4 py-2.5 rounded-xl bg-black/70 backdrop-blur-sm border border-white/10 flex flex-wrap gap-1.5 max-w-[200px]">
+                                {(initialCourse.categories || [initialCourse.category || 'General']).map((cat, idx) => (
+                                    <span key={idx} className="px-2.5 py-1 rounded-full bg-white/10 text-brand-orange text-[10px] font-bold uppercase tracking-wider">
+                                        {cat}
+                                    </span>
+                                ))}
                             </div>
                         </div>
 
@@ -933,7 +935,7 @@ export default function ExpertCourseBuilderClient({
                 courseId={initialCourse.id}
                 currentTitle={initialCourse.title}
                 currentDescription={initialCourse.description}
-                currentCategory={initialCourse.category}
+                currentCategories={initialCourse.categories || [initialCourse.category || 'General']}
                 onSave={handlePanelSave}
             />
 
