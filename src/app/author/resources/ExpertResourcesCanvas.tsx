@@ -10,7 +10,7 @@ import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
 import ResourceViewPanel from '@/components/ResourceViewPanel';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
-import { createExpertResource, updateExpertResource, deleteExpertResource, createExpertFileResource } from '@/app/actions/expertResources';
+import { createExpertResource, updateExpertResource, deleteExpertResource } from '@/app/actions/expertResources';
 import {
     createExpertVideoResource,
     finalizeExpertVideoUpload,
@@ -164,7 +164,23 @@ export default function ExpertResourcesCanvas({
     }, []);
 
     const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => {
-        return createExpertFileResource(fileName, fileType, fileBuffer);
+        // Use API route with FormData to bypass Vercel's 4.5MB serverless payload limit
+        const formData = new FormData();
+        const blob = new Blob([fileBuffer], { type: fileType });
+        const file = new File([blob], fileName, { type: fileType });
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload/expert-resource', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            return { success: false, error: error.error || 'Upload failed' };
+        }
+
+        return response.json();
     }, []);
 
     // Video handlers for Expert Resources
