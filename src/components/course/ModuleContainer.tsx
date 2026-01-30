@@ -67,9 +67,12 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
             }
         `}>
             {/* Module Header */}
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={onToggle}
-                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors group"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
+                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors group cursor-pointer"
             >
                 {/* Left: Chevron + Module Number + Title */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -123,7 +126,7 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                         </div>
                     )}
                 </div>
-            </button>
+            </div>
 
             {/* Module Content (Lessons Grid) */}
             <div

@@ -4,8 +4,9 @@ import React from 'react';
 import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen, Video, RefreshCw } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
+import { CARD_TYPE_CONFIGS, CardType } from './cardTypeConfigs';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE' | 'VIDEO';
+export type { CardType } from './cardTypeConfigs';
 
 // Extract YouTube video ID from various URL formats
 function extractYouTubeId(url: string): string | null {
@@ -115,165 +116,12 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     // Get dynamic icon for TOOL cards
     const DynamicToolIcon = iconName && TOOL_ICON_MAP[iconName] ? TOOL_ICON_MAP[iconName] : Wrench;
 
-    // Configuration based on Type
-    const config = {
-        COURSE: {
-            headerColor: 'bg-[#0B1120]', // Fallback
-            borderColor: 'border-blue-500/30',
-            labelColor: 'text-slate-400',
-            barColor: 'hidden', // Uses image
-            icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.6)' // Brand blue light
-        },
-        MODULE: {
-            headerColor: 'bg-[#0B1120]',
-            borderColor: 'border-blue-500/30',
-            labelColor: 'text-slate-400',
-            barColor: 'hidden',
-            icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.6)'
-        },
-        LESSON: {
-            headerColor: 'bg-[#063F5F]',
-            borderColor: 'border-[#78C0F0]/30',
-            labelColor: 'text-[#78C0F0]',
-            barColor: 'hidden',
-            icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(200, 240, 255, 0.9)', // Bright cyan/white for visibility on blue
-            bodyColor: 'bg-[#063F5F]'
-        },
-        ACTIVITY: {
-            headerColor: 'bg-[#800725]',
-            borderColor: 'border-red-700/30',
-            labelColor: 'text-red-200',
-            barColor: 'hidden',
-            icon: null,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(255, 180, 200, 0.9)', // Bright pink/white for visibility on red
-            bodyColor: 'bg-[#800725]'
-        },
-        RESOURCE: { // Dark maroon gradient - #521B23 to #3A1218
-            headerColor: 'bg-transparent',
-            borderColor: 'border-[#521B23]/40',
-            labelColor: 'text-red-200',
-            barColor: 'bg-transparent',
-            icon: Paperclip,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(255, 150, 150, 0.95)', // Bright pink-red for contrast
-            bodyColor: 'bg-black/25'
-        },
-        CONVERSATION: { // Blue gradient - #063B59 to #085684
-            headerColor: 'bg-transparent',
-            borderColor: 'border-[#78C0F0]/30',
-            labelColor: 'text-[#78C0F0]',
-            barColor: 'bg-transparent',
-            icon: ConversationGraphic,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(120, 192, 240, 0.7)', // Bright blue for visibility
-            bodyColor: 'bg-black/25'
-        },
-        CONTEXT: { // Red/Rust gradient - #BD4B18 to #943C14
-            headerColor: 'bg-transparent',
-            borderColor: 'border-[#BD4B18]/40',
-            labelColor: 'text-orange-100',
-            barColor: 'bg-transparent',
-            icon: FileText,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(255, 180, 130, 0.95)', // Bright peach-orange for contrast
-            bodyColor: 'bg-black/25'
-        },
-        AI_INSIGHT: { // Bright Orange #FF9300 for AI-generated insights
-            headerColor: 'bg-[#7a4500]', // Darker base for contrast
-            borderColor: 'border-[#FF9300]/40',
-            labelColor: 'text-orange-100',
-            barColor: 'bg-[#FF9300]', // Bright orange as requested
-            icon: FileText,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(255, 147, 0, 0.6)' // #FF9300 glow
-        },
-        PROFILE: { // Brand Medium Blue
-            headerColor: 'bg-[#054C74]',
-            borderColor: 'border-cyan-400/30',
-            labelColor: 'text-cyan-200',
-            barColor: 'bg-[#0284c7]/80', // Sky-600
-            icon: User,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(34, 211, 238, 0.5)' // Cyan
-        },
-        HELP: { // Help/Features Card - User specified #4B8BB3
-            headerColor: 'bg-[#4B8BB3]',
-            borderColor: 'border-[#4B8BB3]/30',
-            labelColor: 'text-white',
-            barColor: 'bg-[#4B8BB3]',
-            icon: HelpCircle,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(75, 139, 179, 0.6)' // #4B8BB3 glow
-        },
-        NOTE: { // Notes Card - Gold/Orange gradient #A87938 to #FF9300
-            headerColor: 'bg-transparent',
-            borderColor: 'border-[#FF9300]/40',
-            labelColor: 'text-white',
-            barColor: 'bg-transparent',
-            icon: StickyNote,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(255, 230, 140, 0.95)', // Bright yellow-gold for contrast
-            bodyColor: 'bg-black/25',
-            footerTextColor: 'text-white/70'
-        },
-        TOOL: { // Tools Card - Teal #0D9488
-            headerColor: 'bg-[#0D9488]',
-            borderColor: 'border-teal-500/30',
-            labelColor: 'text-teal-100',
-            barColor: 'bg-[#0D9488]',
-            icon: Wrench,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(13, 148, 136, 0.6)', // Teal glow
-            bodyColor: 'bg-[#0D9488]/90'
-        },
-        TOOL_CONVERSATION: { // Tool Conversation Card - Teal #0D9488
-            headerColor: 'bg-[#0D9488]',
-            borderColor: 'border-teal-500/30',
-            labelColor: 'text-teal-100',
-            barColor: 'bg-[#0D9488]',
-            icon: MessageSquare,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(13, 148, 136, 0.6)', // Teal glow
-            bodyColor: 'bg-[#0D9488]/90'
-        },
-        ORG_COLLECTION: { // Org Collection Card - Blue/Corporate
-            headerColor: 'bg-[#1e3a5f]',
-            borderColor: 'border-blue-500/30',
-            labelColor: 'text-blue-200',
-            barColor: 'bg-[#1e3a5f]',
-            icon: Building,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(59, 130, 246, 0.5)', // Blue glow
-            bodyColor: 'bg-[#1e3a5f]/90'
-        },
-        ORG_COURSE: { // Org Course Card - Warm amber/orange
-            headerColor: 'bg-amber-950',
-            borderColor: 'border-amber-500/30',
-            labelColor: 'text-amber-200',
-            barColor: 'bg-amber-600/80',
-            icon: BookOpen,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(217, 119, 6, 0.5)', // Amber glow
-            bodyColor: 'bg-amber-950'
-        },
-        VIDEO: { // Video Card - Purple/Violet gradient
-            headerColor: 'bg-transparent',
-            borderColor: 'border-purple-500/30',
-            labelColor: 'text-purple-100',
-            barColor: 'bg-transparent',
-            icon: Video,
-            buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
-            glowColor: 'rgba(168, 85, 247, 0.7)', // Purple glow
-            bodyColor: 'bg-black/25'
-        }
-    }[type];
+    // Get configuration from shared configs, with fallback overrides for special cases
+    const baseConfig = CARD_TYPE_CONFIGS[type];
+    // Override icon for CONVERSATION to use the custom graphic component
+    const config = type === 'CONVERSATION'
+        ? { ...baseConfig, icon: ConversationGraphic }
+        : baseConfig;
 
     // Card type categorization
     // New layout cards: COURSE, MODULE, LESSON - image below header
