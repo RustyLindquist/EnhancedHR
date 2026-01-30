@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Instructor, Course } from '../types';
-import { BookOpen, Globe, Linkedin, Award, Star, Users } from 'lucide-react';
+import { BookOpen, Globe, Linkedin, Award, Star, Users, LayoutGrid, List, Clock, ChevronRight } from 'lucide-react';
 import CanvasHeader from './CanvasHeader';
 import { useBackHandler } from '@/hooks/useBackHandler';
 
@@ -24,6 +24,23 @@ interface InstructorPageProps {
 const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, onBack, onCourseClick }) => {
     // Register browser back button handler to use parent's onBack
     useBackHandler(onBack);
+
+    // View mode state synced with localStorage
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Load view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
 
     // Filter courses for this instructor
     // Note: In a real app, we might filter by author ID, but for now we'll match by name or just show all for demo if name doesn't match perfectly
@@ -137,24 +154,138 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                         <h2 className="text-2xl font-bold text-white">
                             Courses by {instructor.name.split(' ')[0]}
                         </h2>
-                        <span className="text-sm text-slate-500">
-                            Showing {instructorCourses.length} courses
-                        </span>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-slate-500">
+                                Showing {instructorCourses.length} courses
+                            </span>
+                            {/* View Toggle */}
+                            <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                                <button
+                                    onClick={() => handleViewModeChange('grid')}
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        viewMode === 'grid'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleViewModeChange('list')}
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        viewMode === 'list'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                    title="List View"
+                                >
+                                    <List size={14} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {instructorCourses.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {instructorCourses.map(course => (
-                                <div key={course.id} className="transform hover:-translate-y-1 transition-transform duration-300">
-                                    <CardStack
-                                        {...course}
-                                        onClick={onCourseClick}
-                                        onAddClick={() => { }} // No-op for now or pass handler
-                                        onDragStart={() => { }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        viewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {instructorCourses.map(course => (
+                                    <div key={course.id} className="transform hover:-translate-y-1 transition-transform duration-300">
+                                        <CardStack
+                                            {...course}
+                                            onClick={onCourseClick}
+                                            onAddClick={() => { }} // No-op for now or pass handler
+                                            onDragStart={() => { }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            /* List View */
+                            <div className="flex flex-col gap-2">
+                                {instructorCourses.map((course, index) => (
+                                    <div
+                                        key={course.id}
+                                        onClick={() => onCourseClick(course.id)}
+                                        className="group relative flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 border border-white/5 hover:border-brand-blue-light/30"
+                                        style={{ animationDelay: `${index * 30}ms` }}
+                                    >
+                                        {/* Thumbnail */}
+                                        <div className="w-20 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-slate-800">
+                                            {course.image ? (
+                                                <img
+                                                    src={course.image}
+                                                    alt={course.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <BookOpen size={20} className="text-slate-600" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Separator */}
+                                        <div className="w-px h-10 bg-white/10 flex-shrink-0" />
+
+                                        {/* Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <h4 className="text-sm font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
+                                                    {course.title}
+                                                </h4>
+                                                {course.rating && (
+                                                    <>
+                                                        <span className="text-white/20 hidden lg:block">|</span>
+                                                        <span className="flex items-center gap-1 text-amber-400/50 flex-shrink-0">
+                                                            <Star size={14} fill="currentColor" />
+                                                            <span className="text-sm font-bold">{course.rating.toFixed(1)}</span>
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {course.duration && (
+                                                    <>
+                                                        <span className="text-white/20 hidden lg:block">|</span>
+                                                        <span className="text-[11px] text-slate-500 flex-shrink-0 hidden lg:flex items-center gap-1">
+                                                            <Clock size={10} />
+                                                            {course.duration}
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {course.badges && course.badges.length > 0 && (
+                                                    <>
+                                                        <span className="text-white/20 hidden md:block">|</span>
+                                                        {course.badges.includes('SHRM') && (
+                                                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 hidden md:block">
+                                                                SHRM
+                                                            </span>
+                                                        )}
+                                                        {course.badges.includes('HRCI') && (
+                                                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 flex-shrink-0 hidden md:block">
+                                                                HRCI
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                            {course.description && (
+                                                <p className="text-xs text-slate-400 truncate mt-0.5 pr-6 group-hover:text-slate-300 transition-colors">
+                                                    {course.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Right section */}
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block">
+                                                Course
+                                            </span>
+                                            <ChevronRight size={16} className="text-slate-600 group-hover:text-brand-blue-light transition-colors" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )
                     ) : (
                         <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
                             <BookOpen size={48} className="text-slate-600 mx-auto mb-4" />

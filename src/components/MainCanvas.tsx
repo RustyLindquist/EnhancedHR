@@ -1109,6 +1109,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         'notes',              // All Notes
         'favorites',          // Favorites
         'to_learn',           // Watchlist
+        'instructors',        // Experts directory
         // Note: 'assigned-learning' uses its own dedicated AssignedLearningCanvas
     ];
 
@@ -4904,8 +4905,8 @@ ${isCollapsed
                                                             </div>
                                                         )}
 
-                                                        {/* Render Instructors/Experts (only when not loading) */}
-                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && experts.map((expert, index) => (
+                                                        {/* Render Instructors/Experts - Grid View (only when not loading) */}
+                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && collectionViewMode === 'grid' && experts.map((expert, index) => (
                                                             <div key={expert.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                                                                 <InstructorCard
                                                                     instructor={expert}
@@ -4913,6 +4914,65 @@ ${isCollapsed
                                                                 />
                                                             </div>
                                                         ))}
+
+                                                        {/* Render Instructors/Experts - List View */}
+                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && collectionViewMode === 'list' && (
+                                                            <div className="col-span-full flex flex-col gap-2">
+                                                                {experts.map((expert, index) => (
+                                                                    <div
+                                                                        key={expert.id}
+                                                                        onClick={() => setSelectedInstructorId(expert.id)}
+                                                                        className="group relative flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 border border-white/5 hover:border-brand-blue-light/30 animate-fade-in"
+                                                                        style={{ animationDelay: `${index * 30}ms` }}
+                                                                    >
+                                                                        {/* Avatar */}
+                                                                        <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 border-white/10 group-hover:border-brand-blue-light/30 transition-colors">
+                                                                            {expert.avatar ? (
+                                                                                <img
+                                                                                    src={expert.avatar}
+                                                                                    alt={expert.name}
+                                                                                    className="w-full h-full object-cover"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-full h-full bg-gradient-to-br from-brand-blue-light/30 to-slate-700 flex items-center justify-center text-lg font-bold text-white/60">
+                                                                                    {expert.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Separator */}
+                                                                        <div className="w-px h-10 bg-white/10 flex-shrink-0" />
+
+                                                                        {/* Content */}
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <h4 className="text-sm font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
+                                                                                    {expert.name}
+                                                                                </h4>
+                                                                                <span className="text-white/20">|</span>
+                                                                                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                                                                                    <BookOpen size={12} className="text-brand-blue-light" />
+                                                                                    {expert.publishedCourseCount} {expert.publishedCourseCount === 1 ? 'Course' : 'Courses'}
+                                                                                </span>
+                                                                            </div>
+                                                                            {expert.role && (
+                                                                                <p className="text-xs text-slate-500 truncate mt-0.5">
+                                                                                    {expert.role}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Right section */}
+                                                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block">
+                                                                                Expert
+                                                                            </span>
+                                                                            <ChevronRight size={16} className="text-slate-600 group-hover:text-brand-blue-light transition-colors" />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
 
                                                             {/* DEBUG INFO */}
                                                             {/* <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
