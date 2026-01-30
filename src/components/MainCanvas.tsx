@@ -4945,26 +4945,37 @@ ${isCollapsed
 
                                                                         {/* Content */}
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center gap-3">
+                                                                            {/* Row 1: Name | Title | Rating | Course Count */}
+                                                                            <div className="flex items-center gap-3 flex-wrap">
                                                                                 <h4 className="text-sm font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
                                                                                     {expert.name}
                                                                                 </h4>
-                                                                                <span className="text-white/20">|</span>
-                                                                                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                                                                                {expert.role && (
+                                                                                    <>
+                                                                                        <span className="text-white/20 hidden lg:block">|</span>
+                                                                                        <span className="text-[11px] text-slate-400 flex-shrink-0 hidden lg:block">
+                                                                                            {expert.role}
+                                                                                        </span>
+                                                                                    </>
+                                                                                )}
+                                                                                <span className="text-white/20 hidden lg:block">|</span>
+                                                                                <span className="text-xs text-slate-400 flex items-center gap-1.5 flex-shrink-0">
                                                                                     <BookOpen size={12} className="text-brand-blue-light" />
                                                                                     {expert.publishedCourseCount} {expert.publishedCourseCount === 1 ? 'Course' : 'Courses'}
                                                                                 </span>
                                                                             </div>
-                                                                            {expert.role && (
-                                                                                <p className="text-xs text-slate-500 truncate mt-0.5">
-                                                                                    {expert.role}
+                                                                            {/* Row 2: Bio */}
+                                                                            {expert.bio && (
+                                                                                <p className="text-xs text-slate-400 truncate mt-0.5 pr-6 group-hover:text-slate-300 transition-colors">
+                                                                                    {expert.bio}
                                                                                 </p>
                                                                             )}
                                                                         </div>
 
                                                                         {/* Right section */}
                                                                         <div className="flex items-center gap-3 flex-shrink-0">
-                                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block">
+                                                                            <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
+                                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block w-20 text-center">
                                                                                 Expert
                                                                             </span>
                                                                             <ChevronRight size={16} className="text-slate-600 group-hover:text-brand-blue-light transition-colors" />

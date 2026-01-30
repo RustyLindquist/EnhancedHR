@@ -201,89 +201,125 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                                 ))}
                             </div>
                         ) : (
-                            /* List View */
+                            /* List View - Matching Academy/UniversalCollectionListItem style */
                             <div className="flex flex-col gap-2">
-                                {instructorCourses.map((course, index) => (
-                                    <div
-                                        key={course.id}
-                                        onClick={() => onCourseClick(course.id)}
-                                        className="group relative flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 border border-white/5 hover:border-brand-blue-light/30"
-                                        style={{ animationDelay: `${index * 30}ms` }}
-                                    >
-                                        {/* Thumbnail */}
-                                        <div className="w-20 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-slate-800">
-                                            {course.image ? (
-                                                <img
-                                                    src={course.image}
-                                                    alt={course.title}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <BookOpen size={20} className="text-slate-600" />
+                                {instructorCourses.map((course, index) => {
+                                    const glowColor = 'rgba(120, 192, 240, 0.6)'; // Brand blue for courses
+                                    return (
+                                        <div
+                                            key={course.id}
+                                            onClick={() => onCourseClick(course.id)}
+                                            className="group relative flex items-center gap-4 px-4 py-3
+                                                       bg-white/[0.03] hover:bg-white/[0.08]
+                                                       border border-white/[0.06] hover:border-white/20
+                                                       rounded-xl transition-all duration-300 cursor-pointer
+                                                       overflow-hidden"
+                                            style={{
+                                                borderLeftWidth: '3px',
+                                                borderLeftColor: glowColor,
+                                                animationDelay: `${index * 30}ms`,
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.boxShadow = `0 0 20px ${glowColor}30, 0 0 40px ${glowColor}15, inset 0 0 20px ${glowColor}08`;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            {/* Subtle gradient overlay on hover */}
+                                            <div
+                                                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[10px]"
+                                                style={{
+                                                    background: `linear-gradient(135deg, ${glowColor}08 0%, transparent 50%)`
+                                                }}
+                                            />
+
+                                            {/* Thumbnail */}
+                                            <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-black/30">
+                                                {course.image ? (
+                                                    <img
+                                                        src={course.image}
+                                                        alt={course.title}
+                                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                                                        <BookOpen size={20} className="text-slate-600" />
+                                                    </div>
+                                                )}
+                                                {/* Small type indicator overlay */}
+                                                <div className="absolute bottom-0.5 right-0.5 p-1 rounded bg-black/60 backdrop-blur-sm">
+                                                    <BookOpen size={10} style={{ color: glowColor }} />
                                                 </div>
-                                            )}
-                                        </div>
+                                            </div>
 
-                                        {/* Separator */}
-                                        <div className="w-px h-10 bg-white/10 flex-shrink-0" />
+                                            {/* Separator */}
+                                            <div className="w-px h-8 bg-white/10 flex-shrink-0" />
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                                <h4 className="text-sm font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
-                                                    {course.title}
-                                                </h4>
-                                                {course.rating && (
-                                                    <>
-                                                        <span className="text-white/20 hidden lg:block">|</span>
-                                                        <span className="flex items-center gap-1 text-amber-400/50 flex-shrink-0">
-                                                            <Star size={14} fill="currentColor" />
-                                                            <span className="text-sm font-bold">{course.rating.toFixed(1)}</span>
-                                                        </span>
-                                                    </>
-                                                )}
-                                                {course.duration && (
-                                                    <>
-                                                        <span className="text-white/20 hidden lg:block">|</span>
-                                                        <span className="text-[11px] text-slate-500 flex-shrink-0 hidden lg:flex items-center gap-1">
-                                                            <Clock size={10} />
-                                                            {course.duration}
-                                                        </span>
-                                                    </>
-                                                )}
-                                                {course.badges && course.badges.length > 0 && (
-                                                    <>
-                                                        <span className="text-white/20 hidden md:block">|</span>
-                                                        {course.badges.includes('SHRM') && (
-                                                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 hidden md:block">
-                                                                SHRM
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0 relative z-10">
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <h4 className="text-sm font-semibold text-white truncate group-hover:text-white/95">
+                                                        {course.title}
+                                                    </h4>
+                                                    {course.rating && (
+                                                        <>
+                                                            <span className="text-white/20 hidden lg:block">|</span>
+                                                            <span className="flex items-center gap-1 text-amber-400/50 flex-shrink-0">
+                                                                <Star size={14} fill="currentColor" />
+                                                                <span className="text-sm font-bold">{course.rating.toFixed(1)}</span>
                                                             </span>
-                                                        )}
-                                                        {course.badges.includes('HRCI') && (
-                                                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 flex-shrink-0 hidden md:block">
-                                                                HRCI
+                                                        </>
+                                                    )}
+                                                    {course.duration && (
+                                                        <>
+                                                            <span className="text-white/20 hidden lg:block">|</span>
+                                                            <span className="text-[11px] text-slate-500 flex-shrink-0 hidden lg:block">
+                                                                {course.duration}
                                                             </span>
-                                                        )}
-                                                    </>
+                                                        </>
+                                                    )}
+                                                    {course.badges && course.badges.length > 0 && (
+                                                        <>
+                                                            <span className="text-white/20 hidden md:block">|</span>
+                                                            {course.badges.includes('SHRM') && (
+                                                                <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 hidden md:block">
+                                                                    SHRM
+                                                                </span>
+                                                            )}
+                                                            {course.badges.includes('HRCI') && (
+                                                                <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 flex-shrink-0 hidden md:block">
+                                                                    HRCI
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {course.description && (
+                                                    <p className="text-xs text-slate-400 truncate mt-0.5 pr-6 group-hover:text-slate-300 transition-colors">
+                                                        {course.description}
+                                                    </p>
                                                 )}
                                             </div>
-                                            {course.description && (
-                                                <p className="text-xs text-slate-400 truncate mt-0.5 pr-6 group-hover:text-slate-300 transition-colors">
-                                                    {course.description}
-                                                </p>
-                                            )}
-                                        </div>
 
-                                        {/* Right section */}
-                                        <div className="flex items-center gap-3 flex-shrink-0">
-                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block">
-                                                Course
-                                            </span>
-                                            <ChevronRight size={16} className="text-slate-600 group-hover:text-brand-blue-light transition-colors" />
+                                            {/* Right section */}
+                                            <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
+                                                <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
+                                                <span
+                                                    className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md hidden sm:block w-24 text-center"
+                                                    style={{
+                                                        backgroundColor: `${glowColor}12`,
+                                                        color: glowColor,
+                                                        border: `1px solid ${glowColor}20`
+                                                    }}
+                                                >
+                                                    Course
+                                                </span>
+                                                <ChevronRight size={16} className="text-slate-600 ml-1" />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )
                     ) : (
