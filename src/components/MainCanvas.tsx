@@ -1909,6 +1909,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Navigate to Course Page
     const handleCourseClick = async (courseId: number) => {
+        // Clear instructor selection so course page renders (instructor check comes before course check)
+        setSelectedInstructorId(null);
+        setDirectViewExpert(null);
+
         // Optimistic / Loading state could be added here
         setSelectedCourseId(courseId);
 
