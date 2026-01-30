@@ -21,7 +21,7 @@ export default async function AuthorCoursesPage() {
             description,
             status,
             created_at,
-            thumbnail_url
+            image_url
         `)
         .eq('author_id', user.id)
         .order('created_at', { ascending: false });
@@ -86,9 +86,9 @@ export default async function AuthorCoursesPage() {
                                 {/* Thumbnail - Link to course view */}
                                 <Link href={`/courses/${course.id}`} className="block">
                                     <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
-                                        {course.thumbnail_url ? (
+                                        {course.image_url ? (
                                             <img
-                                                src={course.thumbnail_url}
+                                                src={course.image_url}
                                                 alt={course.title}
                                                 className="w-full h-full object-cover"
                                             />
