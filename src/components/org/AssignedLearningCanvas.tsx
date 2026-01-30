@@ -3,13 +3,30 @@
 import React, { useState, useEffect } from 'react';
 import { getUserAggregateAssignments, ContentAssignment } from '@/app/actions/assignments';
 import { createClient } from '@/lib/supabase/client';
-import { BookOpen, AlertCircle, Loader2, ClipboardList } from 'lucide-react';
+import { BookOpen, AlertCircle, Loader2, ClipboardList, LayoutGrid, List } from 'lucide-react';
 import UniversalCard from '@/components/cards/UniversalCard';
+import UniversalCollectionListItem from '@/components/UniversalCollectionListItem';
+import { CollectionItemDetail } from '@/components/UniversalCollectionCard';
 
 const AssignedLearningCanvas: React.FC = () => {
     const [assignments, setAssignments] = useState<ContentAssignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Load view mode preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
 
     useEffect(() => {
         const loadAssignments = async () => {
@@ -76,6 +93,34 @@ const AssignedLearningCanvas: React.FC = () => {
                     </div>
                 ) : (
                     <div className="space-y-12">
+                        {/* View Toggle - at top right */}
+                        <div className="flex justify-end">
+                            <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                                <button
+                                    onClick={() => handleViewModeChange('grid')}
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        viewMode === 'grid'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                    title="Grid View"
+                                >
+                                    <LayoutGrid size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleViewModeChange('list')}
+                                    className={`p-1.5 rounded-md transition-all ${
+                                        viewMode === 'list'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                    title="List View"
+                                >
+                                    <List size={14} />
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Required Content Section */}
                         <section>
                             <div className="flex items-center gap-3 mb-6">
@@ -91,11 +136,19 @@ const AssignedLearningCanvas: React.FC = () => {
                             </div>
 
                             {requiredAssignments.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {requiredAssignments.map((assignment) => (
-                                        <AssignmentCard key={assignment.id} assignment={assignment} />
-                                    ))}
-                                </div>
+                                viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {requiredAssignments.map((assignment) => (
+                                            <AssignmentCard key={assignment.id} assignment={assignment} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {requiredAssignments.map((assignment) => (
+                                            <AssignmentListItem key={assignment.id} assignment={assignment} />
+                                        ))}
+                                    </div>
+                                )
                             ) : (
                                 <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
                                     <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
@@ -119,11 +172,19 @@ const AssignedLearningCanvas: React.FC = () => {
                             </div>
 
                             {suggestedAssignments.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {suggestedAssignments.map((assignment) => (
-                                        <AssignmentCard key={assignment.id} assignment={assignment} />
-                                    ))}
-                                </div>
+                                viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {suggestedAssignments.map((assignment) => (
+                                            <AssignmentCard key={assignment.id} assignment={assignment} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {suggestedAssignments.map((assignment) => (
+                                            <AssignmentListItem key={assignment.id} assignment={assignment} />
+                                        ))}
+                                    </div>
+                                )
                             ) : (
                                 <div className="text-center py-8 bg-white/5 rounded-xl border border-dashed border-white/10">
                                     <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
@@ -179,6 +240,42 @@ const AssignmentCard = ({ assignment }: { assignment: ContentAssignment }) => {
                 hrci: details?.badges?.includes('HRCI')
             }}
             actionLabel="START"
+        />
+    );
+};
+
+// Assignment List Item Component for list view
+const AssignmentListItem = ({ assignment }: { assignment: ContentAssignment }) => {
+    const details = assignment.content_details;
+
+    // Convert assignment to CollectionItemDetail format
+    // Using unknown cast because assignment data has different shape than full Course/Module/etc types
+    const itemAsCollectionDetail = {
+        id: assignment.id,
+        title: details?.title || 'Unknown Content',
+        itemType: assignment.content_type.toUpperCase() as 'COURSE' | 'MODULE' | 'LESSON' | 'RESOURCE',
+        description: details?.description,
+        rating: details?.rating,
+        badges: details?.badges,
+        author: details?.author,
+        duration: details?.duration,
+        image: details?.thumbnail_url,
+    } as unknown as CollectionItemDetail;
+
+    const handleClick = () => {
+        // Navigate to course - onAdd acts as the START action
+    };
+
+    const handleAdd = () => {
+        // START action - navigates to course
+        // This mimics the START button behavior from the card
+    };
+
+    return (
+        <UniversalCollectionListItem
+            item={itemAsCollectionDetail}
+            onClick={handleClick}
+            onAdd={handleAdd}
         />
     );
 };
