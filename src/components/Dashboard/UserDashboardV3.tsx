@@ -10,7 +10,9 @@ import {
     MessageSquare,
     Layers,
     Loader2,
-    ChevronRight
+    ChevronRight,
+    LayoutGrid,
+    List
 } from 'lucide-react';
 import { Course, Conversation, ToolConversation } from '@/types';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
@@ -18,6 +20,8 @@ import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
 import { fetchConversationsAction } from '@/app/actions/conversations';
 import UniversalCard from '../cards/UniversalCard';
+import UniversalCollectionListItem from '../UniversalCollectionListItem';
+import { CollectionItemDetail } from '../UniversalCollectionCard';
 import PrometheusDashboardWidget from '../PrometheusDashboardWidget';
 
 interface UserDashboardV3Props {
@@ -71,10 +75,55 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
     const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
+    // View Mode State
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
     // Conversations State
     const [recentConversations, setRecentConversations] = useState<(Conversation | ToolConversation)[]>([]);
 
     const router = useRouter();
+
+    // Load view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
+
+    // Convert Course to CollectionItemDetail for list view
+    const courseToCollectionItem = (course: Course, category?: string): CollectionItemDetail => ({
+        id: course.id,
+        title: course.title,
+        itemType: 'COURSE',
+        author: course.author,
+        description: course.description,
+        image: course.image,
+        duration: course.duration,
+        rating: course.rating,
+        badges: course.badges,
+        category: category,
+    } as any);
+
+    // Convert Conversation to CollectionItemDetail for list view
+    const conversationToCollectionItem = (conversation: Conversation | ToolConversation): CollectionItemDetail => {
+        const isToolConv = conversation.type === 'TOOL_CONVERSATION';
+        const toolConv = isToolConv ? conversation as ToolConversation : null;
+        return {
+            id: conversation.id,
+            title: conversation.title || 'Untitled Conversation',
+            itemType: isToolConv ? 'TOOL_CONVERSATION' : 'CONVERSATION',
+            tool_title: isToolConv ? toolConv?.tool_title : undefined,
+            lastMessage: conversation.lastMessage,
+            updated_at: conversation.updated_at,
+        } as any;
+    };
 
     useEffect(() => {
         const loadData = async () => {
@@ -163,62 +212,103 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="mb-14">
                     {/* Tab Navigation - Recommended is now first */}
-                    <div className="flex items-center gap-1 mb-6">
-                        <button
-                            onClick={() => setActiveTab('recommended')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'recommended'
-                                ? 'bg-white/10 text-white'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setActiveTab('recommended')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'recommended'
+                                    ? 'bg-white/10 text-white'
+                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Sparkles size={14} />
+                                    Recommended
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('trending')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'trending'
+                                    ? 'bg-white/10 text-white'
+                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                    }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <TrendingUp size={14} />
+                                    Trending Now
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* View Toggle */}
+                        <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                            <button
+                                onClick={() => handleViewModeChange('grid')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
                                 }`}
-                        >
-                            <span className="flex items-center gap-2">
-                                <Sparkles size={14} />
-                                Recommended
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('trending')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'trending'
-                                ? 'bg-white/10 text-white'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                title="Card View"
+                            >
+                                <LayoutGrid size={14} />
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('list')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
                                 }`}
-                        >
-                            <span className="flex items-center gap-2">
-                                <TrendingUp size={14} />
-                                Trending Now
-                            </span>
-                        </button>
+                                title="List View"
+                            >
+                                <List size={14} />
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Course Cards - Horizontal Scroll */}
-                    <div className="min-h-[220px]">
+                    {/* Course Cards - Horizontal Scroll or List */}
+                    <div className={viewMode === 'grid' ? "min-h-[220px]" : ""}>
                         {activeTab === 'trending' ? (
                             trendingCourses.length > 0 ? (
-                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
-                                    {trendingCourses.slice(0, 8).map((course, idx) => (
-                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
-                                            <UniversalCard
-                                                type="COURSE"
-                                                title={course.title}
-                                                subtitle={course.author}
-                                                description={course.description}
-                                                imageUrl={course.image}
-                                                meta={course.duration}
-                                                categories={[`#${idx + 1} TRENDING`]}
-                                                credits={{
-                                                    shrm: course.badges?.includes('SHRM'),
-                                                    hrci: course.badges?.includes('HRCI')
-                                                }}
-                                                actionLabel="VIEW"
-                                                rating={course.rating}
-                                                onAction={() => onStartCourse(course.id)}
+                                viewMode === 'grid' ? (
+                                    <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                        {trendingCourses.slice(0, 8).map((course, idx) => (
+                                            <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                                <UniversalCard
+                                                    type="COURSE"
+                                                    title={course.title}
+                                                    subtitle={course.author}
+                                                    description={course.description}
+                                                    imageUrl={course.image}
+                                                    meta={course.duration}
+                                                    categories={[`#${idx + 1} TRENDING`]}
+                                                    credits={{
+                                                        shrm: course.badges?.includes('SHRM'),
+                                                        hrci: course.badges?.includes('HRCI')
+                                                    }}
+                                                    actionLabel="VIEW"
+                                                    rating={course.rating}
+                                                    onAction={() => onStartCourse(course.id)}
+                                                    onAdd={() => onAddCourse(course)}
+                                                    draggable={!!onCourseDragStart}
+                                                    onDragStart={() => onCourseDragStart?.(course.id)}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2 animate-fade-in">
+                                        {trendingCourses.slice(0, 8).map((course, idx) => (
+                                            <UniversalCollectionListItem
+                                                key={course.id}
+                                                item={courseToCollectionItem(course, `#${idx + 1} TRENDING`)}
+                                                onClick={() => onStartCourse(course.id)}
                                                 onAdd={() => onAddCourse(course)}
-                                                draggable={!!onCourseDragStart}
-                                                onDragStart={() => onCourseDragStart?.(course.id)}
                                             />
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )
                             ) : (
                                 <div className="text-center text-slate-600 py-12">No trending courses available</div>
                             )
@@ -228,31 +318,44 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                     <Loader2 size={24} className="animate-spin text-brand-blue-light" />
                                 </div>
                             ) : recommendedCourses.length > 0 ? (
-                                <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
-                                    {recommendedCourses.slice(0, 8).map((course) => (
-                                        <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
-                                            <UniversalCard
-                                                type="COURSE"
-                                                title={course.title}
-                                                subtitle={course.author}
-                                                description={course.description}
-                                                imageUrl={course.image}
-                                                meta={course.duration}
-                                                categories={["FOR YOU"]}
-                                                credits={{
-                                                    shrm: course.badges?.includes('SHRM'),
-                                                    hrci: course.badges?.includes('HRCI')
-                                                }}
-                                                actionLabel="VIEW"
-                                                rating={course.rating}
-                                                onAction={() => onStartCourse(course.id)}
+                                viewMode === 'grid' ? (
+                                    <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar animate-fade-in">
+                                        {recommendedCourses.slice(0, 8).map((course) => (
+                                            <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                                <UniversalCard
+                                                    type="COURSE"
+                                                    title={course.title}
+                                                    subtitle={course.author}
+                                                    description={course.description}
+                                                    imageUrl={course.image}
+                                                    meta={course.duration}
+                                                    categories={["FOR YOU"]}
+                                                    credits={{
+                                                        shrm: course.badges?.includes('SHRM'),
+                                                        hrci: course.badges?.includes('HRCI')
+                                                    }}
+                                                    actionLabel="VIEW"
+                                                    rating={course.rating}
+                                                    onAction={() => onStartCourse(course.id)}
+                                                    onAdd={() => onAddCourse(course)}
+                                                    draggable={!!onCourseDragStart}
+                                                    onDragStart={() => onCourseDragStart?.(course.id)}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2 animate-fade-in">
+                                        {recommendedCourses.slice(0, 8).map((course) => (
+                                            <UniversalCollectionListItem
+                                                key={course.id}
+                                                item={courseToCollectionItem(course, "FOR YOU")}
+                                                onClick={() => onStartCourse(course.id)}
                                                 onAdd={() => onAddCourse(course)}
-                                                draggable={!!onCourseDragStart}
-                                                onDragStart={() => onCourseDragStart?.(course.id)}
                                             />
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )
                             ) : (
                                 <div className="text-center text-slate-600 py-12">
                                     Unable to generate recommendations
@@ -281,20 +384,46 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                             </button>
                         </div>
 
-                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
-                            {recentConversations.map(conversation => {
-                                const isToolConv = conversation.type === 'TOOL_CONVERSATION';
-                                const toolConv = isToolConv ? conversation as ToolConversation : null;
-                                return (
-                                    <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
-                                        <UniversalCard
-                                            type={isToolConv ? 'TOOL_CONVERSATION' : 'CONVERSATION'}
-                                            title={conversation.title || 'Untitled Conversation'}
-                                            subtitle={isToolConv ? toolConv?.tool_title : undefined}
-                                            description={conversation.lastMessage || 'No messages yet.'}
-                                            meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
-                                            actionLabel="CHAT"
-                                            onAction={() => {
+                        {viewMode === 'grid' ? (
+                            <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
+                                {recentConversations.map(conversation => {
+                                    const isToolConv = conversation.type === 'TOOL_CONVERSATION';
+                                    const toolConv = isToolConv ? conversation as ToolConversation : null;
+                                    return (
+                                        <div key={conversation.id} className="min-w-[340px] w-[340px] snap-start">
+                                            <UniversalCard
+                                                type={isToolConv ? 'TOOL_CONVERSATION' : 'CONVERSATION'}
+                                                title={conversation.title || 'Untitled Conversation'}
+                                                subtitle={isToolConv ? toolConv?.tool_title : undefined}
+                                                description={conversation.lastMessage || 'No messages yet.'}
+                                                meta={conversation.updated_at ? new Date(conversation.updated_at).toLocaleDateString() : 'Just now'}
+                                                actionLabel="CHAT"
+                                                onAction={() => {
+                                                    if (isToolConv && toolConv) {
+                                                        window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${conversation.id}`;
+                                                    } else {
+                                                        onResumeConversation?.(conversation as Conversation);
+                                                    }
+                                                }}
+                                                onRemove={() => onDeleteConversation?.(conversation.id)}
+                                                onAdd={() => onAddConversation?.(conversation as Conversation)}
+                                                draggable={!!onConversationDragStart}
+                                                onDragStart={() => onConversationDragStart?.(conversation as Conversation)}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                {recentConversations.map(conversation => {
+                                    const isToolConv = conversation.type === 'TOOL_CONVERSATION';
+                                    const toolConv = isToolConv ? conversation as ToolConversation : null;
+                                    return (
+                                        <UniversalCollectionListItem
+                                            key={conversation.id}
+                                            item={conversationToCollectionItem(conversation)}
+                                            onClick={() => {
                                                 if (isToolConv && toolConv) {
                                                     window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${conversation.id}`;
                                                 } else {
@@ -303,13 +432,11 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                             }}
                                             onRemove={() => onDeleteConversation?.(conversation.id)}
                                             onAdd={() => onAddConversation?.(conversation as Conversation)}
-                                            draggable={!!onConversationDragStart}
-                                            onDragStart={() => onConversationDragStart?.(conversation as Conversation)}
                                         />
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -334,27 +461,43 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                     </div>
 
                     {inProgressCourses.length > 0 ? (
-                        <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
-                            {inProgressCourses.map(course => (
-                                <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
-                                    <UniversalCard
-                                        type="COURSE"
-                                        title={course.title}
-                                        subtitle={course.author}
-                                        description={course.description}
-                                        imageUrl={course.image}
-                                        meta={`${course.progress}% Complete`}
-                                        categories={["IN PROGRESS"]}
-                                        actionLabel="RESUME"
-                                        rating={course.rating}
-                                        onAction={() => onStartCourse(course.id)}
+                        viewMode === 'grid' ? (
+                            <div className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory custom-scrollbar">
+                                {inProgressCourses.map(course => (
+                                    <div key={course.id} className="min-w-[340px] w-[340px] snap-start">
+                                        <UniversalCard
+                                            type="COURSE"
+                                            title={course.title}
+                                            subtitle={course.author}
+                                            description={course.description}
+                                            imageUrl={course.image}
+                                            meta={`${course.progress}% Complete`}
+                                            categories={["IN PROGRESS"]}
+                                            actionLabel="RESUME"
+                                            rating={course.rating}
+                                            onAction={() => onStartCourse(course.id)}
+                                            onAdd={() => onAddCourse(course)}
+                                            draggable={!!onCourseDragStart}
+                                            onDragStart={() => onCourseDragStart?.(course.id)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                {inProgressCourses.map(course => (
+                                    <UniversalCollectionListItem
+                                        key={course.id}
+                                        item={{
+                                            ...courseToCollectionItem(course, "IN PROGRESS"),
+                                            duration: `${course.progress}% Complete`,
+                                        } as any}
+                                        onClick={() => onStartCourse(course.id)}
                                         onAdd={() => onAddCourse(course)}
-                                        draggable={!!onCourseDragStart}
-                                        onDragStart={() => onCourseDragStart?.(course.id)}
                                     />
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )
                     ) : (
                         <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-10 flex flex-col items-center text-center">
                             <div className="flex gap-3 mb-6 opacity-20">
