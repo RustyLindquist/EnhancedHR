@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, LayoutGrid, List } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
 import { useBackHandler } from '@/hooks/useBackHandler';
@@ -66,6 +66,23 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
     // Author credentials state
     const [authorCredentials, setAuthorCredentials] = useState<ExpertCredential[]>([]);
+
+    // Lesson view mode state (grid vs list)
+    const [lessonViewMode, setLessonViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Load lesson view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setLessonViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle lesson view mode change and persist to localStorage
+    const handleLessonViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setLessonViewMode(mode);
+    };
 
     // Expand first module by default when syllabus loads
     useEffect(() => {
@@ -575,16 +592,42 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
                 {/* Modules Section */}
                 <div>
-                    {/* Section Header - Centered */}
-                    <div className="flex items-center justify-center gap-3 py-[45px]">
-                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
-                        <div className="flex items-center gap-2">
-                            <BookOpen size={14} className="text-brand-blue-light" />
-                            <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-slate-400">
-                                COURSE MODULES
-                            </h2>
+                    {/* Section Header - Label left, Toggle right */}
+                    <div className="flex items-center justify-between py-[45px]">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <BookOpen size={14} className="text-brand-blue-light" />
+                                <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-slate-400">
+                                    COURSE MODULES
+                                </h2>
+                            </div>
+                            <div className="h-px w-32 bg-white/10" />
                         </div>
-                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
+                        {/* View Toggle */}
+                        <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                            <button
+                                onClick={() => handleLessonViewModeChange('grid')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    lessonViewMode === 'grid'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="Card View"
+                            >
+                                <LayoutGrid size={14} />
+                            </button>
+                            <button
+                                onClick={() => handleLessonViewModeChange('list')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    lessonViewMode === 'list'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="List View"
+                            >
+                                <List size={14} />
+                            </button>
+                        </div>
                     </div>
                     <div className="space-y-4">
                         {syllabus.map((module, index) => (
@@ -602,6 +645,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                 onAddToCollection={onAddToCollection}
                                 onDragStart={onDragStart}
                                 courseTitle={course.title}
+                                lessonViewMode={lessonViewMode}
                             />
                         ))}
                     </div>
