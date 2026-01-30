@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Volume2, Maximize, FileText, Download, CheckCircle, Lock, ChevronDown, ChevronRight, Monitor, Folder, MessageSquare, Plus, Bookmark, AlignLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Volume2, Maximize, FileText, Download, CheckCircle, Lock, ChevronDown, ChevronRight, Monitor, Folder, MessageSquare, Plus, Bookmark, AlignLeft, LayoutGrid, List, Play, FileQuestion } from 'lucide-react';
 import MuxPlayer from '@mux/mux-player-react';
 import { Course, Module, Resource } from '../types';
 import AIPanel from './AIPanel';
@@ -63,6 +63,23 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
         setExpandedModules(prev =>
             prev.includes(modId) ? prev.filter(id => id !== modId) : [...prev, modId]
         );
+    };
+
+    // View Mode State
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Load view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
     };
 
     const handleTimeUpdate = (e: any) => {
@@ -251,6 +268,41 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                     </div>
                 )}
 
+                {/* Course Modules Section Divider */}
+                <div className="max-w-6xl mx-auto px-8 w-full mb-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="text-xs font-bold text-brand-blue-light uppercase tracking-wider">Course Modules</span>
+                            <div className="h-px w-32 bg-white/10"></div>
+                        </div>
+                        {/* View Toggle */}
+                        <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                            <button
+                                onClick={() => handleViewModeChange('grid')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="Card View"
+                            >
+                                <LayoutGrid size={14} />
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('list')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="List View"
+                            >
+                                <List size={14} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Syllabus Accordion */}
                 <div className="max-w-6xl mx-auto px-8 w-full pb-20 space-y-4">
                     {syllabus.map((module, index) => {
@@ -278,76 +330,222 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                     </div>
                                 </div>
 
-                                {/* Lessons Grid */}
+                                {/* Lessons Grid or List */}
                                 {isExpanded && (
-                                    <div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {module.lessons.map((lesson) => {
-                                            const isActive = lesson.id === activeLessonId;
-                                            return (
-                                                <div
-                                                    key={lesson.id}
-                                                    onClick={() => {
-                                                        setActiveModuleId(module.id);
-                                                        setActiveLessonId(lesson.id);
-                                                    }}
-                                                    className={`
-                                                relative p-5 rounded-xl border transition-all duration-300 cursor-pointer group
-                                                ${isActive
-                                                            ? 'bg-brand-blue-light/5 border-brand-blue-light/50 shadow-[0_0_20px_rgba(120,192,240,0.1)]'
-                                                            : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#0f172a]/60'}
-                                            `}
-                                                >
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-brand-blue-light' : 'text-brand-blue-light'}`}>
-                                                            Lesson {index + 1}.{module.lessons.indexOf(lesson) + 1}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            {completedLessons.has(lesson.id) && <CheckCircle size={12} className="text-green-400" />}
-                                                            <span className="text-[10px] text-slate-500">{lesson.duration}</span>
+                                    viewMode === 'grid' ? (
+                                        <div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {module.lessons.map((lesson) => {
+                                                const isActive = lesson.id === activeLessonId;
+                                                return (
+                                                    <div
+                                                        key={lesson.id}
+                                                        onClick={() => {
+                                                            setActiveModuleId(module.id);
+                                                            setActiveLessonId(lesson.id);
+                                                        }}
+                                                        className={`
+                                                    relative p-5 rounded-xl border transition-all duration-300 cursor-pointer group
+                                                    ${isActive
+                                                                ? 'bg-brand-blue-light/5 border-brand-blue-light/50 shadow-[0_0_20px_rgba(120,192,240,0.1)]'
+                                                                : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#0f172a]/60'}
+                                                `}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? 'text-brand-blue-light' : 'text-brand-blue-light'}`}>
+                                                                Lesson {index + 1}.{module.lessons.indexOf(lesson) + 1}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                {completedLessons.has(lesson.id) && <CheckCircle size={12} className="text-green-400" />}
+                                                                <span className="text-[10px] text-slate-500">{lesson.duration}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <h4 className={`text-sm font-bold mb-4 line-clamp-2 ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                                                            {lesson.title}
+                                                        </h4>
+
+                                                        <p className="text-xs text-slate-500 line-clamp-2 mb-4">
+                                                            Lesson title goes here, and will wrap as necessary...
+                                                        </p>
+
+                                                        {isActive && (
+                                                            <div className="absolute bottom-4 right-4 text-[10px] font-bold text-brand-blue-light uppercase tracking-wider animate-pulse">
+                                                                Now Playing
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+                                                                <Download size={12} />
+                                                            </button>
+                                                            <button className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+                                                                <Plus size={12} />
+                                                            </button>
                                                         </div>
                                                     </div>
+                                                );
+                                            })}
 
-                                                    <h4 className={`text-sm font-bold mb-4 line-clamp-2 ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
-                                                        {lesson.title}
-                                                    </h4>
-
-                                                    <p className="text-xs text-slate-500 line-clamp-2 mb-4">
-                                                        Lesson title goes here, and will wrap as necessary...
-                                                    </p>
-
-                                                    {isActive && (
-                                                        <div className="absolute bottom-4 right-4 text-[10px] font-bold text-brand-blue-light uppercase tracking-wider animate-pulse">
-                                                            Now Playing
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-                                                            <Download size={12} />
-                                                        </button>
-                                                        <button className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-                                                            <Plus size={12} />
-                                                        </button>
-                                                    </div>
+                                            {/* Quiz Card Mock */}
+                                            <div className="p-5 rounded-xl border border-brand-orange/20 bg-brand-orange/5 hover:bg-brand-orange/10 transition-colors cursor-pointer group">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange">
+                                                        Quiz
+                                                    </span>
                                                 </div>
-                                            );
-                                        })}
-
-                                        {/* Quiz Card Mock */}
-                                        <div className="p-5 rounded-xl border border-brand-orange/20 bg-brand-orange/5 hover:bg-brand-orange/10 transition-colors cursor-pointer group">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange">
-                                                    Quiz
-                                                </span>
+                                                <h4 className="text-sm font-bold text-brand-orange mb-2">
+                                                    Module Assessment
+                                                </h4>
+                                                <p className="text-xs text-slate-400">
+                                                    The quiz, assessment or the activity title will go here.
+                                                </p>
                                             </div>
-                                            <h4 className="text-sm font-bold text-brand-orange mb-2">
-                                                Module Assessment
-                                            </h4>
-                                            <p className="text-xs text-slate-400">
-                                                The quiz, assessment or the activity title will go here.
-                                            </p>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        /* List View */
+                                        <div className="p-4 pt-0 flex flex-col gap-2">
+                                            {module.lessons.map((lesson) => {
+                                                const isActive = lesson.id === activeLessonId;
+                                                const lessonIndex = module.lessons.indexOf(lesson) + 1;
+                                                const glowColor = isActive ? 'rgba(120, 192, 240, 0.6)' : 'rgba(120, 192, 240, 0.4)';
+                                                return (
+                                                    <div
+                                                        key={lesson.id}
+                                                        onClick={() => {
+                                                            setActiveModuleId(module.id);
+                                                            setActiveLessonId(lesson.id);
+                                                        }}
+                                                        className={`group relative flex items-center gap-4 px-4 py-3
+                                                            ${isActive
+                                                                ? 'bg-brand-blue-light/10 border-brand-blue-light/50'
+                                                                : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] hover:border-white/20'}
+                                                            border rounded-xl transition-all duration-300 cursor-pointer overflow-hidden`}
+                                                        style={{
+                                                            borderLeftWidth: '3px',
+                                                            borderLeftColor: isActive ? 'rgb(120, 192, 240)' : glowColor,
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            if (!isActive) {
+                                                                e.currentTarget.style.boxShadow = `0 0 20px ${glowColor}30, 0 0 40px ${glowColor}15, inset 0 0 20px ${glowColor}08`;
+                                                            }
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            if (!isActive) {
+                                                                e.currentTarget.style.boxShadow = 'none';
+                                                            }
+                                                        }}
+                                                    >
+                                                        {/* Subtle gradient overlay on hover */}
+                                                        <div
+                                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[10px]"
+                                                            style={{
+                                                                background: `linear-gradient(135deg, ${glowColor}08 0%, transparent 50%)`
+                                                            }}
+                                                        />
+
+                                                        {/* Icon */}
+                                                        <div
+                                                            className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0
+                                                                transition-transform duration-200 group-hover:scale-105
+                                                                ${isActive ? 'bg-brand-blue-light/20' : 'bg-brand-blue-light/10'}`}
+                                                        >
+                                                            <Play size={16} className={`${isActive ? 'text-brand-blue-light' : 'text-brand-blue-light/70'}`} />
+                                                        </div>
+
+                                                        {/* Separator */}
+                                                        <div className="w-px h-8 bg-white/10 flex-shrink-0" />
+
+                                                        {/* Main Content */}
+                                                        <div className="flex-1 min-w-0 relative z-10">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-blue-light">
+                                                                    Lesson {index + 1}.{lessonIndex}
+                                                                </span>
+                                                                {completedLessons.has(lesson.id) && (
+                                                                    <CheckCircle size={12} className="text-green-400" />
+                                                                )}
+                                                                {isActive && (
+                                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-brand-blue-light animate-pulse">
+                                                                        Now Playing
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <h4 className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-white group-hover:text-brand-blue-light'} transition-colors`}>
+                                                                {lesson.title}
+                                                            </h4>
+                                                        </div>
+
+                                                        {/* Right section */}
+                                                        <div className="flex items-center gap-4 flex-shrink-0 relative z-10">
+                                                            {/* Duration */}
+                                                            <span className="text-[11px] text-slate-500 hidden sm:block">
+                                                                {lesson.duration}
+                                                            </span>
+
+                                                            <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
+
+                                                            {/* Action buttons */}
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); }}
+                                                                    className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                                                >
+                                                                    <Download size={12} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); }}
+                                                                    className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                                                >
+                                                                    <Plus size={12} />
+                                                                </button>
+                                                            </div>
+
+                                                            <ChevronRight size={16} className="text-slate-600 ml-1" />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* Quiz List Item */}
+                                            <div
+                                                className="group relative flex items-center gap-4 px-4 py-3
+                                                    bg-brand-orange/5 hover:bg-brand-orange/10
+                                                    border border-brand-orange/20 hover:border-brand-orange/40
+                                                    rounded-xl transition-all duration-300 cursor-pointer overflow-hidden"
+                                                style={{
+                                                    borderLeftWidth: '3px',
+                                                    borderLeftColor: 'rgb(255, 147, 0)',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 147, 0, 0.2), 0 0 40px rgba(255, 147, 0, 0.1)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
+                                            >
+                                                {/* Icon */}
+                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-orange/20 flex-shrink-0
+                                                    transition-transform duration-200 group-hover:scale-105">
+                                                    <FileQuestion size={16} className="text-brand-orange" />
+                                                </div>
+
+                                                {/* Separator */}
+                                                <div className="w-px h-8 bg-brand-orange/20 flex-shrink-0" />
+
+                                                {/* Main Content */}
+                                                <div className="flex-1 min-w-0 relative z-10">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-orange">
+                                                        Quiz
+                                                    </span>
+                                                    <h4 className="text-sm font-semibold text-brand-orange truncate group-hover:text-white transition-colors">
+                                                        Module Assessment
+                                                    </h4>
+                                                </div>
+
+                                                <ChevronRight size={16} className="text-brand-orange/60 ml-1" />
+                                            </div>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         );
