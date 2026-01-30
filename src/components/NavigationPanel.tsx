@@ -30,6 +30,7 @@ import {
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_ADMIN_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 import { hasPublishedOrgCourses } from '@/app/actions/org-courses';
+import { switchPlatformAdminOrg, getOrgSelectorData } from '@/app/actions/org';
 
 // Animated Count Badge with warm glow effect on count change
 const AnimatedCountBadge: React.FC<{
@@ -180,9 +181,17 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [collectionsExpanded, setCollectionsExpanded] = useState(true);
   const [organizationExpanded, setOrganizationExpanded] = useState(true);
   const [menuView, setMenuView] = useState<'main' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null, org_id?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [hasOrgCourses, setHasOrgCourses] = useState(false);
+  const [orgSelectorData, setOrgSelectorData] = useState<{
+    isPlatformAdmin: boolean;
+    currentOrgId: string | null;
+    currentOrgName: string | null;
+    organizations: { id: string; name: string; slug: string; memberCount: number }[];
+  } | null>(null);
+  const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
+  const [isSwitchingOrg, setIsSwitchingOrg] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -204,7 +213,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role, membership_status, author_status, avatar_url')
+          .select('full_name, role, membership_status, author_status, avatar_url, org_id')
           .eq('id', user.id)
           .single();
 
@@ -223,7 +232,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           role,
           membershipStatus,
           authorStatus,
-          avatarUrl: profile?.avatar_url
+          avatarUrl: profile?.avatar_url,
+          org_id: profile?.org_id
         });
 
         // Check for impersonation
@@ -235,6 +245,17 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     };
     fetchUser();
   }, []);
+
+  // Fetch org selector data for platform admins
+  useEffect(() => {
+    const fetchOrgData = async () => {
+      if (userProfile?.role === 'admin') {
+        const data = await getOrgSelectorData();
+        setOrgSelectorData(data);
+      }
+    };
+    fetchOrgData();
+  }, [userProfile?.role]);
 
   // Listen for avatar updates from onboarding or settings
   useEffect(() => {
@@ -341,6 +362,25 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       alert(`Failed to restore admin session: ${(error as Error).message}. Please log in again.`);
       sessionStorage.removeItem('admin_backup_session');
       window.location.href = '/login';
+    }
+  };
+
+  const handleSwitchOrg = async (orgId: string) => {
+    if (isSwitchingOrg || orgId === orgSelectorData?.currentOrgId) {
+      setIsOrgDropdownOpen(false);
+      return;
+    }
+    setIsSwitchingOrg(true);
+    try {
+      const result = await switchPlatformAdminOrg(orgId);
+      if (result.success) {
+        setIsOrgDropdownOpen(false);
+        window.location.reload();
+      } else {
+        console.error('Failed to switch org:', result.error);
+      }
+    } finally {
+      setIsSwitchingOrg(false);
     }
   };
 
@@ -877,6 +917,44 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       <span className="flex-1 text-left">Platform Administrator</span>
                       {!isImpersonating && <Check size={16} className="text-brand-blue-light" />}
                     </button>
+
+                    {/* Org Selector for Platform Admins */}
+                    {userProfile?.role === 'admin' && orgSelectorData && orgSelectorData.organizations.length > 0 && (
+                      <div className="mt-2 ml-12 relative">
+                        <button
+                          onClick={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
+                          disabled={isSwitchingOrg}
+                          className="w-full flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 hover:bg-white/10 hover:border-white/20 transition-all"
+                        >
+                          <span className="truncate">
+                            {orgSelectorData.currentOrgId === userProfile?.org_id
+                              ? 'Your Org As Platform Admin'
+                              : orgSelectorData.currentOrgName || 'Select Organization'}
+                          </span>
+                          <ChevronDown size={14} className={`ml-2 transition-transform ${isOrgDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isOrgDropdownOpen && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-[#0f172a] border border-white/10 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
+                            {orgSelectorData.organizations.map((org) => (
+                              <button
+                                key={org.id}
+                                onClick={() => handleSwitchOrg(org.id)}
+                                disabled={isSwitchingOrg}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-all ${
+                                  org.id === orgSelectorData.currentOrgId
+                                    ? 'bg-brand-blue-light/10 text-brand-blue-light'
+                                    : 'text-slate-300 hover:bg-white/5'
+                                }`}
+                              >
+                                <span className="truncate">{org.name}</span>
+                                <span className="text-slate-500 ml-2">{org.memberCount}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="py-2">
                       <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />

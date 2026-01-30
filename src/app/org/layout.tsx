@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { LayoutDashboard, Users, Layers, Settings, LogOut, BarChart2, BookOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { getOrgContext, getAllOrganizations } from '@/lib/org-context';
-import OrgSelector from '@/components/org/OrgSelector';
+import { getOrgContext } from '@/lib/org-context';
 
 export default async function OrgLayout({
     children,
@@ -52,9 +51,6 @@ export default async function OrgLayout({
         redirect('/');
     }
 
-    // Get all organizations for platform admin selector
-    const allOrgs = isPlatformAdmin ? await getAllOrganizations() : [];
-
     const orgName = orgContext.orgName;
 
     return (
@@ -62,22 +58,14 @@ export default async function OrgLayout({
             {/* Org Sidebar */}
             <aside className="w-64 flex-shrink-0 border-r border-white/10 bg-[#0f172a]/50 backdrop-blur-xl flex flex-col">
                 <div className="border-b border-white/10">
-                    {isPlatformAdmin ? (
-                        <OrgSelector
-                            organizations={allOrgs}
-                            currentOrgId={orgContext.orgId}
-                            currentOrgName={orgName}
-                        />
-                    ) : (
-                        <div className="h-16 flex items-center px-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center text-brand-orange font-bold">
-                                    {orgName.substring(0, 2).toUpperCase()}
-                                </div>
-                                <span className="font-bold text-sm tracking-wide truncate">{orgName}</span>
+                    <div className="h-16 flex items-center px-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center text-brand-orange font-bold">
+                                {orgName.substring(0, 2).toUpperCase()}
                             </div>
+                            <span className="font-bold text-sm tracking-wide truncate">{orgName}</span>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1">

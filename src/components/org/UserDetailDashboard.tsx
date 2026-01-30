@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { OrgMember, toggleOrgMemberStatus, updateUserRole } from '@/app/actions/org';
 import { User, Clock, Award, MessageSquare, ArrowLeft, Trash2, Ban, Shield, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-import RemoveUserButton from './RemoveUserButton';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
 import CanvasHeader from '../CanvasHeader';
 import { useBackHandler } from '@/hooks/useBackHandler';
 
@@ -15,9 +15,32 @@ interface UserDetailDashboardProps {
 export default function UserDetailDashboard({ member, onBack }: UserDetailDashboardProps) {
     const [isPending, startTransition] = useTransition();
     const isPaused = member.membership_status === 'inactive'; // Assuming inactive means paused for now
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Register browser back button handler to use parent's onBack
     useBackHandler(onBack);
+
+    const handleDeleteUser = async () => {
+        setIsDeleting(true);
+        try {
+            const res = await fetch('/api/org/remove-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: member.id }),
+            });
+
+            if (!res.ok) throw new Error('Failed to remove user');
+
+            setShowDeleteModal(false);
+            window.location.reload();
+        } catch (error) {
+            console.error('Error removing user:', error);
+            alert('Failed to remove user. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     return (
         <div className="flex flex-col w-full relative">
@@ -30,6 +53,17 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
                     backLabel="Back to Users"
                 >
                     <div className="flex items-center space-x-3">
+                        {/* Delete User Button - Far Left */}
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-xs font-bold uppercase tracking-wider text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                        >
+                            <Trash2 size={14} />
+                            <span>Delete User</span>
+                        </button>
+
+                        <div className="w-px h-6 bg-white/10 mx-2"></div>
+
                         {/* Role Management */}
                         {member.membership_status !== 'inactive' && (
                             member.is_owner ? (
@@ -96,7 +130,6 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
                             <Ban size={14} />
                             <span>{isPending ? 'Updating...' : (isPaused ? 'Resume' : 'Pause')}</span>
                         </button>
-                        <RemoveUserButton userId={member.id} userName={member.full_name} variant="icon" />
                     </div>
                 </CanvasHeader>
             </div>
@@ -220,6 +253,23 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
                     </div>
                 </div>
             </div>
+
+            {/* Delete User Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onCancel={() => setShowDeleteModal(false)}
+                onConfirm={handleDeleteUser}
+                title="Remove User?"
+                itemTitle={member.full_name}
+                description={
+                    <>
+                        This will immediately remove {member.full_name} from your organization and revoke their access to all content.
+                        <span className="block mt-2">Your billing will be updated to reflect this change.</span>
+                        <span className="block mt-2 font-medium">This action cannot be undone.</span>
+                    </>
+                }
+                confirmText={isDeleting ? "Removing..." : "Remove User"}
+            />
         </div>
     );
 }
