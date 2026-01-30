@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowRight, Zap, Star, DollarSign, TrendingUp, BookOpen } from 'lucide-react';
+import { ArrowRight, Zap, Star, DollarSign, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import ExpertDirectoryContent from './ExpertDirectoryContent';
 
 interface ExpertWithCourses {
     id: string;
@@ -257,63 +257,7 @@ export default async function ExpertsPage() {
             </section>
 
             {/* --- EXPERT DIRECTORY SECTION --- */}
-            {expertsWithPublishedCourses.length > 0 && (
-                <section className="py-32 bg-[#05080a] border-t border-white/10">
-                    <div className="max-w-7xl mx-auto px-6">
-                        <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Meet Our Experts</h2>
-                            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-                                Learn from industry leaders who are shaping the future of HR.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {expertsWithPublishedCourses.map(expert => (
-                                <Link
-                                    key={`${expert.id}-${expert.isStandalone ? 'standalone' : 'regular'}`}
-                                    href={expert.isStandalone ? `/experts/standalone/${expert.id}` : `/experts/${expert.id}`}
-                                    className="group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-blue-light/30 transition-all hover:-translate-y-1"
-                                >
-                                    {/* Avatar */}
-                                    <div className="flex justify-center mb-4">
-                                        {expert.avatar_url ? (
-                                            <Image
-                                                src={expert.avatar_url}
-                                                alt={expert.full_name}
-                                                width={80}
-                                                height={80}
-                                                className="w-20 h-20 rounded-full object-cover border-2 border-white/10 group-hover:border-brand-blue-light/50 transition-colors"
-                                            />
-                                        ) : (
-                                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-blue-light/20 to-brand-orange/20 flex items-center justify-center text-2xl font-bold text-white border-2 border-white/10">
-                                                {expert.full_name.charAt(0)}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Name & Title */}
-                                    <div className="text-center">
-                                        <h3 className="text-lg font-bold text-white group-hover:text-brand-blue-light transition-colors">
-                                            {expert.full_name}
-                                        </h3>
-                                        {expert.expert_title && (
-                                            <p className="text-sm text-slate-400 mt-1 line-clamp-2">
-                                                {expert.expert_title}
-                                            </p>
-                                        )}
-
-                                        {/* Course Count */}
-                                        <div className="flex items-center justify-center gap-1.5 mt-4 text-xs text-slate-500">
-                                            <BookOpen size={14} />
-                                            <span>{expert.publishedCourseCount} {expert.publishedCourseCount === 1 ? 'Course' : 'Courses'}</span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
+            <ExpertDirectoryContent experts={expertsWithPublishedCourses} />
 
             {/* --- CTA SECTION --- */}
             <section className="py-32 bg-gradient-to-b from-[#05080a] to-[#0A0D12] border-t border-white/5">

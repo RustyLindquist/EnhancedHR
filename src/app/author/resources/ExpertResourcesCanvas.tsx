@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Layers, Upload, StickyNote, Lightbulb, Video } from 'lucide-react';
+import { Layers, Upload, StickyNote, Lightbulb, Video, LayoutGrid, List } from 'lucide-react';
 import { UserContextItem, ContextItemType } from '@/types';
 import TopContextPanel from '@/components/TopContextPanel';
 import AddNotePanel from '@/components/AddNotePanel';
 import VideoPanel from '@/components/VideoPanel';
 import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
+import UniversalCollectionListItem from '@/components/UniversalCollectionListItem';
+import { CollectionItemDetail } from '@/components/UniversalCollectionCard';
 import ResourceViewPanel from '@/components/ResourceViewPanel';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
@@ -60,11 +62,26 @@ export default function ExpertResourcesCanvas({
 }: ExpertResourcesCanvasProps) {
     const router = useRouter();
     const [resources, setResources] = useState(initialResources);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     // Sync local state when server data changes (e.g., after router.refresh())
     useEffect(() => {
         setResources(initialResources);
     }, [initialResources]);
+
+    // Load view mode preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
 
     const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
     const [isNotePanelOpen, setIsNotePanelOpen] = useState(false);
@@ -367,6 +384,17 @@ export default function ExpertResourcesCanvas({
         setIsVideoPanelOpen(true);
     }, []);
 
+    // Convert resource to CollectionItemDetail format for list view
+    const resourceToCollectionDetail = (resource: UserContextItem): CollectionItemDetail => {
+        return {
+            id: resource.id,
+            title: resource.title,
+            itemType: resource.type === 'VIDEO' ? 'VIDEO' : resource.type === 'FILE' ? 'FILE' : 'CUSTOM_CONTEXT',
+            content: resource.content,
+            created_at: resource.created_at,
+        } as unknown as CollectionItemDetail;
+    };
+
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Admin Action Bar */}
@@ -378,6 +406,31 @@ export default function ExpertResourcesCanvas({
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* View Toggle */}
+                        <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                            <button
+                                onClick={() => handleViewModeChange('grid')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="Grid View"
+                            >
+                                <LayoutGrid size={14} />
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('list')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="List View"
+                            >
+                                <List size={14} />
+                            </button>
+                        </div>
                         <button
                             onClick={handleAddNote}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95"
@@ -410,32 +463,81 @@ export default function ExpertResourcesCanvas({
                 </div>
             )}
 
-            {/* Resources Grid */}
-            {resources.length > 0 ? (
-                <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-                    {resources.map((resource, index) => (
-                        <div
-                            key={resource.id}
-                            className="animate-fade-in-up"
-                            style={{ animationDelay: `${index * 50}ms` }}
+            {/* View Toggle for non-admins */}
+            {!isPlatformAdmin && resources.length > 0 && (
+                <div className="flex justify-end">
+                    <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                        <button
+                            onClick={() => handleViewModeChange('grid')}
+                            className={`p-1.5 rounded-md transition-all ${
+                                viewMode === 'grid'
+                                    ? 'bg-white/20 text-white'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                            title="Grid View"
                         >
-                            <UniversalCard
-                                type={getCardType(resource)}
-                                title={resource.title}
-                                description={getContentPreview(resource)}
-                                meta={formatDate(resource.created_at)}
-                                contextSubtype={resource.type === 'FILE' ? 'FILE' : 'TEXT'}
-                                fileUrl={resource.type === 'FILE' ? (resource.content as any).url : undefined}
-                                fileName={resource.type === 'FILE' ? (resource.content as any).fileName : undefined}
-                                videoPlaybackId={resource.type === 'VIDEO' ? (resource.content as any).muxPlaybackId : undefined}
-                                videoExternalUrl={resource.type === 'VIDEO' ? (resource.content as any).externalUrl : undefined}
-                                videoStatus={resource.type === 'VIDEO' ? (resource.content as any).status : undefined}
-                                onAction={() => handleResourceClick(resource)}
-                                onRemove={isPlatformAdmin ? () => handleDeleteClick(resource) : undefined}
-                            />
-                        </div>
-                    ))}
+                            <LayoutGrid size={14} />
+                        </button>
+                        <button
+                            onClick={() => handleViewModeChange('list')}
+                            className={`p-1.5 rounded-md transition-all ${
+                                viewMode === 'list'
+                                    ? 'bg-white/20 text-white'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                            title="List View"
+                        >
+                            <List size={14} />
+                        </button>
+                    </div>
                 </div>
+            )}
+
+            {/* Resources Grid/List */}
+            {resources.length > 0 ? (
+                viewMode === 'grid' ? (
+                    <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                        {resources.map((resource, index) => (
+                            <div
+                                key={resource.id}
+                                className="animate-fade-in-up"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                                <UniversalCard
+                                    type={getCardType(resource)}
+                                    title={resource.title}
+                                    description={getContentPreview(resource)}
+                                    meta={formatDate(resource.created_at)}
+                                    contextSubtype={resource.type === 'FILE' ? 'FILE' : 'TEXT'}
+                                    fileUrl={resource.type === 'FILE' ? (resource.content as any).url : undefined}
+                                    fileName={resource.type === 'FILE' ? (resource.content as any).fileName : undefined}
+                                    videoPlaybackId={resource.type === 'VIDEO' ? (resource.content as any).muxPlaybackId : undefined}
+                                    videoExternalUrl={resource.type === 'VIDEO' ? (resource.content as any).externalUrl : undefined}
+                                    videoStatus={resource.type === 'VIDEO' ? (resource.content as any).status : undefined}
+                                    onAction={() => handleResourceClick(resource)}
+                                    onRemove={isPlatformAdmin ? () => handleDeleteClick(resource) : undefined}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2">
+                        {resources.map((resource, index) => (
+                            <div
+                                key={resource.id}
+                                className="animate-fade-in-up"
+                                style={{ animationDelay: `${index * 30}ms` }}
+                            >
+                                <UniversalCollectionListItem
+                                    item={resourceToCollectionDetail(resource)}
+                                    onClick={() => handleResourceClick(resource)}
+                                    onAdd={() => handleResourceClick(resource)}
+                                    onRemove={isPlatformAdmin ? () => handleDeleteClick(resource) : undefined}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )
             ) : (
                 /* Empty State */
                 <div className="flex flex-col items-center justify-center py-20">
