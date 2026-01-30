@@ -90,7 +90,7 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
             </CanvasHeader>
 
             {/* Profile Section */}
-            <div className="max-w-7xl mx-auto px-8 py-12">
+            <div className="max-w-5xl mx-auto px-8 py-12">
                 <div className="flex items-start gap-8 mb-12">
                     {/* Left Column: Avatar + Credentials */}
                     <div className="flex-shrink-0">
