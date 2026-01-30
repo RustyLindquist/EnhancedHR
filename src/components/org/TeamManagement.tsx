@@ -6,8 +6,9 @@ import InviteMemberPanel from './InviteMemberPanel';
 import GroupManagement from './GroupManagement';
 import AddToGroupModal from './AddToGroupModal';
 import UserCard from './UserCard';
+import UserListItem from './UserListItem';
 import UserDetailDashboard from './UserDetailDashboard';
-import { Layers, UserPlus, Users } from 'lucide-react';
+import { Layers, UserPlus, Users, LayoutGrid, List } from 'lucide-react';
 import CanvasHeader from '../CanvasHeader';
 import { useBackHandler } from '@/hooks/useBackHandler';
 
@@ -25,10 +26,25 @@ export default function TeamManagement({ onBack, isAdmin = false }: TeamManageme
     const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
     const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
     const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     // Register browser back button handler to use parent's onBack
     // Note: When a member is selected, UserDetailDashboard handles its own back
     useBackHandler(onBack, { enabled: !selectedMember && !!onBack });
+
+    // Load view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
 
     const fetchMembers = async () => {
         // Don't set loading true on refresh to avoid flash, or handle gracefully
@@ -100,37 +116,68 @@ export default function TeamManagement({ onBack, isAdmin = false }: TeamManageme
                     onBack={onBack}
                     backLabel="Go Back"
                 >
-                    {/* Only show admin controls for admins */}
-                    {isAdmin && (
-                        <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4">
+                        {/* Member count - only for admins */}
+                        {isAdmin && (
                             <div className="flex items-center space-x-2 text-brand-blue-light mr-4">
                                 <div className="w-2 h-2 rounded-full bg-brand-blue-light animate-pulse"></div>
                                 <span className="text-sm font-bold uppercase tracking-widest">{members.length} Members</span>
                             </div>
+                        )}
 
+                        {/* Only show admin controls for admins */}
+                        {isAdmin && (
+                            <>
+                                <button
+                                    onClick={() => setIsInvitePanelOpen(true)}
+                                    className="
+                                        flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                        bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
+                                    "
+                                >
+                                    <UserPlus size={16} />
+                                    Invite Members
+                                </button>
+
+                                <button
+                                    onClick={() => setIsGroupPanelOpen(true)}
+                                    className="
+                                        flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
+                                        bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
+                                    "
+                                >
+                                    <Users size={16} />
+                                    Create Group
+                                </button>
+                            </>
+                        )}
+
+                        {/* View Toggle - Far Right */}
+                        <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
                             <button
-                                onClick={() => setIsInvitePanelOpen(true)}
-                                className="
-                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
-                                    bg-brand-blue-light text-brand-black hover:bg-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(120,192,240,0.3)]
-                                "
+                                onClick={() => handleViewModeChange('grid')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="Grid View"
                             >
-                                <UserPlus size={16} />
-                                Invite Members
+                                <LayoutGrid size={14} />
                             </button>
-
                             <button
-                                onClick={() => setIsGroupPanelOpen(true)}
-                                className="
-                                    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all
-                                    bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white hover:scale-105 active:scale-95
-                                "
+                                onClick={() => handleViewModeChange('list')}
+                                className={`p-1.5 rounded-md transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title="List View"
                             >
-                                <Users size={16} />
-                                Create Group
+                                <List size={14} />
                             </button>
                         </div>
-                    )}
+                    </div>
                 </CanvasHeader>
             </div>
 
@@ -143,7 +190,7 @@ export default function TeamManagement({ onBack, isAdmin = false }: TeamManageme
                         <h3 className="text-xl font-bold text-white mb-2">No Team Members Yet</h3>
                         <p className="text-slate-400 max-w-sm text-center mb-6">Start building your team by inviting members to join your organization.</p>
                     </div>
-                ) : (
+                ) : viewMode === 'grid' ? (
                     /* Grid of Cards */
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {members.map((member) => (
@@ -154,6 +201,20 @@ export default function TeamManagement({ onBack, isAdmin = false }: TeamManageme
                                 onAddToGroup={isAdmin ? () => setAddToGroupMember(member) : undefined}
                                 showAddButton={isAdmin}
                             />
+                        ))}
+                    </div>
+                ) : (
+                    /* List View */
+                    <div className="flex flex-col gap-2">
+                        {members.map((member, index) => (
+                            <div key={member.id} style={{ animationDelay: `${index * 30}ms` }}>
+                                <UserListItem
+                                    member={member}
+                                    onClick={() => setSelectedMember(member)}
+                                    onAddToGroup={isAdmin ? () => setAddToGroupMember(member) : undefined}
+                                    showAddButton={isAdmin}
+                                />
+                            </div>
                         ))}
                     </div>
                 )}
