@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupDetails, getGroupStats, getGroupMembersWithStats, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
 import { ContentAssignment, getDirectAssignments, removeAssignment } from '@/app/actions/assignments';
-import { Users, BookOpen, BarChart3, Plus, Sparkles } from 'lucide-react';
+import { Users, BookOpen, BarChart3, Plus, Sparkles, LayoutGrid, List } from 'lucide-react';
 import ContentPickerModal from './ContentPickerModal';
 import UserCard from './UserCard';
+import UserListItem from './UserListItem';
 import UserDetailDashboard from './UserDetailDashboard';
 import AddToGroupModal from './AddToGroupModal';
 import { OrgMember } from '@/app/actions/org';
@@ -47,10 +48,25 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     const [addToGroupMember, setAddToGroupMember] = useState<OrgMember | null>(null);
     const [pickerAssignmentType, setPickerAssignmentType] = useState<'required' | 'recommended'>('required');
     const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     // Register browser back button handler to use parent's onBack
     // Note: When a member is selected, UserDetailDashboard handles its own back
     useBackHandler(onBack, { enabled: !selectedMember });
+
+    // Load view preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Handle view mode change and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setViewMode(mode);
+    };
 
     // Notify parent when viewing member changes
     useEffect(() => {
@@ -166,76 +182,164 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
                 </div>
             </div>
 
-            {/* Section 2: Group Members Grid */}
+            {/* Section 2: Group Members */}
             <div className="px-8 py-6">
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Users size={16} className="text-slate-400" />
-                    Group Members
-                    <span className="text-brand-blue-light ml-2">({members.length})</span>
-                    {fullGroup.is_dynamic && (
-                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/30">
-                            <Sparkles size={10} />
-                            Auto-updating
-                        </span>
-                    )}
-                </h3>
-                {members.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {members.map((member) => (
-                            <UserCard
-                                key={member.id}
-                                member={{
-                                    id: member.id,
-                                    email: member.email,
-                                    full_name: member.full_name,
-                                    avatar_url: member.avatar_url,
-                                    role: member.role,
-                                    role_title: '',
-                                    membership_status: member.membership_status,
-                                    created_at: '',
-                                    is_owner: false,
-                                    courses_completed: member.courses_completed,
-                                    total_time_spent_minutes: member.total_time_spent_minutes,
-                                    credits_earned: member.credits_earned,
-                                    last_login: '',
-                                    conversations_count: member.conversations_count
-                                }}
-                                onClick={() => setSelectedMember({
-                                    id: member.id,
-                                    email: member.email,
-                                    full_name: member.full_name,
-                                    avatar_url: member.avatar_url,
-                                    role: member.role,
-                                    role_title: '',
-                                    membership_status: member.membership_status,
-                                    created_at: '',
-                                    is_owner: false,
-                                    courses_completed: member.courses_completed,
-                                    total_time_spent_minutes: member.total_time_spent_minutes,
-                                    credits_earned: member.credits_earned,
-                                    last_login: '',
-                                    conversations_count: member.conversations_count
-                                })}
-                                onAddToGroup={isAdmin ? () => setAddToGroupMember({
-                                    id: member.id,
-                                    email: member.email,
-                                    full_name: member.full_name,
-                                    avatar_url: member.avatar_url,
-                                    role: member.role,
-                                    role_title: '',
-                                    membership_status: member.membership_status,
-                                    created_at: '',
-                                    is_owner: false,
-                                    courses_completed: member.courses_completed,
-                                    total_time_spent_minutes: member.total_time_spent_minutes,
-                                    credits_earned: member.credits_earned,
-                                    last_login: '',
-                                    conversations_count: member.conversations_count
-                                }) : undefined}
-                                showAddButton={isAdmin}
-                            />
-                        ))}
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <Users size={16} className="text-slate-400" />
+                        Group Members
+                        <span className="text-brand-blue-light ml-2">({members.length})</span>
+                        {fullGroup.is_dynamic && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-wider border border-purple-500/30">
+                                <Sparkles size={10} />
+                                Auto-updating
+                            </span>
+                        )}
+                    </h3>
+                    {/* View Toggle */}
+                    <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
+                        <button
+                            onClick={() => handleViewModeChange('grid')}
+                            className={`p-1.5 rounded-md transition-all ${
+                                viewMode === 'grid'
+                                    ? 'bg-white/20 text-white'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                            title="Grid View"
+                        >
+                            <LayoutGrid size={14} />
+                        </button>
+                        <button
+                            onClick={() => handleViewModeChange('list')}
+                            className={`p-1.5 rounded-md transition-all ${
+                                viewMode === 'list'
+                                    ? 'bg-white/20 text-white'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                            title="List View"
+                        >
+                            <List size={14} />
+                        </button>
                     </div>
+                </div>
+                {members.length > 0 ? (
+                    viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {members.map((member) => (
+                                <UserCard
+                                    key={member.id}
+                                    member={{
+                                        id: member.id,
+                                        email: member.email,
+                                        full_name: member.full_name,
+                                        avatar_url: member.avatar_url,
+                                        role: member.role,
+                                        role_title: '',
+                                        membership_status: member.membership_status,
+                                        created_at: '',
+                                        is_owner: false,
+                                        courses_completed: member.courses_completed,
+                                        total_time_spent_minutes: member.total_time_spent_minutes,
+                                        credits_earned: member.credits_earned,
+                                        last_login: '',
+                                        conversations_count: member.conversations_count
+                                    }}
+                                    onClick={() => setSelectedMember({
+                                        id: member.id,
+                                        email: member.email,
+                                        full_name: member.full_name,
+                                        avatar_url: member.avatar_url,
+                                        role: member.role,
+                                        role_title: '',
+                                        membership_status: member.membership_status,
+                                        created_at: '',
+                                        is_owner: false,
+                                        courses_completed: member.courses_completed,
+                                        total_time_spent_minutes: member.total_time_spent_minutes,
+                                        credits_earned: member.credits_earned,
+                                        last_login: '',
+                                        conversations_count: member.conversations_count
+                                    })}
+                                    onAddToGroup={isAdmin ? () => setAddToGroupMember({
+                                        id: member.id,
+                                        email: member.email,
+                                        full_name: member.full_name,
+                                        avatar_url: member.avatar_url,
+                                        role: member.role,
+                                        role_title: '',
+                                        membership_status: member.membership_status,
+                                        created_at: '',
+                                        is_owner: false,
+                                        courses_completed: member.courses_completed,
+                                        total_time_spent_minutes: member.total_time_spent_minutes,
+                                        credits_earned: member.credits_earned,
+                                        last_login: '',
+                                        conversations_count: member.conversations_count
+                                    }) : undefined}
+                                    showAddButton={isAdmin}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        /* List View */
+                        <div className="flex flex-col gap-2">
+                            {members.map((member, index) => (
+                                <div key={member.id} style={{ animationDelay: `${index * 30}ms` }}>
+                                    <UserListItem
+                                        member={{
+                                            id: member.id,
+                                            email: member.email,
+                                            full_name: member.full_name,
+                                            avatar_url: member.avatar_url,
+                                            role: member.role,
+                                            role_title: '',
+                                            membership_status: member.membership_status,
+                                            created_at: '',
+                                            is_owner: false,
+                                            courses_completed: member.courses_completed,
+                                            total_time_spent_minutes: member.total_time_spent_minutes,
+                                            credits_earned: member.credits_earned,
+                                            last_login: '',
+                                            conversations_count: member.conversations_count
+                                        }}
+                                        onClick={() => setSelectedMember({
+                                            id: member.id,
+                                            email: member.email,
+                                            full_name: member.full_name,
+                                            avatar_url: member.avatar_url,
+                                            role: member.role,
+                                            role_title: '',
+                                            membership_status: member.membership_status,
+                                            created_at: '',
+                                            is_owner: false,
+                                            courses_completed: member.courses_completed,
+                                            total_time_spent_minutes: member.total_time_spent_minutes,
+                                            credits_earned: member.credits_earned,
+                                            last_login: '',
+                                            conversations_count: member.conversations_count
+                                        })}
+                                        onAddToGroup={isAdmin ? () => setAddToGroupMember({
+                                            id: member.id,
+                                            email: member.email,
+                                            full_name: member.full_name,
+                                            avatar_url: member.avatar_url,
+                                            role: member.role,
+                                            role_title: '',
+                                            membership_status: member.membership_status,
+                                            created_at: '',
+                                            is_owner: false,
+                                            courses_completed: member.courses_completed,
+                                            total_time_spent_minutes: member.total_time_spent_minutes,
+                                            credits_earned: member.credits_earned,
+                                            last_login: '',
+                                            conversations_count: member.conversations_count
+                                        }) : undefined}
+                                        showAddButton={isAdmin}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )
                 ) : (
                     <div className="text-center py-12 bg-white/5 rounded-2xl border border-dashed border-white/10">
                         <Users size={40} className="mx-auto text-slate-600 mb-3" />
