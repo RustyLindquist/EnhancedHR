@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, ChevronUp, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video, LayoutGrid, List } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, ChevronUp, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video, LayoutGrid, List, Loader2 } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -2690,7 +2690,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         activeCollectionId !== 'academy' &&
         activeCollectionId !== 'dashboard' &&
         // For instructors collection, check if we have any experts
-        (activeCollectionId === 'instructors' ? experts.length === 0 :
+        (activeCollectionId === 'instructors' ? (!isLoadingExperts && experts.length === 0) :
             (courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 && // Courses might still use string alias if not updated? ACTUALLY Courses use 'isSaved' mainly or IDs.. check standard behavior.
                 // Wait, standard courses use 'isSaved' boolean for Favorites usually?
                 // Or do they use collections array?
@@ -4872,8 +4872,40 @@ ${isCollapsed
                                                             </div>
                                                         ))}
 
-                                                        {/* Render Instructors/Experts */}
-                                                        {activeCollectionId === 'instructors' && experts.map((expert, index) => (
+                                                        {/* Loading State for Experts */}
+                                                        {activeCollectionId === 'instructors' && isLoadingExperts && (
+                                                            <div className="col-span-full flex flex-col items-center justify-center min-h-[400px] px-8">
+                                                                {/* Animated loader container */}
+                                                                <div className="relative mb-8">
+                                                                    {/* Outer glow ring */}
+                                                                    <div className="absolute inset-0 w-20 h-20 rounded-full bg-brand-blue-light/20 animate-ping" />
+                                                                    {/* Inner container */}
+                                                                    <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-brand-blue-light/30 to-brand-blue-light/10 border border-brand-blue-light/30 flex items-center justify-center">
+                                                                        <Loader2 size={32} className="text-brand-blue-light animate-spin" />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Loading text */}
+                                                                <div className="text-center max-w-md">
+                                                                    <h3 className="text-white font-semibold text-lg mb-3">
+                                                                        Loading Experts
+                                                                    </h3>
+                                                                    <p className="text-slate-400 text-sm leading-relaxed">
+                                                                        Please wait while we gather expert profiles and their courses.
+                                                                    </p>
+                                                                </div>
+
+                                                                {/* Subtle animated dots */}
+                                                                <div className="flex items-center gap-1.5 mt-6">
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Render Instructors/Experts (only when not loading) */}
+                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && experts.map((expert, index) => (
                                                             <div key={expert.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                                                                 <InstructorCard
                                                                     instructor={expert}
