@@ -593,16 +593,16 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 {/* Modules Section */}
                 <div>
                     {/* Section Header - Label left, Toggle right */}
-                    <div className="flex items-center justify-between py-[45px]">
-                        <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between py-[45px] gap-4">
+                        <div className="flex items-center gap-4 flex-shrink-0">
                             <div className="flex items-center gap-2">
                                 <BookOpen size={14} className="text-brand-blue-light" />
                                 <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-slate-400">
                                     COURSE MODULES
                                 </h2>
                             </div>
-                            <div className="h-px w-32 bg-white/10" />
                         </div>
+                        <div className="flex-1 h-px bg-white/10" />
                         {/* View Toggle */}
                         <div className="flex items-center gap-0.5 p-1 bg-black/40 border border-white/10 rounded-lg">
                             <button
