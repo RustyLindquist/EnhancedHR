@@ -262,7 +262,7 @@ const InstructorPage: React.FC<InstructorPageProps> = ({ instructor, courses, on
                                                     <h4 className="text-sm font-semibold text-white truncate group-hover:text-white/95">
                                                         {course.title}
                                                     </h4>
-                                                    {course.rating && (
+                                                    {course.rating !== undefined && course.rating !== null && (
                                                         <>
                                                             <span className="text-white/20 hidden lg:block">|</span>
                                                             <span className="flex items-center gap-1 text-amber-400/50 flex-shrink-0">
