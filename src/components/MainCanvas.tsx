@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, ChevronUp, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video, LayoutGrid, List, Loader2 } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -38,6 +38,7 @@ import InstructorPage from './InstructorPage';
 import { getExpertsWithPublishedCourses, getExpertById, ExpertWithPublishedCourses } from '@/app/actions/experts';
 import { Instructor } from '../types';
 import UniversalCollectionCard, { CollectionItemDetail } from './UniversalCollectionCard';
+import UniversalCollectionListItem from './UniversalCollectionListItem';
 import TopContextPanel from './TopContextPanel';
 import GlobalTopPanel from './GlobalTopPanel';
 import VideoPanel from './VideoPanel';
@@ -1075,6 +1076,53 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [noteToDelete, setNoteToDelete] = useState<{ id: string; title: string } | null>(null);
     const [deleteNoteModalOpen, setDeleteNoteModalOpen] = useState(false);
 
+    // --- COLLECTION VIEW MODE STATE ---
+    const [collectionViewMode, setCollectionViewMode] = useState<'grid' | 'list'>('grid');
+    const [collectionSortBy, setCollectionSortBy] = useState<'name' | 'date' | 'type'>('date');
+    const [collectionSortOrder, setCollectionSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    // --- ACADEMY VIEW MODE STATE ---
+    const [academyViewMode, setAcademyViewMode] = useState<'grid' | 'list'>('grid');
+
+    // --- PERSISTENT VIEW MODE ---
+    // Load view mode preference from localStorage on mount
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
+        if (savedViewMode === 'list' || savedViewMode === 'grid') {
+            setCollectionViewMode(savedViewMode);
+            setAcademyViewMode(savedViewMode);
+        }
+    }, []);
+
+    // Unified handler to set view mode and persist to localStorage
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        localStorage.setItem('enhancedhr-preferred-view-mode', mode);
+        setCollectionViewMode(mode);
+        setAcademyViewMode(mode);
+    };
+
+    // Collections that support list view toggle
+    const LIST_VIEW_COLLECTIONS = [
+        'research',           // Workspace
+        'personal-context',   // Personal Context
+        'conversations',      // Conversations
+        'notes',              // All Notes
+        'favorites',          // Favorites
+        'to_learn',           // Watchlist
+        'instructors',        // Experts directory
+        // Note: 'assigned-learning' uses its own dedicated AssignedLearningCanvas
+    ];
+
+    // Check if current collection supports list view
+    const supportsListView = (collectionId: string): boolean => {
+        if (LIST_VIEW_COLLECTIONS.includes(collectionId)) return true;
+        // Custom user collections
+        if (customCollections.some(c => c.id === collectionId)) return true;
+        // Org collections
+        if (collectionId.startsWith('org-collection-')) return true;
+        return false;
+    };
+
     const handleOpenContextEditor = (type: ContextItemType = 'CUSTOM_CONTEXT', item: UserContextItem | null = null) => {
         setContextTypeToAdd(type);
         setEditingContextItem(item);
@@ -1861,6 +1909,10 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Navigate to Course Page
     const handleCourseClick = async (courseId: number) => {
+        // Clear instructor selection so course page renders (instructor check comes before course check)
+        setSelectedInstructorId(null);
+        setDirectViewExpert(null);
+
         // Optimistic / Loading state could be added here
         setSelectedCourseId(courseId);
 
@@ -2509,6 +2561,44 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         return 'My Collection';
     };
 
+    // --- COLLECTION SORT HELPERS ---
+    const sortCollectionItems = useCallback((items: CollectionItemDetail[]): CollectionItemDetail[] => {
+        if (!supportsListView(activeCollectionId)) return items;
+
+        return [...items].sort((a, b) => {
+            let comparison = 0;
+            const aAny = a as any;
+            const bAny = b as any;
+
+            switch (collectionSortBy) {
+                case 'name':
+                    comparison = (a.title || '').localeCompare(b.title || '');
+                    break;
+                case 'date':
+                    const dateA = new Date(aAny.updated_at || aAny.created_at || 0).getTime();
+                    const dateB = new Date(bAny.updated_at || bAny.created_at || 0).getTime();
+                    comparison = dateB - dateA; // Default: newest first
+                    break;
+                case 'type':
+                    comparison = a.itemType.localeCompare(b.itemType);
+                    break;
+            }
+
+            return collectionSortOrder === 'desc' ? comparison : -comparison;
+        });
+    }, [activeCollectionId, collectionSortBy, collectionSortOrder]);
+
+    const handleCollectionSortChange = useCallback((field: 'name' | 'date' | 'type') => {
+        if (collectionSortBy === field) {
+            // Toggle order if same field
+            setCollectionSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            // New field, default to desc for date, asc for others
+            setCollectionSortBy(field);
+            setCollectionSortOrder(field === 'date' ? 'desc' : 'asc');
+        }
+    }, [collectionSortBy]);
+
     // Helper to determine if a specific collection is effectively empty (contains no courses)
     // This is different from "No Results" due to filtering.
 
@@ -2605,7 +2695,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         activeCollectionId !== 'academy' &&
         activeCollectionId !== 'dashboard' &&
         // For instructors collection, check if we have any experts
-        (activeCollectionId === 'instructors' ? experts.length === 0 :
+        (activeCollectionId === 'instructors' ? (!isLoadingExperts && experts.length === 0) :
             (courses.filter(c => c.collections.includes(activeCollectionId)).length === 0 && // Courses might still use string alias if not updated? ACTUALLY Courses use 'isSaved' mainly or IDs.. check standard behavior.
                 // Wait, standard courses use 'isSaved' boolean for Favorites usually?
                 // Or do they use collections array?
@@ -2825,28 +2915,91 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     );
                 }
 
+                // Convert notes to CollectionItemDetail format for list view
+                const notesAsItems: CollectionItemDetail[] = notes.map(note => ({
+                    ...note,
+                    itemType: 'NOTE' as const,
+                }));
+
+                // Apply sorting
+                const sortedNotes = sortCollectionItems(notesAsItems);
+
+                // List view for notes
+                if (collectionViewMode === 'list') {
+                    return (
+                        <div className="flex flex-col gap-2 pb-20">
+                            {/* Sort Controls */}
+                            <div className="flex items-center gap-4 mb-4 px-2">
+                                <span className="text-xs text-slate-500 uppercase tracking-wider">Sort by:</span>
+                                {(['name', 'date', 'type'] as const).map((field) => (
+                                    <button
+                                        key={field}
+                                        onClick={() => handleCollectionSortChange(field)}
+                                        className={`text-xs px-3 py-1.5 rounded-full transition-all flex items-center gap-1 ${
+                                            collectionSortBy === field
+                                                ? 'bg-brand-orange/20 text-brand-orange border border-brand-orange/30'
+                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        {field.charAt(0).toUpperCase() + field.slice(1)}
+                                        {collectionSortBy === field && (
+                                            collectionSortOrder === 'asc'
+                                                ? <ChevronUp size={12} />
+                                                : <ChevronDown size={12} />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                            {/* List Items */}
+                            {sortedNotes.map((item, index) => {
+                                const note = item as Note & { itemType: 'NOTE' };
+                                return (
+                                    <div key={note.id} className="animate-fade-in-up"
+                                        style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
+                                        <UniversalCollectionListItem
+                                            item={item}
+                                            onClick={() => handleOpenNoteEditor(note.id)}
+                                            onRemove={() => handleDeleteNoteInitiate(note)}
+                                            onAdd={() => onOpenModal({ type: 'NOTE', id: note.id, title: note.title } as any)}
+                                            onDragStart={() => handleDragStart({
+                                                type: 'NOTE',
+                                                id: note.id,
+                                                title: note.title
+                                            })}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                }
+
+                // Grid view for notes (default)
                 return (
                     <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
-                        {notes.map((note, index) => (
-                            <div key={note.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
-                                <UniversalCard
-                                    type="NOTE"
-                                    title={note.title}
-                                    description={note.content.length > 150 ? note.content.slice(0, 150) + '...' : note.content}
-                                    meta={new Date(note.updated_at).toLocaleDateString()}
-                                    collections={note.collections}
-                                    onAction={() => handleOpenNoteEditor(note.id)}
-                                    onRemove={() => handleDeleteNoteInitiate(note)}
-                                    onAdd={() => onOpenModal({ type: 'NOTE', id: note.id, title: note.title } as any)}
-                                    draggable={true}
-                                    onDragStart={() => handleDragStart({
-                                        type: 'NOTE',
-                                        id: note.id,
-                                        title: note.title
-                                    })}
-                                />
-                            </div>
-                        ))}
+                        {sortedNotes.map((item, index) => {
+                            const note = item as Note & { itemType: 'NOTE' };
+                            return (
+                                <div key={note.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
+                                    <UniversalCard
+                                        type="NOTE"
+                                        title={note.title}
+                                        description={note.content.length > 150 ? note.content.slice(0, 150) + '...' : note.content}
+                                        meta={new Date(note.updated_at).toLocaleDateString()}
+                                        collections={note.collections}
+                                        onAction={() => handleOpenNoteEditor(note.id)}
+                                        onRemove={() => handleDeleteNoteInitiate(note)}
+                                        onAdd={() => onOpenModal({ type: 'NOTE', id: note.id, title: note.title } as any)}
+                                        draggable={true}
+                                        onDragStart={() => handleDragStart({
+                                            type: 'NOTE',
+                                            id: note.id,
+                                            title: note.title
+                                        })}
+                                    />
+                                </div>
+                            );
+                        })}
 
                         {/* Notes Collection Description Footer */}
                         <div className="col-span-full flex flex-col items-center justify-center pt-[150px] pb-10 opacity-60">
@@ -3073,52 +3226,98 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
 
+            // Common click handler for collection items
+            const handleItemClick = (item: CollectionItemDetail) => {
+                if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
+                else if (item.itemType === 'MODULE') {
+                    handleModuleClick(item);
+                }
+                else if (item.itemType === 'LESSON') {
+                    handleLessonClick(item);
+                }
+                else if (item.itemType === 'CONVERSATION') {
+                    handleOpenConversation(item.id);
+                }
+                else if (item.itemType === 'TOOL_CONVERSATION') {
+                    const toolConv = item as any;
+                    window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${item.id}`;
+                }
+                else if (item.itemType === 'NOTE') {
+                    handleOpenNoteEditor(item.id as string);
+                }
+                else if (item.itemType === 'VIDEO') {
+                    const video = item as any;
+                    handleOpenVideoPanel({
+                        id: video.id,
+                        user_id: video.user_id || '',
+                        collection_id: video.collection_id || null,
+                        type: 'VIDEO',
+                        title: video.title,
+                        content: video.content,
+                        created_at: video.created_at,
+                        updated_at: video.updated_at || video.created_at,
+                    });
+                }
+                else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
+                    handleOpenContextEditor(item.itemType, item as any);
+                }
+            };
+
+            // Sort items for collections that support list view
+            const sortedItems = supportsListView(activeCollectionId) ? sortCollectionItems(displayItems) : displayItems;
+
+            // Render list view when in list mode for supported collections
+            if (supportsListView(activeCollectionId) && collectionViewMode === 'list') {
+                return (
+                    <div className="flex flex-col gap-2 pb-20">
+                        {/* Sort Controls */}
+                        <div className="flex items-center gap-4 mb-4 px-2">
+                            <span className="text-xs text-slate-500 uppercase tracking-wider">Sort by:</span>
+                            {(['name', 'date', 'type'] as const).map((field) => (
+                                <button
+                                    key={field}
+                                    onClick={() => handleCollectionSortChange(field)}
+                                    className={`text-xs px-3 py-1.5 rounded-full transition-all flex items-center gap-1 ${
+                                        collectionSortBy === field
+                                            ? 'bg-brand-orange/20 text-brand-orange border border-brand-orange/30'
+                                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                >
+                                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                                    {collectionSortBy === field && (
+                                        collectionSortOrder === 'asc'
+                                            ? <ChevronUp size={12} />
+                                            : <ChevronDown size={12} />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                        {/* List Items */}
+                        {sortedItems.map((item, index) => (
+                            <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
+                                style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
+                                <UniversalCollectionListItem
+                                    item={item}
+                                    onClick={handleItemClick}
+                                    onRemove={(id, type) => handleRemoveItem(id, type)}
+                                    onAdd={(item) => onOpenModal(item as any)}
+                                    onDragStart={handleDragStart}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
             return (
                 <div className="grid gap-4 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
-                    {displayItems.map((item, index) => (
+                    {sortedItems.map((item, index) => (
                         <div key={`${item.itemType}-${item.id}`} className="animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}>
                             <UniversalCollectionCard
                                 item={item}
                                 onRemove={(id, type) => handleRemoveItem(id, type)}
-                                onClick={(item) => {
-                                    if (item.itemType === 'COURSE') handleCourseClick((item as Course).id);
-                                    else if (item.itemType === 'MODULE') {
-                                        handleModuleClick(item);
-                                    }
-                                    else if (item.itemType === 'LESSON') {
-                                        handleLessonClick(item);
-                                    }
-                                    else if (item.itemType === 'CONVERSATION') {
-                                        handleOpenConversation(item.id);
-                                    }
-                                    else if (item.itemType === 'TOOL_CONVERSATION') {
-                                        // Navigate to the tool page with the conversation loaded
-                                        const toolConv = item as any;
-                                        window.location.href = `/tools/${toolConv.tool_slug}?conversationId=${item.id}`;
-                                    }
-                                    else if (item.itemType === 'NOTE') {
-                                        // Open the note editor
-                                        handleOpenNoteEditor(item.id as string);
-                                    }
-                                    else if (item.itemType === 'VIDEO') {
-                                        // Open the video panel - convert to UserContextItem format
-                                        const video = item as any;
-                                        handleOpenVideoPanel({
-                                            id: video.id,
-                                            user_id: video.user_id || '',
-                                            collection_id: video.collection_id || null,
-                                            type: 'VIDEO',
-                                            title: video.title,
-                                            content: video.content,
-                                            created_at: video.created_at,
-                                            updated_at: video.updated_at || video.created_at,
-                                        });
-                                    }
-                                    else if (item.itemType === 'AI_INSIGHT' || item.itemType === 'CUSTOM_CONTEXT' || item.itemType === 'FILE' || item.itemType === 'PROFILE') {
-                                        handleOpenContextEditor(item.itemType, item as any);
-                                    }
-                                }}
+                                onClick={handleItemClick}
                                 onAdd={(item) => onOpenModal(item as any)}
                                 onDragStart={handleDragStart}
                             />
@@ -3291,7 +3490,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             description={course.description}
                             imageUrl={course.image}
                             meta={course.duration}
-                            categories={[course.category]}
+                            categories={course.categories || [course.category || 'General']}
                             rating={course.rating}
                             credits={{
                                 shrm: course.badges?.includes('SHRM'),
@@ -4033,7 +4232,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         </button>
                                     )}
 
-                                    {/* --- SEARCH & FILTER BUTTON (Academy - Far Right, Blue, with Icon) --- */}
+                                    {/* --- SEARCH & FILTER BUTTON (Academy - with Icon) --- */}
                                     {activeCollectionId === 'academy' && (
                                         <button
                                             onClick={handleOpenDrawer}
@@ -4073,6 +4272,34 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     )}
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* --- VIEW TOGGLE (Far Right - All Supported Collections & Academy) --- */}
+                                    {(supportsListView(activeCollectionId) || activeCollectionId === 'academy') && (
+                                        <div className="flex items-center gap-0.5 ml-auto p-1 bg-black/40 border border-white/10 rounded-lg">
+                                            <button
+                                                onClick={() => handleViewModeChange('grid')}
+                                                className={`p-1.5 rounded-md transition-all ${
+                                                    (activeCollectionId === 'academy' ? academyViewMode : collectionViewMode) === 'grid'
+                                                        ? 'bg-white/20 text-white'
+                                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                }`}
+                                                title="Grid View"
+                                            >
+                                                <LayoutGrid size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleViewModeChange('list')}
+                                                className={`p-1.5 rounded-md transition-all ${
+                                                    (activeCollectionId === 'academy' ? academyViewMode : collectionViewMode) === 'list'
+                                                        ? 'bg-white/20 text-white'
+                                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                }`}
+                                                title="List View"
+                                            >
+                                                <List size={14} />
+                                            </button>
                                         </div>
                                     )}
                                 </>
@@ -4332,8 +4559,10 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                                     onClick={() => toggleCategory(category)}
                                                                 >
                                                                     <div className={`
-p-1.5 rounded-full bg-white/5 text-slate-400 transition-all duration-300
-group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
+p-1.5 rounded-full transition-all duration-300
+${isCollapsed
+    ? 'bg-red-500/20 text-red-400 group-hover/title:bg-red-400 group-hover/title:text-white'
+    : 'bg-white/5 text-slate-400 group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black'}
     `}>
                                                                         {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                                                                     </div>
@@ -4354,43 +4583,68 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                                 )}
                                                             </div>
 
-                                                            {/* Horizontal Scroll Row */}
+                                                            {/* Course Content - Horizontal Scroll (Grid) or Vertical List */}
                                                             {!isCollapsed && (
-                                                                <div className="flex overflow-x-auto pb-4 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
-                                                                    {categoryCourses.map((course, index) => {
-                                                                        const delay = Math.min(index, 10) * 50;
-                                                                        return (
-                                                                            <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
-                                                                                <LazyCourseCard>
-                                                                                    <div
-                                                                                        style={{ transitionDelay: `${delay}ms` }}
-                                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                                                    >
-                                                                                        <UniversalCard
-                                                                                            type="COURSE"
-                                                                                            title={course.title}
-                                                                                            subtitle={course.author}
-                                                                                            imageUrl={course.image}
-                                                                                            meta={course.duration}
-                                                                                            description={course.description}
-                                                                                            rating={course.rating}
-                                                                                            categories={[course.category]}
-                                                                                            credits={{
-                                                                                                shrm: course.badges?.includes('SHRM'),
-                                                                                                hrci: course.badges?.includes('HRCI')
-                                                                                            }}
-                                                                                            actionLabel="VIEW"
-                                                                                            onAction={() => handleCourseClick(course.id)}
-                                                                                            onAdd={() => handleAddButtonClick(course.id)}
-                                                                                            draggable={true}
-                                                                                            onDragStart={() => handleCourseDragStart(course.id)}
-                                                                                        />
-                                                                                    </div>
-                                                                                </LazyCourseCard>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
+                                                                academyViewMode === 'list' ? (
+                                                                    // List View
+                                                                    <div className="flex flex-col gap-2 pt-2 pb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                                        {categoryCourses.map((course, index) => {
+                                                                            const courseAsItem: CollectionItemDetail = {
+                                                                                ...course,
+                                                                                itemType: 'COURSE' as const,
+                                                                            };
+                                                                            return (
+                                                                                <div key={course.id} className="animate-fade-in-up"
+                                                                                    style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
+                                                                                    <UniversalCollectionListItem
+                                                                                        item={courseAsItem}
+                                                                                        onClick={() => handleCourseClick(course.id)}
+                                                                                        // No onRemove - Academy courses aren't removable
+                                                                                        onAdd={() => handleAddButtonClick(course.id)}
+                                                                                        onDragStart={() => handleCourseDragStart(course.id)}
+                                                                                    />
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    // Grid View (Horizontal Scroll)
+                                                                    <div className="flex overflow-x-auto pb-4 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
+                                                                        {categoryCourses.map((course, index) => {
+                                                                            const delay = Math.min(index, 10) * 50;
+                                                                            return (
+                                                                                <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
+                                                                                    <LazyCourseCard>
+                                                                                        <div
+                                                                                            style={{ transitionDelay: `${delay}ms` }}
+                                                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                                        >
+                                                                                            <UniversalCard
+                                                                                                type="COURSE"
+                                                                                                title={course.title}
+                                                                                                subtitle={course.author}
+                                                                                                imageUrl={course.image}
+                                                                                                meta={course.duration}
+                                                                                                description={course.description}
+                                                                                                rating={course.rating}
+                                                                                                categories={course.categories || [course.category || 'General']}
+                                                                                                credits={{
+                                                                                                    shrm: course.badges?.includes('SHRM'),
+                                                                                                    hrci: course.badges?.includes('HRCI')
+                                                                                                }}
+                                                                                                actionLabel="VIEW"
+                                                                                                onAction={() => handleCourseClick(course.id)}
+                                                                                                onAdd={() => handleAddButtonClick(course.id)}
+                                                                                                draggable={true}
+                                                                                                onDragStart={() => handleCourseDragStart(course.id)}
+                                                                                            />
+                                                                                        </div>
+                                                                                    </LazyCourseCard>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )
                                                             )}
                                                         </div>
                                                     );
@@ -4453,71 +4707,126 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             ))}
                                                         </div>
                                                     )}
-                                                    <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
-                                                        {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
-                                                        {collectionItems.map((item) => (
-                                                            <div key={item.id} className="animate-fade-in">
-                                                                <UniversalCollectionCard
-                                                                    item={item as any} // Dynamic mapping handles types
-                                                                    onRemove={(id, type) => initiateDeleteContextItem(id, type as ContextItemType, item.title)}
-                                                                    onClick={(i) => {
-                                                                        if (i.itemType === 'MODULE') {
-                                                                            handleModuleClick(i);
-                                                                        } else if (i.itemType === 'LESSON') {
-                                                                            handleLessonClick(i);
-                                                                        } else if (i.itemType === 'VIDEO') {
-                                                                            const video = i as any;
-                                                                            handleOpenVideoPanel({
-                                                                                id: video.id,
-                                                                                user_id: video.user_id || '',
-                                                                                collection_id: video.collection_id || null,
-                                                                                type: 'VIDEO',
-                                                                                title: video.title,
-                                                                                content: video.content,
-                                                                                created_at: video.created_at,
-                                                                                updated_at: video.updated_at || video.created_at,
-                                                                            });
-                                                                        }
-                                                                    }}
-                                                                    onDragStart={handleDragStart}
-                                                                />
-                                                            </div>
-                                                        ))}
 
-                                                        {/* Render Courses */}
-                                                        {visibleCourses.map((course, index) => {
-                                                            const delay = Math.min(index, 15) * 50;
-                                                            return (
-                                                                <LazyCourseCard key={course.id}>
-                                                                    <div
-                                                                        style={{ transitionDelay: `${delay}ms` }}
-                                                                        className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                                    >
-                                                                        <UniversalCard
-                                                                            type="COURSE"
-                                                                            title={course.title}
-                                                                            subtitle={course.author}
-                                                                            imageUrl={course.image}
-                                                                            meta={course.duration}
-                                                                            description={course.description}
-                                                                            rating={course.rating}
-                                                                            categories={[course.category]}
-                                                                            credits={{
-                                                                                shrm: course.badges?.includes('SHRM'),
-                                                                                hrci: course.badges?.includes('HRCI')
-                                                                            }}
-                                                                            actionLabel="VIEW"
-                                                                            onAction={() => handleCourseClick(course.id)}
+                                                    {/* Academy Filtered View - List or Grid based on academyViewMode */}
+                                                    {activeCollectionId === 'academy' && academyViewMode === 'list' ? (
+                                                        // List View for Academy
+                                                        <div className="flex flex-col gap-2 px-8 mb-20">
+                                                            {visibleCourses.map((course, index) => {
+                                                                const courseAsItem: CollectionItemDetail = {
+                                                                    ...course,
+                                                                    itemType: 'COURSE' as const,
+                                                                };
+                                                                return (
+                                                                    <div key={course.id} className="animate-fade-in-up"
+                                                                        style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
+                                                                        <UniversalCollectionListItem
+                                                                            item={courseAsItem}
+                                                                            onClick={() => handleCourseClick(course.id)}
+                                                                            // No onRemove - Academy courses aren't removable
                                                                             onAdd={() => handleAddButtonClick(course.id)}
-                                                                            draggable={true}
                                                                             onDragStart={() => handleCourseDragStart(course.id)}
                                                                         />
                                                                     </div>
-                                                                </LazyCourseCard>
-                                                            );
-                                                        })}
+                                                                );
+                                                            })}
 
-                                                        {/* Render Lesson Search Results */}
+                                                            {/* Render Lesson Search Results in List View */}
+                                                            {activeFilters.includeLessons && visibleLessons.length > 0 && visibleLessons.map((lesson, index) => {
+                                                                const lessonAsItem: CollectionItemDetail = {
+                                                                    ...lesson,
+                                                                    itemType: 'LESSON' as const,
+                                                                    title: lesson.title,
+                                                                    courseTitle: lesson.course_title,
+                                                                    courseImage: lesson.course_image,
+                                                                    courseAuthor: lesson.course_author,
+                                                                    isCompleted: false,
+                                                                };
+                                                                return (
+                                                                    <div key={`lesson-${lesson.id}`} className="animate-fade-in-up"
+                                                                        style={{ animationDelay: `${Math.min(visibleCourses.length + index, 20) * 30}ms` }}>
+                                                                        <UniversalCollectionListItem
+                                                                            item={lessonAsItem}
+                                                                            onClick={() => handleLessonClick(lesson, false)}
+                                                                            // No onRemove - Academy lessons aren't removable
+                                                                            onAdd={() => handleAddButtonClick(lesson.course_id)}
+                                                                            onDragStart={() => handleDragStart({
+                                                                                type: 'LESSON',
+                                                                                id: lesson.id,
+                                                                                title: lesson.title,
+                                                                            })}
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        // Grid View (default)
+                                                        <div className="grid gap-x-6 gap-y-12 mb-20 px-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                                                            {/* Render Context Items (Modules, Lessons, Resources, etc.) */}
+                                                            {collectionItems.map((item) => (
+                                                                <div key={item.id} className="animate-fade-in">
+                                                                    <UniversalCollectionCard
+                                                                        item={item as any} // Dynamic mapping handles types
+                                                                        onRemove={(id, type) => initiateDeleteContextItem(id, type as ContextItemType, item.title)}
+                                                                        onClick={(i) => {
+                                                                            if (i.itemType === 'MODULE') {
+                                                                                handleModuleClick(i);
+                                                                            } else if (i.itemType === 'LESSON') {
+                                                                                handleLessonClick(i);
+                                                                            } else if (i.itemType === 'VIDEO') {
+                                                                                const video = i as any;
+                                                                                handleOpenVideoPanel({
+                                                                                    id: video.id,
+                                                                                    user_id: video.user_id || '',
+                                                                                    collection_id: video.collection_id || null,
+                                                                                    type: 'VIDEO',
+                                                                                    title: video.title,
+                                                                                    content: video.content,
+                                                                                    created_at: video.created_at,
+                                                                                    updated_at: video.updated_at || video.created_at,
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        onDragStart={handleDragStart}
+                                                                    />
+                                                                </div>
+                                                            ))}
+
+                                                            {/* Render Courses */}
+                                                            {visibleCourses.map((course, index) => {
+                                                                const delay = Math.min(index, 15) * 50;
+                                                                return (
+                                                                    <LazyCourseCard key={course.id}>
+                                                                        <div
+                                                                            style={{ transitionDelay: `${delay}ms` }}
+                                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                        >
+                                                                            <UniversalCard
+                                                                                type="COURSE"
+                                                                                title={course.title}
+                                                                                subtitle={course.author}
+                                                                                imageUrl={course.image}
+                                                                                meta={course.duration}
+                                                                                description={course.description}
+                                                                                rating={course.rating}
+                                                                                categories={course.categories || [course.category || 'General']}
+                                                                                credits={{
+                                                                                    shrm: course.badges?.includes('SHRM'),
+                                                                                    hrci: course.badges?.includes('HRCI')
+                                                                                }}
+                                                                                actionLabel="VIEW"
+                                                                                onAction={() => handleCourseClick(course.id)}
+                                                                                onAdd={() => handleAddButtonClick(course.id)}
+                                                                                draggable={true}
+                                                                                onDragStart={() => handleCourseDragStart(course.id)}
+                                                                            />
+                                                                        </div>
+                                                                    </LazyCourseCard>
+                                                                );
+                                                            })}
+
+                                                            {/* Render Lesson Search Results */}
                                                         {activeFilters.includeLessons && visibleLessons.length > 0 && visibleLessons.map((lesson, index) => {
                                                             const delay = Math.min(visibleCourses.length + index, 30) * 50;
                                                             return (
@@ -4568,8 +4877,40 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             </div>
                                                         ))}
 
-                                                        {/* Render Instructors/Experts */}
-                                                        {activeCollectionId === 'instructors' && experts.map((expert, index) => (
+                                                        {/* Loading State for Experts */}
+                                                        {activeCollectionId === 'instructors' && isLoadingExperts && (
+                                                            <div className="col-span-full flex flex-col items-center justify-center min-h-[400px] px-8">
+                                                                {/* Animated loader container */}
+                                                                <div className="relative mb-8">
+                                                                    {/* Outer glow ring */}
+                                                                    <div className="absolute inset-0 w-20 h-20 rounded-full bg-brand-blue-light/20 animate-ping" />
+                                                                    {/* Inner container */}
+                                                                    <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-brand-blue-light/30 to-brand-blue-light/10 border border-brand-blue-light/30 flex items-center justify-center">
+                                                                        <Loader2 size={32} className="text-brand-blue-light animate-spin" />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Loading text */}
+                                                                <div className="text-center max-w-md">
+                                                                    <h3 className="text-white font-semibold text-lg mb-3">
+                                                                        Loading Experts
+                                                                    </h3>
+                                                                    <p className="text-slate-400 text-sm leading-relaxed">
+                                                                        Please wait while we gather expert profiles and their courses.
+                                                                    </p>
+                                                                </div>
+
+                                                                {/* Subtle animated dots */}
+                                                                <div className="flex items-center gap-1.5 mt-6">
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                                    <div className="w-2 h-2 rounded-full bg-brand-blue-light/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Render Instructors/Experts - Grid View (only when not loading) */}
+                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && collectionViewMode === 'grid' && experts.map((expert, index) => (
                                                             <div key={expert.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                                                                 <InstructorCard
                                                                     instructor={expert}
@@ -4578,15 +4919,86 @@ group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black
                                                             </div>
                                                         ))}
 
-                                                        {/* DEBUG INFO */}
-                                                        {/* <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
-                                                            Items: {collectionItems.length} |
-                                                            Types: {collectionItems.map(i => i.itemType).join(',')} |
-                                                            Active: {activeCollectionId} |
-                                                            User: {user?.id}
-                                                        </div> */}
+                                                        {/* Render Instructors/Experts - List View */}
+                                                        {activeCollectionId === 'instructors' && !isLoadingExperts && collectionViewMode === 'list' && (
+                                                            <div className="col-span-full flex flex-col gap-2">
+                                                                {experts.map((expert, index) => (
+                                                                    <div
+                                                                        key={expert.id}
+                                                                        onClick={() => setSelectedInstructorId(expert.id)}
+                                                                        className="group relative flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 border border-white/5 hover:border-brand-blue-light/30 animate-fade-in"
+                                                                        style={{ animationDelay: `${index * 30}ms` }}
+                                                                    >
+                                                                        {/* Avatar */}
+                                                                        <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 border-white/10 group-hover:border-brand-blue-light/30 transition-colors">
+                                                                            {expert.avatar ? (
+                                                                                <img
+                                                                                    src={expert.avatar}
+                                                                                    alt={expert.name}
+                                                                                    className="w-full h-full object-cover"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-full h-full bg-gradient-to-br from-brand-blue-light/30 to-slate-700 flex items-center justify-center text-lg font-bold text-white/60">
+                                                                                    {expert.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
 
-                                                    </div>
+                                                                        {/* Separator */}
+                                                                        <div className="w-px h-10 bg-white/10 flex-shrink-0" />
+
+                                                                        {/* Content */}
+                                                                        <div className="flex-1 min-w-0">
+                                                                            {/* Row 1: Name | Title | Rating | Course Count */}
+                                                                            <div className="flex items-center gap-3 flex-wrap">
+                                                                                <h4 className="text-sm font-semibold text-white truncate group-hover:text-brand-blue-light transition-colors">
+                                                                                    {expert.name}
+                                                                                </h4>
+                                                                                {expert.role && (
+                                                                                    <>
+                                                                                        <span className="text-white/20 hidden lg:block">|</span>
+                                                                                        <span className="text-[11px] text-slate-400 flex-shrink-0 hidden lg:block">
+                                                                                            {expert.role}
+                                                                                        </span>
+                                                                                    </>
+                                                                                )}
+                                                                                <span className="text-white/20 hidden lg:block">|</span>
+                                                                                <span className="text-xs text-slate-400 flex items-center gap-1.5 flex-shrink-0">
+                                                                                    <BookOpen size={12} className="text-brand-blue-light" />
+                                                                                    {expert.publishedCourseCount} {expert.publishedCourseCount === 1 ? 'Course' : 'Courses'}
+                                                                                </span>
+                                                                            </div>
+                                                                            {/* Row 2: Bio */}
+                                                                            {expert.bio && (
+                                                                                <p className="text-xs text-slate-400 truncate mt-0.5 pr-6 group-hover:text-slate-300 transition-colors">
+                                                                                    {expert.bio}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Right section */}
+                                                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                                                            <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
+                                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-brand-blue-light/10 text-brand-blue-light border border-brand-blue-light/20 hidden sm:block w-20 text-center">
+                                                                                Expert
+                                                                            </span>
+                                                                            <ChevronRight size={16} className="text-slate-600 group-hover:text-brand-blue-light transition-colors" />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                            {/* DEBUG INFO */}
+                                                            {/* <div className="fixed bottom-4 left-4 bg-black/80 text-white p-2 text-xs z-50">
+                                                                Items: {collectionItems.length} |
+                                                                Types: {collectionItems.map(i => i.itemType).join(',')} |
+                                                                Active: {activeCollectionId} |
+                                                                User: {user?.id}
+                                                            </div> */}
+
+                                                        </div>
+                                                    )}
 
                                                     {/* Empty State - MOVED OUTSIDE GRID */}
                                                     {isCollectionEmpty && (

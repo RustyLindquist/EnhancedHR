@@ -117,7 +117,8 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
                 credentials: authorProfile.credentials
             } : undefined,
             progress: 0,
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description,
             duration: course.duration,
@@ -158,6 +159,9 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
 
     const supabase = await createClient();
 
+    // Escape special LIKE characters to prevent injection and unintended matches
+    const escapedQuery = query.trim().replace(/[%_\\]/g, '\\$&');
+
     // Search lessons with course info via nested join through modules (only from published courses)
     const { data, error } = await supabase
         .from('lessons')
@@ -179,7 +183,7 @@ export async function searchLessonsAction(query: string): Promise<LessonSearchRe
                 )
             )
         `)
-        .ilike('title', `%${query.trim()}%`)
+        .ilike('title', `%${escapedQuery}%`)
         .eq('modules.courses.status', 'published')
         .limit(50);
 

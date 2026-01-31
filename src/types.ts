@@ -45,7 +45,8 @@ export interface Course {
   author: string;
   authorDetails?: CourseAuthor; // Full author profile if available
   progress: number; // 0-100
-  category: string;
+  categories: string[]; // Multiple categories this course belongs to
+  category?: string; // @deprecated - use categories instead, kept for backwards compatibility
   image?: string; // Featured image URL
   description: string;
   duration: string; // e.g., "2h 30m"

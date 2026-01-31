@@ -58,14 +58,15 @@ export async function fetchCourses(): Promise<Course[]> {
 
     return coursesData.map((course: any) => {
         const userCollections = getCollectionsForCourse(course.id);
-        
+
         return {
             type: 'COURSE',
             id: course.id,
             title: course.title,
             author: course.author,
             progress: 0, // Default for now, will integrate user_progress later
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description,
             duration: course.duration,

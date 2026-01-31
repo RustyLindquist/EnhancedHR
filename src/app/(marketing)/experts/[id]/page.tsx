@@ -3,8 +3,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { BookOpen, Clock, Award, GraduationCap, Briefcase, Star, BookMarked, Trophy } from 'lucide-react';
+import { Award, GraduationCap, Briefcase, Star, BookMarked, Trophy } from 'lucide-react';
 import ExpertDetailsHeader from '@/components/ExpertDetailsHeader';
+import ExpertCoursesContent from './ExpertCoursesContent';
 
 // Credential type icons mapping
 const credentialIcons: Record<string, React.ReactNode> = {
@@ -139,73 +140,10 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
             )}
 
             {/* Courses Section */}
-            <section className="py-16 border-t border-white/5">
-                <div className="max-w-7xl mx-auto px-6">
-                    <h2 className="text-2xl font-bold text-white mb-8">Courses by {expert.full_name?.split(' ')[0] || 'this Expert'}</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {courses.map(course => (
-                            <Link
-                                key={course.id}
-                                href={`/?courseId=${course.id}`}
-                                className="group rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-brand-blue-light/30 transition-all hover:-translate-y-1"
-                            >
-                                {/* Course Image */}
-                                <div className="aspect-video relative bg-slate-800">
-                                    {course.image_url ? (
-                                        <Image
-                                            src={course.image_url}
-                                            alt={course.title}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <BookOpen size={48} className="text-slate-600" />
-                                        </div>
-                                    )}
-
-                                    {/* Category Badge */}
-                                    {course.category && (
-                                        <div className="absolute top-3 left-3 px-2 py-1 rounded bg-black/60 text-xs text-white font-medium backdrop-blur-sm">
-                                            {course.category}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Course Details */}
-                                <div className="p-5">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-brand-blue-light transition-colors line-clamp-2 mb-2">
-                                        {course.title}
-                                    </h3>
-
-                                    {course.description && (
-                                        <p className="text-sm text-slate-400 line-clamp-2 mb-4">
-                                            {course.description}
-                                        </p>
-                                    )}
-
-                                    <div className="flex items-center justify-between text-xs text-slate-500">
-                                        {course.duration && (
-                                            <div className="flex items-center gap-1">
-                                                <Clock size={12} />
-                                                <span>{course.duration}</span>
-                                            </div>
-                                        )}
-
-                                        {course.badges && (
-                                            <div className="flex items-center gap-1">
-                                                <Award size={12} />
-                                                <span>{course.badges} Credits</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </section>
+            <ExpertCoursesContent
+                courses={courses}
+                expertFirstName={expert.full_name?.split(' ')[0] || 'this Expert'}
+            />
 
             {/* CTA Section */}
             <section className="py-20 border-t border-white/5">

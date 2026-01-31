@@ -149,7 +149,8 @@ export async function fetchOrgCoursesAction(
                 credentials: authorProfile.credentials
             } : undefined,
             progress: 0,
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description || '',
             duration: course.duration || '0m',
@@ -288,7 +289,8 @@ export async function createOrgCourse(
         .insert({
             title: 'Untitled Course',
             description: '',
-            category: 'General',
+            category: 'General', // @deprecated - use categories instead
+            categories: ['General'],
             status: 'draft',
             duration: '0m',
             rating: 0,

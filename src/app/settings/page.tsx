@@ -7,6 +7,7 @@ import StandardPageLayout from '@/components/StandardPageLayout';
 import CanvasHeader from '@/components/CanvasHeader';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useBackHandler } from '@/hooks/useBackHandler';
 import { BackgroundTheme } from '@/types';
 
 interface UserSettings {
@@ -96,6 +97,9 @@ export default function SettingsPage() {
     const supabase = createClient();
     const { currentTheme, setTheme, themes } = useTheme();
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Register browser back button handler to go to dashboard
+    useBackHandler(() => router.push('/dashboard'));
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];

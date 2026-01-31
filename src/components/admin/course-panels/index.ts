@@ -1,5 +1,6 @@
 export { default as CourseImageEditorPanel } from './CourseImageEditorPanel';
 export { default as CourseDescriptionEditorPanel } from './CourseDescriptionEditorPanel';
+export { default as OrgCourseDescriptionPanel } from './OrgCourseDescriptionPanel';
 export { default as SkillsEditorPanel } from './SkillsEditorPanel';
 export { default as CreditsEditorPanel } from './CreditsEditorPanel';
 export { default as ExpertAssignmentPanel } from './ExpertAssignmentPanel';

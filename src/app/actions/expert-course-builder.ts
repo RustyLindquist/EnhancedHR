@@ -93,7 +93,8 @@ export async function createExpertCourse() {
         .insert({
             title: 'Untitled Course',
             description: '',
-            category: 'General',
+            category: 'General', // @deprecated - use categories instead
+            categories: ['General'],
             status: 'draft',
             duration: '0m',
             rating: 0,
@@ -221,7 +222,8 @@ export async function getExpertCourseForBuilder(courseId: number) {
                 credentials: authorProfile.credentials
             } : undefined,
             progress: 0,
-            category: course.category,
+            category: course.category, // @deprecated - use categories instead
+            categories: course.categories || (course.category ? [course.category] : ['General']),
             image: course.image_url,
             description: course.description || '',
             duration: course.duration || '0m',
@@ -270,7 +272,8 @@ export async function updateExpertCourseImage(courseId: number, imageUrl: string
 export async function updateExpertCourseDetails(courseId: number, data: {
     title?: string;
     description?: string;
-    category?: string;
+    category?: string; // @deprecated - use categories instead
+    categories?: string[];
     duration?: string;
 }) {
     const accessCheck = await checkExpertCourseAccess(courseId);
@@ -280,10 +283,23 @@ export async function updateExpertCourseDetails(courseId: number, data: {
 
     const supabase = await createClient();
 
+    // Build update object, handling both old category and new categories fields
+    const updateData: Record<string, unknown> = { ...data };
+
+    // If categories array provided, use it and keep legacy category field in sync
+    if (data.categories && data.categories.length > 0) {
+        updateData.categories = data.categories;
+        updateData.category = data.categories[0]; // Keep legacy field in sync
+    }
+    // If only old category field provided, also populate categories array
+    else if (data.category && !data.categories) {
+        updateData.categories = [data.category];
+    }
+
     // Expert cannot change status via this action (use submitCourseForReview instead)
     const { error } = await supabase
         .from('courses')
-        .update(data)
+        .update(updateData)
         .eq('id', courseId);
 
     if (error) {

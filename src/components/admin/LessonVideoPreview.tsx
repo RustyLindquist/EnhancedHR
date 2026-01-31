@@ -104,6 +104,7 @@ export default function LessonVideoPreview({
                         metadata={{
                             video_title: lessonTitle,
                         }}
+                        renditionOrder="desc"
                         primaryColor="#3B82F6"
                         accentColor="#1D4ED8"
                         style={{ width: '100%', aspectRatio: '16/9' }}

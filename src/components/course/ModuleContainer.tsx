@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown, Sparkles, Bookmark } from 'lucide-react';
+import { ChevronDown, Sparkles, Bookmark, Play, CheckCircle, ChevronRight, FileQuestion } from 'lucide-react';
 import { Module, Lesson, DragItem } from '../../types';
 import CourseLessonCard from './CourseLessonCard';
 
@@ -18,6 +18,7 @@ interface ModuleContainerProps {
     onAddToCollection: (item: DragItem) => void;
     onDragStart: (item: DragItem) => void;
     courseTitle: string;
+    lessonViewMode?: 'grid' | 'list';
 }
 
 const ModuleContainer: React.FC<ModuleContainerProps> = ({
@@ -32,7 +33,8 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
     onAskPrometheus,
     onAddToCollection,
     onDragStart,
-    courseTitle
+    courseTitle,
+    lessonViewMode = 'grid'
 }) => {
     // Calculate module progress
     const completedInModule = module.lessons.filter(l => completedLessons.has(l.id)).length;
@@ -67,9 +69,12 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
             }
         `}>
             {/* Module Header */}
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={onToggle}
-                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors group"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
+                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors group cursor-pointer"
             >
                 {/* Left: Chevron + Module Number + Title */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -123,7 +128,7 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                         </div>
                     )}
                 </div>
-            </button>
+            </div>
 
             {/* Module Content (Lessons Grid) */}
             <div
@@ -141,24 +146,137 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                             </p>
                         )}
 
-                        {/* Lessons Grid - 4 columns on larger screens */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {module.lessons.map((lesson, lessonIndex) => (
-                                <CourseLessonCard
-                                    key={lesson.id}
-                                    lesson={lesson}
-                                    lessonNumber={`${moduleIndex + 1}.${lessonIndex + 1}`}
-                                    moduleId={module.id}
-                                    courseTitle={courseTitle}
-                                    isActive={activeLessonId === lesson.id}
-                                    isCompleted={completedLessons.has(lesson.id)}
-                                    onClick={() => onLessonClick(lesson)}
-                                    onAskPrometheus={onAskPrometheus}
-                                    onAddToCollection={onAddToCollection}
-                                    onDragStart={onDragStart}
-                                />
-                            ))}
-                        </div>
+                        {/* Lessons Grid or List */}
+                        {lessonViewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {module.lessons.map((lesson, lessonIndex) => (
+                                    <CourseLessonCard
+                                        key={lesson.id}
+                                        lesson={lesson}
+                                        lessonNumber={`${moduleIndex + 1}.${lessonIndex + 1}`}
+                                        moduleId={module.id}
+                                        courseTitle={courseTitle}
+                                        isActive={activeLessonId === lesson.id}
+                                        isCompleted={completedLessons.has(lesson.id)}
+                                        onClick={() => onLessonClick(lesson)}
+                                        onAskPrometheus={onAskPrometheus}
+                                        onAddToCollection={onAddToCollection}
+                                        onDragStart={onDragStart}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            /* List View */
+                            <div className="flex flex-col gap-2">
+                                {module.lessons.map((lesson, lessonIndex) => {
+                                    const isActive = activeLessonId === lesson.id;
+                                    const isCompleted = completedLessons.has(lesson.id);
+                                    const isQuiz = lesson.type === 'quiz';
+                                    const glowColor = isQuiz
+                                        ? 'rgba(255, 147, 0, 0.6)'
+                                        : isActive
+                                            ? 'rgba(120, 192, 240, 0.6)'
+                                            : 'rgba(120, 192, 240, 0.4)';
+
+                                    return (
+                                        <div
+                                            key={lesson.id}
+                                            onClick={() => onLessonClick(lesson)}
+                                            className={`group relative flex items-center gap-4 px-4 py-3
+                                                ${isQuiz
+                                                    ? 'bg-brand-orange/5 hover:bg-brand-orange/10 border-brand-orange/20 hover:border-brand-orange/40'
+                                                    : isActive
+                                                        ? 'bg-brand-blue-light/10 border-brand-blue-light/50'
+                                                        : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] hover:border-white/20'}
+                                                border rounded-xl transition-all duration-300 cursor-pointer overflow-hidden`}
+                                            style={{
+                                                borderLeftWidth: '3px',
+                                                borderLeftColor: isQuiz
+                                                    ? 'rgb(255, 147, 0)'
+                                                    : isActive
+                                                        ? 'rgb(120, 192, 240)'
+                                                        : glowColor,
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isActive) {
+                                                    e.currentTarget.style.boxShadow = `0 0 20px ${glowColor}30, 0 0 40px ${glowColor}15, inset 0 0 20px ${glowColor}08`;
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isActive) {
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }
+                                            }}
+                                        >
+                                            {/* Subtle gradient overlay on hover */}
+                                            <div
+                                                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[10px]"
+                                                style={{
+                                                    background: `linear-gradient(135deg, ${glowColor}08 0%, transparent 50%)`
+                                                }}
+                                            />
+
+                                            {/* Icon */}
+                                            <div
+                                                className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0
+                                                    transition-transform duration-200 group-hover:scale-105
+                                                    ${isQuiz
+                                                        ? 'bg-brand-orange/20'
+                                                        : isActive
+                                                            ? 'bg-brand-blue-light/20'
+                                                            : 'bg-brand-blue-light/10'}`}
+                                            >
+                                                {isQuiz ? (
+                                                    <FileQuestion size={16} className="text-brand-orange" />
+                                                ) : (
+                                                    <Play size={16} className={`${isActive ? 'text-brand-blue-light' : 'text-brand-blue-light/70'}`} />
+                                                )}
+                                            </div>
+
+                                            {/* Separator */}
+                                            <div className={`w-px h-8 ${isQuiz ? 'bg-brand-orange/20' : 'bg-white/10'} flex-shrink-0`} />
+
+                                            {/* Main Content */}
+                                            <div className="flex-1 min-w-0 relative z-10">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isQuiz ? 'text-brand-orange' : 'text-brand-blue-light'}`}>
+                                                        {isQuiz ? 'Quiz' : `Lesson ${moduleIndex + 1}.${lessonIndex + 1}`}
+                                                    </span>
+                                                    {isCompleted && (
+                                                        <CheckCircle size={12} className="text-green-400" />
+                                                    )}
+                                                    {isActive && !isQuiz && (
+                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-brand-blue-light animate-pulse">
+                                                            Now Playing
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h4 className={`text-sm font-semibold truncate transition-colors
+                                                    ${isQuiz
+                                                        ? 'text-brand-orange group-hover:text-white'
+                                                        : isActive
+                                                            ? 'text-white'
+                                                            : 'text-white group-hover:text-brand-blue-light'}`}>
+                                                    {lesson.title}
+                                                </h4>
+                                            </div>
+
+                                            {/* Right section */}
+                                            <div className="flex items-center gap-4 flex-shrink-0 relative z-10">
+                                                {/* Duration */}
+                                                {lesson.duration && (
+                                                    <span className="text-[11px] text-slate-500 hidden sm:block">
+                                                        {lesson.duration}
+                                                    </span>
+                                                )}
+
+                                                <ChevronRight size={16} className={`${isQuiz ? 'text-brand-orange/60' : 'text-slate-600'} ml-1`} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {/* Empty state */}
                         {module.lessons.length === 0 && (

@@ -46,6 +46,8 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
     const SUPPORTED_TYPES = [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.ms-powerpoint',
         'text/plain',
         'text/markdown',
         'text/csv',
@@ -81,13 +83,13 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
     // Handle file selection from input or drop
     const handleFileSelect = (file: File) => {
         // Check file type
-        if (!SUPPORTED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx|txt|md|csv|json|jpg|jpeg|png|gif)$/i)) {
-            alert('Unsupported file type. Supported: PDF, DOCX, TXT, MD, CSV, JSON, JPG, PNG, GIF');
+        if (!SUPPORTED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx|pptx?|txt|md|csv|json|jpg|jpeg|png|gif)$/i)) {
+            alert('Unsupported file type. Supported: PDF, DOCX, PPTX, TXT, MD, CSV, JSON, JPG, PNG, GIF');
             return;
         }
-        // Check file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            alert('File too large. Maximum size is 10MB.');
+        // Check file size (max 25MB)
+        if (file.size > 25 * 1024 * 1024) {
+            alert('File too large. Maximum size is 25MB.');
             return;
         }
         setSelectedFile(file);
@@ -323,7 +325,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                             ref={fileInputRef}
                             type="file"
                             className="hidden"
-                            accept=".pdf,.docx,.doc,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif"
+                            accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) handleFileSelect(file);
@@ -376,7 +378,7 @@ const TopContextPanel: React.FC<TopContextPanelProps> = ({
                                     <Upload size={32} className="text-slate-400 group-hover:text-brand-blue-light" />
                                 </div>
                                 <p className="text-lg font-medium text-slate-300">Drag and drop file here</p>
-                                <p className="text-sm opacity-50 mt-2 mb-6">Support for PDF, DOCX, TXT, MD, CSV, JSON, JPG, PNG, GIF (max 10MB)</p>
+                                <p className="text-sm opacity-50 mt-2 mb-6">Support for PDF, DOCX, PPTX, TXT, MD, CSV, JSON, JPG, PNG, GIF (max 25MB)</p>
                                 <button
                                     type="button"
                                     className="px-6 py-2 bg-white/10 rounded-full text-sm font-bold text-white hover:bg-white/20 transition-colors"

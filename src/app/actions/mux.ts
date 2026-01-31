@@ -505,3 +505,38 @@ export async function fetchMuxVTT(vttUrl: string): Promise<{
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Get duration from a Mux playback ID
+ * Looks up the asset by playback ID and returns the duration
+ */
+export async function getDurationFromPlaybackId(playbackId: string): Promise<{
+    success: boolean;
+    duration?: number;
+    error?: string;
+}> {
+    try {
+        console.log(`[Mux] Getting duration for playback ID: ${playbackId}`);
+
+        // Get the asset ID from the playback ID
+        const assetId = await getAssetIdFromPlaybackId(playbackId);
+
+        if (!assetId) {
+            console.log(`[Mux] No asset found for playback ID: ${playbackId}`);
+            return { success: false, error: 'Asset not found' };
+        }
+
+        // Get asset details including duration
+        const details = await getMuxAssetDetails(assetId);
+
+        if (!details) {
+            return { success: false, error: 'Could not retrieve asset details' };
+        }
+
+        console.log(`[Mux] Got duration for playback ID ${playbackId}: ${details.duration} seconds`);
+        return { success: true, duration: details.duration };
+    } catch (error: any) {
+        console.error('[Mux] Error getting duration from playback ID:', error);
+        return { success: false, error: error.message || 'Unknown error' };
+    }
+}
