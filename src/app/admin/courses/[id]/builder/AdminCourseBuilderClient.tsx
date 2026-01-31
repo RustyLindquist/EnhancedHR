@@ -80,8 +80,21 @@ export default function AdminCourseBuilderClient({
         try {
             const result = await resetCourseDurations(initialCourse.id);
             if (result.success && result.results) {
-                const { lessonsUpdated, lessonsSkipped, lessonsFailed, totalDuration } = result.results;
-                alert(`Duration reset complete!\n\nUpdated: ${lessonsUpdated} lessons\nSkipped: ${lessonsSkipped}\nFailed: ${lessonsFailed}\n\nNew course duration: ${totalDuration}`);
+                const { lessonsUpdated, lessonsSkipped, lessonsFailed, totalDuration, details } = result.results;
+
+                // Build detailed message
+                let message = `Duration reset complete!\n\nUpdated: ${lessonsUpdated} lessons\nSkipped: ${lessonsSkipped}\nFailed: ${lessonsFailed}\n\nNew course duration: ${totalDuration}`;
+
+                // Show failed lessons with their errors
+                if (lessonsFailed > 0) {
+                    const failedDetails = details
+                        .filter(d => d.status === 'failed')
+                        .map(d => `• ${d.lessonTitle}: ${d.error}`)
+                        .join('\n');
+                    message += `\n\n--- Failed Lessons ---\n${failedDetails}`;
+                }
+
+                alert(message);
                 handleRefresh();
             } else {
                 alert(`Error: ${result.error || 'Unknown error'}`);

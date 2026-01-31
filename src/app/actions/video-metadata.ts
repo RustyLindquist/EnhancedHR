@@ -5,7 +5,7 @@
  * from various video platforms (Vimeo, Wistia) using their oEmbed APIs.
  */
 
-export type VideoPlatform = 'youtube' | 'vimeo' | 'wistia' | 'mux' | 'other';
+export type VideoPlatform = 'youtube' | 'vimeo' | 'wistia' | 'mux' | 'google_drive' | 'other';
 
 export interface VideoMetadataResult {
     success: boolean;
@@ -39,6 +39,11 @@ export async function detectVideoPlatform(url: string): Promise<VideoPlatform> {
         url.includes('fast.wistia')
     ) {
         return 'wistia';
+    }
+
+    // Google Drive detection
+    if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
+        return 'google_drive';
     }
 
     // Mux playback IDs are alphanumeric strings without dots or slashes
