@@ -2040,3 +2040,304 @@ Write the module description now:`;
         return { success: false, error: error.message || 'Failed to generate description' };
     }
 }
+
+// ============================================
+// Course Duration Reset Action
+// ============================================
+
+import { getDurationFromPlaybackId } from './mux';
+import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from './video-metadata';
+
+/**
+ * Format duration in seconds to a human-readable string
+ * Examples: 120 -> "2m", 90 -> "1m 30s", 3730 -> "1h 2m"
+ */
+function formatDurationForCourse(seconds: number): string {
+    if (seconds < 0 || !isFinite(seconds)) return '0m';
+
+    const totalSeconds = Math.round(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    if (hours > 0) {
+        if (mins > 0) {
+            return `${hours}h ${mins}m`;
+        }
+        return `${hours}h`;
+    }
+
+    if (mins > 0) {
+        if (secs > 0 && mins < 10) {
+            return `${mins}m ${secs}s`;
+        }
+        return `${mins}m`;
+    }
+
+    return secs > 0 ? `${secs}s` : '0m';
+}
+
+/**
+ * Parse a duration string back to seconds
+ * Supports formats: "2m", "1m 30s", "1h 2m", "45s"
+ */
+function parseDurationToSeconds(duration: string | null | undefined): number {
+    if (!duration) return 0;
+
+    let totalSeconds = 0;
+
+    // Match hours
+    const hoursMatch = duration.match(/(\d+)\s*h/i);
+    if (hoursMatch) {
+        totalSeconds += parseInt(hoursMatch[1], 10) * 3600;
+    }
+
+    // Match minutes
+    const minsMatch = duration.match(/(\d+)\s*m(?!s)/i);
+    if (minsMatch) {
+        totalSeconds += parseInt(minsMatch[1], 10) * 60;
+    }
+
+    // Match seconds
+    const secsMatch = duration.match(/(\d+)\s*s/i);
+    if (secsMatch) {
+        totalSeconds += parseInt(secsMatch[1], 10);
+    }
+
+    return totalSeconds;
+}
+
+export interface LessonDurationDetail {
+    lessonId: string;
+    lessonTitle: string;
+    status: 'updated' | 'skipped' | 'failed';
+    oldDuration?: string;
+    newDuration?: string;
+    error?: string;
+}
+
+export interface ResetDurationsResult {
+    success: boolean;
+    results?: {
+        lessonsUpdated: number;
+        lessonsSkipped: number;
+        lessonsFailed: number;
+        totalDuration: string;
+        details: LessonDurationDetail[];
+    };
+    error?: string;
+}
+
+/**
+ * Reset all course durations by fetching video metadata from their respective platforms.
+ * Updates lesson durations, aggregates to modules, and updates the total course duration.
+ *
+ * @param courseId - The course ID to reset durations for
+ * @returns Results with details about each lesson processed
+ */
+export async function resetCourseDurations(courseId: number): Promise<ResetDurationsResult> {
+    const admin = await createAdminClient();
+
+    try {
+        console.log(`[resetCourseDurations] Starting duration reset for course ${courseId}`);
+
+        // Fetch all modules with their lessons
+        const { data: modules, error: modulesError } = await admin
+            .from('modules')
+            .select('id, title, lessons(id, title, video_url, duration, type)')
+            .eq('course_id', courseId)
+            .order('order');
+
+        if (modulesError) {
+            console.error('[resetCourseDurations] Error fetching modules:', modulesError);
+            return { success: false, error: modulesError.message };
+        }
+
+        if (!modules || modules.length === 0) {
+            return { success: false, error: 'No modules found for this course' };
+        }
+
+        const details: LessonDurationDetail[] = [];
+        let lessonsUpdated = 0;
+        let lessonsSkipped = 0;
+        let lessonsFailed = 0;
+        let totalCourseDurationSeconds = 0;
+
+        // Process each module
+        for (const courseModule of modules) {
+            const lessons = courseModule.lessons as Array<{
+                id: string;
+                title: string;
+                video_url: string | null;
+                duration: string | null;
+                type: string | null;
+            }> || [];
+
+            // Process each lesson
+            for (const lesson of lessons) {
+                // Skip non-video lessons or lessons without video_url
+                if (lesson.type !== 'video' || !lesson.video_url) {
+                    details.push({
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        status: 'skipped',
+                        oldDuration: lesson.duration || undefined,
+                        error: !lesson.video_url ? 'No video URL' : `Lesson type is "${lesson.type || 'unknown'}"`
+                    });
+                    lessonsSkipped++;
+
+                    // Still count existing duration for non-video lessons
+                    totalCourseDurationSeconds += parseDurationToSeconds(lesson.duration);
+                    continue;
+                }
+
+                try {
+                    // Detect the video platform
+                    const platform = await detectVideoPlatform(lesson.video_url);
+                    console.log(`[resetCourseDurations] Lesson "${lesson.title}" - Platform: ${platform}`);
+
+                    let durationSeconds: number | undefined;
+                    let fetchError: string | undefined;
+
+                    switch (platform) {
+                        case 'mux': {
+                            const muxResult = await getDurationFromPlaybackId(lesson.video_url);
+                            if (muxResult.success && muxResult.duration !== undefined) {
+                                durationSeconds = muxResult.duration;
+                            } else {
+                                fetchError = muxResult.error || 'Failed to get Mux duration';
+                            }
+                            break;
+                        }
+                        case 'youtube': {
+                            const ytResult = await fetchYouTubeMetadata(lesson.video_url);
+                            if (ytResult.success && ytResult.metadata?.duration !== undefined) {
+                                durationSeconds = ytResult.metadata.duration;
+                            } else {
+                                fetchError = ytResult.error || 'Failed to get YouTube duration';
+                            }
+                            break;
+                        }
+                        case 'vimeo': {
+                            const vimeoResult = await fetchVimeoMetadata(lesson.video_url);
+                            if (vimeoResult.success && vimeoResult.duration !== undefined) {
+                                durationSeconds = vimeoResult.duration;
+                            } else {
+                                fetchError = vimeoResult.error || 'Failed to get Vimeo duration';
+                            }
+                            break;
+                        }
+                        case 'wistia': {
+                            const wistiaResult = await fetchWistiaMetadata(lesson.video_url);
+                            if (wistiaResult.success && wistiaResult.duration !== undefined) {
+                                durationSeconds = wistiaResult.duration;
+                            } else {
+                                fetchError = wistiaResult.error || 'Failed to get Wistia duration';
+                            }
+                            break;
+                        }
+                        default: {
+                            fetchError = `Unsupported video platform: ${platform}`;
+                        }
+                    }
+
+                    if (durationSeconds !== undefined) {
+                        const newDuration = formatDurationForCourse(durationSeconds);
+
+                        // Update the lesson duration
+                        const { error: updateError } = await admin
+                            .from('lessons')
+                            .update({ duration: newDuration })
+                            .eq('id', lesson.id);
+
+                        if (updateError) {
+                            details.push({
+                                lessonId: lesson.id,
+                                lessonTitle: lesson.title,
+                                status: 'failed',
+                                oldDuration: lesson.duration || undefined,
+                                error: `Database update failed: ${updateError.message}`
+                            });
+                            lessonsFailed++;
+                        } else {
+                            details.push({
+                                lessonId: lesson.id,
+                                lessonTitle: lesson.title,
+                                status: 'updated',
+                                oldDuration: lesson.duration || undefined,
+                                newDuration: newDuration
+                            });
+                            lessonsUpdated++;
+                            totalCourseDurationSeconds += durationSeconds;
+                        }
+                    } else {
+                        details.push({
+                            lessonId: lesson.id,
+                            lessonTitle: lesson.title,
+                            status: 'failed',
+                            oldDuration: lesson.duration || undefined,
+                            error: fetchError || 'Could not determine duration'
+                        });
+                        lessonsFailed++;
+
+                        // Still count existing duration if fetch failed
+                        totalCourseDurationSeconds += parseDurationToSeconds(lesson.duration);
+                    }
+                } catch (err: any) {
+                    console.error(`[resetCourseDurations] Error processing lesson "${lesson.title}":`, err);
+                    details.push({
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        status: 'failed',
+                        oldDuration: lesson.duration || undefined,
+                        error: err.message || 'Unknown error'
+                    });
+                    lessonsFailed++;
+
+                    // Still count existing duration if processing failed
+                    totalCourseDurationSeconds += parseDurationToSeconds(lesson.duration);
+                }
+            }
+        }
+
+        // Calculate and update total course duration
+        const totalDuration = formatDurationForCourse(totalCourseDurationSeconds);
+
+        console.log(`[resetCourseDurations] Updating course duration to: ${totalDuration}`);
+
+        const { error: courseUpdateError } = await admin
+            .from('courses')
+            .update({ duration: totalDuration })
+            .eq('id', courseId);
+
+        if (courseUpdateError) {
+            console.error('[resetCourseDurations] Error updating course duration:', courseUpdateError);
+            // Don't fail the whole operation, just log the error
+        }
+
+        // Revalidate paths
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
+        revalidatePath(`/courses/${courseId}`);
+
+        console.log(`[resetCourseDurations] Complete - Updated: ${lessonsUpdated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}`);
+
+        return {
+            success: true,
+            results: {
+                lessonsUpdated,
+                lessonsSkipped,
+                lessonsFailed,
+                totalDuration,
+                details
+            }
+        };
+
+    } catch (error: any) {
+        console.error('[resetCourseDurations] Unexpected error:', error);
+        return {
+            success: false,
+            error: error.message || 'An unexpected error occurred'
+        };
+    }
+}

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, Upload } from 'lucide-react';
+import { ArrowLeft, Eye, Upload, RefreshCw, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -21,6 +21,7 @@ import {
     ResourcesEditorPanel
 } from '@/components/admin/course-panels';
 import BulkVideoUploadPanel from '@/components/admin/course-panels/BulkVideoUploadPanel';
+import { resetCourseDurations } from '@/app/actions/course-builder';
 
 interface AdminCourseBuilderClientProps {
     course: Course & { skills?: string[]; status?: string };
@@ -37,6 +38,7 @@ export default function AdminCourseBuilderClient({
 }: AdminCourseBuilderClientProps) {
     const router = useRouter();
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isResettingTimes, setIsResettingTimes] = useState(false);
 
     // Panel state
     const [activePanel, setActivePanel] = useState<CourseBuilderPanelType>(null);
@@ -68,6 +70,28 @@ export default function AdminCourseBuilderClient({
         handleClosePanel();
         handleRefresh();
     }, [handleClosePanel, handleRefresh]);
+
+    const handleResetCourseTimes = async () => {
+        if (!confirm('This will recalculate durations for all video lessons in this course. Continue?')) {
+            return;
+        }
+
+        setIsResettingTimes(true);
+        try {
+            const result = await resetCourseDurations(initialCourse.id);
+            if (result.success && result.results) {
+                const { lessonsUpdated, lessonsSkipped, lessonsFailed, totalDuration } = result.results;
+                alert(`Duration reset complete!\n\nUpdated: ${lessonsUpdated} lessons\nSkipped: ${lessonsSkipped}\nFailed: ${lessonsFailed}\n\nNew course duration: ${totalDuration}`);
+                handleRefresh();
+            } else {
+                alert(`Error: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            alert(`Error resetting durations: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsResettingTimes(false);
+        }
+    };
 
     // Get the current editing module's details
     const editingModule = useMemo(() => {
@@ -123,6 +147,18 @@ export default function AdminCourseBuilderClient({
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleResetCourseTimes}
+                        disabled={isResettingTimes}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isResettingTimes ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={16} />
+                        )}
+                        {isResettingTimes ? 'Resetting...' : 'Reset Course Times'}
+                    </button>
                     <button
                         onClick={() => handleOpenPanel('bulk_upload')}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-sm font-medium"
