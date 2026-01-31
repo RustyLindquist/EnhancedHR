@@ -2046,7 +2046,7 @@ Write the module description now:`;
 // ============================================
 
 import { getDurationFromPlaybackId } from './mux';
-import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from './video-metadata';
+import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata, extractMuxPlaybackId } from './video-metadata';
 
 /**
  * Format duration in seconds to a human-readable string
@@ -2201,7 +2201,13 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
 
                     switch (platform) {
                         case 'mux': {
-                            const muxResult = await getDurationFromPlaybackId(lesson.video_url);
+                            // Extract playback ID from URL if needed
+                            const playbackId = await extractMuxPlaybackId(lesson.video_url);
+                            if (!playbackId) {
+                                fetchError = 'Could not extract Mux playback ID from URL';
+                                break;
+                            }
+                            const muxResult = await getDurationFromPlaybackId(playbackId);
                             if (muxResult.success && muxResult.duration !== undefined) {
                                 durationSeconds = muxResult.duration;
                             } else {

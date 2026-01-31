@@ -46,6 +46,11 @@ export async function detectVideoPlatform(url: string): Promise<VideoPlatform> {
         return 'google_drive';
     }
 
+    // Mux detection - full URLs with stream.mux.com domain
+    if (url.includes('stream.mux.com') || url.includes('mux.com/')) {
+        return 'mux';
+    }
+
     // Mux playback IDs are alphanumeric strings without dots or slashes
     // Typically 12-30 characters like "abc123XYZ789"
     if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10 && url.length <= 40) {
@@ -53,6 +58,25 @@ export async function detectVideoPlatform(url: string): Promise<VideoPlatform> {
     }
 
     return 'other';
+}
+
+/**
+ * Extract Mux playback ID from a URL or return the ID if already bare
+ */
+export async function extractMuxPlaybackId(url: string): Promise<string | null> {
+    if (!url) return null;
+
+    // If it's already just a playback ID (alphanumeric only)
+    if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10 && url.length <= 40) {
+        return url;
+    }
+
+    // Extract from Mux URL formats:
+    // https://stream.mux.com/{playbackId}.m3u8
+    // https://stream.mux.com/{playbackId}/high.mp4
+    // https://stream.mux.com/{playbackId}
+    const match = url.match(/(?:stream\.mux\.com|mux\.com)\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
 }
 
 /**
