@@ -2236,6 +2236,12 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
                             }
                             break;
                         }
+                        case 'google_drive': {
+                            // Google Drive videos don't have a duration API
+                            // They need to be re-uploaded via Mux or have duration set manually
+                            fetchError = 'Google Drive videos must be re-uploaded via Mux to get duration';
+                            break;
+                        }
                         default: {
                             fetchError = `Unsupported video platform: ${platform}`;
                         }
