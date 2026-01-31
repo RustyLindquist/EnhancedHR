@@ -42,47 +42,73 @@ async function fetchHTML(url: string): Promise<string> {
 
 /**
  * Parse course descriptions from WordPress HTML
+ *
+ * Structure:
+ * - elementor-cta__title contains the title
+ * - elementor-cta__description contains <p> tags
+ *   - First <p> with <em> is the tagline
+ *   - Subsequent <p> tags are the description
  */
 function parseCourseDescriptions(html: string): Map<string, string> {
     const descriptions = new Map<string, string>();
 
-    // Find all course cards by looking for "Launch Course" links
-    // The pattern is: title (h2/h3) followed by paragraphs, then a "Launch Course" link
-
-    // Split by Launch Course buttons to get each course card section
-    const sections = html.split(/Launch Course|LAUNCH COURSE/i);
+    // Split by "Launch Course" to get each course card section
+    const sections = html.split(/Launch Course/i);
 
     sections.forEach((section, index) => {
-        if (index === sections.length - 1) return; // Last section is after all courses
+        if (index === sections.length - 1) return;
 
-        // Extract title - look for heading patterns
-        const titleMatch = section.match(/<h[23][^>]*class="[^"]*elementor-heading-title[^"]*"[^>]*>([^<]+)<\/h[23]>/i) ||
-                          section.match(/<h[23][^>]*>([^<]+)<\/h[23]>/i);
+        // Extract title from h2 with elementor-cta__title class
+        // The title is inside the h2 tag with potential whitespace/newlines
+        const titleMatch = section.match(/<h2[^>]*elementor-cta__title[^>]*>([\s\S]*?)<\/h2>/i);
 
         if (!titleMatch) return;
 
         let title = titleMatch[1].trim();
-        // Normalize title case if all caps
-        if (title === title.toUpperCase()) {
-            title = title.split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-        }
+        // Normalize whitespace
+        title = title.replace(/\s+/g, ' ');
 
-        // Extract description paragraphs
+        // Find the description section (div with elementor-cta__description class)
+        const descMatch = section.match(/<div[^>]*elementor-cta__description[^>]*>([\s\S]*?)<\/div>/i);
+        if (!descMatch) return;
+
+        const descSection = descMatch[1];
+
+        // Extract all paragraph content (including those with nested tags like <em>)
         const paragraphs: string[] = [];
-        const pMatches = section.matchAll(/<p[^>]*>([^<]+)<\/p>/gi);
+        const pMatches = descSection.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+
         for (const match of pMatches) {
-            const text = match[1].trim();
-            if (text.length > 20) {
+            // Remove HTML tags and get plain text
+            let text = match[1]
+                .replace(/<[^>]+>/g, '')  // Remove HTML tags
+                .replace(/&nbsp;/g, ' ')   // Replace nbsp
+                .replace(/&#8217;/g, "'")  // Smart apostrophe
+                .replace(/&#8216;/g, "'")  // Smart single quote
+                .replace(/&#8220;/g, '"')  // Smart double quote open
+                .replace(/&#8221;/g, '"')  // Smart double quote close
+                .replace(/&#8230;/g, '...') // Ellipsis
+                .replace(/&amp;/g, '&')    // Ampersand
+                .replace(/\s+/g, ' ')      // Normalize whitespace
+                .trim();
+
+            if (text.length > 10) {
                 paragraphs.push(text);
             }
         }
 
-        // The description is usually the second paragraph (first is tagline)
-        // Or join all paragraphs after the first if there are multiple
+        // Usually first paragraph is tagline (short), rest is description
+        // If only one paragraph and it's substantial, use it as description
+        let description = '';
         if (paragraphs.length >= 2) {
-            descriptions.set(title, paragraphs.slice(1).join(' '));
-        } else if (paragraphs.length === 1) {
-            descriptions.set(title, paragraphs[0]);
+            // Skip first (tagline) and join the rest
+            description = paragraphs.slice(1).join(' ');
+        } else if (paragraphs.length === 1 && paragraphs[0].length > 50) {
+            description = paragraphs[0];
+        }
+
+        if (description && title) {
+            descriptions.set(title, description);
         }
     });
 
