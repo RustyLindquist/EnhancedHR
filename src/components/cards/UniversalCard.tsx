@@ -58,7 +58,7 @@ interface UniversalCardProps {
     imageUrl?: string; // For Course/Module/Lesson backgrounds
     categories?: string[]; // Up to 3
     rating?: number; // 0-5
-    credits?: { shrm?: number | boolean; hrci?: number | boolean }; // Available credits
+    credits?: { shrm?: number | boolean; hrci?: number | boolean; shrmCredits?: number; hrciCredits?: number }; // Available credits
     collections?: string[]; // List of collection names for footer display
     iconName?: string; // Dynamic icon name for TOOL cards (e.g., 'Drama', 'TrendingUp')
     contextSubtype?: 'TEXT' | 'FILE'; // For CONTEXT cards to differentiate text vs file
@@ -280,12 +280,12 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                         <div className="flex items-center gap-1.5 ml-1">
                                             {credits.shrm && (
                                                 <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#4f46e5]/30 text-[#a5b4fc] border border-[#4f46e5]/40">
-                                                    SHRM
+                                                    SHRM{credits.shrmCredits ? ` ${credits.shrmCredits.toFixed(1)}` : ''}
                                                 </span>
                                             )}
                                             {credits.hrci && (
                                                 <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#9333ea]/30 text-[#d8b4fe] border border-[#9333ea]/40">
-                                                    HRCI
+                                                    HRCI{credits.hrciCredits ? ` ${credits.hrciCredits.toFixed(1)}` : ''}
                                                 </span>
                                             )}
                                         </div>
@@ -472,17 +472,20 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             ? 'top-1/2 -translate-y-1/2 pt-8'
                             : 'bottom-4'
                 }`}>
-                    <h3 className={`font-bold text-white leading-tight mb-1 drop-shadow-md line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
-                        {title}
-                    </h3>
-                    {/* Author line with rating for Course cards */}
-                    {(type === 'COURSE' || type === 'ORG_COURSE') ? (
-                        <div className="flex items-center justify-between gap-2">
-                            {subtitle && (
-                                <p className="text-xs font-medium text-white/70 tracking-wide truncate">
-                                    {subtitle}
-                                </p>
-                            )}
+                    {/* Categories and Rating row for Course cards (above title) */}
+                    {(type === 'COURSE' || type === 'ORG_COURSE') && (categories?.length || rating !== undefined) && (
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            {/* Left side: Categories */}
+                            {categories && categories.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                    {categories.slice(0, 2).map((cat, i) => (
+                                        <span key={i} className="text-[10px] font-medium uppercase tracking-wide text-white/60">
+                                            {cat}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : <div />}
+                            {/* Right side: Star rating */}
                             {rating !== undefined && (
                                 <div className="flex items-center gap-1 text-amber-400 flex-shrink-0">
                                     <Star size={14} fill="currentColor" />
@@ -490,6 +493,17 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                 </div>
                             )}
                         </div>
+                    )}
+                    <h3 className={`font-bold text-white leading-tight mb-1 drop-shadow-md line-clamp-2 ${isTextHeavy ? 'text-[17px]' : 'text-lg'}`}>
+                        {title}
+                    </h3>
+                    {/* Author line for Course cards (below title) */}
+                    {(type === 'COURSE' || type === 'ORG_COURSE') ? (
+                        subtitle && (
+                            <p className="text-xs font-medium text-white/70 tracking-wide truncate">
+                                {subtitle}
+                            </p>
+                        )
                     ) : type !== 'CONVERSATION' && type !== 'CONTEXT' && type !== 'AI_INSIGHT' && type !== 'PROFILE' && type !== 'HELP' && type !== 'TOOL' && type !== 'TOOL_CONVERSATION' && subtitle ? (
                         <p className="text-xs font-medium text-white/70 tracking-wide truncate">
                             {subtitle}
@@ -563,10 +577,10 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         {(type === 'COURSE' || type === 'ORG_COURSE') && credits && (
                             <div className="flex items-center gap-1 flex-shrink-0">
                                 {credits.shrm && (
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30" title="SHRM Credits">SHRM</span>
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30" title="SHRM Credits">SHRM{credits.shrmCredits ? ` ${credits.shrmCredits.toFixed(1)}` : ''}</span>
                                 )}
                                 {credits.hrci && (
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#9333ea]/20 text-[#c084fc] border border-[#9333ea]/30" title="HRCI Credits">HRCI</span>
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#9333ea]/20 text-[#c084fc] border border-[#9333ea]/30" title="HRCI Credits">HRCI{credits.hrciCredits ? ` ${credits.hrciCredits.toFixed(1)}` : ''}</span>
                                 )}
                             </div>
                         )}

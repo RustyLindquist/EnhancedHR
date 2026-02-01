@@ -3494,7 +3494,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             rating={course.rating}
                             credits={{
                                 shrm: course.badges?.includes('SHRM'),
-                                hrci: course.badges?.includes('HRCI')
+                                hrci: course.badges?.includes('HRCI'),
+                                shrmCredits: course.shrm_pdcs,
+                                hrciCredits: course.hrci_credits
                             }}
                             actionLabel="VIEW"
                             onAction={() => handleCourseClick(course.id)}
@@ -4509,11 +4511,11 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
 
 
                                         {isAcademyView ? (
-                                            // --- CATEGORIZED ACADEMY VIEW (Horizontal Scrolling) ---
-                                            <div className="space-y-12 pb-20">
+                                            // --- FLAT ACADEMY VIEW (Grid or List) ---
+                                            <div className="pb-20">
 
                                                 {/* Category Quick Nav */}
-                                                <div className="flex flex-wrap items-center gap-2 pb-4">
+                                                <div className="flex flex-wrap items-center gap-2 pb-6">
                                                     <button
                                                         onClick={() => {
                                                             setPendingFilters(INITIAL_FILTERS);
@@ -4544,111 +4546,70 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                     ))}
                                                 </div>
 
-                                                {dynamicCategories.map((category, catIndex) => {
-                                                    const categoryCourses = visibleCourses.filter(c => c.category === category);
-                                                    if (categoryCourses.length === 0) return null;
-
-                                                    const isCollapsed = collapsedCategories.includes(category);
-
-                                                    return (
-                                                        <div key={category} className="animate-fade-in" style={{ animationDelay: `${catIndex * 100} ms` }}>
-                                                            {/* Category Header */}
-                                                            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 pr-4">
-                                                                <div
-                                                                    className="flex items-center gap-3 cursor-pointer group/title select-none"
-                                                                    onClick={() => toggleCategory(category)}
-                                                                >
-                                                                    <div className={`
-p-1.5 rounded-full transition-all duration-300
-${isCollapsed
-    ? 'bg-red-500/20 text-red-400 group-hover/title:bg-red-400 group-hover/title:text-white'
-    : 'bg-white/5 text-slate-400 group-hover/title:bg-brand-blue-light group-hover/title:text-brand-black'}
-    `}>
-                                                                        {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                                                                    </div>
-
-                                                                    <div className="flex items-baseline gap-3">
-                                                                        <h2 className="text-2xl font-bold text-white tracking-tight group-hover/title:text-brand-blue-light transition-colors">{category}</h2>
-                                                                        <span className="text-sm text-brand-blue-light font-medium bg-brand-blue-light/10 px-2 py-0.5 rounded-full">{categoryCourses.length}</span>
-                                                                    </div>
+                                                {/* Course Content - Grid or List (flat, no category sections) */}
+                                                {academyViewMode === 'list' ? (
+                                                    // List View
+                                                    <div className="flex flex-col gap-2 pt-2 pb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                        {visibleCourses.map((course, index) => {
+                                                            const courseAsItem: CollectionItemDetail = {
+                                                                ...course,
+                                                                itemType: 'COURSE' as const,
+                                                            };
+                                                            return (
+                                                                <div key={course.id} className="animate-fade-in-up"
+                                                                    style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
+                                                                    <UniversalCollectionListItem
+                                                                        item={courseAsItem}
+                                                                        onClick={() => handleCourseClick(course.id)}
+                                                                        // No onRemove - Academy courses aren't removable
+                                                                        onAdd={() => handleAddButtonClick(course.id)}
+                                                                        onDragStart={() => handleCourseDragStart(course.id)}
+                                                                        showCategoriesInsteadOfType={true}
+                                                                    />
                                                                 </div>
-
-                                                                {!isCollapsed && (
-                                                                    <button
-                                                                        onClick={() => handleCategorySelect(category)}
-                                                                        className="flex items-center text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors group/btn"
-                                                                    >
-                                                                        View All <ChevronRight size={14} className="ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Course Content - Horizontal Scroll (Grid) or Vertical List */}
-                                                            {!isCollapsed && (
-                                                                academyViewMode === 'list' ? (
-                                                                    // List View
-                                                                    <div className="flex flex-col gap-2 pt-2 pb-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                                                                        {categoryCourses.map((course, index) => {
-                                                                            const courseAsItem: CollectionItemDetail = {
-                                                                                ...course,
-                                                                                itemType: 'COURSE' as const,
-                                                                            };
-                                                                            return (
-                                                                                <div key={course.id} className="animate-fade-in-up"
-                                                                                    style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}>
-                                                                                    <UniversalCollectionListItem
-                                                                                        item={courseAsItem}
-                                                                                        onClick={() => handleCourseClick(course.id)}
-                                                                                        // No onRemove - Academy courses aren't removable
-                                                                                        onAdd={() => handleAddButtonClick(course.id)}
-                                                                                        onDragStart={() => handleCourseDragStart(course.id)}
-                                                                                    />
-                                                                                </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                ) : (
-                                                                    // Grid View (Horizontal Scroll)
-                                                                    <div className="flex overflow-x-auto pb-4 pt-4 gap-8 snap-x snap-mandatory px-4 -mx-4 custom-scrollbar animate-in fade-in slide-in-from-top-4 duration-300">
-                                                                        {categoryCourses.map((course, index) => {
-                                                                            const delay = Math.min(index, 10) * 50;
-                                                                            return (
-                                                                                <div key={course.id} className="min-w-[340px] w-[340px] snap-center">
-                                                                                    <LazyCourseCard>
-                                                                                        <div
-                                                                                            style={{ transitionDelay: `${delay}ms` }}
-                                                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
-                                                                                        >
-                                                                                            <UniversalCard
-                                                                                                type="COURSE"
-                                                                                                title={course.title}
-                                                                                                subtitle={course.author}
-                                                                                                imageUrl={course.image}
-                                                                                                meta={course.duration}
-                                                                                                description={course.description}
-                                                                                                rating={course.rating}
-                                                                                                categories={course.categories || [course.category || 'General']}
-                                                                                                credits={{
-                                                                                                    shrm: course.badges?.includes('SHRM'),
-                                                                                                    hrci: course.badges?.includes('HRCI')
-                                                                                                }}
-                                                                                                actionLabel="VIEW"
-                                                                                                onAction={() => handleCourseClick(course.id)}
-                                                                                                onAdd={() => handleAddButtonClick(course.id)}
-                                                                                                draggable={true}
-                                                                                                onDragStart={() => handleCourseDragStart(course.id)}
-                                                                                            />
-                                                                                        </div>
-                                                                                    </LazyCourseCard>
-                                                                                </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    // Grid View
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                        {visibleCourses.map((course, index) => {
+                                                            const delay = Math.min(index, 10) * 50;
+                                                            return (
+                                                                <div key={course.id}>
+                                                                    <LazyCourseCard>
+                                                                        <div
+                                                                            style={{ transitionDelay: `${delay}ms` }}
+                                                                            className={`transform transition-all duration-500 ease-out ${getTransitionClasses()}`}
+                                                                        >
+                                                                            <UniversalCard
+                                                                                type="COURSE"
+                                                                                title={course.title}
+                                                                                subtitle={course.author}
+                                                                                imageUrl={course.image}
+                                                                                meta={course.duration}
+                                                                                description={course.description}
+                                                                                rating={course.rating}
+                                                                                categories={course.categories || [course.category || 'General']}
+                                                                                credits={{
+                                                                                    shrm: course.badges?.includes('SHRM'),
+                                                                                    hrci: course.badges?.includes('HRCI'),
+                                                                                    shrmCredits: course.shrm_pdcs,
+                                                                                    hrciCredits: course.hrci_credits
+                                                                                }}
+                                                                                actionLabel="VIEW"
+                                                                                onAction={() => handleCourseClick(course.id)}
+                                                                                onAdd={() => handleAddButtonClick(course.id)}
+                                                                                draggable={true}
+                                                                                onDragStart={() => handleCourseDragStart(course.id)}
+                                                                            />
+                                                                        </div>
+                                                                    </LazyCourseCard>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             // If Universal Collection (Favorites, Workspace, Watchlist, Conversations, Notes, Personal, Custom, Org Collection)
@@ -4813,7 +4774,9 @@ ${isCollapsed
                                                                                 categories={course.categories || [course.category || 'General']}
                                                                                 credits={{
                                                                                     shrm: course.badges?.includes('SHRM'),
-                                                                                    hrci: course.badges?.includes('HRCI')
+                                                                                    hrci: course.badges?.includes('HRCI'),
+                                                                                    shrmCredits: course.shrm_pdcs,
+                                                                                    hrciCredits: course.hrci_credits
                                                                                 }}
                                                                                 actionLabel="VIEW"
                                                                                 onAction={() => handleCourseClick(course.id)}

@@ -285,7 +285,9 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                                     categories={[`#${idx + 1} TRENDING`]}
                                                     credits={{
                                                         shrm: course.badges?.includes('SHRM'),
-                                                        hrci: course.badges?.includes('HRCI')
+                                                        hrci: course.badges?.includes('HRCI'),
+                                                        shrmCredits: course.shrm_pdcs,
+                                                        hrciCredits: course.hrci_credits
                                                     }}
                                                     actionLabel="VIEW"
                                                     rating={course.rating}
@@ -332,7 +334,9 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                                     categories={["FOR YOU"]}
                                                     credits={{
                                                         shrm: course.badges?.includes('SHRM'),
-                                                        hrci: course.badges?.includes('HRCI')
+                                                        hrci: course.badges?.includes('HRCI'),
+                                                        shrmCredits: course.shrm_pdcs,
+                                                        hrciCredits: course.hrci_credits
                                                     }}
                                                     actionLabel="VIEW"
                                                     rating={course.rating}

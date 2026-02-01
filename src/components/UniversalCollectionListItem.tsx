@@ -12,6 +12,7 @@ interface UniversalCollectionListItemProps {
     onRemove?: (id: string, type: string) => void; // Optional - not shown for Academy courses, lessons
     onAdd?: (item: CollectionItemDetail) => void;
     onDragStart?: (item: DragItem) => void;
+    showCategoriesInsteadOfType?: boolean; // Show categories instead of type badge (for Academy view)
 }
 
 // Get the appropriate icon component for each item type
@@ -165,6 +166,13 @@ const getCourseAuthor = (item: CollectionItemDetail): string | null => {
     return itemAny.author || null;
 };
 
+// Get course categories
+const getCourseCategories = (item: CollectionItemDetail): string[] => {
+    if (item.itemType !== 'COURSE') return [];
+    const itemAny = item as any;
+    return itemAny.categories || (itemAny.category ? [itemAny.category] : []);
+};
+
 // Get file URL for downloadable items (FILE, RESOURCE)
 const getFileUrl = (item: CollectionItemDetail): string | null => {
     const itemAny = item as any;
@@ -187,7 +195,8 @@ const UniversalCollectionListItem: React.FC<UniversalCollectionListItemProps> = 
     onClick,
     onRemove,
     onAdd,
-    onDragStart
+    onDragStart,
+    showCategoriesInsteadOfType = false
 }) => {
     const Icon = getIconForType(item.itemType);
     const glowColor = getTypeGlowColor(item.itemType);
@@ -202,6 +211,7 @@ const UniversalCollectionListItem: React.FC<UniversalCollectionListItemProps> = 
     const courseRating = getCourseRating(item);
     const courseBadges = getCourseBadges(item);
     const courseAuthor = getCourseAuthor(item);
+    const courseCategories = getCourseCategories(item);
     const fileUrl = getFileUrl(item);
     const canDownload = supportsDownload(item.itemType) && fileUrl;
 
@@ -360,23 +370,37 @@ const UniversalCollectionListItem: React.FC<UniversalCollectionListItemProps> = 
                 )}
             </div>
 
-            {/* Right section - Type Badge (last element) */}
+            {/* Right section - Type Badge or Categories (last element) */}
             <div className="flex items-center gap-3 flex-shrink-0 relative z-10">
                 {/* Separator before right section */}
                 <div className="w-px h-8 bg-white/10 flex-shrink-0 hidden sm:block" />
 
-                {/* Type Badge - fixed width, last element */}
-                <span
-                    className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md
-                               hidden sm:block w-24 text-center"
-                    style={{
-                        backgroundColor: `${glowColor}12`,
-                        color: glowColor,
-                        border: `1px solid ${glowColor}20`
-                    }}
-                >
-                    {typeLabel}
-                </span>
+                {/* Categories (for Academy courses) or Type Badge */}
+                {showCategoriesInsteadOfType && isCourse && courseCategories.length > 0 ? (
+                    <div className="hidden sm:flex flex-wrap gap-1 justify-end max-w-[180px]">
+                        {courseCategories.slice(0, 2).map((cat, i) => (
+                            <span
+                                key={i}
+                                className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded
+                                           bg-white/5 text-slate-400 border border-white/10"
+                            >
+                                {cat}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <span
+                        className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md
+                                   hidden sm:block w-24 text-center"
+                        style={{
+                            backgroundColor: `${glowColor}12`,
+                            color: glowColor,
+                            border: `1px solid ${glowColor}20`
+                        }}
+                    >
+                        {typeLabel}
+                    </span>
+                )}
 
                 {/* Arrow indicator */}
                 <ChevronRight size={16} className="text-slate-600 ml-1" />

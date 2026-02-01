@@ -23,6 +23,9 @@ export interface ContentAssignment {
       rating?: number;
       badges?: string[];
       learning_status?: 'not_started' | 'in_progress' | 'completed';
+      // Credit certification fields
+      shrm_pdcs?: number;
+      hrci_credits?: number;
   };
 }
 
@@ -123,7 +126,7 @@ export async function getDirectAssignments(assigneeType: 'user' | 'group', assig
         if (a.content_type === 'course') {
             const { data: course } = await client
                 .from('courses')
-                .select('title, image_url, description, author, duration, category, rating, badges')
+                .select('title, image_url, description, author, duration, category, rating, badges, shrm_pdcs, hrci_credits')
                 .eq('id', a.content_id)
                 .single();
             if (course) {
@@ -135,7 +138,9 @@ export async function getDirectAssignments(assigneeType: 'user' | 'group', assig
                     duration: course.duration || undefined,
                     category: course.category || undefined,
                     rating: course.rating ? Number(course.rating) : undefined,
-                    badges: course.badges || undefined
+                    badges: course.badges || undefined,
+                    shrm_pdcs: course.shrm_pdcs || undefined,
+                    hrci_credits: course.hrci_credits || undefined
                 };
             }
         } else if (a.content_type === 'module') {
@@ -269,7 +274,7 @@ export async function getUserAggregateAssignments(userId: string) {
         if (a.content_type === 'course') {
             const { data: course } = await supabase
                 .from('courses')
-                .select('title, image_url, description, author, duration, category, rating, badges')
+                .select('title, image_url, description, author, duration, category, rating, badges, shrm_pdcs, hrci_credits')
                 .eq('id', a.content_id)
                 .single();
             if (course) {
@@ -281,7 +286,9 @@ export async function getUserAggregateAssignments(userId: string) {
                     duration: course.duration || undefined,
                     category: course.category || undefined,
                     rating: course.rating ? Number(course.rating) : undefined,
-                    badges: course.badges || undefined
+                    badges: course.badges || undefined,
+                    shrm_pdcs: course.shrm_pdcs || undefined,
+                    hrci_credits: course.hrci_credits || undefined
                 };
             }
         } else if (a.content_type === 'module') {

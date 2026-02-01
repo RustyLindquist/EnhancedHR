@@ -157,7 +157,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                         </div>
 
                         {/* Credits You'll Earn (40%) - Hidden for org courses */}
-                        {!isOrgCourse && (
+                        {!isOrgCourse && (hasSHRM || hasHRCI) && (
                             <div className="lg:w-[40%]">
                                 <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
                                     CREDITS YOU'LL EARN
@@ -165,18 +165,18 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                                 <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
                                     <div className="grid grid-cols-2 gap-6">
                                         {/* SHRM Column */}
-                                        {(hasSHRM || !hasSHRM && !hasHRCI) && (
+                                        {hasSHRM && (
                                             <div className="flex flex-col items-center text-center">
-                                                <span className="text-4xl font-bold text-brand-blue-light">2</span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM</span>
+                                                <span className="text-4xl font-bold text-brand-blue-light">{(course as any).shrm_pdcs?.toFixed(1) ?? '0.0'}</span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM PDCs</span>
                                                 <span className="text-[10px] text-slate-500">Recertification</span>
                                             </div>
                                         )}
                                         {/* HRCI Column */}
-                                        {(hasHRCI || !hasSHRM && !hasHRCI) && (
+                                        {hasHRCI && (
                                             <div className="flex flex-col items-center text-center">
-                                                <span className="text-4xl font-bold text-[#c084fc]">1.5</span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI</span>
+                                                <span className="text-4xl font-bold text-[#c084fc]">{(course as any).hrci_credits?.toFixed(1) ?? '0.0'}</span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI Credits</span>
                                                 <span className="text-[10px] text-slate-500">Credit Hours</span>
                                             </div>
                                         )}
