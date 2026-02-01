@@ -20,8 +20,8 @@ const SECRET_KEY = process.env.COURSE_IMPORT_SECRET!;
 const PROD_START = 627;
 const PROD_END = 671;
 
-// Delay between courses (30 seconds to be safe)
-const DELAY_BETWEEN_COURSES_MS = 30000;
+// Delay between courses (3 minutes to let rate limits reset)
+const DELAY_BETWEEN_COURSES_MS = 180000;
 
 interface RegenerateResult {
     success: boolean;
