@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, Upload, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, RefreshCw, Loader2, Check, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -21,7 +21,7 @@ import {
     ResourcesEditorPanel
 } from '@/components/admin/course-panels';
 import BulkVideoUploadPanel from '@/components/admin/course-panels/BulkVideoUploadPanel';
-import { resetCourseDurations } from '@/app/actions/course-builder';
+import { resetCourseDurations, updateCourseDetails, getPublishedCategories } from '@/app/actions/course-builder';
 
 interface AdminCourseBuilderClientProps {
     course: Course & { skills?: string[]; status?: string };
@@ -44,6 +44,23 @@ export default function AdminCourseBuilderClient({
     const [activePanel, setActivePanel] = useState<CourseBuilderPanelType>(null);
     const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+
+    // Status dropdown state
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const [currentStatus, setCurrentStatus] = useState<'draft' | 'pending_review' | 'published' | 'archived'>(initialCourse.status || 'draft');
+
+    // Categories dropdown state
+    const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
+    const [currentCategories, setCurrentCategories] = useState<string[]>(initialCourse.categories || []);
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+    const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+    const STATUS_OPTIONS: { value: 'draft' | 'pending_review' | 'published' | 'archived'; label: string; colorClass: string }[] = [
+        { value: 'draft', label: 'Draft', colorClass: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30' },
+        { value: 'pending_review', label: 'Pending Review', colorClass: 'text-blue-400 bg-blue-500/20 border-blue-500/30' },
+        { value: 'published', label: 'Published', colorClass: 'text-green-400 bg-green-500/20 border-green-500/30' },
+        { value: 'archived', label: 'Archived', colorClass: 'text-orange-400 bg-orange-500/20 border-orange-500/30' },
+    ];
 
     const handleRefresh = useCallback(() => {
         router.refresh();
@@ -70,6 +87,47 @@ export default function AdminCourseBuilderClient({
         handleClosePanel();
         handleRefresh();
     }, [handleClosePanel, handleRefresh]);
+
+    // Load available categories on mount
+    useEffect(() => {
+        const loadCategories = async () => {
+            setIsLoadingCategories(true);
+            const result = await getPublishedCategories();
+            if (result.success && result.categories) {
+                setAvailableCategories(result.categories);
+            }
+            setIsLoadingCategories(false);
+        };
+        loadCategories();
+    }, []);
+
+    const handleStatusChange = async (newStatus: 'draft' | 'pending_review' | 'published' | 'archived') => {
+        const result = await updateCourseDetails(initialCourse.id, {
+            status: newStatus
+        });
+        if (result.success) {
+            setCurrentStatus(newStatus);
+            setStatusDropdownOpen(false);
+            handleRefresh();
+        }
+    };
+
+    const handleCategoryToggle = async (category: string) => {
+        let newCategories: string[];
+        if (currentCategories.includes(category)) {
+            // Don't allow removing the last category
+            if (currentCategories.length <= 1) return;
+            newCategories = currentCategories.filter(c => c !== category);
+        } else {
+            newCategories = [...currentCategories, category];
+        }
+
+        const result = await updateCourseDetails(initialCourse.id, { categories: newCategories });
+        if (result.success) {
+            setCurrentCategories(newCategories);
+            handleRefresh();
+        }
+    };
 
     const handleResetCourseTimes = async () => {
         if (!confirm('This will recalculate durations for all video lessons in this course. Continue?')) {
@@ -137,24 +195,89 @@ export default function AdminCourseBuilderClient({
                         <h1 className="text-lg font-bold text-white truncate max-w-md">
                             {initialCourse.title}
                         </h1>
-                        <button
-                            onClick={() => handleOpenPanel('description')}
-                            className={`
-                                px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer
-                                hover:scale-105 hover:shadow-lg transition-all
-                                ${initialCourse.status === 'published'
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
-                                    : initialCourse.status === 'pending_review'
-                                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
-                                    : initialCourse.status === 'archived'
-                                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30'
-                                    : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30'
-                                }
-                            `}
-                            title="Click to change course status"
-                        >
-                            {initialCourse.status === 'pending_review' ? 'Pending Review' : (initialCourse.status || 'draft')}
-                        </button>
+                        {/* Status Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer
+                                    transition-all border
+                                    ${STATUS_OPTIONS.find(s => s.value === currentStatus)?.colorClass || 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30'}
+                                `}
+                            >
+                                {STATUS_OPTIONS.find(s => s.value === currentStatus)?.label || 'Draft'}
+                                <ChevronDown size={12} className={`transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {statusDropdownOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setStatusDropdownOpen(false)} />
+                                    <div className="absolute z-50 top-full left-0 mt-2 w-44 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                                        {STATUS_OPTIONS.map(option => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => handleStatusChange(option.value)}
+                                                className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors
+                                                    ${currentStatus === option.value
+                                                        ? 'bg-white/10 ' + option.colorClass.split(' ')[0]
+                                                        : 'text-white hover:bg-white/5'
+                                                    }
+                                                `}
+                                            >
+                                                <span>{option.label}</span>
+                                                {currentStatus === option.value && <Check size={14} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Categories Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setCategoriesDropdownOpen(!categoriesDropdownOpen)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-xs font-medium"
+                            >
+                                <span className="max-w-32 truncate">
+                                    {currentCategories.length > 0
+                                        ? (currentCategories.length === 1
+                                            ? currentCategories[0]
+                                            : `${currentCategories.length} categories`)
+                                        : 'No categories'}
+                                </span>
+                                <ChevronDown size={14} className={`transition-transform flex-shrink-0 ${categoriesDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {categoriesDropdownOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setCategoriesDropdownOpen(false)} />
+                                    <div className="absolute z-50 top-full left-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
+                                        <div className="p-2 border-b border-white/10">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categories</span>
+                                        </div>
+                                        {isLoadingCategories ? (
+                                            <div className="p-3 text-sm text-slate-400">Loading...</div>
+                                        ) : (
+                                            availableCategories.map(category => (
+                                                <button
+                                                    key={category}
+                                                    onClick={() => handleCategoryToggle(category)}
+                                                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors
+                                                        ${currentCategories.includes(category)
+                                                            ? 'bg-brand-blue-light/20 text-brand-blue-light'
+                                                            : 'text-white hover:bg-white/5'
+                                                        }
+                                                    `}
+                                                >
+                                                    <span>{category}</span>
+                                                    {currentCategories.includes(category) && <Check size={14} />}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -171,13 +294,6 @@ export default function AdminCourseBuilderClient({
                             <RefreshCw size={16} />
                         )}
                         {isResettingTimes ? 'Resetting...' : 'Reset Course Times'}
-                    </button>
-                    <button
-                        onClick={() => handleOpenPanel('bulk_upload')}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-sm font-medium"
-                    >
-                        <Upload size={16} />
-                        Bulk Video Upload
                     </button>
                     <Link
                         href={`/dashboard?courseId=${initialCourse.id}`}
