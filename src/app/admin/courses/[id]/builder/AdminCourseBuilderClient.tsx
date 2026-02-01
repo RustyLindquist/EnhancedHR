@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, RefreshCw, Loader2, Check, ChevronDown, Plus, X } from 'lucide-react';
+import { ArrowLeft, Eye, RefreshCw, Loader2, Check, ChevronDown, Plus, X, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -21,7 +21,7 @@ import {
     ResourcesEditorPanel
 } from '@/components/admin/course-panels';
 import BulkVideoUploadPanel from '@/components/admin/course-panels/BulkVideoUploadPanel';
-import { resetCourseDurations, updateCourseDetails, getPublishedCategories } from '@/app/actions/course-builder';
+import { resetCourseDurations, regenerateCourseTranscripts, updateCourseDetails, getPublishedCategories } from '@/app/actions/course-builder';
 
 interface AdminCourseBuilderClientProps {
     course: Course & { skills?: string[]; status?: string };
@@ -39,6 +39,7 @@ export default function AdminCourseBuilderClient({
     const router = useRouter();
     const [refreshKey, setRefreshKey] = useState(0);
     const [isResettingTimes, setIsResettingTimes] = useState(false);
+    const [isRegeneratingTranscripts, setIsRegeneratingTranscripts] = useState(false);
 
     // Panel state
     const [activePanel, setActivePanel] = useState<CourseBuilderPanelType>(null);
@@ -190,6 +191,41 @@ export default function AdminCourseBuilderClient({
             alert(`Error resetting durations: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setIsResettingTimes(false);
+        }
+    };
+
+    const handleRegenerateTranscripts = async () => {
+        if (!confirm('This will regenerate AI transcripts for all video lessons in this course. User-entered transcripts will NOT be overwritten. This may take several minutes. Continue?')) {
+            return;
+        }
+
+        setIsRegeneratingTranscripts(true);
+        try {
+            const result = await regenerateCourseTranscripts(initialCourse.id);
+            if (result.success && result.results) {
+                const { lessonsGenerated, lessonsSkipped, lessonsFailed, details } = result.results;
+
+                // Build detailed message
+                let message = `Transcript regeneration complete!\n\nGenerated: ${lessonsGenerated} lessons\nSkipped: ${lessonsSkipped}\nFailed: ${lessonsFailed}`;
+
+                // Show failed lessons with their errors
+                if (lessonsFailed > 0) {
+                    const failedDetails = details
+                        .filter(d => d.status === 'failed')
+                        .map(d => `• ${d.lessonTitle}: ${d.error}`)
+                        .join('\n');
+                    message += `\n\n--- Failed Lessons ---\n${failedDetails}`;
+                }
+
+                alert(message);
+                handleRefresh();
+            } else {
+                alert(`Error: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            alert(`Error regenerating transcripts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsRegeneratingTranscripts(false);
         }
     };
 
@@ -381,6 +417,18 @@ export default function AdminCourseBuilderClient({
                             <RefreshCw size={16} />
                         )}
                         {isResettingTimes ? 'Resetting...' : 'Reset Course Times'}
+                    </button>
+                    <button
+                        onClick={handleRegenerateTranscripts}
+                        disabled={isRegeneratingTranscripts}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-brand-blue-light/30 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isRegeneratingTranscripts ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <FileText size={16} />
+                        )}
+                        {isRegeneratingTranscripts ? 'Regenerating...' : 'Regenerate Transcripts'}
                     </button>
                     <Link
                         href={`/dashboard?courseId=${initialCourse.id}`}
