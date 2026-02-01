@@ -195,7 +195,7 @@ export default function AdminCourseBuilderClient({
     };
 
     const handleRegenerateTranscripts = async () => {
-        if (!confirm('This will regenerate AI transcripts for all video lessons in this course. User-entered transcripts will NOT be overwritten. This may take several minutes. Continue?')) {
+        if (!confirm('This will regenerate AI transcripts for all video lessons in this course.\n\n• User-entered transcripts will NOT be overwritten\n• Each lesson takes ~5-10 seconds due to API rate limits\n• A course with 15 lessons may take 2-3 minutes\n\nContinue?')) {
             return;
         }
 
