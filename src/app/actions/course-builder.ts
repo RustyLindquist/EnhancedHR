@@ -1323,6 +1323,83 @@ export async function generateTranscriptFromVideo(videoUrl: string): Promise<{
 }
 
 /**
+ * Admin version of generateTranscriptFromVideo that doesn't require user authentication.
+ * Used by API endpoints for bulk operations like course migration.
+ */
+export async function generateTranscriptFromVideoAdmin(videoUrl: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    source?: 'youtube' | 'mux-caption' | 'whisper' | 'manual';
+    error?: string;
+}> {
+    // Strategy 1: YouTube - Use existing working pipeline
+    if (await isYouTubeUrl(videoUrl)) {
+        console.log('[Transcript Admin] Detected YouTube URL, attempting transcript extraction');
+
+        // Try Innertube first (native captions)
+        const ytResult = await fetchYouTubeTranscript(videoUrl);
+        if (ytResult.success && ytResult.transcript) {
+            console.log('[Transcript Admin] Successfully fetched YouTube transcript via Innertube');
+            return { success: true, transcript: ytResult.transcript, source: 'youtube' };
+        }
+
+        console.log('[Transcript Admin] Innertube failed, trying Supadata fallback');
+
+        // Try audio extraction via Supadata
+        const audioResult = await generateTranscriptFromYouTubeAudio(videoUrl);
+        if (audioResult.success && audioResult.transcript) {
+            console.log('[Transcript Admin] Successfully generated transcript via Supadata');
+            return { success: true, transcript: audioResult.transcript, source: 'youtube' };
+        }
+
+        console.log('[Transcript Admin] All YouTube methods failed:', audioResult.error);
+        return {
+            success: false,
+            error: audioResult.error || 'Unable to generate transcript for this YouTube video.'
+        };
+    }
+
+    // Strategy 2: Mux playback ID - Try Mux captions, then Whisper
+    if (isMuxPlaybackId(videoUrl)) {
+        console.log('[Transcript Admin] Detected Mux playback ID:', videoUrl);
+
+        // Try Mux auto-caption first
+        const muxResult = await generateMuxCaptionTranscript(videoUrl);
+        if (muxResult.success && muxResult.transcript) {
+            console.log('[Transcript Admin] Successfully generated transcript via Mux captions');
+            return { success: true, transcript: muxResult.transcript, source: 'mux-caption' };
+        }
+
+        console.log('[Transcript Admin] Mux caption failed:', muxResult.error);
+
+        // Fallback to Whisper
+        if (await isWhisperAvailable()) {
+            console.log('[Transcript Admin] Trying Whisper fallback');
+            const whisperResult = await transcribeWithWhisper(videoUrl);
+            if (whisperResult.success && whisperResult.transcript) {
+                console.log('[Transcript Admin] Successfully generated transcript via Whisper');
+                return { success: true, transcript: whisperResult.transcript, source: 'whisper' };
+            }
+            console.log('[Transcript Admin] Whisper failed:', whisperResult.error);
+        } else {
+            console.log('[Transcript Admin] Whisper not available (OPENAI_API_KEY not set)');
+        }
+
+        return {
+            success: false,
+            error: 'Transcript generation failed. Please enter the transcript manually or try again later.'
+        };
+    }
+
+    // Strategy 3: External URL - Not supported for auto-transcription
+    console.log('[Transcript Admin] External URL detected, not supported for auto-transcription:', videoUrl);
+    return {
+        success: false,
+        error: 'Automatic transcription is not available for external video URLs.'
+    };
+}
+
+/**
  * Generate transcript from Mux using auto-generated captions
  */
 async function generateMuxCaptionTranscript(playbackId: string): Promise<{
