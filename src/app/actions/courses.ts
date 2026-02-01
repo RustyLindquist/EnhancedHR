@@ -124,6 +124,13 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
             duration: course.duration,
             rating: Number(course.rating),
             badges: course.badges || [],
+            // Credit certification fields
+            shrm_pdcs: course.shrm_pdcs,
+            hrci_credits: course.hrci_credits,
+            shrm_activity_id: course.shrm_activity_id,
+            hrci_program_id: course.hrci_program_id,
+            shrm_eligible: course.shrm_eligible,
+            hrci_eligible: course.hrci_eligible,
             isSaved: userCollections.length > 0,
             collections: userCollections,
             dateAdded: course.created_at

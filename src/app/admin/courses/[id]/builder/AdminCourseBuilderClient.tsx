@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, RefreshCw, Loader2, Check, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Eye, RefreshCw, Loader2, Check, ChevronDown, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
@@ -54,6 +54,8 @@ export default function AdminCourseBuilderClient({
     const [currentCategories, setCurrentCategories] = useState<string[]>(initialCourse.categories || []);
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
     const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const STATUS_OPTIONS: { value: 'draft' | 'pending_review' | 'published' | 'archived'; label: string; colorClass: string }[] = [
         { value: 'draft', label: 'Draft', colorClass: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30' },
@@ -125,6 +127,33 @@ export default function AdminCourseBuilderClient({
         const result = await updateCourseDetails(initialCourse.id, { categories: newCategories });
         if (result.success) {
             setCurrentCategories(newCategories);
+            handleRefresh();
+        }
+    };
+
+    const handleAddNewCategory = async () => {
+        const trimmedName = newCategoryName.trim();
+        if (!trimmedName) return;
+
+        // Check if category already exists (case-insensitive)
+        if (availableCategories.some(c => c.toLowerCase() === trimmedName.toLowerCase())) {
+            // Just select it if it exists
+            if (!currentCategories.includes(trimmedName)) {
+                await handleCategoryToggle(trimmedName);
+            }
+            setNewCategoryName('');
+            setIsAddingCategory(false);
+            return;
+        }
+
+        // Add new category to the course
+        const newCategories = [...currentCategories, trimmedName];
+        const result = await updateCourseDetails(initialCourse.id, { categories: newCategories });
+        if (result.success) {
+            setCurrentCategories(newCategories);
+            setAvailableCategories(prev => [...prev, trimmedName].sort());
+            setNewCategoryName('');
+            setIsAddingCategory(false);
             handleRefresh();
         }
     };
@@ -250,30 +279,88 @@ export default function AdminCourseBuilderClient({
 
                             {categoriesDropdownOpen && (
                                 <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setCategoriesDropdownOpen(false)} />
-                                    <div className="absolute z-50 top-full left-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
-                                        <div className="p-2 border-b border-white/10">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categories</span>
-                                        </div>
-                                        {isLoadingCategories ? (
-                                            <div className="p-3 text-sm text-slate-400">Loading...</div>
-                                        ) : (
-                                            availableCategories.map(category => (
+                                    <div className="fixed inset-0 z-40" onClick={() => { setCategoriesDropdownOpen(false); setIsAddingCategory(false); setNewCategoryName(''); }} />
+                                    <div className="absolute z-50 top-full left-0 mt-2 w-72 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-[60vh] flex flex-col">
+                                        {/* Header */}
+                                        <div className="p-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Categories</span>
+                                            {!isAddingCategory && (
                                                 <button
-                                                    key={category}
-                                                    onClick={() => handleCategoryToggle(category)}
-                                                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors
-                                                        ${currentCategories.includes(category)
-                                                            ? 'bg-brand-blue-light/20 text-brand-blue-light'
-                                                            : 'text-white hover:bg-white/5'
-                                                        }
-                                                    `}
+                                                    onClick={() => setIsAddingCategory(true)}
+                                                    className="flex items-center gap-1 text-xs text-brand-blue-light hover:text-white transition-colors"
                                                 >
-                                                    <span>{category}</span>
-                                                    {currentCategories.includes(category) && <Check size={14} />}
+                                                    <Plus size={14} />
+                                                    Add New
                                                 </button>
-                                            ))
+                                            )}
+                                        </div>
+
+                                        {/* Add New Category Input */}
+                                        {isAddingCategory && (
+                                            <div className="p-3 border-b border-white/10 flex-shrink-0">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={newCategoryName}
+                                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleAddNewCategory();
+                                                            if (e.key === 'Escape') { setIsAddingCategory(false); setNewCategoryName(''); }
+                                                        }}
+                                                        placeholder="New category name..."
+                                                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue-light/50"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={handleAddNewCategory}
+                                                        disabled={!newCategoryName.trim()}
+                                                        className="p-2 bg-brand-blue-light/20 text-brand-blue-light rounded-lg hover:bg-brand-blue-light/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Check size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setIsAddingCategory(false); setNewCategoryName(''); }}
+                                                        className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
+
+                                        {/* Category List */}
+                                        <div className="overflow-y-auto flex-1">
+                                            {isLoadingCategories ? (
+                                                <div className="p-4 text-sm text-slate-400 text-center">Loading categories...</div>
+                                            ) : availableCategories.length === 0 ? (
+                                                <div className="p-4 text-sm text-slate-400 text-center">No categories yet. Add one above.</div>
+                                            ) : (
+                                                <div className="p-2">
+                                                    {availableCategories.map(category => (
+                                                        <button
+                                                            key={category}
+                                                            onClick={() => handleCategoryToggle(category)}
+                                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-colors mb-1
+                                                                ${currentCategories.includes(category)
+                                                                    ? 'bg-brand-blue-light/20 text-brand-blue-light'
+                                                                    : 'text-white hover:bg-white/5'
+                                                                }
+                                                            `}
+                                                        >
+                                                            <span>{category}</span>
+                                                            {currentCategories.includes(category) && <Check size={14} />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Footer showing selected count */}
+                                        <div className="p-2 border-t border-white/10 flex-shrink-0">
+                                            <span className="text-xs text-slate-500">
+                                                {currentCategories.length} selected
+                                            </span>
+                                        </div>
                                     </div>
                                 </>
                             )}

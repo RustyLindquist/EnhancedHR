@@ -3494,7 +3494,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             rating={course.rating}
                             credits={{
                                 shrm: course.badges?.includes('SHRM'),
-                                hrci: course.badges?.includes('HRCI')
+                                hrci: course.badges?.includes('HRCI'),
+                                shrmCredits: course.shrm_pdcs,
+                                hrciCredits: course.hrci_credits
                             }}
                             actionLabel="VIEW"
                             onAction={() => handleCourseClick(course.id)}
@@ -4591,7 +4593,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                                                 categories={course.categories || [course.category || 'General']}
                                                                                 credits={{
                                                                                     shrm: course.badges?.includes('SHRM'),
-                                                                                    hrci: course.badges?.includes('HRCI')
+                                                                                    hrci: course.badges?.includes('HRCI'),
+                                                                                    shrmCredits: course.shrm_pdcs,
+                                                                                    hrciCredits: course.hrci_credits
                                                                                 }}
                                                                                 actionLabel="VIEW"
                                                                                 onAction={() => handleCourseClick(course.id)}
@@ -4770,7 +4774,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                                                 categories={course.categories || [course.category || 'General']}
                                                                                 credits={{
                                                                                     shrm: course.badges?.includes('SHRM'),
-                                                                                    hrci: course.badges?.includes('HRCI')
+                                                                                    hrci: course.badges?.includes('HRCI'),
+                                                                                    shrmCredits: course.shrm_pdcs,
+                                                                                    hrciCredits: course.hrci_credits
                                                                                 }}
                                                                                 actionLabel="VIEW"
                                                                                 onAction={() => handleCourseClick(course.id)}

@@ -89,7 +89,9 @@ const UniversalCollectionCard: React.FC<UniversalCollectionCardProps> = ({ item,
                 rating: course.rating,
                 credits: {
                     shrm: course.badges?.includes('SHRM'),
-                    hrci: course.badges?.includes('HRCI')
+                    hrci: course.badges?.includes('HRCI'),
+                    shrmCredits: course.shrm_pdcs,
+                    hrciCredits: course.hrci_credits
                 },
                 actionLabel: 'VIEW'
             };
