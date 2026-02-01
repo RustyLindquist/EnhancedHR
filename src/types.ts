@@ -56,6 +56,13 @@ export interface Course {
   collections: string[]; // IDs of collections this course belongs to
   dateAdded: string; // ISO 8601 Date String YYYY-MM-DD
   status?: 'draft' | 'pending_review' | 'published' | 'archived';
+  // Credit certification fields
+  shrm_pdcs?: number;
+  hrci_credits?: number;
+  shrm_activity_id?: string;
+  hrci_program_id?: string;
+  shrm_eligible?: boolean;
+  hrci_eligible?: boolean;
 }
 
 export interface Collection {

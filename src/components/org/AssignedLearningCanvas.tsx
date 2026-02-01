@@ -237,7 +237,9 @@ const AssignmentCard = ({ assignment }: { assignment: ContentAssignment }) => {
             rating={details?.rating}
             credits={{
                 shrm: details?.badges?.includes('SHRM'),
-                hrci: details?.badges?.includes('HRCI')
+                hrci: details?.badges?.includes('HRCI'),
+                shrmCredits: details?.shrm_pdcs,
+                hrciCredits: details?.hrci_credits
             }}
             actionLabel="START"
         />
