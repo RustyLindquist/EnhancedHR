@@ -2403,3 +2403,180 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
         };
     }
 }
+
+// ============================================
+// Transcript Regeneration
+// ============================================
+
+export interface LessonTranscriptDetail {
+    lessonId: string;
+    lessonTitle: string;
+    status: 'generated' | 'skipped' | 'failed';
+    source?: string;
+    error?: string;
+}
+
+export interface RegenerateTranscriptsResult {
+    success: boolean;
+    results?: {
+        lessonsGenerated: number;
+        lessonsSkipped: number;
+        lessonsFailed: number;
+        details: LessonTranscriptDetail[];
+    };
+    error?: string;
+}
+
+/**
+ * Regenerate transcripts for all video lessons in a course.
+ * Skips lessons that already have a user-entered transcript.
+ *
+ * @param courseId - The course ID to regenerate transcripts for
+ * @returns Results with details about each lesson processed
+ */
+export async function regenerateCourseTranscripts(courseId: number): Promise<RegenerateTranscriptsResult> {
+    const admin = await createAdminClient();
+
+    try {
+        console.log(`[regenerateCourseTranscripts] Starting transcript regeneration for course ${courseId}`);
+
+        // Fetch all modules with their lessons
+        const { data: modules, error: modulesError } = await admin
+            .from('modules')
+            .select('id, title, lessons(id, title, video_url, type, user_transcript, ai_transcript, transcript_source)')
+            .eq('course_id', courseId)
+            .order('order');
+
+        if (modulesError) {
+            console.error('[regenerateCourseTranscripts] Error fetching modules:', modulesError);
+            return { success: false, error: modulesError.message };
+        }
+
+        if (!modules || modules.length === 0) {
+            return { success: false, error: 'No modules found for this course' };
+        }
+
+        const details: LessonTranscriptDetail[] = [];
+        let lessonsGenerated = 0;
+        let lessonsSkipped = 0;
+        let lessonsFailed = 0;
+
+        // Process each module
+        for (const courseModule of modules) {
+            const lessons = courseModule.lessons as Array<{
+                id: string;
+                title: string;
+                video_url: string | null;
+                type: string | null;
+                user_transcript: string | null;
+                ai_transcript: string | null;
+                transcript_source: string | null;
+            }> || [];
+
+            // Process each lesson
+            for (const lesson of lessons) {
+                // Skip non-video lessons or lessons without video_url
+                if (lesson.type !== 'video' || !lesson.video_url) {
+                    details.push({
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        status: 'skipped',
+                        error: !lesson.video_url ? 'No video URL' : `Lesson type is "${lesson.type || 'unknown'}"`
+                    });
+                    lessonsSkipped++;
+                    continue;
+                }
+
+                // Skip lessons with user-entered transcripts (don't overwrite user content)
+                if (lesson.user_transcript && lesson.user_transcript.trim().length > 0) {
+                    details.push({
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        status: 'skipped',
+                        error: 'Has user-entered transcript'
+                    });
+                    lessonsSkipped++;
+                    continue;
+                }
+
+                try {
+                    console.log(`[regenerateCourseTranscripts] Generating transcript for "${lesson.title}"`);
+
+                    // Generate transcript
+                    const result = await generateTranscriptFromVideo(lesson.video_url);
+
+                    if (result.success && result.transcript) {
+                        // Update the lesson with the new transcript
+                        const { error: updateError } = await admin
+                            .from('lessons')
+                            .update({
+                                ai_transcript: result.transcript,
+                                transcript_source: result.source || 'ai',
+                                transcript_status: 'ready'
+                            })
+                            .eq('id', lesson.id);
+
+                        if (updateError) {
+                            details.push({
+                                lessonId: lesson.id,
+                                lessonTitle: lesson.title,
+                                status: 'failed',
+                                error: `Database update failed: ${updateError.message}`
+                            });
+                            lessonsFailed++;
+                        } else {
+                            details.push({
+                                lessonId: lesson.id,
+                                lessonTitle: lesson.title,
+                                status: 'generated',
+                                source: result.source
+                            });
+                            lessonsGenerated++;
+                        }
+                    } else {
+                        details.push({
+                            lessonId: lesson.id,
+                            lessonTitle: lesson.title,
+                            status: 'failed',
+                            error: result.error || 'Could not generate transcript'
+                        });
+                        lessonsFailed++;
+                    }
+                } catch (err: any) {
+                    console.error(`[regenerateCourseTranscripts] Error processing lesson "${lesson.title}":`, err);
+                    details.push({
+                        lessonId: lesson.id,
+                        lessonTitle: lesson.title,
+                        status: 'failed',
+                        error: err.message || 'Unknown error'
+                    });
+                    lessonsFailed++;
+                }
+            }
+        }
+
+        // Revalidate paths
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
+        revalidatePath(`/courses/${courseId}`);
+
+        console.log(`[regenerateCourseTranscripts] Complete - Generated: ${lessonsGenerated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}`);
+
+        return {
+            success: true,
+            results: {
+                lessonsGenerated,
+                lessonsSkipped,
+                lessonsFailed,
+                details
+            }
+        };
+
+    } catch (error: any) {
+        console.error('[regenerateCourseTranscripts] Unexpected error:', error);
+        return {
+            success: false,
+            error: error.message || 'An unexpected error occurred'
+        };
+    }
+}
