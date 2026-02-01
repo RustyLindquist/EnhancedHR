@@ -117,13 +117,14 @@ export async function POST(request: Request) {
                         lessonsFailed++;
                     }
 
-                    // Rate limiting: 5 second delay between requests
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Rate limiting: 15 second delay between requests
+                    // Supadata free plan allows 1 req/sec, but we use 15s to be safe
+                    await new Promise(resolve => setTimeout(resolve, 15000));
 
                 } catch (err: any) {
                     failedLessons.push({ title: lesson.title, error: err.message });
                     lessonsFailed++;
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    await new Promise(resolve => setTimeout(resolve, 15000));
                 }
             }
         }

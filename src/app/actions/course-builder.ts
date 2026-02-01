@@ -2619,9 +2619,9 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
                         });
                         lessonsFailed++;
                     }
-                    // Rate limiting: Wait 5 seconds between transcript requests
-                    // to avoid hitting Supadata API rate limits
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Rate limiting: Wait 15 seconds between transcript requests
+                    // Supadata free plan allows 1 req/sec, but we use 15s to be safe
+                    await new Promise(resolve => setTimeout(resolve, 15000));
                 } catch (err: any) {
                     console.error(`[regenerateCourseTranscripts] Error processing lesson "${lesson.title}":`, err);
                     details.push({
@@ -2632,8 +2632,8 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
                     });
                     lessonsFailed++;
 
-                    // Rate limiting: Wait 5 seconds even after errors
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Rate limiting: Wait 15 seconds even after errors
+                    await new Promise(resolve => setTimeout(resolve, 15000));
                 }
             }
         }
