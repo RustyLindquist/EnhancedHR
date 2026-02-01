@@ -1426,36 +1426,85 @@ export async function generateSkillsFromTranscript(courseId: number): Promise<{
             return { success: false, error: 'Course not found' };
         }
 
-        // Fetch all modules for this course
-        const { data: modules } = await supabase
-            .from('modules')
-            .select('id, title')
-            .eq('course_id', courseId)
-            .order('order');
+let courseContext = '';
 
-        if (!modules || modules.length === 0) {
-            return { success: false, error: 'No modules found for this course' };
+        // Strategy 1: Try to use Course RAG (embeddings) for comprehensive content
+        try {
+            const { generateQueryEmbedding } = await import('@/lib/ai/embedding');
+            const skillsQuery = `What are all the main topics, concepts, and skills taught in this course? What will learners be able to do after completing the course?`;
+            const queryEmbedding = await generateQueryEmbedding(skillsQuery);
+
+            if (queryEmbedding && queryEmbedding.length > 0) {
+                const { data: contextItems, error: ragError } = await supabase.rpc('match_unified_embeddings', {
+                    query_embedding: queryEmbedding,
+                    match_threshold: 0.3,
+                    match_count: 15,
+                    filter_scope: {
+                        allowedCourseIds: [courseId],
+                        includePersonalContext: false
+                    }
+                });
+
+                if (!ragError && contextItems && contextItems.length > 0) {
+                    console.log(`[generateSkills] Using RAG context: ${contextItems.length} chunks`);
+                    courseContext = contextItems.map((item: any) => {
+                        const lessonTitle = item.metadata?.lesson_title || '';
+                        const moduleTitle = item.metadata?.module_title || '';
+                        const prefix = moduleTitle && lessonTitle
+                            ? `[${moduleTitle} > ${lessonTitle}]`
+                            : lessonTitle
+                                ? `[${lessonTitle}]`
+                                : '';
+                        return `${prefix}\n${item.content}`;
+                    }).join('\n\n---\n\n');
+                }
+            }
+        } catch (ragErr) {
+            console.warn('[generateSkills] RAG failed, falling back to direct query:', ragErr);
         }
 
-        // Fetch all lessons with content
-        const { data: lessons } = await supabase
-            .from('lessons')
-            .select('id, title, content, module_id')
-            .in('module_id', modules.map(m => m.id))
-            .order('order');
+        // Strategy 2: Fallback to direct lesson content query if RAG failed
+        if (!courseContext) {
+            console.log('[generateSkills] Falling back to direct lesson content query');
 
-        // Compile transcripts
-        const transcriptsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
+            // Get modules for this course
+            const { data: modules } = await supabase
+                .from('modules')
+                .select('id, title')
+                .eq('course_id', courseId)
+                .order('order');
 
-        if (transcriptsWithContent.length === 0) {
-            return { success: false, error: 'No lesson transcripts found. Please add transcripts to lessons first.' };
+            if (!modules || modules.length === 0) {
+                return { success: false, error: 'No modules found for this course' };
+            }
+
+            // Get lessons with content
+            const { data: lessons } = await supabase
+                .from('lessons')
+                .select('id, title, content, module_id')
+                .in('module_id', modules.map(m => m.id))
+                .order('order');
+
+            const lessonsWithContent = (lessons || []).filter(l => l.content && l.content.trim().length > 0);
+
+            if (lessonsWithContent.length === 0) {
+                return { success: false, error: 'No lesson content found. Please ensure the course has transcripts.' };
+            }
+
+            courseContext = lessonsWithContent.map(lesson => {
+                const module = modules.find(m => m.id === lesson.module_id);
+                return `[${module?.title || 'Module'} > ${lesson.title}]\n${lesson.content}`;
+            }).join('\n\n---\n\n');
+
+            // Truncate if too long (keep first ~30k chars to stay within token limits)
+            if (courseContext.length > 30000) {
+                courseContext = courseContext.substring(0, 30000) + '\n\n[... truncated for length ...]';
+            }
         }
 
-        // Build the transcript compilation
-        const transcriptText = transcriptsWithContent.map(lesson => {
-            const module = modules.find(m => m.id === lesson.module_id);
-            return `## ${module?.title || 'Module'} - ${lesson.title}\n\n${lesson.content}`;
-        }).join('\n\n---\n\n');
+        if (!courseContext) {
+            return { success: false, error: 'No course content found. Please ensure the course has lesson transcripts.' };
+        }
 
         // Fetch the prompt and model from ai_prompt_library
         const { data: promptConfig } = await supabase
@@ -1494,7 +1543,7 @@ Generate the skills list now (JSON array only):`;
 
         // Interpolate variables
         prompt = prompt.replace(/\{course_title\}/g, course.title);
-        prompt = prompt.replace(/\{transcripts\}/g, transcriptText);
+        prompt = prompt.replace(/\{transcripts\}/g, courseContext);
 
         const model = promptConfig?.model || 'google/gemini-2.0-flash-001';
 
@@ -1566,7 +1615,8 @@ Generate the skills list now (JSON array only):`;
             metadata: {
                 course_id: courseId,
                 model: model,
-                skills_count: skills.length
+                skills_count: skills.length,
+                context_length: courseContext.length
             }
         });
 
