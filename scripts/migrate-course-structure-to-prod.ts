@@ -1,19 +1,16 @@
 /**
- * Course Image Migration Script
+ * Migrate Course Structure to Production
  *
- * Migrates course featured images from WordPress (localhost:3005) to Supabase Storage.
- * Downloads images locally and sends them as base64 to the production API.
+ * Reads the local course module/lesson structure and replicates it to production.
+ * This updates module titles and lesson titles while preserving video URLs.
  *
- * Usage: npx ts-node --compiler-options '{"module":"commonjs"}' scripts/migrate-course-images.ts
+ * Usage: npx ts-node --compiler-options '{"module":"commonjs"}' scripts/migrate-course-structure-to-prod.ts
  */
 
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import * as https from 'https';
-import * as http from 'http';
 
-// Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 
 const LOCAL_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -22,85 +19,40 @@ const PROD_URL = process.env.PROD_APP_URL!;
 const SECRET_KEY = process.env.COURSE_IMPORT_SECRET!;
 
 // Course ID mapping: local ID -> production ID
-// Based on the promotion results: local 637 -> prod 627, etc.
 const LOCAL_START = 637;
 const PROD_START = 627;
+const LOCAL_END = 681;
 
-/**
- * Download an image from a URL and return as Buffer
- */
-async function downloadImage(url: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        const protocol = url.startsWith('https') ? https : http;
+interface LessonData {
+    title: string;
+    video_url: string | null;
+    order: number;
+    content: string | null;
+    duration: string | null;
+}
 
-        protocol.get(url, (response) => {
-            // Handle redirects
-            if (response.statusCode === 301 || response.statusCode === 302) {
-                const redirectUrl = response.headers.location;
-                if (redirectUrl) {
-                    downloadImage(redirectUrl).then(resolve).catch(reject);
-                    return;
-                }
-            }
-
-            if (response.statusCode !== 200) {
-                reject(new Error(`Failed to download: ${response.statusCode}`));
-                return;
-            }
-
-            const chunks: Buffer[] = [];
-            response.on('data', (chunk) => chunks.push(chunk));
-            response.on('end', () => resolve(Buffer.concat(chunks)));
-            response.on('error', reject);
-        }).on('error', reject);
-    });
+interface ModuleData {
+    title: string;
+    order: number;
+    lessons: LessonData[];
 }
 
 /**
- * Get content type from URL/filename
+ * Send structure to production API with retry logic
  */
-function getContentType(url: string): string {
-    const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
-    const types: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'webp': 'image/webp',
-        'gif': 'image/gif',
-    };
-    return types[ext || ''] || 'image/jpeg';
-}
-
-/**
- * Get file extension from URL
- */
-function getExtension(url: string): string {
-    const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
-    return ext || 'jpg';
-}
-
-/**
- * Send image to production API with retry logic
- */
-async function sendImageToProduction(
+async function sendStructureToProduction(
     courseId: number,
-    imageBuffer: Buffer,
-    contentType: string,
-    extension: string,
+    modules: ModuleData[],
     maxRetries: number = 3
-): Promise<{ success: boolean; newImageUrl?: string; error?: string }> {
-    const base64Data = imageBuffer.toString('base64');
-
+): Promise<{ success: boolean; error?: string }> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            const response = await fetch(`${PROD_URL}/api/course-import/images`, {
+            const response = await fetch(`${PROD_URL}/api/course-import/update-structure`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     courseId,
-                    imageData: base64Data,
-                    contentType,
-                    extension,
+                    modules,
                     secretKey: SECRET_KEY,
                 }),
             });
@@ -125,12 +77,11 @@ async function sendImageToProduction(
                 return { success: false, error: result.error };
             }
 
-            return { success: true, newImageUrl: result.newImageUrl };
+            return { success: true };
         } catch (err: any) {
             if (attempt === maxRetries) {
                 return { success: false, error: err.message };
             }
-            // Wait before retry (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
         }
     }
@@ -140,7 +91,7 @@ async function sendImageToProduction(
 
 async function main() {
     console.log('═══════════════════════════════════════════════════════════════');
-    console.log('         COURSE IMAGE MIGRATION TO SUPABASE STORAGE');
+    console.log('       MIGRATE COURSE STRUCTURE TO PRODUCTION');
     console.log('═══════════════════════════════════════════════════════════════\n');
 
     if (!PROD_URL || !SECRET_KEY) {
@@ -148,35 +99,28 @@ async function main() {
         process.exit(1);
     }
 
+    console.log(`Target: ${PROD_URL}\n`);
+
     const localSupabase = createClient(LOCAL_SUPABASE_URL, LOCAL_SUPABASE_KEY);
 
-    // Fetch courses with WordPress image URLs (exclude already migrated ones)
+    // Get all courses
     const { data: courses, error } = await localSupabase
         .from('courses')
-        .select('id, title, image_url')
+        .select('id, title')
         .gte('id', LOCAL_START)
-        .lte('id', 681)
-        .like('image_url', '%localhost:3005%')
-        .not('image_url', 'like', '%supabase%')
+        .lte('id', LOCAL_END)
         .order('id');
 
-    if (error) {
-        console.error('❌ Error fetching courses:', error.message);
+    if (error || !courses) {
+        console.error('❌ Error fetching courses:', error);
         process.exit(1);
     }
 
-    if (!courses || courses.length === 0) {
-        console.log('✅ No courses with WordPress image URLs found. Already migrated?');
-        process.exit(0);
-    }
-
-    console.log(`Target: ${PROD_URL}`);
-    console.log(`📦 Found ${courses.length} courses with WordPress images to migrate\n`);
+    console.log(`📦 Found ${courses.length} courses to migrate\n`);
 
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
-    const migrated: { localId: number; prodId: number; title: string; newUrl: string }[] = [];
 
     for (let i = 0; i < courses.length; i++) {
         const course = courses[i];
@@ -186,35 +130,54 @@ async function main() {
         process.stdout.write(`${progress} "${course.title}" (local:${course.id} → prod:${prodId})... `);
 
         try {
-            // Download image from WordPress (localhost)
-            const imageBuffer = await downloadImage(course.image_url);
+            // Get modules for this course
+            const { data: modules } = await localSupabase
+                .from('modules')
+                .select('id, title, order')
+                .eq('course_id', course.id)
+                .order('order');
 
-            const ext = getExtension(course.image_url);
-            const contentType = getContentType(course.image_url);
+            if (!modules || modules.length === 0) {
+                console.log('⚠️ No modules');
+                errors.push(`${course.title}: No modules found`);
+                errorCount++;
+                continue;
+            }
 
-            // Send to production API
-            const result = await sendImageToProduction(prodId, imageBuffer, contentType, ext);
+            // Build module structure with lessons
+            const moduleData: ModuleData[] = [];
+
+            for (const mod of modules) {
+                const { data: lessons } = await localSupabase
+                    .from('lessons')
+                    .select('title, video_url, order, content, duration')
+                    .eq('module_id', mod.id)
+                    .order('order');
+
+                moduleData.push({
+                    title: mod.title,
+                    order: mod.order,
+                    lessons: (lessons || []).map(l => ({
+                        title: l.title,
+                        video_url: l.video_url,
+                        order: l.order,
+                        content: l.content,
+                        duration: l.duration
+                    }))
+                });
+            }
+
+            // Count total lessons
+            const totalLessons = moduleData.reduce((sum, m) => sum + m.lessons.length, 0);
+
+            // Send to production
+            const result = await sendStructureToProduction(prodId, moduleData);
 
             if (!result.success) {
                 throw new Error(result.error || 'Unknown error');
             }
 
-            // Update local course record with new URL
-            if (result.newImageUrl) {
-                await localSupabase
-                    .from('courses')
-                    .update({ image_url: result.newImageUrl })
-                    .eq('id', course.id);
-
-                migrated.push({
-                    localId: course.id,
-                    prodId,
-                    title: course.title,
-                    newUrl: result.newImageUrl
-                });
-            }
-
-            console.log('✅');
+            console.log(`✅ ${modules.length} modules, ${totalLessons} lessons`);
             successCount++;
 
             // Small delay to avoid rate limits
@@ -241,9 +204,8 @@ async function main() {
 
     console.log('\n═══════════════════════════════════════════════════════════════');
 
-    if (successCount > 0) {
-        console.log('✅ Images are now served from Supabase Storage on production!');
-        console.log(`📍 Sample URL: ${migrated[0]?.newUrl || 'N/A'}`);
+    if (successCount === courses.length) {
+        console.log('🎉 All courses successfully migrated to production!');
     }
 }
 
