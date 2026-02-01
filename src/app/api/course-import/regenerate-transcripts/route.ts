@@ -10,7 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
+import { generateTranscriptFromVideoAdmin } from '@/app/actions/course-builder';
 
 interface RegenerateRequest {
     courseId: number;
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
                 try {
                     console.log(`[Regenerate Transcripts API] Generating for "${lesson.title}"`);
 
-                    const result = await generateTranscriptFromVideo(lesson.video_url);
+                    const result = await generateTranscriptFromVideoAdmin(lesson.video_url);
 
                     if (result.success && result.transcript) {
                         const { error: updateError } = await admin
