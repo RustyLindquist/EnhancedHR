@@ -1,11 +1,44 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, Bookmark, Monitor, Lock, Play } from 'lucide-react';
 import MuxPlayer from '@mux/mux-player-react';
 import { Lesson, Course, DragItem } from '../../types';
 import { useTrialTracker } from '../../hooks/useTrialTracker';
 import AssessmentPlaceholder from '../assessment/AssessmentPlaceholder';
+
+// TypeScript declaration for YouTube IFrame API
+declare global {
+    interface Window {
+        YT: {
+            Player: new (elementId: string, options: {
+                videoId: string;
+                playerVars?: Record<string, number | string>;
+                events?: {
+                    onReady?: (event: { target: any }) => void;
+                    onStateChange?: (event: { data: number }) => void;
+                    onError?: (event: { data: number }) => void;
+                };
+            }) => {
+                playVideo: () => void;
+                pauseVideo: () => void;
+                mute: () => void;
+                unMute: () => void;
+                destroy: () => void;
+                getPlayerState: () => number;
+            };
+            PlayerState: {
+                UNSTARTED: -1;
+                ENDED: 0;
+                PLAYING: 1;
+                PAUSED: 2;
+                BUFFERING: 3;
+                CUED: 5;
+            };
+        };
+        onYouTubeIframeAPIReady?: () => void;
+    }
+}
 
 // Check if URL is a YouTube URL (client-side check)
 function isYouTubeUrl(url: string): boolean {
@@ -41,6 +74,9 @@ interface LessonPlayerSectionProps {
     // Assessment panel props
     onStartAssessment?: () => void;
     hasAssessmentProgress?: boolean;
+    // Auto-play props
+    autoPlay?: boolean;
+    onAutoPlayConsumed?: () => void;
 }
 
 const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
@@ -56,13 +92,20 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
     onAddToCollection,
     userId,
     onStartAssessment,
-    hasAssessmentProgress = false
+    hasAssessmentProgress = false,
+    autoPlay = false,
+    onAutoPlayConsumed
 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [showPlayOverlay, setShowPlayOverlay] = useState(true);
     const playerRef = useRef<any>(null);
+
+    // YouTube Player ref for programmatic control
+    const youtubePlayerRef = useRef<any>(null);
+    const [youtubeReady, setYoutubeReady] = useState(false);
+    const autoPlayPendingRef = useRef(false);
 
     // Trial tracking
     const { minutesRemaining, isLocked, isLoading: isAuthLoading } = useTrialTracker(isPlaying);
@@ -110,11 +153,187 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         onAddToCollection(dragItem);
     };
 
+    // Handle play overlay click - works for both YouTube and Mux
+    const handlePlayOverlayClick = useCallback(() => {
+        const isYouTube = lesson?.video_url && isYouTubeUrl(lesson.video_url);
+
+        if (isYouTube && youtubePlayerRef.current) {
+            youtubePlayerRef.current.playVideo();
+        } else if (playerRef.current && typeof playerRef.current.play === 'function') {
+            playerRef.current.play();
+        }
+
+        setShowPlayOverlay(false);
+        setIsPlaying(true);
+    }, [lesson?.video_url]);
+
     // Reset video error and show overlay when lesson changes
-    React.useEffect(() => {
+    useEffect(() => {
         setVideoError(false);
         setShowPlayOverlay(true);
+        setIsPlaying(false);
+        setYoutubeReady(false);
     }, [lesson.id]);
+
+    // Load YouTube IFrame API
+    useEffect(() => {
+        // Check if already loaded
+        if (window.YT && window.YT.Player) {
+            return;
+        }
+
+        // Check if script tag already exists
+        if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        }
+    }, []);
+
+    // Initialize YouTube player when the container is ready
+    useEffect(() => {
+        const videoUrl = lesson?.video_url;
+        const isYouTube = videoUrl && isYouTubeUrl(videoUrl);
+        const youtubeId = isYouTube ? extractYouTubeVideoId(videoUrl) : null;
+
+        if (!isYouTube || !youtubeId) {
+            // Clean up if switching away from YouTube
+            if (youtubePlayerRef.current) {
+                try {
+                    youtubePlayerRef.current.destroy();
+                } catch (e) {
+                    // Player may already be destroyed
+                }
+                youtubePlayerRef.current = null;
+            }
+            setYoutubeReady(false);
+            return;
+        }
+
+        // Wait for YT API to be ready
+        const initPlayer = () => {
+            if (!window.YT || !window.YT.Player) {
+                // API not loaded yet, retry
+                setTimeout(initPlayer, 100);
+                return;
+            }
+
+            // Check if container element exists
+            const containerId = `youtube-player-${lesson.id}`;
+            const containerElement = document.getElementById(containerId);
+            if (!containerElement) {
+                // Container not rendered yet, retry
+                setTimeout(initPlayer, 100);
+                return;
+            }
+
+            // Destroy existing player if any
+            if (youtubePlayerRef.current) {
+                try {
+                    youtubePlayerRef.current.destroy();
+                } catch (e) {
+                    // Player may already be destroyed
+                }
+                youtubePlayerRef.current = null;
+            }
+
+            youtubePlayerRef.current = new window.YT.Player(containerId, {
+                videoId: youtubeId,
+                playerVars: {
+                    autoplay: 0,
+                    rel: 0,
+                    modestbranding: 1,
+                    enablejsapi: 1,
+                    origin: window.location.origin,
+                    playsinline: 1,
+                },
+                events: {
+                    onReady: () => {
+                        setYoutubeReady(true);
+                        // For YouTube, we don't auto-play (user finds muted autoplay annoying)
+                        // Just consume the flag if it was set
+                        if (autoPlayPendingRef.current) {
+                            autoPlayPendingRef.current = false;
+                            onAutoPlayConsumed?.();
+                        }
+                    },
+                    onStateChange: (event: { data: number }) => {
+                        // YT.PlayerState: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (video cued)
+                        if (event.data === 1) { // Playing
+                            setIsPlaying(true);
+                            setShowPlayOverlay(false);
+                        } else if (event.data === 2) { // Paused
+                            setIsPlaying(false);
+                        } else if (event.data === 0) { // Ended
+                            handleVideoEnded();
+                        }
+                    },
+                    onError: (event: { data: number }) => {
+                        console.error('YouTube Player Error:', event.data);
+                        setVideoError(true);
+                    },
+                },
+            });
+        };
+
+        // Small delay to ensure DOM is ready
+        const timer = setTimeout(initPlayer, 50);
+
+        return () => {
+            clearTimeout(timer);
+            if (youtubePlayerRef.current) {
+                try {
+                    youtubePlayerRef.current.destroy();
+                } catch (e) {
+                    // Player may already be destroyed
+                }
+                youtubePlayerRef.current = null;
+            }
+            setYoutubeReady(false);
+        };
+    }, [lesson?.id, lesson?.video_url, handleVideoEnded, onAutoPlayConsumed]);
+
+    // Handle auto-play when lesson changes and autoPlay is enabled
+    useEffect(() => {
+        if (!autoPlay || isQuiz || !lesson?.video_url) {
+            if (autoPlay) onAutoPlayConsumed?.();
+            return;
+        }
+
+        const isYouTube = isYouTubeUrl(lesson.video_url);
+
+        if (isYouTube) {
+            // For YouTube videos: NO auto-play (users find muted autoplay annoying)
+            // Auto-progression still works via handleVideoEnded -> onNextLesson
+            // Just consume the autoPlay flag without starting playback
+            if (youtubeReady) {
+                onAutoPlayConsumed?.();
+            } else {
+                // Player not ready yet, set flag for onReady callback to consume
+                autoPlayPendingRef.current = true;
+            }
+            return;
+        }
+
+        // For Mux player: Auto-play WITH volume (not muted)
+        const timer = setTimeout(() => {
+            setShowPlayOverlay(false);
+            setIsPlaying(true);
+            if (playerRef.current && typeof playerRef.current.play === 'function') {
+                playerRef.current.play().catch((err: Error) => {
+                    // Browser may block autoplay - this is expected behavior
+                    // User will need to click play manually
+                    console.log('Autoplay was prevented by browser:', err.message);
+                    setShowPlayOverlay(true);
+                    setIsPlaying(false);
+                });
+            }
+            onAutoPlayConsumed?.();
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [lesson?.id, autoPlay, lesson?.video_url, isQuiz, youtubeReady, onAutoPlayConsumed]);
 
     // Get instructor data from course authorDetails or fallback to basic info
     const authorDetails = (course as any).authorDetails;
@@ -138,16 +357,11 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                         />
                     ) : lesson.video_url && !isLocked ? (
                         <>
-                            {/* Play button overlay - hide for YouTube since it has its own controls */}
-                            {showPlayOverlay && !videoError && !isYouTubeUrl(lesson.video_url) && (
+                            {/* Play button overlay - show for both YouTube and Mux */}
+                            {showPlayOverlay && !videoError && (
                                 <div
                                     className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900/80 to-slate-800/80 z-20 cursor-pointer"
-                                    onClick={() => {
-                                        setShowPlayOverlay(false);
-                                        if (playerRef.current) {
-                                            playerRef.current.play();
-                                        }
-                                    }}
+                                    onClick={handlePlayOverlayClick}
                                 >
                                     <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center hover:bg-white/20 hover:border-white/50 hover:scale-105 transition-all duration-300 shadow-2xl backdrop-blur-sm">
                                         <Play size={32} className="text-white ml-1" fill="currentColor" />
@@ -183,12 +397,9 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
 
                                     if (isYouTube && youtubeId) {
                                         return (
-                                            <iframe
-                                                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0&modestbranding=1`}
+                                            <div
+                                                id={`youtube-player-${lesson.id}`}
                                                 className="w-full h-full"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                                allowFullScreen
-                                                title={lesson.title}
                                             />
                                         );
                                     }
@@ -199,6 +410,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                                             streamType="on-demand"
                                             playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
                                             src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
+                                            autoPlay={isPlaying}
                                             metadata={{
                                                 video_id: lesson.id,
                                                 video_title: lesson.title,
