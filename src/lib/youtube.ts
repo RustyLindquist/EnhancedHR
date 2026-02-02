@@ -8,12 +8,17 @@
  * Transcript extraction fallback chain:
  * 1. Innertube API (youtube-transcript library) - Free, fast, but blocked for some videos
  * 2. Supadata API - Paid service with better success rate for videos without public captions
- * 3. AI multimodal parsing - Last resort, uses Gemini to watch and transcribe
+ * 3. yt-dlp - Local tool that downloads YouTube auto-generated captions directly
+ * 4. AI multimodal parsing - Last resort, uses Gemini to watch and transcribe
  *
  * Uses YouTube Data API v3 for metadata (title, description, duration, thumbnail)
  */
 
 import { YoutubeTranscript } from 'youtube-transcript';
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 // YouTube Data API v3 key
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyC4UfqwJM0toBikRdFo7jtx_eDZGOBW3Ng';
@@ -314,9 +319,125 @@ export async function fetchYouTubeTranscriptSupadata(videoIdOrUrl: string): Prom
 }
 
 /**
+ * Fetch transcript from YouTube using yt-dlp
+ * This is a fallback when both Innertube and Supadata fail
+ * yt-dlp can access auto-generated captions that other methods miss
+ */
+export async function fetchYouTubeTranscriptYtdlp(videoIdOrUrl: string): Promise<{
+    success: boolean;
+    transcript?: string;
+    error?: string;
+}> {
+    try {
+        const videoId = await extractYouTubeVideoId(videoIdOrUrl);
+        if (!videoId) {
+            return { success: false, error: 'Invalid YouTube URL or video ID' };
+        }
+
+        console.log('[YouTube/yt-dlp] Fetching transcript for video:', videoId);
+
+        // Create temp directory for caption files
+        const tempDir = path.join(os.tmpdir(), 'yt-transcripts');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        const outputPath = path.join(tempDir, videoId);
+        const vttFile = `${outputPath}.en.vtt`;
+
+        // Clean up any existing file
+        if (fs.existsSync(vttFile)) {
+            fs.unlinkSync(vttFile);
+        }
+
+        // Download auto-generated subtitles in English using yt-dlp
+        try {
+            execSync(
+                `yt-dlp --write-auto-sub --skip-download --sub-lang en -o "${outputPath}" "https://www.youtube.com/watch?v=${videoId}" 2>&1`,
+                { timeout: 60000 }
+            );
+        } catch (execError: any) {
+            // yt-dlp returns non-zero exit codes for various warnings, check if file exists
+            if (!fs.existsSync(vttFile)) {
+                return { success: false, error: 'yt-dlp failed to download captions' };
+            }
+        }
+
+        // Check if VTT file was created
+        if (!fs.existsSync(vttFile)) {
+            return { success: false, error: 'No captions available for this video' };
+        }
+
+        // Parse VTT file
+        const vttContent = fs.readFileSync(vttFile, 'utf-8');
+        fs.unlinkSync(vttFile); // Clean up
+
+        const transcript = parseVTT(vttContent);
+
+        if (!transcript || transcript.length < 50) {
+            return { success: false, error: 'Caption file was empty or too short' };
+        }
+
+        console.log('[YouTube/yt-dlp] Successfully fetched transcript, length:', transcript.length);
+
+        return {
+            success: true,
+            transcript: transcript.trim(),
+        };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[YouTube/yt-dlp] Failed to fetch transcript:', errorMessage);
+        return { success: false, error: `yt-dlp error: ${errorMessage}` };
+    }
+}
+
+/**
+ * Parse VTT file to plain text transcript
+ */
+function parseVTT(vttContent: string): string {
+    const lines = vttContent.split('\n');
+    const textLines: string[] = [];
+    let lastText = '';
+
+    for (const line of lines) {
+        // Skip WEBVTT header, timestamps, and empty lines
+        if (line.startsWith('WEBVTT') ||
+            line.startsWith('Kind:') ||
+            line.startsWith('Language:') ||
+            line.includes('-->') ||
+            line.trim() === '') {
+            continue;
+        }
+
+        // Remove VTT formatting tags like <c> and timestamps
+        let text = line
+            .replace(/<[^>]+>/g, '')  // Remove XML-like tags
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&#39;/g, "'")
+            .replace(/&quot;/g, '"')
+            .trim();
+
+        // Avoid duplicates (VTT often repeats lines with slight additions)
+        if (text && text !== lastText && !lastText.includes(text)) {
+            textLines.push(text);
+            lastText = text;
+        }
+    }
+
+    // Join and clean up
+    return textLines.join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
  * Fetch transcript with full fallback chain:
  * 1. Innertube API (youtube-transcript library) - Free, fast
  * 2. Supadata API - Paid, better success rate for restricted videos
+ * 3. yt-dlp - Local tool for auto-generated captions
  *
  * Returns transcript source in result for logging/debugging
  */
@@ -324,7 +445,7 @@ export async function fetchYouTubeTranscriptWithFallback(videoIdOrUrl: string): 
     success: boolean;
     transcript?: string;
     segments?: YouTubeTranscriptSegment[];
-    source?: 'innertube' | 'supadata';
+    source?: 'innertube' | 'supadata' | 'ytdlp';
     error?: string;
 }> {
     // Try Innertube API first (free, fast)
@@ -354,14 +475,31 @@ export async function fetchYouTubeTranscriptWithFallback(videoIdOrUrl: string): 
         }
 
         console.log('[YouTube] Supadata failed:', supadataResult.error);
+    }
 
-        // Return combined error
+    // Try yt-dlp as final fallback
+    console.log('[YouTube] Trying yt-dlp as fallback...');
+    const ytdlpResult = await fetchYouTubeTranscriptYtdlp(videoIdOrUrl);
+
+    if (ytdlpResult.success && ytdlpResult.transcript) {
         return {
-            success: false,
-            error: `Innertube: ${innertubeResult.error}; Supadata: ${supadataResult.error}`,
+            success: true,
+            transcript: ytdlpResult.transcript,
+            source: 'ytdlp',
         };
     }
 
-    // No Supadata configured, return original error
-    return innertubeResult;
+    console.log('[YouTube] yt-dlp failed:', ytdlpResult.error);
+
+    // Return combined error
+    const errors = [`Innertube: ${innertubeResult.error}`];
+    if (SUPADATA_API_KEY) {
+        errors.push('Supadata: rate limited or failed');
+    }
+    errors.push(`yt-dlp: ${ytdlpResult.error}`);
+
+    return {
+        success: false,
+        error: errors.join('; '),
+    };
 }
