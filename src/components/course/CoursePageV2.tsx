@@ -70,6 +70,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     // Lesson view mode state (grid vs list)
     const [lessonViewMode, setLessonViewMode] = useState<'grid' | 'list'>('grid');
 
+    // Auto-play state - triggers video to auto-play when navigating to a lesson
+    const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+
     // Load lesson view preference from localStorage on mount
     useEffect(() => {
         const savedViewMode = localStorage.getItem('enhancedhr-preferred-view-mode');
@@ -203,6 +206,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
         if (!nextLessonId) return;
 
+        // Enable auto-play for the next lesson
+        setShouldAutoPlay(true);
+
         // Animate transition: slide left (forward)
         setIsTransitioning(true);
         setSlideDirection('left');
@@ -306,6 +312,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     const transitionToPlayer = useCallback((lessonId?: string, moduleId?: string) => {
         if (isTransitioning) return;
 
+        // Enable auto-play when transitioning to player (Start/Resume clicked)
+        setShouldAutoPlay(true);
+
         setIsTransitioning(true);
         setSlideDirection('left'); // Forward: description slides left, player comes from right
         setTransitionPhase('exit');
@@ -398,6 +407,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 }
                 return;
             }
+
+            // Enable auto-play when clicking a lesson in the sidebar
+            setShouldAutoPlay(true);
 
             // Record that user accessed this lesson
             updateLastAccessed(lesson.id);
@@ -585,6 +597,8 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                 userId={userId}
                                 onStartAssessment={handleOpenAssessmentPanel}
                                 hasAssessmentProgress={savedAssessmentProgress?.lessonId === currentLesson.id}
+                                autoPlay={shouldAutoPlay}
+                                onAutoPlayConsumed={() => setShouldAutoPlay(false)}
                             />
                         )
                     )}
