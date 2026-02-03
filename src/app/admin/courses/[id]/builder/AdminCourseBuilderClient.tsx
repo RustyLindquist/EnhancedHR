@@ -552,8 +552,8 @@ export default function AdminCourseBuilderClient({
                 isNewLesson={!editingLessonId}
                 onSave={handlePanelSave}
                 onDelete={handlePanelSave}
-                // Transcript props
-                lessonAiTranscript={editingLesson?.ai_transcript || ''}
+                // Transcript props - use undefined instead of '' for proper fallback to lessonContent
+                lessonAiTranscript={editingLesson?.ai_transcript || undefined}
                 lessonUserTranscript={editingLesson?.user_transcript || ''}
                 lessonTranscriptStatus={editingLesson?.transcript_status || 'pending'}
                 lessonTranscriptSource={editingLesson?.transcript_source || 'none'}
