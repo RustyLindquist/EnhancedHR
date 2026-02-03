@@ -1203,7 +1203,12 @@ export async function getCourseForBuilder(courseId: number) {
                 video_url: l.video_url,
                 content: l.content,
                 quiz_data: l.quiz_data,
-                isCompleted: false
+                isCompleted: false,
+                // Transcript fields
+                ai_transcript: l.ai_transcript,
+                user_transcript: l.user_transcript,
+                transcript_status: l.transcript_status,
+                transcript_source: l.transcript_source
             }))
     }));
 
