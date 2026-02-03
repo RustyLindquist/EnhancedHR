@@ -7,14 +7,13 @@ import {
     createStandaloneExpert,
     updateStandaloneExpert,
     deleteStandaloneExpert,
-    addStandaloneExpertCredential,
-    deleteStandaloneExpertCredential,
     uploadStandaloneExpertAvatar
 } from '@/app/actions/standalone-experts';
+import CredentialsEditor from '@/components/CredentialsEditor';
 import {
     User, Phone, Linkedin, Calendar, BookOpen, Mail,
-    XCircle, ArrowLeft, Edit3, Save, Loader2,
-    Briefcase, Globe, Trash2, Plus, UserCircle, AlertTriangle,
+    ArrowLeft, Edit3, Save, Loader2,
+    Briefcase, Globe, Trash2, UserCircle, AlertTriangle,
     Upload, Camera
 } from 'lucide-react';
 
@@ -39,14 +38,6 @@ interface StandaloneExpertDetailsDashboardProps {
     isNew?: boolean;
 }
 
-const CREDENTIAL_TYPES = [
-    { value: 'certification', label: 'Certification' },
-    { value: 'degree', label: 'Degree' },
-    { value: 'experience', label: 'Experience' },
-    { value: 'expertise', label: 'Area of Expertise' },
-    { value: 'publication', label: 'Publication' },
-    { value: 'achievement', label: 'Achievement' },
-] as const;
 
 export default function StandaloneExpertDetailsDashboard({
     expert,
@@ -58,9 +49,6 @@ export default function StandaloneExpertDetailsDashboard({
     const [isPending, startTransition] = useTransition();
     const [isEditing, setIsEditing] = useState(isNew);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [localCredentials, setLocalCredentials] = useState(credentials);
-    const [newCredential, setNewCredential] = useState({ title: '', type: 'certification' as const });
-    const [showAddCredential, setShowAddCredential] = useState(false);
     const [localAvatarUrl, setLocalAvatarUrl] = useState(expert?.avatar_url || '');
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
@@ -148,37 +136,6 @@ export default function StandaloneExpertDetailsDashboard({
         });
     };
 
-    const handleAddCredential = async () => {
-        if (isPending || !expert || !newCredential.title.trim()) return;
-
-        startTransition(async () => {
-            const result = await addStandaloneExpertCredential(expert.id, {
-                title: newCredential.title,
-                type: newCredential.type
-            });
-            if (result.credential) {
-                setLocalCredentials([...localCredentials, result.credential]);
-                setNewCredential({ title: '', type: 'certification' });
-                setShowAddCredential(false);
-            } else {
-                alert(result.error || 'Failed to add credential');
-            }
-        });
-    };
-
-    const handleDeleteCredential = async (credentialId: string) => {
-        if (isPending) return;
-        if (!confirm('Are you sure you want to delete this credential?')) return;
-
-        startTransition(async () => {
-            const result = await deleteStandaloneExpertCredential(credentialId);
-            if (result.success) {
-                setLocalCredentials(localCredentials.filter(c => c.id !== credentialId));
-            } else {
-                alert(result.error || 'Failed to delete credential');
-            }
-        });
-    };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -274,6 +231,29 @@ export default function StandaloneExpertDetailsDashboard({
                                 >
                                     <Edit3 size={14} />
                                     <span>Edit</span>
+                                </button>
+                            </>
+                        )}
+                        {isEditing && (
+                            <>
+                                <button
+                                    onClick={handleCancel}
+                                    disabled={isPending}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+                                >
+                                    <span>Cancel</span>
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isPending}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-amber-500 rounded-full text-xs font-bold uppercase tracking-wider text-white hover:bg-amber-400 transition-all disabled:opacity-50"
+                                >
+                                    {isPending ? (
+                                        <Loader2 size={14} className="animate-spin" />
+                                    ) : (
+                                        <Save size={14} />
+                                    )}
+                                    <span>{isPending ? 'Saving...' : isNew ? 'Create Expert' : 'Save Changes'}</span>
                                 </button>
                             </>
                         )}
@@ -502,130 +482,33 @@ export default function StandaloneExpertDetailsDashboard({
                         </div>
                     )}
 
-                    {/* Action Buttons */}
-                    {isEditing && (
-                        <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                            <button
-                                onClick={handleCancel}
-                                disabled={isPending}
-                                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={isPending}
-                                className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
-                            >
-                                {isPending ? (
-                                    <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                    <Save size={16} />
-                                )}
-                                {isPending ? 'Saving...' : isNew ? 'Create Expert' : 'Save Changes'}
-                            </button>
-                        </div>
-                    )}
                 </div>
 
-                {/* Section 3: Credentials & Background (only for existing experts) */}
-                {!isNew && (
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <circle cx="12" cy="8" r="6" />
-                                        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-                                    </svg>
-                                </div>
-                                <h2 className="text-xl font-bold text-white">Credentials & Background</h2>
-                            </div>
-                            <button
-                                onClick={() => setShowAddCredential(!showAddCredential)}
-                                className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors"
-                            >
-                                <Plus size={14} />
-                                Add Credential
-                            </button>
+                {/* Section 3: Credentials & Background */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="8" r="6" />
+                                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+                            </svg>
                         </div>
-                        <p className="text-sm text-slate-400 mb-6">
-                            Professional certifications, degrees, and areas of expertise displayed on their expert profile.
-                        </p>
-
-                        {/* Add Credential Form */}
-                        {showAddCredential && (
-                            <div className="p-4 mb-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
-                                <div className="flex gap-3">
-                                    <input
-                                        type="text"
-                                        value={newCredential.title}
-                                        onChange={(e) => setNewCredential({ ...newCredential, title: e.target.value })}
-                                        placeholder="e.g., SHRM-SCP, MBA, 15+ Years HR Experience"
-                                        className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none text-sm"
-                                    />
-                                    <select
-                                        value={newCredential.type}
-                                        onChange={(e) => setNewCredential({ ...newCredential, type: e.target.value as any })}
-                                        className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white outline-none text-sm"
-                                    >
-                                        {CREDENTIAL_TYPES.map(t => (
-                                            <option key={t.value} value={t.value}>{t.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setShowAddCredential(false);
-                                            setNewCredential({ title: '', type: 'certification' });
-                                        }}
-                                        className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handleAddCredential}
-                                        disabled={isPending || !newCredential.title.trim()}
-                                        className="px-3 py-1.5 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50"
-                                    >
-                                        {isPending ? 'Adding...' : 'Add'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Credentials List */}
-                        {localCredentials.length > 0 ? (
-                            <div className="space-y-2">
-                                {localCredentials.map((credential) => (
-                                    <div
-                                        key={credential.id}
-                                        className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 group"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-400 uppercase">
-                                                {credential.type}
-                                            </span>
-                                            <span className="text-white">{credential.title}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDeleteCredential(credential.id)}
-                                            disabled={isPending}
-                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-500 hover:text-red-400 transition-all disabled:opacity-50"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-slate-500 italic">
-                                No credentials added yet.
-                            </div>
-                        )}
+                        <h2 className="text-xl font-bold text-white">Credentials & Background</h2>
                     </div>
-                )}
+                    <p className="text-sm text-slate-400 mb-6">
+                        Professional certifications, degrees, and areas of expertise displayed on their expert profile.
+                    </p>
+                    {isNew ? (
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-slate-500 text-center">
+                            Save the expert first to add credentials.
+                        </div>
+                    ) : expert ? (
+                        <CredentialsEditor
+                            credentials={credentials}
+                            standaloneExpertId={expert.id}
+                        />
+                    ) : null}
+                </div>
 
                 {/* Section 4: Contact & Social Links */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm space-y-6">

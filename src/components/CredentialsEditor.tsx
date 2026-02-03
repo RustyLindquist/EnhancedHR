@@ -26,6 +26,12 @@ import {
     adminUpdateCredential,
     adminDeleteCredential
 } from '@/app/actions/credentials';
+import {
+    addStandaloneExpertCredential,
+    updateStandaloneExpertCredential,
+    deleteStandaloneExpertCredential
+} from '@/app/actions/standalone-experts';
+import { StandaloneExpertCredential } from '@/types';
 
 // Icon mapping for credential types
 export const credentialTypeConfig: Record<CredentialType, { icon: LucideIcon; label: string; color: string }> = {
@@ -37,11 +43,15 @@ export const credentialTypeConfig: Record<CredentialType, { icon: LucideIcon; la
     achievement: { icon: Trophy, label: 'Achievement', color: 'text-orange-400' },
 };
 
+// Type that works for both regular and standalone expert credentials
+export type CredentialLike = ExpertCredential | StandaloneExpertCredential;
+
 interface CredentialsEditorProps {
-    credentials: ExpertCredential[];
-    onCredentialsChange?: (credentials: ExpertCredential[]) => void;
+    credentials: CredentialLike[];
+    onCredentialsChange?: (credentials: CredentialLike[]) => void;
     isAdmin?: boolean;
-    expertId?: string; // Required for admin mode
+    expertId?: string; // Required for admin mode (regular experts)
+    standaloneExpertId?: string; // For standalone expert mode
     readOnly?: boolean;
 }
 
@@ -50,9 +60,10 @@ export default function CredentialsEditor({
     onCredentialsChange,
     isAdmin = false,
     expertId,
+    standaloneExpertId,
     readOnly = false,
 }: CredentialsEditorProps) {
-    const [credentials, setCredentials] = useState<ExpertCredential[]>(initialCredentials);
+    const [credentials, setCredentials] = useState<CredentialLike[]>(initialCredentials);
     const [isPending, startTransition] = useTransition();
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,6 +82,26 @@ export default function CredentialsEditor({
         setError(null);
 
         startTransition(async () => {
+            // Use standalone expert actions if standaloneExpertId is provided
+            if (standaloneExpertId) {
+                const result = await addStandaloneExpertCredential(standaloneExpertId, {
+                    title: newTitle.trim(),
+                    type: newType
+                });
+                if (result.credential) {
+                    const updated = [...credentials, result.credential];
+                    setCredentials(updated);
+                    onCredentialsChange?.(updated);
+                    setNewTitle('');
+                    setNewType('certification');
+                    setIsAdding(false);
+                } else {
+                    setError(result.error || 'Failed to add credential');
+                }
+                return;
+            }
+
+            // Regular expert actions
             const result = isAdmin && expertId
                 ? await adminCreateCredential(expertId, { title: newTitle.trim(), type: newType })
                 : await createCredential({ title: newTitle.trim(), type: newType });
@@ -93,6 +124,26 @@ export default function CredentialsEditor({
         setError(null);
 
         startTransition(async () => {
+            // Use standalone expert actions if standaloneExpertId is provided
+            if (standaloneExpertId) {
+                const result = await updateStandaloneExpertCredential(credentialId, {
+                    title: editTitle.trim(),
+                    type: editType
+                });
+                if (result.success) {
+                    const updated = credentials.map(c =>
+                        c.id === credentialId ? { ...c, title: editTitle.trim(), type: editType } : c
+                    );
+                    setCredentials(updated);
+                    onCredentialsChange?.(updated);
+                    setEditingId(null);
+                } else {
+                    setError(result.error || 'Failed to update credential');
+                }
+                return;
+            }
+
+            // Regular expert actions
             const result = isAdmin
                 ? await adminUpdateCredential(credentialId, { title: editTitle.trim(), type: editType })
                 : await updateCredential(credentialId, { title: editTitle.trim(), type: editType });
@@ -114,6 +165,20 @@ export default function CredentialsEditor({
         setError(null);
 
         startTransition(async () => {
+            // Use standalone expert actions if standaloneExpertId is provided
+            if (standaloneExpertId) {
+                const result = await deleteStandaloneExpertCredential(credentialId);
+                if (result.success) {
+                    const updated = credentials.filter(c => c.id !== credentialId);
+                    setCredentials(updated);
+                    onCredentialsChange?.(updated);
+                } else {
+                    setError(result.error || 'Failed to delete credential');
+                }
+                return;
+            }
+
+            // Regular expert actions
             const result = isAdmin
                 ? await adminDeleteCredential(credentialId)
                 : await deleteCredential(credentialId);
@@ -128,7 +193,7 @@ export default function CredentialsEditor({
         });
     };
 
-    const startEdit = (credential: ExpertCredential) => {
+    const startEdit = (credential: CredentialLike) => {
         setEditingId(credential.id);
         setEditTitle(credential.title);
         setEditType(credential.type);
@@ -335,7 +400,7 @@ export default function CredentialsEditor({
 }
 
 // Display-only component for showing credentials with icons (for Academy pages)
-export function CredentialsDisplay({ credentials }: { credentials: ExpertCredential[] }) {
+export function CredentialsDisplay({ credentials }: { credentials: CredentialLike[] }) {
     return (
         <div className="space-y-2">
             {credentials.map((credential) => {
