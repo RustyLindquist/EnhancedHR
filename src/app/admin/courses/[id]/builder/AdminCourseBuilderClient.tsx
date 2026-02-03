@@ -552,6 +552,11 @@ export default function AdminCourseBuilderClient({
                 isNewLesson={!editingLessonId}
                 onSave={handlePanelSave}
                 onDelete={handlePanelSave}
+                // Transcript props
+                lessonAiTranscript={editingLesson?.ai_transcript || ''}
+                lessonUserTranscript={editingLesson?.user_transcript || ''}
+                lessonTranscriptStatus={editingLesson?.transcript_status || 'pending'}
+                lessonTranscriptSource={editingLesson?.transcript_source || 'none'}
             />
 
             {/* ============================================ */}
