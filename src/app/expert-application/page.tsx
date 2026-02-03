@@ -360,7 +360,7 @@ export default function ExpertApplicationPage() {
                                         <div className="bg-[#0A0D12] border border-white/10 rounded-lg p-4">
                                             <CredentialsEditor
                                                 credentials={credentials}
-                                                onCredentialsChange={setCredentials}
+                                                onCredentialsChange={(creds) => setCredentials(creds as ExpertCredential[])}
                                                 readOnly={!isEditable}
                                             />
                                         </div>
