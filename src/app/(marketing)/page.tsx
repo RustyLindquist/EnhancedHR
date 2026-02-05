@@ -1,340 +1,824 @@
-
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Users, Zap, Shield, Star, PlayCircle, Globe, Award } from 'lucide-react';
+import {
+    ArrowRight, Check, Zap, BookOpen, Brain, Users,
+    Building2, Wrench, Award, Shield, MessageSquare,
+    GraduationCap, Layers, BarChart3, Sparkles, Target,
+    FolderOpen, Bot, UserCheck, ChevronRight
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import FadeIn from '@/components/marketing/FadeIn';
 
 export default async function MarketingHomePage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    const ctaHref = user ? '/dashboard' : '/login?view=signup';
+    const ctaLabel = user ? 'Go to Dashboard' : 'Start Free Trial';
+
     return (
         <div className="overflow-hidden">
 
-            {/* --- HERO SECTION --- */}
-            <section className="relative min-h-[90vh] flex items-center justify-center pt-20">
-                {/* Background Effects */}
+            {/* ═══════════════════════════════════════════
+                HERO SECTION
+            ═══════════════════════════════════════════ */}
+            <section className="relative min-h-[92vh] flex items-center justify-center">
+                {/* Animated Background */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-brand-blue-light/10 rounded-full blur-[120px] opacity-50 animate-pulse-slow"></div>
-                    <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-brand-blue/10 rounded-full blur-[100px] opacity-30"></div>
+                    {/* Grid pattern */}
+                    <div className="absolute inset-0 opacity-[0.03]" style={{
+                        backgroundImage: 'linear-gradient(rgba(75,139,179,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(75,139,179,0.5) 1px, transparent 1px)',
+                        backgroundSize: '60px 60px',
+                    }} />
+                    {/* Gradient orbs */}
+                    <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] bg-[#4B8BB3]/8 rounded-full blur-[120px] animate-pulse-slow" />
+                    <div className="absolute bottom-[10%] right-[10%] w-[600px] h-[600px] bg-[#054C74]/10 rounded-full blur-[100px] animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
+                    <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-[#FF9300]/5 rounded-full blur-[80px] animate-pulse-slow" style={{ animationDelay: '3s' }} />
+                    {/* Top fade */}
+                    <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#0A0D12] to-transparent" />
                 </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 animate-fade-in">
-                        <span className="w-2 h-2 rounded-full bg-brand-orange animate-pulse"></span>
-                        <span className="text-sm font-medium text-slate-300">The Future of HR Learning is Here</span>
-                    </div>
-
-                    <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight mb-8 leading-tight">
-                        Human <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue-light to-white">Relevance</span>
-                        <br />
-                        in the Age of AI.
-                    </h1>
-
-                    <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed font-light">
-                        EnhancedHR is the world-class learning platform designed to help HR professionals and leaders master the skills they need to stay relevant, lead with confidence, and drive organizational success.
-                    </p>
-
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-6">
-                        <Link
-                            href={user ? "/dashboard" : "/login?view=signup"}
-                            className="px-8 py-4 rounded-full bg-brand-blue-light text-brand-black font-bold text-lg hover:bg-white transition-all shadow-[0_0_30px_rgba(120,192,240,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] hover:-translate-y-1 flex items-center gap-2"
-                        >
-                            {user ? "Go to Dashboard" : "Start Learning Now"} <ArrowRight size={20} />
-                        </Link>
-                        <Link
-                            href="/features"
-                            className="px-8 py-4 rounded-full bg-white/5 text-white font-bold text-lg border border-white/10 hover:bg-white/10 transition-all hover:-translate-y-1"
-                        >
-                            Explore Features
-                        </Link>
-                    </div>
-
-                    {/* Hero Visual / Dashboard Preview */}
-                    <div className="mt-20 relative mx-auto max-w-5xl perspective-container">
-                        <div className="relative rounded-xl border border-white/10 bg-[#0f172a]/80 backdrop-blur-xl shadow-2xl overflow-hidden transform rotate-x-12 hover:rotate-x-0 transition-transform duration-1000 ease-out group">
-                            {/* Mock UI Header */}
-                            <div className="h-12 border-b border-white/10 bg-white/5 flex items-center px-4 gap-2">
-                                <div className="flex gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                                    <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                                    <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
-                                </div>
-                                <div className="ml-4 w-64 h-6 rounded-full bg-white/5"></div>
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-20">
+                    <div className="text-center max-w-4xl mx-auto">
+                        {/* Badge */}
+                        <FadeIn delay={100}>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md mb-8">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF9300] animate-pulse" />
+                                <span className="text-xs font-medium text-slate-400 tracking-wide">SHRM & HRCI Approved Provider</span>
                             </div>
-                            {/* Mock UI Body */}
-                            <div className="p-8 grid grid-cols-3 gap-6 h-[400px]">
-                                <div className="col-span-2 space-y-4">
-                                    <div className="h-48 rounded-lg bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/5 border border-white/5 relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
-                                        <div className="absolute bottom-4 left-4">
-                                            <div className="px-3 py-1 rounded-full bg-brand-orange text-white text-xs font-bold mb-2 w-max">NEW COURSE</div>
-                                            <div className="text-xl font-bold text-white">AI for People Operations</div>
-                                        </div>
-                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                            <PlayCircle size={48} className="text-white drop-shadow-lg" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="h-32 rounded-lg bg-white/5 border border-white/5"></div>
-                                        <div className="h-32 rounded-lg bg-white/5 border border-white/5"></div>
-                                    </div>
-                                </div>
-                                <div className="col-span-1 space-y-4">
-                                    <div className="h-full rounded-lg bg-white/5 border border-white/5 p-4">
-                                        <div className="flex items-center gap-2 mb-4 text-brand-blue-light">
-                                            <Zap size={16} /> <span className="text-xs font-bold uppercase">AI Assistant</span>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="w-full h-2 bg-white/10 rounded-full"></div>
-                                            <div className="w-2/3 h-2 bg-white/10 rounded-full"></div>
-                                            <div className="w-5/6 h-2 bg-white/10 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Glow behind dashboard */}
-                        <div className="absolute -inset-10 bg-brand-blue-light/20 blur-[100px] -z-10"></div>
-                    </div>
-                </div>
-            </section>
+                        </FadeIn>
 
-            {/* --- SECTION 1: THE AI ADVANTAGE --- */}
-            <section className="py-32 bg-[#05080a] relative overflow-hidden">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-blue-light/10 text-brand-blue-light text-xs font-bold uppercase tracking-wider mb-6">
-                                <Zap size={14} /> The Secret Sauce
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
-                                Don't just watch. <br />
-                                <span className="text-brand-blue-light">Practice.</span>
-                            </h2>
-                            <p className="text-xl text-slate-400 mb-8 leading-relaxed">
-                                Static video courses are dead. You need a partner. EnhancedHR pairs every expert-led course with a <strong>Dual-Layer AI</strong> system.
+                        {/* Headline */}
+                        <FadeIn delay={200}>
+                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight mb-8 leading-[1.05]">
+                                The AI-Native
+                                <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] via-[#78C0F0] to-[#4B8BB3]">
+                                    Academy
+                                </span>
+                                {' '}for
+                                <br />
+                                Modern HR
+                            </h1>
+                        </FadeIn>
+
+                        {/* Subheadline */}
+                        <FadeIn delay={350}>
+                            <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
+                                Expert-led courses. Five deeply integrated AI agents. Automatic recertification credits.
+                                Everything HR professionals and leaders need to stay relevant and lead with confidence.
                             </p>
+                        </FadeIn>
 
-                            <div className="space-y-8">
-                                <div className="flex gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-brand-blue/20 flex items-center justify-center text-brand-blue-light flex-shrink-0">
-                                        <Users size={24} />
+                        {/* CTAs */}
+                        <FadeIn delay={500}>
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                <Link
+                                    href={ctaHref}
+                                    className="group px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_30px_rgba(75,139,179,0.3)] hover:shadow-[0_0_50px_rgba(75,139,179,0.5)] hover:-translate-y-0.5 flex items-center gap-2"
+                                >
+                                    {ctaLabel}
+                                    <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                                </Link>
+                                <Link
+                                    href="#pillars"
+                                    className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5"
+                                >
+                                    See What&apos;s Inside
+                                </Link>
+                            </div>
+                        </FadeIn>
+                    </div>
+
+                    {/* Hero Visual — Platform Mockup */}
+                    <FadeIn delay={700} className="mt-20">
+                        <div className="relative mx-auto max-w-5xl">
+                            {/* Glow behind */}
+                            <div className="absolute -inset-8 bg-[#4B8BB3]/15 blur-[80px] rounded-3xl -z-10" />
+
+                            <div className="relative rounded-2xl border border-white/[0.08] bg-[#0B1120]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+                                {/* Browser Chrome */}
+                                <div className="h-10 border-b border-white/[0.06] bg-white/[0.02] flex items-center px-4 gap-2">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white mb-2">The Course Tutor</h3>
-                                        <p className="text-slate-400">
-                                            A proactive coach that knows your role and industry. It doesn't just answer; it challenges you with Socratic role-play scenarios to ensure you can apply what you learn.
-                                        </p>
+                                    <div className="ml-3 flex-1 max-w-sm h-5 rounded-full bg-white/[0.04] flex items-center px-3">
+                                        <span className="text-[10px] text-slate-600">app.enhancedhr.ai/dashboard</span>
                                     </div>
                                 </div>
-                                <div className="flex gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-brand-orange/20 flex items-center justify-center text-brand-orange flex-shrink-0">
-                                        <Zap size={24} />
+
+                                {/* App Content */}
+                                <div className="p-6 grid grid-cols-12 gap-4 h-[380px]">
+                                    {/* Sidebar */}
+                                    <div className="col-span-3 space-y-3">
+                                        <div className="p-3 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
+                                            <div className="text-[10px] font-bold text-[#4B8BB3] uppercase tracking-wider mb-2">Collections</div>
+                                            <div className="space-y-1.5">
+                                                <div className="h-5 rounded bg-white/[0.06] flex items-center px-2">
+                                                    <span className="text-[9px] text-slate-500">Favorites</span>
+                                                </div>
+                                                <div className="h-5 rounded bg-white/[0.06] flex items-center px-2">
+                                                    <span className="text-[9px] text-slate-500">Onboarding Project</span>
+                                                </div>
+                                                <div className="h-5 rounded bg-white/[0.06] flex items-center px-2">
+                                                    <span className="text-[9px] text-slate-500">Leadership Dev</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Courses</div>
+                                            <div className="space-y-1.5">
+                                                <div className="h-5 rounded bg-white/[0.04]" />
+                                                <div className="h-5 rounded bg-white/[0.04]" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white mb-2">The Course Assistant</h3>
-                                        <p className="text-slate-400">
-                                            Your instant librarian. Ask "What did the instructor say about conflict resolution?" and get an immediate, cited answer from the transcript.
-                                        </p>
+
+                                    {/* Main Content */}
+                                    <div className="col-span-6 space-y-4">
+                                        <div className="h-44 rounded-xl bg-gradient-to-br from-[#054C74]/40 to-[#4B8BB3]/10 border border-white/[0.06] relative overflow-hidden">
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                                                    <div className="w-0 h-0 border-l-[12px] border-l-white border-y-[8px] border-y-transparent ml-1" />
+                                                </div>
+                                            </div>
+                                            <div className="absolute bottom-3 left-3">
+                                                <div className="px-2 py-0.5 rounded bg-[#FF9300] text-white text-[8px] font-bold mb-1 w-max">SHRM 1.5 PDCs</div>
+                                                <div className="text-xs font-bold text-white">Leading Through AI Disruption</div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="h-28 rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+                                                <div className="text-[9px] text-slate-500 mb-2">Progress</div>
+                                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                                    <div className="h-full w-[65%] rounded-full bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]" />
+                                                </div>
+                                                <div className="text-[9px] text-slate-500 mt-2">4 of 6 modules</div>
+                                            </div>
+                                            <div className="h-28 rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+                                                <div className="text-[9px] text-slate-500 mb-2">Credits Earned</div>
+                                                <div className="text-2xl font-bold text-white">12.5</div>
+                                                <div className="text-[9px] text-[#FF9300]">SHRM PDCs</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* AI Panel */}
+                                    <div className="col-span-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col">
+                                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/[0.06]">
+                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#4B8BB3] to-[#054C74] flex items-center justify-center">
+                                                <Sparkles size={10} className="text-white" />
+                                            </div>
+                                            <div className="text-[10px] font-bold text-white">Prometheus</div>
+                                        </div>
+                                        <div className="space-y-2 flex-1">
+                                            <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.04]">
+                                                <p className="text-[9px] text-slate-400 leading-relaxed">How should I approach the change management conversation from Module 3?</p>
+                                            </div>
+                                            <div className="p-2 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
+                                                <p className="text-[9px] text-slate-300 leading-relaxed">Based on the course content and your role as VP of People, I'd suggest leading with...</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center px-2">
+                                            <span className="text-[9px] text-slate-600">Ask anything...</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </FadeIn>
+                </div>
+            </section>
 
-                        {/* Visual: AI Chat Interface Mockup */}
-                        <div className="relative">
-                            <div className="absolute -inset-4 bg-gradient-to-tr from-brand-blue to-purple-500 rounded-full blur-[80px] opacity-20"></div>
-                            <div className="relative bg-[#0A0D12] border border-white/10 rounded-2xl p-6 shadow-2xl">
-                                <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-                                    <div className="w-10 h-10 rounded-full bg-brand-blue-light flex items-center justify-center text-brand-black font-bold">AI</div>
+            {/* ═══════════════════════════════════════════
+                TRUST BAR
+            ═══════════════════════════════════════════ */}
+            <section className="py-16 bg-[#0B1120]/50 border-y border-white/[0.04]">
+                <div className="max-w-5xl mx-auto px-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
+                        {[
+                            { label: 'SHRM Approved', sublabel: 'Provider', icon: <Shield size={20} /> },
+                            { label: 'HRCI Approved', sublabel: 'Provider', icon: <Award size={20} /> },
+                            { label: '5 AI Agents', sublabel: 'Built In', icon: <Brain size={20} /> },
+                            { label: 'Expert-Led', sublabel: 'Courses', icon: <GraduationCap size={20} /> },
+                        ].map((item, i) => (
+                            <FadeIn key={i} delay={i * 100}>
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="text-[#4B8BB3]/60">{item.icon}</div>
                                     <div>
-                                        <div className="text-white font-bold">Course Tutor</div>
-                                        <div className="text-xs text-brand-blue-light">Proactive Coaching Mode</div>
+                                        <div className="text-sm font-bold text-white">{item.label}</div>
+                                        <div className="text-xs text-slate-500">{item.sublabel}</div>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="bg-white/5 rounded-lg p-4 rounded-tl-none border border-white/5">
-                                        <p className="text-slate-300 text-sm">
-                                            "I see you're a Director of People Ops. Before we move on, how would you handle a situation where a high-performer refuses to adopt this new policy?"
-                                        </p>
-                                    </div>
-                                    <div className="bg-brand-blue-light/10 rounded-lg p-4 rounded-tr-none border border-brand-blue-light/20 ml-auto max-w-[80%]">
-                                        <p className="text-white text-sm">
-                                            "I'd probably start by having a 1:1 to understand their resistance..."
-                                        </p>
-                                    </div>
-                                    <div className="bg-white/5 rounded-lg p-4 rounded-tl-none border border-white/5">
-                                        <p className="text-slate-300 text-sm">
-                                            "Excellent start. Now, let's refine that using the 'Empathy First' framework we just discussed in Module 2..."
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </FadeIn>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* --- SECTION 2: THE LIQUID INTERFACE --- */}
-            <section className="py-32 bg-[#0A0D12] relative">
-                <div className="max-w-7xl mx-auto px-6 text-center mb-20">
-                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                        A Learning Experience <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">You'll Actually Enjoy.</span>
-                    </h2>
-                    <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-                        We ditched the clunky LMS for a "Liquid Interface" designed for flow. Beautiful card stacks, intuitive collections, and a design that respects your taste.
-                    </p>
-                </div>
-
-                {/* Visual: Card Stacks */}
-                <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {[
-                        { title: "Liquid Cards", desc: "Content lives in beautiful, glass-morphism cards that stack to show depth.", icon: <Star size={24} /> },
-                        { title: "Collection Portals", desc: "Organize content into Favorites, Research, or Custom Collections with a drag-and-drop 'portal' interface.", icon: <Globe size={24} /> },
-                        { title: "Dopamine Design", desc: "Subtle animations and micro-interactions make every click feel rewarding.", icon: <Award size={24} /> }
-                    ].map((item, i) => (
-                        <div key={i} className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group text-center">
-                            <div className="w-16 h-16 mx-auto rounded-full bg-white/5 flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform border border-white/10">
-                                {item.icon}
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-4">{item.title}</h3>
-                            <p className="text-slate-400">{item.desc}</p>
+            {/* ═══════════════════════════════════════════
+                PLATFORM PILLARS
+            ═══════════════════════════════════════════ */}
+            <section id="pillars" className="py-28 relative">
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
+                            <Layers size={12} /> THE PLATFORM
                         </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* --- SECTION 3: AUTOMATED RECERTIFICATION --- */}
-            <section className="py-32 bg-[#05080a] relative border-t border-white/5">
-                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                    {/* Visual: Certificate */}
-                    <div className="relative order-2 lg:order-1">
-                        <div className="absolute -inset-4 bg-brand-orange/20 rounded-full blur-[80px]"></div>
-                        <div className="relative bg-white text-black rounded-xl p-8 shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
-                            <div className="border-4 border-double border-slate-200 h-full p-6 flex flex-col items-center text-center">
-                                <div className="w-16 h-16 mb-4 text-brand-orange">
-                                    <Award size={64} />
-                                </div>
-                                <h3 className="font-serif text-3xl font-bold mb-2">Certificate of Completion</h3>
-                                <p className="text-slate-500 mb-6">Awarded to <span className="font-bold text-black">Jane Doe</span></p>
-                                <div className="flex gap-4 text-sm font-bold text-slate-600">
-                                    <span className="px-3 py-1 bg-slate-100 rounded">1.5 SHRM PDCs</span>
-                                    <span className="px-3 py-1 bg-slate-100 rounded">1.5 HRCI Credits</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="order-1 lg:order-2">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-bold uppercase tracking-wider mb-6">
-                            <Check size={14} /> Audit-Proof Tracking
-                        </div>
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                            Recertification on Autopilot.
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                            One Platform. Everything HR Needs.
                         </h2>
-                        <p className="text-xl text-slate-400 mb-8 leading-relaxed">
-                            Never manually track a credit again. Our system automatically calculates SHRM PDCs and HRCI credits based on your precise watch time.
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                            From expert-led courses to AI-powered knowledge management, EnhancedHR enhances every aspect of how you learn, lead, and grow.
                         </p>
-                        <ul className="space-y-4">
-                            <li className="flex items-center gap-3 text-slate-300">
-                                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500"><Check size={14} /></div>
-                                <span>Automatic calculation of PDCs and Credits</span>
-                            </li>
-                            <li className="flex items-center gap-3 text-slate-300">
-                                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500"><Check size={14} /></div>
-                                <span>Instant certificate generation upon completion</span>
-                            </li>
-                            <li className="flex items-center gap-3 text-slate-300">
-                                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500"><Check size={14} /></div>
-                                <span>Audit-proof ledger of your learning history</span>
-                            </li>
-                        </ul>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[
+                            {
+                                icon: <BookOpen size={22} />,
+                                title: 'Academy',
+                                desc: 'World-class courses from industry-leading experts, designed for the realities of modern HR and leadership.',
+                                href: '/academy',
+                                color: '#4B8BB3',
+                            },
+                            {
+                                icon: <Brain size={22} />,
+                                title: 'AI Intelligence',
+                                desc: 'Five specialized AI agents woven into every layer of the platform, transforming how you learn and work.',
+                                href: '/platform',
+                                color: '#78C0F0',
+                            },
+                            {
+                                icon: <FolderOpen size={22} />,
+                                title: 'Collections',
+                                desc: 'Build personal and team knowledge bases. Add courses, notes, files, videos — then let AI help you synthesize it all.',
+                                href: '/platform#collections',
+                                color: '#FF9300',
+                            },
+                            {
+                                icon: <Building2 size={22} />,
+                                title: 'For Organizations',
+                                desc: 'Custom groups, org-specific courses, centralized knowledge bases, and analytics for your entire team.',
+                                href: '/organizations',
+                                color: '#4B8BB3',
+                            },
+                            {
+                                icon: <Wrench size={22} />,
+                                title: 'AI Tools',
+                                desc: 'Purpose-built AI tools for HR — from role disruption forecasting to the RolePlay Dojo for difficult conversations.',
+                                href: '/ai-tools',
+                                color: '#FF2600',
+                            },
+                            {
+                                icon: <Award size={22} />,
+                                title: 'Recertification',
+                                desc: 'Automatic SHRM PDC and HRCI credit tracking. Audit-proof certificates generated the moment you finish.',
+                                href: '#recertification',
+                                color: '#FF9300',
+                            },
+                        ].map((pillar, i) => (
+                            <FadeIn key={i} delay={i * 80}>
+                                <Link
+                                    href={pillar.href}
+                                    className="group block p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-300 h-full"
+                                >
+                                    <div
+                                        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110"
+                                        style={{ backgroundColor: `${pillar.color}15`, color: pillar.color }}
+                                    >
+                                        {pillar.icon}
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                        {pillar.title}
+                                        <ChevronRight size={14} className="text-slate-600 group-hover:text-white/40 group-hover:translate-x-0.5 transition-all" />
+                                    </h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{pillar.desc}</p>
+                                </Link>
+                            </FadeIn>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* --- PRICING SECTION --- */}
-            <section id="pricing" className="py-32 relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[800px] bg-brand-blue/5 rounded-full blur-[120px] -z-10"></div>
+            {/* ═══════════════════════════════════════════
+                AI SHOWCASE
+            ═══════════════════════════════════════════ */}
+            <section className="py-28 bg-[#0B1120]/40 relative overflow-hidden">
+                {/* Background accents */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#054C74]/8 rounded-full blur-[100px] pointer-events-none" />
 
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-                        {/* Left: Pitch */}
+                        {/* Left: Copy */}
                         <div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                                Simple, Transparent Pricing for Everyone.
-                            </h2>
-                            <p className="text-xl text-slate-400 mb-8 leading-relaxed">
-                                Whether you're an individual looking to level up, or an organization empowering your entire HR team, we have one simple plan.
-                            </p>
+                            <FadeIn>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
+                                    <Bot size={12} /> POWERED BY PROMETHEUS
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
+                                    AI That Actually
+                                    <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]">
+                                        Understands Your Work
+                                    </span>
+                                </h2>
+                                <p className="text-lg text-slate-400 mb-10 leading-relaxed">
+                                    This isn&apos;t a chatbot bolted onto an LMS. Five specialized AI agents are woven into every layer of the platform — each designed for a specific aspect of your learning and work.
+                                </p>
+                            </FadeIn>
 
-                            <div className="space-y-4 mb-8">
+                            <div className="space-y-5">
                                 {[
-                                    "Unlimited access to all courses",
-                                    "AI Tutor & Course Assistant",
-                                    "SHRM & HRCI Credit Tracking",
-                                    "New content added monthly",
-                                    "Cancel anytime"
-                                ].map((item, i) => (
-                                    <div key={i} className="flex items-center gap-3 text-slate-300">
-                                        <div className="w-6 h-6 rounded-full bg-brand-blue-light/20 flex items-center justify-center text-brand-blue-light">
-                                            <Check size={14} />
+                                    { name: 'Course Assistant', desc: 'Instant, cited answers from any course. Your on-demand librarian.', icon: <MessageSquare size={16} />, color: '#4B8BB3' },
+                                    { name: 'Course Tutor', desc: 'Socratic coaching that adapts to your role, experience, and goals.', icon: <GraduationCap size={16} />, color: '#FF9300' },
+                                    { name: 'Platform Assistant', desc: 'Cross-platform intelligence trained on the entire content library.', icon: <Brain size={16} />, color: '#78C0F0' },
+                                    { name: 'Collection Assistant', desc: 'Your personal knowledge brain, trained on everything you curate.', icon: <FolderOpen size={16} />, color: '#4B8BB3' },
+                                    { name: 'Analytics Assistant', desc: 'Org-level insights on learning patterns, engagement, and ROI.', icon: <BarChart3 size={16} />, color: '#FF9300' },
+                                ].map((agent, i) => (
+                                    <FadeIn key={i} delay={i * 80}>
+                                        <div className="flex gap-4 group">
+                                            <div
+                                                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110"
+                                                style={{ backgroundColor: `${agent.color}15`, color: agent.color }}
+                                            >
+                                                {agent.icon}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-white mb-1">{agent.name}</h4>
+                                                <p className="text-sm text-slate-500">{agent.desc}</p>
+                                            </div>
                                         </div>
-                                        {item}
-                                    </div>
+                                    </FadeIn>
                                 ))}
                             </div>
-                        </div>
 
-                        {/* Right: Card */}
-                        <div className="relative">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-brand-blue-light to-brand-blue rounded-3xl blur opacity-30"></div>
-                            <div className="relative bg-[#0f172a] border border-white/10 rounded-3xl p-10 text-center">
-                                <div className="inline-block px-4 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-bold uppercase tracking-wider mb-6">
-                                    All-Access Pass
-                                </div>
-
-                                <div className="flex items-baseline justify-center gap-2 mb-2">
-                                    <span className="text-6xl font-bold text-white">$30</span>
-                                    <span className="text-slate-400 text-xl">/month</span>
-                                </div>
-                                <p className="text-slate-500 text-sm mb-8">per user</p>
-
+                            <FadeIn delay={500} className="mt-10">
                                 <Link
-                                    href="/login?view=signup"
-                                    className="block w-full py-4 rounded-xl bg-brand-blue-light text-brand-black font-bold text-lg hover:bg-white transition-all shadow-lg hover:shadow-brand-blue-light/20 mb-6"
+                                    href="/platform"
+                                    className="inline-flex items-center gap-2 text-[#4B8BB3] font-semibold text-sm hover:text-white transition-colors group"
                                 >
-                                    Start Your Free Trial
+                                    Explore AI Platform
+                                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                                 </Link>
-
-                                <p className="text-xs text-slate-500">
-                                    7-day free trial. No commitment required.
-                                </p>
-                            </div>
+                            </FadeIn>
                         </div>
 
+                        {/* Right: AI Chat Mockup */}
+                        <FadeIn direction="left" delay={200}>
+                            <div className="relative">
+                                <div className="absolute -inset-6 bg-gradient-to-tr from-[#4B8BB3]/20 to-[#054C74]/10 rounded-3xl blur-[60px] -z-10" />
+
+                                <div className="bg-[#0A0D12] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden">
+                                    {/* Chat Header */}
+                                    <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#4B8BB3] to-[#054C74] flex items-center justify-center">
+                                            <Sparkles size={14} className="text-white" />
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white">Course Tutor</div>
+                                            <div className="text-[10px] text-[#4B8BB3]">Personalized Coaching Mode</div>
+                                        </div>
+                                        <div className="ml-auto flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                            <span className="text-[10px] text-slate-500">Active</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Chat Messages */}
+                                    <div className="p-5 space-y-4">
+                                        <div className="max-w-[85%] p-3.5 rounded-xl rounded-tl-sm bg-white/[0.04] border border-white/[0.06]">
+                                            <p className="text-xs text-slate-300 leading-relaxed">
+                                                Welcome back, Sarah. As a Director of People Operations at a 400-person company, let me tailor this to your context. How are you currently handling the AI adoption pushback from your engineering managers?
+                                            </p>
+                                        </div>
+
+                                        <div className="max-w-[75%] ml-auto p-3.5 rounded-xl rounded-tr-sm bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
+                                            <p className="text-xs text-white leading-relaxed">
+                                                They&apos;re worried about their teams being replaced. I&apos;ve tried sharing the company roadmap but it hasn&apos;t landed.
+                                            </p>
+                                        </div>
+
+                                        <div className="max-w-[85%] p-3.5 rounded-xl rounded-tl-sm bg-white/[0.04] border border-white/[0.06]">
+                                            <p className="text-xs text-slate-300 leading-relaxed">
+                                                That&apos;s a common pattern. In Module 3, Dr. Chen discusses the <span className="text-[#4B8BB3] font-medium">&quot;Augmentation Narrative&quot;</span> framework — reframing AI as amplifying their teams&apos; strongest capabilities rather than replacing roles. Would you like to role-play that conversation with one of your engineering leads?
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 pt-1">
+                                            <div className="flex gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#4B8BB3] animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#4B8BB3] animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#4B8BB3] animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                            <span className="text-[10px] text-slate-600">Analyzing your context...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </FadeIn>
                     </div>
                 </div>
             </section>
 
-            {/* --- CTA SECTION --- */}
-            <section className="py-32 bg-gradient-to-b from-[#05080a] to-[#0A0D12] border-t border-white/5">
-                <div className="max-w-4xl mx-auto px-6 text-center">
-                    <h2 className="text-4xl md:text-6xl font-bold text-white mb-8">
-                        Ready to lead the future of work?
-                    </h2>
-                    <p className="text-xl text-slate-400 mb-12">
-                        Join thousands of HR professionals who are upgrading their skills with EnhancedHR.
-                    </p>
-                    <Link
-                        href={user ? "/dashboard" : "/login?view=signup"}
-                        className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-brand-black font-bold text-xl hover:bg-brand-blue-light transition-all shadow-2xl hover:scale-105"
-                    >
-                        {user ? "Go to Dashboard" : "Get Started Now"} <ArrowRight size={24} />
-                    </Link>
+            {/* ═══════════════════════════════════════════
+                COLLECTIONS — KNOWLEDGE MANAGEMENT
+            ═══════════════════════════════════════════ */}
+            <section className="py-28 relative">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        {/* Left: Visual — Collection Builder */}
+                        <FadeIn direction="right">
+                            <div className="relative">
+                                <div className="absolute -inset-6 bg-[#FF9300]/8 rounded-3xl blur-[60px] -z-10" />
+
+                                <div className="bg-[#0A0D12] border border-white/[0.08] rounded-2xl p-6 shadow-2xl">
+                                    <div className="flex items-center gap-2 mb-5 pb-3 border-b border-white/[0.06]">
+                                        <FolderOpen size={16} className="text-[#FF9300]" />
+                                        <span className="text-sm font-bold text-white">Strategic Onboarding</span>
+                                        <span className="ml-auto text-[10px] text-slate-600">7 items</span>
+                                    </div>
+
+                                    <div className="space-y-2.5">
+                                        {[
+                                            { type: 'Course', name: 'Building a World-Class Onboarding Program', color: '#4B8BB3', icon: <BookOpen size={12} /> },
+                                            { type: 'Course', name: 'Strategic HR: First 90 Days', color: '#4B8BB3', icon: <BookOpen size={12} /> },
+                                            { type: 'File', name: 'Company_Handbook_2025.pdf', color: '#78C0F0', icon: <Layers size={12} /> },
+                                            { type: 'Note', name: 'Onboarding goals and constraints', color: '#FF9300', icon: <Target size={12} /> },
+                                            { type: 'Video', name: 'YouTube: Onboarding Best Practices', color: '#FF2600', icon: <Zap size={12} /> },
+                                        ].map((item, i) => (
+                                            <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors group">
+                                                <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
+                                                    {item.icon}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs text-white truncate">{item.name}</div>
+                                                    <div className="text-[10px] text-slate-600">{item.type}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* AI Bar */}
+                                    <div className="mt-4 p-3 rounded-xl bg-[#FF9300]/5 border border-[#FF9300]/15">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Sparkles size={12} className="text-[#FF9300]" />
+                                            <span className="text-[10px] font-bold text-[#FF9300]">Collection Assistant</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            Based on the courses and your handbook, I&apos;d recommend structuring Week 1 around cultural immersion before any role-specific training...
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </FadeIn>
+
+                        {/* Right: Copy */}
+                        <div>
+                            <FadeIn>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                                    <FolderOpen size={12} /> KNOWLEDGE MANAGEMENT
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
+                                    Build Your
+                                    <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9300] to-[#FF2600]">
+                                        Knowledge Brain
+                                    </span>
+                                </h2>
+                                <p className="text-lg text-slate-400 mb-8 leading-relaxed">
+                                    Collections are portable, AI-powered knowledge bases. Add courses, notes, files, videos — anything relevant. Then let the Collection Assistant help you synthesize it all.
+                                </p>
+                            </FadeIn>
+
+                            <FadeIn delay={150}>
+                                <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-6">
+                                    <h4 className="text-sm font-bold text-white mb-3">Example: Onboarding Project</h4>
+                                    <ol className="space-y-2.5 text-sm text-slate-400">
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">1.</span>
+                                            Create a &quot;Strategic Onboarding&quot; collection
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">2.</span>
+                                            Add relevant Academy courses on onboarding
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">3.</span>
+                                            Upload your company handbook and policies
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">4.</span>
+                                            Add notes on goals, constraints, and timelines
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">5.</span>
+                                            Ask the Collection Assistant to craft your strategy
+                                        </li>
+                                    </ol>
+                                </div>
+                            </FadeIn>
+
+                            <FadeIn delay={250}>
+                                <p className="text-sm text-slate-500 leading-relaxed">
+                                    The AI knows <em>everything</em> in your collection — courses, documents, notes, even YouTube videos. It synthesizes across all sources to give you answers no single resource could provide.
+                                </p>
+                            </FadeIn>
+
+                            <FadeIn delay={350} className="mt-8">
+                                <Link
+                                    href="/platform#collections"
+                                    className="inline-flex items-center gap-2 text-[#FF9300] font-semibold text-sm hover:text-white transition-colors group"
+                                >
+                                    Learn More About Collections
+                                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                </Link>
+                            </FadeIn>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                FOR ORGANIZATIONS
+            ═══════════════════════════════════════════ */}
+            <section className="py-28 bg-[#0B1120]/40 border-t border-white/[0.04]">
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
+                            <Building2 size={12} /> FOR ORGANIZATIONS
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                            Built for Teams, Not Just Individuals
+                        </h2>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                            Give your entire organization an AI-enhanced learning and knowledge management platform — with the tools to manage, measure, and grow.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {[
+                            {
+                                icon: <Users size={22} />,
+                                title: 'Custom Groups',
+                                desc: 'Create unlimited employee segments — by team, department, onboarding cohort, or custom learning tiers. Assign required or suggested content to each.',
+                                color: '#4B8BB3'
+                            },
+                            {
+                                icon: <BookOpen size={22} />,
+                                title: 'Org Courses',
+                                desc: 'Build and host your own courses using the same AI-enhanced platform. Upload existing video content or create from scratch, then assign to any group.',
+                                color: '#78C0F0'
+                            },
+                            {
+                                icon: <FolderOpen size={22} />,
+                                title: 'Org Collections',
+                                desc: 'Centralized knowledge bases for your org — employee handbooks, policies, procedures. Prometheus learns it all, so employee questions get org-specific answers.',
+                                color: '#FF9300'
+                            },
+                        ].map((feature, i) => (
+                            <FadeIn key={i} delay={i * 100}>
+                                <div className="p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full">
+                                    <div
+                                        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
+                                        style={{ backgroundColor: `${feature.color}15`, color: feature.color }}
+                                    >
+                                        {feature.icon}
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-3">{feature.title}</h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{feature.desc}</p>
+                                </div>
+                            </FadeIn>
+                        ))}
+                    </div>
+
+                    <FadeIn delay={300} className="text-center mt-10">
+                        <Link
+                            href="/organizations"
+                            className="inline-flex items-center gap-2 text-[#4B8BB3] font-semibold text-sm hover:text-white transition-colors group"
+                        >
+                            See All Organization Features
+                            <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                    </FadeIn>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                RECERTIFICATION
+            ═══════════════════════════════════════════ */}
+            <section id="recertification" className="py-28 relative">
+                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    {/* Visual: Certificate */}
+                    <FadeIn direction="right" className="order-2 lg:order-1">
+                        <div className="relative">
+                            <div className="absolute -inset-4 bg-[#FF9300]/10 rounded-3xl blur-[60px] -z-10" />
+                            <div className="bg-white text-[#0A0D12] rounded-2xl p-8 shadow-2xl rotate-1 hover:rotate-0 transition-transform duration-700">
+                                <div className="border-2 border-slate-200 rounded-xl p-8 text-center">
+                                    <Award size={48} className="text-[#FF9300] mx-auto mb-4" />
+                                    <div className="text-2xl font-bold mb-1">Certificate of Completion</div>
+                                    <div className="text-sm text-slate-500 mb-6">Awarded to <span className="font-bold text-[#0A0D12]">Sarah Mitchell</span></div>
+                                    <div className="text-xs text-slate-500 mb-4">Leading Through AI Disruption</div>
+                                    <div className="flex justify-center gap-3">
+                                        <span className="px-3 py-1.5 bg-[#054C74]/10 rounded-lg text-xs font-bold text-[#054C74]">1.5 SHRM PDCs</span>
+                                        <span className="px-3 py-1.5 bg-[#FF9300]/10 rounded-lg text-xs font-bold text-[#FF9300]">1.5 HRCI Credits</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    {/* Copy */}
+                    <div className="order-1 lg:order-2">
+                        <FadeIn>
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                                <Check size={12} /> AUDIT-PROOF TRACKING
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                                Recertification
+                                <br />
+                                on Autopilot
+                            </h2>
+                            <p className="text-lg text-slate-400 mb-8 leading-relaxed">
+                                Never manually track a credit again. Our system automatically calculates SHRM PDCs and HRCI credits based on your exact watch time.
+                            </p>
+                        </FadeIn>
+
+                        <FadeIn delay={150}>
+                            <ul className="space-y-4">
+                                {[
+                                    'Automatic SHRM PDC and HRCI credit calculation',
+                                    'Instant certificate generation upon completion',
+                                    'Audit-proof ledger of your entire learning history',
+                                    'Multi-session tracking — pick up where you left off',
+                                ].map((item, i) => (
+                                    <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
+                                        <div className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center text-green-400 flex-shrink-0">
+                                            <Check size={11} />
+                                        </div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                PRICING
+            ═══════════════════════════════════════════ */}
+            <section id="pricing" className="py-28 bg-[#0B1120]/40 border-t border-white/[0.04] relative overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
+
+                <div className="max-w-7xl mx-auto px-6 relative">
+                    <FadeIn className="text-center mb-16">
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                            Simple, Transparent Pricing
+                        </h2>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                            Whether you&apos;re an individual looking to level up or an organization empowering your entire team, we keep it straightforward.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                        {/* Individual Plan */}
+                        <FadeIn delay={100}>
+                            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full flex flex-col">
+                                <div className="mb-6">
+                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Individual</div>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-5xl font-bold text-white">$30</span>
+                                        <span className="text-slate-500">/month</span>
+                                    </div>
+                                    <p className="text-sm text-slate-500 mt-2">Everything you need to learn, grow, and stay certified.</p>
+                                </div>
+                                <ul className="space-y-3 flex-1 mb-8">
+                                    {[
+                                        'Unlimited access to all Academy courses',
+                                        'All 5 AI agents (Tutor, Assistant, Prometheus, Collection, Analytics)',
+                                        'SHRM & HRCI automatic credit tracking',
+                                        'Personal collections & knowledge management',
+                                        'AI Tools (RolePlay Dojo, Disruption Forecasting, more)',
+                                        'New content added regularly',
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+                                            <Check size={14} className="text-[#4B8BB3] mt-0.5 flex-shrink-0" />
+                                            {item}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Link
+                                    href="/login?view=signup"
+                                    className="block w-full py-3.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white font-semibold text-center hover:bg-white/[0.1] transition-all"
+                                >
+                                    Start Free Trial
+                                </Link>
+                            </div>
+                        </FadeIn>
+
+                        {/* Organization Plan */}
+                        <FadeIn delay={200}>
+                            <div className="p-8 rounded-2xl bg-[#4B8BB3]/5 border border-[#4B8BB3]/20 h-full flex flex-col relative overflow-hidden">
+                                <div className="absolute top-4 right-4">
+                                    <span className="px-2.5 py-1 rounded-full bg-[#4B8BB3]/20 text-[#4B8BB3] text-[10px] font-bold uppercase tracking-wider">Popular</span>
+                                </div>
+                                <div className="mb-6">
+                                    <div className="text-xs font-bold text-[#4B8BB3] uppercase tracking-wider mb-2">Organization</div>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-5xl font-bold text-white">$30</span>
+                                        <span className="text-slate-500">/user/month</span>
+                                    </div>
+                                    <p className="text-sm text-slate-500 mt-2">Everything in Individual, plus team management and org tools.</p>
+                                </div>
+                                <ul className="space-y-3 flex-1 mb-8">
+                                    {[
+                                        'Everything in the Individual plan',
+                                        'Custom employee groups and segments',
+                                        'Build and host org-specific courses',
+                                        'Organizational knowledge collections',
+                                        'Required learning assignments',
+                                        'Analytics dashboard with AI insights',
+                                        'Dynamic groups (auto-segmentation)',
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+                                            <Check size={14} className="text-[#4B8BB3] mt-0.5 flex-shrink-0" />
+                                            {item}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Link
+                                    href="/login?view=signup"
+                                    className="block w-full py-3.5 rounded-xl bg-[#4B8BB3] text-white font-semibold text-center hover:bg-[#5a9bc3] transition-all shadow-[0_0_20px_rgba(75,139,179,0.25)]"
+                                >
+                                    Start Free Trial
+                                </Link>
+                            </div>
+                        </FadeIn>
+                    </div>
+
+                    <FadeIn delay={300} className="text-center mt-8">
+                        <p className="text-sm text-slate-500">7-day free trial on all plans. No credit card required. Cancel anytime.</p>
+                    </FadeIn>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                FOR EXPERTS CTA
+            ═══════════════════════════════════════════ */}
+            <section className="py-20 border-t border-white/[0.04]">
+                <div className="max-w-4xl mx-auto px-6">
+                    <FadeIn>
+                        <div className="p-10 rounded-2xl bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] text-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-[#FF9300]/5 rounded-full blur-[80px] pointer-events-none" />
+                            <div className="relative">
+                                <UserCheck size={32} className="text-[#FF9300] mx-auto mb-4" />
+                                <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">Are You an Industry Expert?</h3>
+                                <p className="text-slate-400 max-w-xl mx-auto mb-8 leading-relaxed">
+                                    Build courses on a legendary platform and earn commissions based on watch time. Join a growing community of thought leaders shaping the future of HR.
+                                </p>
+                                <Link
+                                    href="/for-experts"
+                                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-[#FF9300] font-semibold hover:bg-[#FF9300]/20 transition-all group"
+                                >
+                                    Learn About Becoming an Expert
+                                    <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                </Link>
+                            </div>
+                        </div>
+                    </FadeIn>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════
+                FINAL CTA
+            ═══════════════════════════════════════════ */}
+            <section className="py-32 relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#4B8BB3]/10 rounded-full blur-[100px]" />
+                </div>
+
+                <div className="max-w-4xl mx-auto px-6 text-center relative">
+                    <FadeIn>
+                        <h2 className="text-4xl md:text-6xl font-bold text-white mb-8 tracking-tight">
+                            Ready to Enhance
+                            <br />
+                            Your HR?
+                        </h2>
+                        <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto leading-relaxed">
+                            Join the growing community of HR professionals and leaders who are transforming how they learn and lead.
+                        </p>
+                        <Link
+                            href={ctaHref}
+                            className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
+                        >
+                            {ctaLabel}
+                            <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                    </FadeIn>
                 </div>
             </section>
 
