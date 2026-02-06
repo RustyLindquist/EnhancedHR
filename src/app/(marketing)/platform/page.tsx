@@ -59,7 +59,7 @@ export default function PlatformPage() {
 
                     {/* Anchor Navigation Pills */}
                     <FadeIn delay={200}>
-                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-8">
                             {anchorPills.map((pill) => (
                                 <a
                                     key={pill.id}
