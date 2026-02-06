@@ -6,6 +6,7 @@ import {
     AlertTriangle, BookOpen, Swords
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
 
 const anchorPills = [
@@ -19,20 +20,17 @@ export default function ToolsPage() {
         <div className="overflow-hidden">
 
             {/* HERO */}
-            <section className="relative py-24 md:py-32">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[20%] right-[20%] w-[400px] h-[400px] bg-[#FF2600]/5 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-0 left-[10%] w-[500px] h-[500px] bg-[#4B8BB3]/8 rounded-full blur-[100px]" />
-                </div>
-                <div className="max-w-7xl mx-auto px-6 relative">
+            <section className="relative -mt-[72px] bg-[#0A0D12]">
+                <HeroBackground />
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-20">
                     <FadeIn className="text-center max-w-3xl mx-auto">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF2600]/10 border border-[#FF2600]/20 text-xs font-medium text-[#FF2600] tracking-wide mb-6">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <Wrench size={12} /> AI TOOLS
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8">
-                            AI Tools Built
+                            AI Tools Built For
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9300] to-[#FF2600]">for HR</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]">Leaders and HR</span>
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
                             Purpose-built AI tools designed for the challenges HR professionals and leaders face every day. A growing inventory that keeps expanding.
