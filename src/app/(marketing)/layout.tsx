@@ -11,8 +11,9 @@ const navLinks = [
     { href: '/platform', label: 'Platform' },
     { href: '/ai-tools', label: 'AI Tools' },
     { href: '/collections', label: 'Collections' },
-    { href: '/organizations', label: 'Organizations' },
+    { href: '/organizations', label: 'Orgs' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/demo', label: 'Demo' },
 ];
 
 export default async function MarketingLayout({
@@ -56,7 +57,7 @@ export default async function MarketingLayout({
                             href="/for-experts"
                             className="text-[13px] font-medium text-[#FF9300]/80 hover:text-[#FF9300] transition-colors px-4 py-2 rounded-lg hover:bg-[#FF9300]/[0.06]"
                         >
-                            For Experts
+                            Experts
                         </Link>
                     </div>
 

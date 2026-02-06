@@ -133,8 +133,8 @@ export default function DemoPage() {
                         </FadeIn>
 
                         {/* Right Column — Form */}
-                        <FadeIn delay={150} className="lg:col-span-7">
-                            <div className="bg-[#0A0D12]/90 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl">
+                        <FadeIn delay={150} className="lg:col-span-7 lg:pt-14">
+                            <div className="bg-[#0A0D12]/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
                                 {submitted ? (
                                     /* Success State */
