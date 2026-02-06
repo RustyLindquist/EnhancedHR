@@ -7,9 +7,10 @@ import { Menu, X, ArrowRight } from 'lucide-react'
 const navLinks = [
     { href: '/academy', label: 'Academy' },
     { href: '/platform', label: 'Platform' },
+    { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
     { href: '/for-experts', label: 'For Experts' },
-    { href: '/#pricing', label: 'Pricing' },
+    { href: '/pricing', label: 'Pricing' },
 ]
 
 export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {

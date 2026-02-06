@@ -4,10 +4,22 @@ import {
     ArrowRight, Check, Zap, BookOpen, Brain, Users,
     Building2, Wrench, Award, Shield, MessageSquare,
     GraduationCap, Layers, BarChart3, Sparkles, Target,
-    FolderOpen, Bot, UserCheck, ChevronRight
+    FolderOpen, Bot, UserCheck, ChevronRight, Wand2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import FadeIn from '@/components/marketing/FadeIn';
+import HeroBackground from '@/components/marketing/HeroBackground';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+const anchorPills = [
+    { label: 'Platform', id: 'pillars' },
+    { label: 'AI Agents', id: 'ai-showcase' },
+    { label: 'The Agents', id: 'the-agents' },
+    { label: 'Collections', id: 'collections' },
+    { label: 'Organizations', id: 'organizations' },
+    { label: 'Recertification', id: 'recertification' },
+    { label: 'Pricing', id: 'pricing' },
+];
 
 export default async function MarketingHomePage() {
     const supabase = await createClient();
@@ -22,56 +34,48 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 HERO SECTION
             ═══════════════════════════════════════════ */}
-            <section className="relative min-h-[92vh] flex items-center justify-center">
-                {/* Animated Background */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {/* Grid pattern */}
-                    <div className="absolute inset-0 opacity-[0.03]" style={{
-                        backgroundImage: 'linear-gradient(rgba(75,139,179,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(75,139,179,0.5) 1px, transparent 1px)',
-                        backgroundSize: '60px 60px',
-                    }} />
-                    {/* Gradient orbs */}
-                    <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] bg-[#4B8BB3]/8 rounded-full blur-[120px] animate-pulse-slow" />
-                    <div className="absolute bottom-[10%] right-[10%] w-[600px] h-[600px] bg-[#054C74]/10 rounded-full blur-[100px] animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
-                    <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] bg-[#FF9300]/5 rounded-full blur-[80px] animate-pulse-slow" style={{ animationDelay: '3s' }} />
-                    {/* Top fade */}
-                    <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#0A0D12] to-transparent" />
-                </div>
+            <section className="relative -mt-[72px] min-h-[100svh] flex items-center justify-center overflow-hidden bg-[#0A0D12]">
+                {/* Animated Background — Deep Void */}
+                <HeroBackground />
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-20">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-20">
                     <div className="text-center max-w-4xl mx-auto">
-                        {/* Badge */}
-                        <FadeIn delay={100}>
-                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md mb-8">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF9300] animate-pulse" />
-                                <span className="text-xs font-medium text-slate-400 tracking-wide">SHRM & HRCI Approved Provider</span>
-                            </div>
-                        </FadeIn>
-
                         {/* Headline */}
                         <FadeIn delay={200}>
-                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight mb-8 leading-[1.05]">
+                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight mb-6 leading-[1.05]">
                                 The AI-Native
                                 <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] via-[#78C0F0] to-[#4B8BB3]">
-                                    Academy
-                                </span>
-                                {' '}for
-                                <br />
-                                Modern HR
+                                Knowledge Platform
                             </h1>
                         </FadeIn>
 
-                        {/* Subheadline */}
+                        {/* Subtitle */}
+                        <FadeIn delay={300}>
+                            <p className="text-base md:text-lg text-slate-400 tracking-wide mb-6">
+                                For Cutting-Edge Organizations
+                            </p>
+                        </FadeIn>
+
+                        {/* Inline Divider */}
                         <FadeIn delay={350}>
-                            <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-                                Expert-led courses. Five deeply integrated AI agents. Automatic recertification credits.
-                                Everything HR professionals and leaders need to stay relevant and lead with confidence.
+                            <div className="pointer-events-none relative mx-auto mb-8 h-px w-full max-w-md">
+                                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+                                <div className="absolute left-1/2 top-0 h-px w-32 -translate-x-1/2 bg-gradient-to-r from-[#4B8BB3]/0 via-[#4B8BB3]/60 to-[#4B8BB3]/0 blur-[1px]" />
+                            </div>
+                        </FadeIn>
+
+                        {/* Description */}
+                        <FadeIn delay={400}>
+                            <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-4 leading-relaxed">
+                                Learn from industry experts. Build your own courses. Create learning paths. Turn knowledge repositories into an always-on AI trained on company context and tailored for each user.
+                            </p>
+                            <p className="text-base md:text-lg text-slate-300 font-medium mb-12">
+                                Make better decisions — faster.
                             </p>
                         </FadeIn>
 
                         {/* CTAs */}
-                        <FadeIn delay={500}>
+                        <FadeIn delay={550}>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Link
                                     href={ctaHref}
@@ -81,10 +85,10 @@ export default async function MarketingHomePage() {
                                     <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                                 </Link>
                                 <Link
-                                    href="#pillars"
-                                    className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5"
+                                    href="/demo"
+                                    className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5 flex items-center gap-2"
                                 >
-                                    See What&apos;s Inside
+                                    Schedule a Demo <ArrowRight size={20} className="opacity-50" />
                                 </Link>
                             </div>
                         </FadeIn>
@@ -94,15 +98,15 @@ export default async function MarketingHomePage() {
                     <FadeIn delay={700} className="mt-20">
                         <div className="relative mx-auto max-w-5xl">
                             {/* Glow behind */}
-                            <div className="absolute -inset-8 bg-[#4B8BB3]/15 blur-[80px] rounded-3xl -z-10" />
+                            <div className="absolute -inset-8 bg-gradient-to-tr from-[#4B8BB3]/20 to-[#054C74]/10 blur-[80px] rounded-[48px] -z-10" />
 
-                            <div className="relative rounded-2xl border border-white/[0.08] bg-[#0B1120]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+                            <div className="relative rounded-[40px] border border-white/10 bg-[#070B12]/70 backdrop-blur-xl shadow-[0_28px_90px_rgba(0,0,0,0.65)] overflow-hidden">
                                 {/* Browser Chrome */}
                                 <div className="h-10 border-b border-white/[0.06] bg-white/[0.02] flex items-center px-4 gap-2">
                                     <div className="flex gap-1.5">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                                        <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF9300]/70" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#4B8BB3]/60" />
                                     </div>
                                     <div className="ml-3 flex-1 max-w-sm h-5 rounded-full bg-white/[0.04] flex items-center px-3">
                                         <span className="text-[10px] text-slate-600">app.enhancedhr.ai/dashboard</span>
@@ -178,7 +182,7 @@ export default async function MarketingHomePage() {
                                                 <p className="text-[9px] text-slate-400 leading-relaxed">How should I approach the change management conversation from Module 3?</p>
                                             </div>
                                             <div className="p-2 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
-                                                <p className="text-[9px] text-slate-300 leading-relaxed">Based on the course content and your role as VP of People, I'd suggest leading with...</p>
+                                                <p className="text-[9px] text-slate-300 leading-relaxed">Based on the course content and your role as VP of People, I&apos;d suggest leading with...</p>
                                             </div>
                                         </div>
                                         <div className="mt-2 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center px-2">
@@ -186,42 +190,108 @@ export default async function MarketingHomePage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Bottom fade overlay */}
+                                <div className="pointer-events-none absolute inset-x-0 -bottom-1 h-20 bg-gradient-to-b from-transparent to-[#070B12]" />
                             </div>
                         </div>
                     </FadeIn>
+
+                    {/* Anchor Navigation Pills */}
+                    <FadeIn delay={800}>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-10">
+                            {anchorPills.map((pill) => (
+                                <a
+                                    key={pill.id}
+                                    href={`#${pill.id}`}
+                                    className="px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                >
+                                    {pill.label}
+                                </a>
+                            ))}
+                        </div>
+                    </FadeIn>
                 </div>
+
+                {/* Bottom fade into site background */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent via-[#0A0D12]/70 to-[#0A0D12]" />
             </section>
 
             {/* ═══════════════════════════════════════════
-                TRUST BAR
+                WHY NOW — Pain Points
             ═══════════════════════════════════════════ */}
-            <section className="py-16 bg-[#0B1120]/50 border-y border-white/[0.04]">
-                <div className="max-w-5xl mx-auto px-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
-                        {[
-                            { label: 'SHRM Approved', sublabel: 'Provider', icon: <Shield size={20} /> },
-                            { label: 'HRCI Approved', sublabel: 'Provider', icon: <Award size={20} /> },
-                            { label: '5 AI Agents', sublabel: 'Built In', icon: <Brain size={20} /> },
-                            { label: 'Expert-Led', sublabel: 'Courses', icon: <GraduationCap size={20} /> },
-                        ].map((item, i) => (
-                            <FadeIn key={i} delay={i * 100}>
-                                <div className="flex flex-col items-center gap-3">
-                                    <div className="text-[#4B8BB3]/60">{item.icon}</div>
-                                    <div>
-                                        <div className="text-sm font-bold text-white">{item.label}</div>
-                                        <div className="text-xs text-slate-500">{item.sublabel}</div>
-                                    </div>
+            <section className="py-24 relative">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:items-start">
+                        <div className="lg:col-span-5">
+                            <FadeIn>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
+                                    <Zap size={12} /> WHY NOW
                                 </div>
+                                <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
+                                    HR is being asked to do the impossible — at speed.
+                                </h2>
+                                <p className="mt-5 text-base text-slate-400 leading-relaxed">
+                                    AI is reshaping roles, policies, and expectations. The problem isn&apos;t access to content — it&apos;s converting learning and context into decisions, conversations, and change management.
+                                </p>
                             </FadeIn>
-                        ))}
+                        </div>
+
+                        <div className="lg:col-span-7">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {[
+                                    {
+                                        icon: <Wand2 size={20} />,
+                                        title: 'Learning \u2260 Momentum',
+                                        body: 'Most platforms deliver content, then stop. You still have to translate it into plans, docs, and conversations.',
+                                        color: '#FF9300',
+                                    },
+                                    {
+                                        icon: <Layers size={20} />,
+                                        title: 'Context Is Scattered',
+                                        body: 'Policies live in PDFs. Knowledge lives in people. Projects live in 12 tools. AI needs a clean source of truth.',
+                                        color: '#4B8BB3',
+                                    },
+                                    {
+                                        icon: <Users size={20} />,
+                                        title: 'Teams Need Targeting',
+                                        body: 'Different roles, different risks, different learning needs. HR needs segmentation without busywork.',
+                                        color: '#4B8BB3',
+                                    },
+                                    {
+                                        icon: <Brain size={20} />,
+                                        title: 'AI Can\u2019t Be \u201cBolted On\u201d',
+                                        body: 'Generic chat tools don\u2019t understand your platform, your org, or your content. The assistant must be integrated.',
+                                        color: '#FF9300',
+                                    },
+                                ].map((item, i) => (
+                                    <FadeIn key={i} delay={i * 80}>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl h-full">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div
+                                                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                                    style={{ backgroundColor: `${item.color}15`, color: item.color }}
+                                                >
+                                                    {item.icon}
+                                                </div>
+                                                <div className="text-white font-semibold text-sm">{item.title}</div>
+                                            </div>
+                                            <p className="text-sm leading-relaxed text-slate-400">{item.body}</p>
+                                        </div>
+                                    </FadeIn>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 PLATFORM PILLARS
             ═══════════════════════════════════════════ */}
-            <section id="pillars" className="py-28 relative">
+            <section id="pillars" className="scroll-mt-28 py-28 relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
@@ -255,7 +325,7 @@ export default async function MarketingHomePage() {
                                 icon: <FolderOpen size={22} />,
                                 title: 'Collections',
                                 desc: 'Build personal and team knowledge bases. Add courses, notes, files, videos — then let AI help you synthesize it all.',
-                                href: '/platform#collections',
+                                href: '/collections',
                                 color: '#FF9300',
                             },
                             {
@@ -303,10 +373,12 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 AI SHOWCASE
             ═══════════════════════════════════════════ */}
-            <section className="py-28 bg-[#0B1120]/40 relative overflow-hidden">
+            <section id="ai-showcase" className="scroll-mt-28 py-28 bg-[#0B1120]/40 relative overflow-hidden">
                 {/* Background accents */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#054C74]/8 rounded-full blur-[100px] pointer-events-none" />
@@ -424,10 +496,70 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
+            {/* ═══════════════════════════════════════════
+                THE AGENTS — Different Jobs, Different Assistants
+            ═══════════════════════════════════════════ */}
+            <section id="the-agents" className="scroll-mt-28 py-28 relative">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+                        {/* Left: Copy */}
+                        <div className="lg:col-span-4">
+                            <FadeIn>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3] mb-4">
+                                    The Agents
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
+                                    Different jobs need different assistants.
+                                </h2>
+                                <p className="text-lg text-slate-400 leading-relaxed">
+                                    A course librarian should behave differently than a coach. A project assistant should behave differently than an org analytics analyst. EnhancedHR makes that explicit.
+                                </p>
+                            </FadeIn>
+                        </div>
+
+                        {/* Right: Agent Cards Grid */}
+                        <div className="lg:col-span-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {[
+                                    { name: 'Course Assistant', subtitle: 'Just-in-time answers', desc: 'Ask questions inside a course and get fast, grounded answers based on the course content.', icon: <MessageSquare size={18} />, color: '#4B8BB3' },
+                                    { name: 'Course Tutor', subtitle: 'Practice + coaching', desc: 'Turn concepts into skill through roleplays, prompts, and feedback tailored to the learner.', icon: <GraduationCap size={18} />, color: '#FF9300' },
+                                    { name: 'Prometheus', subtitle: 'Platform Assistant', desc: 'A high-end assistant that can connect dots across the platform and help you learn and build.', icon: <Sparkles size={18} />, color: '#FF9300' },
+                                    { name: 'Collection Assistant', subtitle: 'Your project brain', desc: 'Trained on what you saved into a collection: lessons, docs, notes, videos, and your context.', icon: <FolderOpen size={18} />, color: '#4B8BB3' },
+                                    { name: 'Tool Agents', subtitle: 'Structured workflows', desc: 'Purpose-built assistants that guide you through specific HR tasks with structured inputs/outputs.', icon: <Wrench size={18} />, color: '#4B8BB3' },
+                                    { name: 'Analytics Assistant', subtitle: 'Org-level insights', desc: 'Summarize engagement and learning trends, and translate patterns into recommended actions.', icon: <BarChart3 size={18} />, color: '#FF9300' },
+                                ].map((agent, i) => (
+                                    <FadeIn key={i} delay={i * 80}>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div
+                                                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                                                    style={{ backgroundColor: `${agent.color}15`, color: agent.color }}
+                                                >
+                                                    {agent.icon}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-white">{agent.name}</div>
+                                                    <div className="text-[11px] text-slate-500">{agent.subtitle}</div>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-slate-400 leading-relaxed">{agent.desc}</p>
+                                        </div>
+                                    </FadeIn>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 COLLECTIONS — KNOWLEDGE MANAGEMENT
             ═══════════════════════════════════════════ */}
-            <section className="py-28 relative">
+            <section id="collections" className="scroll-mt-28 py-28 relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         {/* Left: Visual — Collection Builder */}
@@ -530,7 +662,7 @@ export default async function MarketingHomePage() {
 
                             <FadeIn delay={350} className="mt-8">
                                 <Link
-                                    href="/platform#collections"
+                                    href="/collections"
                                     className="inline-flex items-center gap-2 text-[#FF9300] font-semibold text-sm hover:text-white transition-colors group"
                                 >
                                     Learn More About Collections
@@ -542,10 +674,12 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 FOR ORGANIZATIONS
             ═══════════════════════════════════════════ */}
-            <section className="py-28 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="organizations" className="scroll-mt-28 py-28 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
@@ -607,10 +741,12 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 RECERTIFICATION
             ═══════════════════════════════════════════ */}
-            <section id="recertification" className="py-28 relative">
+            <section id="recertification" className="scroll-mt-28 py-28 relative">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     {/* Visual: Certificate */}
                     <FadeIn direction="right" className="order-2 lg:order-1">
@@ -668,10 +804,12 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 PRICING
             ═══════════════════════════════════════════ */}
-            <section id="pricing" className="py-28 bg-[#0B1120]/40 border-t border-white/[0.04] relative overflow-hidden">
+            <section id="pricing" className="scroll-mt-28 py-28 bg-[#0B1120]/40 relative overflow-hidden">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
 
                 <div className="max-w-7xl mx-auto px-6 relative">
@@ -761,15 +899,24 @@ export default async function MarketingHomePage() {
                     </div>
 
                     <FadeIn delay={300} className="text-center mt-8">
-                        <p className="text-sm text-slate-500">7-day free trial on all plans. No credit card required. Cancel anytime.</p>
+                        <p className="text-sm text-slate-500 mb-4">7-day free trial on all plans. No credit card required. Cancel anytime.</p>
+                        <Link
+                            href="/pricing"
+                            className="inline-flex items-center gap-2 text-[#4B8BB3] font-semibold text-sm hover:text-white transition-colors group"
+                        >
+                            View Full Pricing & FAQs
+                            <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
                     </FadeIn>
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 FOR EXPERTS CTA
             ═══════════════════════════════════════════ */}
-            <section className="py-20 border-t border-white/[0.04]">
+            <section className="py-20">
                 <div className="max-w-4xl mx-auto px-6">
                     <FadeIn>
                         <div className="p-10 rounded-2xl bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] text-center relative overflow-hidden">
@@ -793,6 +940,8 @@ export default async function MarketingHomePage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 FINAL CTA
             ═══════════════════════════════════════════ */}
@@ -806,18 +955,26 @@ export default async function MarketingHomePage() {
                         <h2 className="text-4xl md:text-6xl font-bold text-white mb-8 tracking-tight">
                             Ready to Enhance
                             <br />
-                            Your HR?
+                            Your Organization?
                         </h2>
                         <p className="text-xl text-slate-400 mb-12 max-w-xl mx-auto leading-relaxed">
                             Join the growing community of HR professionals and leaders who are transforming how they learn and lead.
                         </p>
-                        <Link
-                            href={ctaHref}
-                            className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
-                        >
-                            {ctaLabel}
-                            <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
-                        </Link>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href={ctaHref}
+                                className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
+                            >
+                                {ctaLabel}
+                                <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/demo"
+                                className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white/[0.04] text-white font-semibold text-xl border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            >
+                                Schedule a Demo <ArrowRight size={24} className="opacity-50" />
+                            </Link>
+                        </div>
                     </FadeIn>
                 </div>
             </section>

@@ -6,6 +6,13 @@ import {
     AlertTriangle, BookOpen, Swords
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+const anchorPills = [
+    { label: 'Role Disruption', id: 'role-disruption' },
+    { label: 'RolePlay Dojo', id: 'roleplay-dojo' },
+    { label: 'More Tools', id: 'more-tools' },
+];
 
 export default function ToolsPage() {
     return (
@@ -31,11 +38,28 @@ export default function ToolsPage() {
                             Purpose-built AI tools designed for the challenges HR professionals and leaders face every day. A growing inventory that keeps expanding.
                         </p>
                     </FadeIn>
+
+                    {/* Anchor Navigation Pills */}
+                    <FadeIn delay={200}>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-8">
+                            {anchorPills.map((pill) => (
+                                <a
+                                    key={pill.id}
+                                    href={`#${pill.id}`}
+                                    className="px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                >
+                                    {pill.label}
+                                </a>
+                            ))}
+                        </div>
+                    </FadeIn>
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ROLE DISRUPTION FORECASTING */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="role-disruption" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -106,8 +130,10 @@ export default function ToolsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ROLEPLAY DOJO */}
-            <section className="py-24">
+            <section id="roleplay-dojo" className="scroll-mt-28 py-24">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     {/* Mockup */}
                     <FadeIn direction="right" className="order-2 lg:order-1">
@@ -175,8 +201,10 @@ export default function ToolsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* SKILLS GAP + MORE */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="more-tools" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">And Growing</h2>
@@ -208,6 +236,8 @@ export default function ToolsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* CTA */}
             <section className="py-24">
                 <div className="max-w-3xl mx-auto px-6 text-center">
@@ -218,12 +248,20 @@ export default function ToolsPage() {
                         <p className="text-lg text-slate-400 mb-10">
                             All AI tools are included with every plan. Start your 7-day free trial.
                         </p>
-                        <Link
-                            href="/login?view=signup"
-                            className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
-                        >
-                            Start Free Trial <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
-                        </Link>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/login?view=signup"
+                                className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
+                            >
+                                Start Free Trial <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/demo"
+                                className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white/[0.04] text-white font-semibold text-xl border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            >
+                                Schedule a Demo <ArrowRight size={24} className="opacity-50" />
+                            </Link>
+                        </div>
                     </FadeIn>
                 </div>
             </section>
