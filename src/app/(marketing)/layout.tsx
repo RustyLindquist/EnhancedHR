@@ -95,7 +95,7 @@ export default async function MarketingLayout({
             </nav>
 
             {/* Main Content */}
-            <main className="pt-[72px]">
+            <main>
                 {children}
             </main>
 
