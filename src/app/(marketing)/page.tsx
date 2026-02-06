@@ -34,7 +34,7 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 HERO SECTION
             ═══════════════════════════════════════════ */}
-            <section className="relative -mt-[72px] min-h-[100svh] flex items-center justify-center overflow-hidden bg-[#0A0D12]">
+            <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-[#0A0D12]">
                 {/* Animated Background — Deep Void */}
                 <HeroBackground />
 

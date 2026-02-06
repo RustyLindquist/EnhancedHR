@@ -79,9 +79,9 @@ export default function CollectionsPage() {
             {/* ═══════════════════════════════════════════
                 HERO
             ═══════════════════════════════════════════ */}
-            <section className="relative -mt-[72px] bg-[#0A0D12]">
+            <section className="relative bg-[#0A0D12]">
                 <HeroBackground />
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-20">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[200px] pb-[160px]">
                     <FadeIn className="text-center max-w-3xl mx-auto">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <FolderOpen size={12} /> COLLECTIONS
@@ -126,7 +126,7 @@ export default function CollectionsPage() {
 
                     {/* Anchor Navigation Pills */}
                     <FadeIn delay={200}>
-                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-8">
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-[82px]">
                             {anchorPills.map((pill) => (
                                 <a
                                     key={pill.id}

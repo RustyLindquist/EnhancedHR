@@ -80,9 +80,9 @@ export default function DemoPage() {
         <div className="overflow-hidden">
 
             {/* MAIN CONTENT */}
-            <section className="relative -mt-[72px] min-h-screen bg-[#0A0D12]">
+            <section className="relative min-h-screen bg-[#0A0D12]">
                 <HeroBackground />
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-16 md:pb-24">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[170px] pb-16 md:pb-24">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
 
                         {/* Left Column — Hero + Benefits */}
@@ -133,7 +133,7 @@ export default function DemoPage() {
                         </FadeIn>
 
                         {/* Right Column — Form */}
-                        <FadeIn delay={150} className="lg:col-span-7 lg:pt-14">
+                        <FadeIn delay={150} className="lg:col-span-7">
                             <div className="bg-[#0A0D12]/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
                                 {submitted ? (
