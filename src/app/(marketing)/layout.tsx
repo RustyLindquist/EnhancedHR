@@ -9,6 +9,7 @@ import MarketingDivider from '@/components/marketing/MarketingDivider';
 const navLinks = [
     { href: '/academy', label: 'Academy' },
     { href: '/platform', label: 'Platform' },
+    { href: '/ai-tools', label: 'AI Tools' },
     { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
     { href: '/for-experts', label: 'For Experts' },
@@ -134,7 +135,6 @@ export default async function MarketingLayout({
                             <ul className="space-y-3">
                                 <li><Link href="/organizations" className="text-slate-500 hover:text-white text-sm transition-colors">For Organizations</Link></li>
                                 <li><Link href="/for-experts" className="text-slate-500 hover:text-white text-sm transition-colors">For Experts</Link></li>
-                                <li><Link href="/experts" className="text-slate-500 hover:text-white text-sm transition-colors">Expert Directory</Link></li>
                             </ul>
                         </div>
 

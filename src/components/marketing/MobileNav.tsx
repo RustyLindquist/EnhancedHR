@@ -8,6 +8,7 @@ import { Menu, X, ArrowRight } from 'lucide-react'
 const navLinks = [
     { href: '/academy', label: 'Academy' },
     { href: '/platform', label: 'Platform' },
+    { href: '/ai-tools', label: 'AI Tools' },
     { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
     { href: '/for-experts', label: 'For Experts' },
