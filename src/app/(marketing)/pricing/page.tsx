@@ -46,10 +46,10 @@ export default function PricingPage() {
                                 Get Started <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                             </Link>
                             <Link
-                                href="/platform"
+                                href="/demo"
                                 className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                Explore the Platform <ArrowRight size={20} className="opacity-50" />
+                                Schedule a Demo <ArrowRight size={20} className="opacity-50" />
                             </Link>
                         </div>
                     </FadeIn>
