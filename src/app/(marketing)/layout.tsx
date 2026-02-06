@@ -28,7 +28,7 @@ export default async function MarketingLayout({
         <div className="min-h-screen bg-[#0A0D12] text-white font-sans selection:bg-[#4B8BB3]/30 selection:text-white">
             {/* Navigation */}
             <nav className="fixed top-0 w-full z-50 bg-[#0A0D12]/70 backdrop-blur-2xl">
-                <div className="max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
                         <Image
@@ -106,8 +106,8 @@ export default async function MarketingLayout({
                 {/* Background Glow */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
 
-                <div className="max-w-7xl mx-auto px-6 pt-20 pb-10">
-                    <div className="grid grid-cols-2 md:grid-cols-12 gap-10 md:gap-8 mb-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-10">
+                    <div className="grid grid-cols-2 md:grid-cols-12 gap-6 md:gap-8 mb-16">
                         {/* Brand Column */}
                         <div className="col-span-2 md:col-span-4 space-y-6">
                             <Link href="/" className="block">

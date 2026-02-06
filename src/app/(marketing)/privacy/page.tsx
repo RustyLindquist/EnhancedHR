@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import React from 'react';
+
+export const metadata: Metadata = {
+    title: 'Privacy Policy — EnhancedHR.ai',
+    description: 'EnhancedHR.ai privacy policy. Learn how we collect, use, and protect your personal information.',
+};
 
 export default function PrivacyPage() {
     return (

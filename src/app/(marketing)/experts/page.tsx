@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Zap, Star, DollarSign, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import ExpertDirectoryContent from './ExpertDirectoryContent';
+
+export const metadata: Metadata = {
+    title: 'Expert Instructors — EnhancedHR.ai',
+    description: 'Meet the expert instructors teaching the future of human resources on EnhancedHR.ai.',
+};
 
 interface ExpertWithCourses {
     id: string;

@@ -1,9 +1,20 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ArrowLeft, Linkedin, BookOpen, Clock, Award, GraduationCap, Briefcase, Star, BookMarked, Trophy, Globe } from 'lucide-react';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
+    const supabase = await createClient();
+    const { data: expert } = await supabase.from('standalone_experts').select('full_name, expert_title').eq('id', id).single();
+    return {
+        title: expert ? `${expert.full_name} — EnhancedHR.ai` : 'Expert — EnhancedHR.ai',
+        description: expert?.expert_title ? `${expert.full_name}, ${expert.expert_title}. View courses and credentials on EnhancedHR.ai.` : 'Expert instructor on EnhancedHR.ai.',
+    };
+}
 
 // Credential type icons mapping
 const credentialIcons: Record<string, React.ReactNode> = {
