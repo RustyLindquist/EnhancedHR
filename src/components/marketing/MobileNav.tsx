@@ -11,7 +11,6 @@ const navLinks = [
     { href: '/ai-tools', label: 'AI Tools' },
     { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
-    { href: '/for-experts', label: 'For Experts' },
     { href: '/pricing', label: 'Pricing' },
 ]
 
@@ -68,6 +67,16 @@ export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {
                             {link.label}
                         </Link>
                     ))}
+
+                    <div className="w-16 h-px bg-white/10 my-2" />
+                    <Link
+                        href="/for-experts"
+                        onClick={() => setOpen(false)}
+                        className="text-2xl font-medium text-[#FF9300]/80 hover:text-[#FF9300] transition-colors py-3 px-6"
+                        style={{ transitionDelay: open ? `${(navLinks.length + 1) * 50}ms` : '0ms' }}
+                    >
+                        For Experts
+                    </Link>
 
                     <div className="flex flex-col items-center gap-4 pt-8 mt-8 border-t border-white/10 w-64">
                         {isLoggedIn ? (

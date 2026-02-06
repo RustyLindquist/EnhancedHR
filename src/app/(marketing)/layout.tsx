@@ -12,7 +12,6 @@ const navLinks = [
     { href: '/ai-tools', label: 'AI Tools' },
     { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
-    { href: '/for-experts', label: 'For Experts' },
     { href: '/pricing', label: 'Pricing' },
 ];
 
@@ -52,6 +51,13 @@ export default async function MarketingLayout({
                                 {link.label}
                             </Link>
                         ))}
+                        <div className="w-px h-4 bg-white/10 mx-1" />
+                        <Link
+                            href="/for-experts"
+                            className="text-[13px] font-medium text-[#FF9300]/80 hover:text-[#FF9300] transition-colors px-4 py-2 rounded-lg hover:bg-[#FF9300]/[0.06]"
+                        >
+                            For Experts
+                        </Link>
                     </div>
 
                     {/* Desktop Auth Buttons */}
