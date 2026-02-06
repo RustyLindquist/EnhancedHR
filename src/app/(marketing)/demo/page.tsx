@@ -7,7 +7,7 @@ import {
     CheckCircle, Loader2, Calendar, MessageSquare, Target
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
-import MarketingDivider from '@/components/marketing/MarketingDivider';
+import HeroBackground from '@/components/marketing/HeroBackground';
 import { submitDemoRequest } from '@/app/actions/leads';
 
 const interestOptions = [
@@ -80,12 +80,9 @@ export default function DemoPage() {
         <div className="overflow-hidden">
 
             {/* MAIN CONTENT */}
-            <section className="relative py-16 md:py-24">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[20%] right-[30%] w-[400px] h-[400px] bg-[#4B8BB3]/8 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-0 left-[10%] w-[500px] h-[500px] bg-[#FF9300]/5 rounded-full blur-[100px]" />
-                </div>
-                <div className="max-w-7xl mx-auto px-6 relative">
+            <section className="relative -mt-[72px] min-h-screen bg-[#0A0D12]">
+                <HeroBackground />
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-16 md:pb-24">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
 
                         {/* Left Column — Hero + Benefits */}
@@ -137,7 +134,7 @@ export default function DemoPage() {
 
                         {/* Right Column — Form */}
                         <FadeIn delay={150} className="lg:col-span-7">
-                            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl">
+                            <div className="bg-[#0A0D12]/90 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-6 sm:p-8 shadow-2xl">
 
                                 {submitted ? (
                                     /* Success State */
