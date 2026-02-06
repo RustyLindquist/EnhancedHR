@@ -22,25 +22,25 @@ export default function ForExpertsPage() {
             {/* HERO */}
             <section className="relative py-24 md:py-32">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[20%] right-[20%] w-[400px] h-[400px] bg-[#FF9300]/6 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-0 left-[10%] w-[500px] h-[500px] bg-[#4B8BB3]/8 rounded-full blur-[100px]" />
+                    <div className="absolute top-[20%] right-[20%] w-[400px] h-[400px] bg-[#4B8BB3]/8 rounded-full blur-[120px]" />
+                    <div className="absolute bottom-0 left-[10%] w-[500px] h-[500px] bg-[#054C74]/10 rounded-full blur-[100px]" />
                 </div>
                 <div className="max-w-7xl mx-auto px-6 relative">
                     <FadeIn className="text-center max-w-3xl mx-auto">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <UserCheck size={12} /> FOR EXPERTS
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8">
                             Build Courses on a
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9300] to-[#FF2600]">Legendary Platform</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]">Legendary Platform</span>
                         </h1>
                         <p className="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
                             Join a growing community of thought leaders shaping the future of HR. Your expertise, amplified by AI, reaching the professionals who need it most.
                         </p>
                         <Link
                             href="/join/expert"
-                            className="group inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#FF9300] text-white font-bold text-lg hover:bg-[#FFa520] transition-all shadow-[0_0_30px_rgba(255,147,0,0.3)] hover:shadow-[0_0_50px_rgba(255,147,0,0.5)]"
+                            className="group inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_30px_rgba(75,139,179,0.3)] hover:shadow-[0_0_50px_rgba(75,139,179,0.5)]"
                         >
                             Create Your Expert Account Today <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                         </Link>

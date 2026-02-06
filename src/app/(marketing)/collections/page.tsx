@@ -25,14 +25,12 @@ export const metadata: Metadata = {
         'Collections turn learning and knowledge into a reusable workspace. Add lessons, notes, docs, videos, and conversations—then use the Collection Assistant for grounded answers and artifacts.',
 };
 
-function ItemPill({ icon, label }: { icon: ReactNode; label: string }) {
+function ItemTag({ icon, label }: { icon: ReactNode; label: string }) {
     return (
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-sm font-semibold text-slate-200">
-            <span className="grid h-7 w-7 place-items-center rounded-full border border-white/[0.06] bg-black/20">
-                {icon}
-            </span>
+        <span className="inline-flex items-center gap-1.5 text-sm text-slate-400">
+            {icon}
             {label}
-        </div>
+        </span>
     );
 }
 
@@ -80,59 +78,52 @@ export default function CollectionsPage() {
             {/* ═══════════════════════════════════════════
                 HERO
             ═══════════════════════════════════════════ */}
-            <section className="relative">
-                <div className="absolute inset-0 -z-10">
-                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[#FF9300]/6 rounded-full blur-[140px]" />
-                    <div className="absolute bottom-0 left-1/3 w-[500px] h-[300px] bg-[#4B8BB3]/8 rounded-full blur-[120px]" />
+            <section className="relative py-24 md:py-32">
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[#4B8BB3]/8 rounded-full blur-[140px]" />
+                    <div className="absolute bottom-0 left-1/3 w-[500px] h-[300px] bg-[#4B8BB3]/6 rounded-full blur-[120px]" />
                 </div>
 
-                <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
-                    <FadeIn>
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                <div className="max-w-7xl mx-auto px-6 relative">
+                    <FadeIn className="text-center max-w-3xl mx-auto">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <FolderOpen size={12} /> COLLECTIONS
                         </div>
-                    </FadeIn>
-
-                    <FadeIn delay={100}>
-                        <h1 className="text-balance text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl leading-[1.05]">
+                        <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8 leading-[1.05]">
                             Build Your<br />
-                            <span className="bg-gradient-to-r from-[#FF9300] via-[#FFB347] to-[#FF9300] bg-clip-text text-transparent">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]">
                                 Knowledge Brain.
                             </span>
                         </h1>
-                    </FadeIn>
-
-                    <FadeIn delay={200}>
-                        <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-slate-300">
-                            Collections are portable, AI-powered knowledge workspaces. Save what matters from across the platform — courses, docs, notes, conversations, videos — and add your own context. The Collection Assistant gives you grounded answers and artifacts without re-explaining everything.
+                        <p className="text-lg md:text-xl text-slate-400 mb-6 leading-relaxed">
+                            Collections are portable, AI-powered knowledge workspaces. Save what matters from across the platform and add your own context. The Collection Assistant gives you grounded answers without re-explaining everything.
                         </p>
-                    </FadeIn>
-
-                    <FadeIn delay={300}>
-                        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mb-10 text-slate-500">
+                            <ItemTag icon={<Layers size={14} className="text-[#4B8BB3]" />} label="Courses & Lessons" />
+                            <span className="text-white/10">|</span>
+                            <ItemTag icon={<FileText size={14} className="text-[#4B8BB3]" />} label="Docs & Files" />
+                            <span className="text-white/10">|</span>
+                            <ItemTag icon={<NotebookPen size={14} className="text-[#4B8BB3]" />} label="Notes" />
+                            <span className="text-white/10">|</span>
+                            <ItemTag icon={<MessageSquare size={14} className="text-[#4B8BB3]" />} label="Conversations" />
+                            <span className="text-white/10">|</span>
+                            <ItemTag icon={<PlayCircle size={14} className="text-[#4B8BB3]" />} label="Videos" />
+                            <span className="text-white/10">|</span>
+                            <ItemTag icon={<Sparkles size={14} className="text-[#4B8BB3]" />} label="AI Tools" />
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link
                                 href="/login?view=signup"
-                                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FF9300] px-7 py-3.5 text-base font-bold text-[#0A0D12] hover:bg-white transition-colors shadow-[0_0_28px_rgba(255,147,0,0.3)]"
+                                className="group px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_30px_rgba(75,139,179,0.3)] hover:shadow-[0_0_50px_rgba(75,139,179,0.5)] hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                Start Building <ArrowRight size={18} />
+                                Start Free Trial <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                             </Link>
                             <Link
-                                href="/platform"
-                                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-base font-semibold text-white hover:bg-white/[0.08] transition-colors"
+                                href="/demo"
+                                className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                Meet the AI Agents <ArrowRight size={18} className="opacity-70" />
+                                Schedule a Demo <ArrowRight size={20} className="opacity-50" />
                             </Link>
-                        </div>
-                    </FadeIn>
-
-                    <FadeIn delay={400}>
-                        <div className="mt-10 flex flex-wrap gap-3">
-                            <ItemPill icon={<Layers size={16} className="text-[#4B8BB3]" />} label="Courses & Lessons" />
-                            <ItemPill icon={<FileText size={16} className="text-[#4B8BB3]" />} label="Docs & Files" />
-                            <ItemPill icon={<NotebookPen size={16} className="text-[#4B8BB3]" />} label="Notes" />
-                            <ItemPill icon={<MessageSquare size={16} className="text-[#4B8BB3]" />} label="Conversations" />
-                            <ItemPill icon={<PlayCircle size={16} className="text-[#FF9300]" />} label="Videos" />
-                            <ItemPill icon={<Sparkles size={16} className="text-[#FF9300]" />} label="AI Tools" />
                         </div>
                     </FadeIn>
 

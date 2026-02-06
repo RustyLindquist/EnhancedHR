@@ -22,40 +22,36 @@ export default function PricingPage() {
             {/* ═══════════════════════════════════════════
                 HERO
             ═══════════════════════════════════════════ */}
-            <section className="relative">
-                <div className="absolute inset-0 -z-10">
+            <section className="relative py-24 md:py-32">
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-[#4B8BB3]/8 rounded-full blur-[140px]" />
                 </div>
 
-                <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
-                    <FadeIn>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3]">
-                            Pricing
+                <div className="max-w-7xl mx-auto px-6 relative">
+                    <FadeIn className="text-center max-w-3xl mx-auto">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
+                            <Sparkles size={12} /> PRICING
                         </div>
-                    </FadeIn>
-                    <FadeIn delay={100}>
-                        <h1 className="mt-3 text-balance text-5xl font-bold tracking-tight text-white sm:text-6xl">
-                            Simple pricing. The AI layer is included.
+                        <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8">
+                            Simple Pricing.
+                            <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4B8BB3] to-[#78C0F0]">AI Included.</span>
                         </h1>
-                    </FadeIn>
-                    <FadeIn delay={200}>
-                        <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-slate-300">
+                        <p className="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
                             Start as an individual, or roll out to your organization. Both plans include collections and AI agents — because that&apos;s what turns learning into leverage.
                         </p>
-                    </FadeIn>
-                    <FadeIn delay={300}>
-                        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link
                                 href="/login?view=signup"
-                                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#4B8BB3] px-7 py-3.5 text-base font-bold text-white hover:bg-white hover:text-[#0A0D12] transition-colors shadow-[0_0_28px_rgba(75,139,179,0.3)]"
+                                className="group px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_30px_rgba(75,139,179,0.3)] hover:shadow-[0_0_50px_rgba(75,139,179,0.5)] hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                Get Started <ArrowRight size={18} />
+                                Get Started <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                             </Link>
                             <Link
                                 href="/platform"
-                                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-base font-semibold text-white hover:bg-white/[0.08] transition-colors"
+                                className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                Explore the Platform <ArrowRight size={18} className="opacity-70" />
+                                Explore the Platform <ArrowRight size={20} className="opacity-50" />
                             </Link>
                         </div>
                     </FadeIn>
