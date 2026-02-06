@@ -324,7 +324,7 @@ export default function AcademyPage() {
             <MarketingDivider />
 
             {/* COURSE EXPERIENCE */}
-            <section id="experience" className="scroll-mt-28 py-24">
+            <section id="experience" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
@@ -363,7 +363,7 @@ export default function AcademyPage() {
             <MarketingDivider />
 
             {/* CTA */}
-            <section className="py-24 bg-[#0B1120]/40 relative overflow-hidden">
+            <section className="py-24 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-1/4 right-[10%] w-[500px] h-[400px] bg-[#4B8BB3]/6 rounded-full blur-[120px]" />
                     <div className="absolute bottom-0 left-[20%] w-[400px] h-[300px] bg-[#054C74]/8 rounded-full blur-[100px]" />

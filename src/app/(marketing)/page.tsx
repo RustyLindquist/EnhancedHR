@@ -291,7 +291,7 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 PLATFORM PILLARS
             ═══════════════════════════════════════════ */}
-            <section id="pillars" className="scroll-mt-28 py-28 relative">
+            <section id="pillars" className="scroll-mt-28 py-28 bg-[#0B1120]/40 relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
@@ -378,7 +378,7 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 AI SHOWCASE
             ═══════════════════════════════════════════ */}
-            <section id="ai-showcase" className="scroll-mt-28 py-28 bg-[#0B1120]/40 relative overflow-hidden">
+            <section id="ai-showcase" className="scroll-mt-28 py-28 relative overflow-hidden">
                 {/* Background accents */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#054C74]/8 rounded-full blur-[100px] pointer-events-none" />
@@ -501,7 +501,7 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 THE AGENTS — Different Jobs, Different Assistants
             ═══════════════════════════════════════════ */}
-            <section id="the-agents" className="scroll-mt-28 py-28 relative">
+            <section id="the-agents" className="scroll-mt-28 py-28 bg-[#0B1120]/40 relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
                         {/* Left: Copy */}
@@ -945,7 +945,7 @@ export default async function MarketingHomePage() {
             {/* ═══════════════════════════════════════════
                 FINAL CTA
             ═══════════════════════════════════════════ */}
-            <section className="py-32 relative overflow-hidden">
+            <section className="py-32 bg-[#0B1120]/40 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#4B8BB3]/10 rounded-full blur-[100px]" />
                 </div>

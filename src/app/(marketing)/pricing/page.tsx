@@ -82,7 +82,7 @@ export default function PricingPage() {
             {/* ═══════════════════════════════════════════
                 PRICING CARDS
             ═══════════════════════════════════════════ */}
-            <section id="plans" className="scroll-mt-28 relative py-20">
+            <section id="plans" className="scroll-mt-28 relative py-20 bg-[#0B1120]/40">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
 
                 <div className="mx-auto max-w-7xl px-6 relative">

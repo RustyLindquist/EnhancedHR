@@ -326,7 +326,7 @@ export default function OrganizationsPage() {
             <MarketingDivider />
 
             {/* ANALYTICS + REQUIRED LEARNING */}
-            <section id="analytics" className="scroll-mt-28 py-24">
+            <section id="analytics" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">Measure Everything</h2>
