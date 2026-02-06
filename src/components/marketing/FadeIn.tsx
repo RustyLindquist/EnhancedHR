@@ -15,7 +15,7 @@ export default function FadeIn({
     className = '',
     delay = 0,
     direction = 'up',
-    duration = 700
+    duration = 400
 }: FadeInProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -33,7 +33,7 @@ export default function FadeIn({
                     observer.unobserve(el)
                 }
             },
-            { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+            { threshold: 0.05, rootMargin: '0px 0px 60px 0px' }
         )
 
         observer.observe(el)
@@ -41,10 +41,10 @@ export default function FadeIn({
     }, [delay])
 
     const initialTransform = {
-        up: 'translateY(24px)',
-        down: 'translateY(-24px)',
-        left: 'translateX(24px)',
-        right: 'translateX(-24px)',
+        up: 'translateY(12px)',
+        down: 'translateY(-12px)',
+        left: 'translateX(12px)',
+        right: 'translateX(-12px)',
         none: 'translate(0, 0)',
     }
 

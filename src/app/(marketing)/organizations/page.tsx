@@ -6,6 +6,15 @@ import {
     Lock, Settings, UserCheck
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+const anchorPills = [
+    { label: 'Groups', id: 'groups' },
+    { label: 'Org Courses', id: 'org-courses' },
+    { label: 'Collections', id: 'org-collections' },
+    { label: 'Analytics', id: 'analytics' },
+    { label: 'Pricing', id: 'org-pricing' },
+];
 
 export default function OrganizationsPage() {
     return (
@@ -37,11 +46,28 @@ export default function OrganizationsPage() {
                             Start Free Trial <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                         </Link>
                     </FadeIn>
+
+                    {/* Anchor Navigation Pills */}
+                    <FadeIn delay={200}>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-8">
+                            {anchorPills.map((pill) => (
+                                <a
+                                    key={pill.id}
+                                    href={`#${pill.id}`}
+                                    className="px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                >
+                                    {pill.label}
+                                </a>
+                            ))}
+                        </div>
+                    </FadeIn>
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* EMPLOYEE GROUPS */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="groups" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -118,8 +144,10 @@ export default function OrganizationsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ORG COURSES */}
-            <section className="py-24">
+            <section id="org-courses" className="scroll-mt-28 py-24">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <FadeIn direction="right" className="order-2 lg:order-1">
                         <div className="relative">
@@ -184,8 +212,10 @@ export default function OrganizationsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* ORG COLLECTIONS */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="org-collections" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -246,8 +276,57 @@ export default function OrganizationsPage() {
                 </div>
             </section>
 
-            {/* ANALYTICS + REQUIRED LEARNING */}
+            <MarketingDivider />
+
+            {/* ORGANIZATION LEARNING OVERVIEW */}
             <section className="py-24">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        <div>
+                            <FadeIn>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3] mb-4">
+                                    Organization Learning
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                                    Build, assign, and track learning across the org.
+                                </h2>
+                                <p className="text-lg text-slate-400 leading-relaxed">
+                                    Add to the Academy by building org-specific courses and assigning learning to groups. Segment people intelligently and give managers the clarity they&apos;ve been missing.
+                                </p>
+                            </FadeIn>
+                        </div>
+
+                        <FadeIn delay={150}>
+                            <div className="grid grid-cols-2 gap-4">
+                                {[
+                                    { icon: <Building2 size={20} />, color: '#4B8BB3', title: 'Org Courses', desc: 'Create or upload internal courses and publish to your employees\u2014fully AI-integrated.' },
+                                    { icon: <Users size={20} />, color: '#4B8BB3', title: 'Groups', desc: 'Create unlimited custom groups and assign required or recommended learning.' },
+                                    { icon: <Layers size={20} />, color: '#4B8BB3', title: 'Assignments', desc: 'Onboarding tiers, role-based learning paths, and targeted enablement without chaos.' },
+                                    { icon: <BarChart3 size={20} />, color: '#4B8BB3', title: 'Org Analytics', desc: 'Track engagement, progress, and how learning is translating into outcomes.' },
+                                ].map((card, i) => (
+                                    <FadeIn key={card.title} delay={100 + i * 80}>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full">
+                                            <div
+                                                className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                                                style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                                            >
+                                                {card.icon}
+                                            </div>
+                                            <h3 className="text-base font-bold text-white mb-2">{card.title}</h3>
+                                            <p className="text-sm text-slate-400 leading-relaxed">{card.desc}</p>
+                                        </div>
+                                    </FadeIn>
+                                ))}
+                            </div>
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* ANALYTICS + REQUIRED LEARNING */}
+            <section id="analytics" className="scroll-mt-28 py-24">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">Measure Everything</h2>
@@ -272,8 +351,61 @@ export default function OrganizationsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
+            {/* ANALYTICS CTA */}
+            <section className="py-20">
+                <div className="max-w-5xl mx-auto px-6">
+                    <FadeIn>
+                        <div className="p-10 md:p-14 rounded-2xl bg-[#0B1120]/80 border border-white/[0.06]">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3] mb-4">
+                                        Analytics
+                                    </div>
+                                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-5 tracking-tight">
+                                        Visibility without surveillance.
+                                    </h2>
+                                    <p className="text-base text-slate-400 leading-relaxed mb-8">
+                                        Understand engagement trends, learning activity, and progress across your org. Then use the Analytics Assistant to summarize what it means and what to do next.
+                                    </p>
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <Link
+                                            href="/pricing"
+                                            className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.08] transition-colors"
+                                        >
+                                            See Team Pricing <ArrowRight size={16} className="opacity-70" />
+                                        </Link>
+                                        <Link
+                                            href="/login?view=signup"
+                                            className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/[0.08] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.1] transition-colors"
+                                        >
+                                            Get Started <ArrowRight size={16} className="opacity-70" />
+                                        </Link>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {[
+                                        'Engagement + learning trends',
+                                        'Segment by groups',
+                                        'Usage patterns across AI tools',
+                                        'Actionable summaries for HR leaders',
+                                    ].map((item, i) => (
+                                        <div key={i} className="px-5 py-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-300">
+                                            {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
             {/* PRICING */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="org-pricing" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-3xl mx-auto px-6">
                     <FadeIn>
                         <div className="p-10 rounded-2xl bg-[#4B8BB3]/5 border border-[#4B8BB3]/20 text-center relative overflow-hidden">
@@ -300,12 +432,20 @@ export default function OrganizationsPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                <Link
-                                    href="/login?view=signup"
-                                    className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_20px_rgba(75,139,179,0.25)]"
-                                >
-                                    Start Free Trial <ArrowRight size={20} />
-                                </Link>
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                    <Link
+                                        href="/login?view=signup"
+                                        className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_20px_rgba(75,139,179,0.25)]"
+                                    >
+                                        Start Free Trial <ArrowRight size={20} />
+                                    </Link>
+                                    <Link
+                                        href="/demo"
+                                        className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                                    >
+                                        Schedule a Demo <ArrowRight size={20} className="opacity-50" />
+                                    </Link>
+                                </div>
                                 <p className="text-xs text-slate-500 mt-4">7-day free trial. No credit card required.</p>
                             </div>
                         </div>

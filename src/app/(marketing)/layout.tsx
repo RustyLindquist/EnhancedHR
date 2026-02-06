@@ -8,9 +8,10 @@ import MobileNav from '@/components/marketing/MobileNav';
 const navLinks = [
     { href: '/academy', label: 'Academy' },
     { href: '/platform', label: 'Platform' },
+    { href: '/collections', label: 'Collections' },
     { href: '/organizations', label: 'Organizations' },
     { href: '/for-experts', label: 'For Experts' },
-    { href: '/#pricing', label: 'Pricing' },
+    { href: '/pricing', label: 'Pricing' },
 ];
 
 export default async function MarketingLayout({
@@ -117,8 +118,9 @@ export default async function MarketingLayout({
                             <ul className="space-y-3">
                                 <li><Link href="/academy" className="text-slate-500 hover:text-white text-sm transition-colors">Academy</Link></li>
                                 <li><Link href="/platform" className="text-slate-500 hover:text-white text-sm transition-colors">AI Platform</Link></li>
+                                <li><Link href="/collections" className="text-slate-500 hover:text-white text-sm transition-colors">Collections</Link></li>
                                 <li><Link href="/ai-tools" className="text-slate-500 hover:text-white text-sm transition-colors">AI Tools</Link></li>
-                                <li><Link href="/#pricing" className="text-slate-500 hover:text-white text-sm transition-colors">Pricing</Link></li>
+                                <li><Link href="/pricing" className="text-slate-500 hover:text-white text-sm transition-colors">Pricing</Link></li>
                             </ul>
                         </div>
 

@@ -6,6 +6,14 @@ import {
     PlayCircle, Award, Clock, Trophy
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+const anchorPills = [
+    { label: 'Why Build Here', id: 'why-build' },
+    { label: 'Earnings', id: 'earnings' },
+    { label: 'What You Get', id: 'what-you-get' },
+    { label: 'Get Started', id: 'get-started' },
+];
 
 export default function ForExpertsPage() {
     return (
@@ -30,33 +38,45 @@ export default function ForExpertsPage() {
                         <p className="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
                             Join a growing community of thought leaders shaping the future of HR. Your expertise, amplified by AI, reaching the professionals who need it most.
                         </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link
-                                href="/join/expert"
-                                className="group px-8 py-4 rounded-full bg-[#FF9300] text-white font-bold text-lg hover:bg-[#FFa520] transition-all shadow-[0_0_30px_rgba(255,147,0,0.3)] hover:shadow-[0_0_50px_rgba(255,147,0,0.5)] flex items-center gap-2"
-                            >
-                                Apply Now <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
-                            </Link>
-                            <Link
-                                href="/experts"
-                                className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all"
-                            >
-                                View Expert Directory
-                            </Link>
+                        <Link
+                            href="/join/expert"
+                            className="group inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#FF9300] text-white font-bold text-lg hover:bg-[#FFa520] transition-all shadow-[0_0_30px_rgba(255,147,0,0.3)] hover:shadow-[0_0_50px_rgba(255,147,0,0.5)]"
+                        >
+                            Create Your Expert Account Today <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                    </FadeIn>
+
+                    {/* Anchor Navigation Pills */}
+                    <FadeIn delay={200}>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mt-8">
+                            {anchorPills.map((pill) => (
+                                <a
+                                    key={pill.id}
+                                    href={`#${pill.id}`}
+                                    className="px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                >
+                                    {pill.label}
+                                </a>
+                            ))}
                         </div>
                     </FadeIn>
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* WHY ENHANCEDHR */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="why-build" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3] mb-4">
+                            Why EnhancedHR
+                        </div>
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                            Why Build Here?
+                            A creator ecosystem built for credibility.
                         </h2>
                         <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                            This isn&apos;t just another course platform. Your content becomes part of something bigger.
+                            We&apos;re building the Academy as a premium library: beautiful learning experiences, AI-enhanced usage, and a platform that makes your expertise feel high-status.
                         </p>
                     </FadeIn>
 
@@ -113,8 +133,10 @@ export default function ForExpertsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* HOW YOU EARN */}
-            <section className="py-24">
+            <section id="earnings" className="scroll-mt-28 py-24">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -188,8 +210,10 @@ export default function ForExpertsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* THE EXPERT EXPERIENCE */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="what-you-get" className="scroll-mt-28 py-24 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">What You Get</h2>
@@ -219,8 +243,10 @@ export default function ForExpertsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* HOW TO GET STARTED */}
-            <section className="py-24">
+            <section id="get-started" className="scroll-mt-28 py-24">
                 <div className="max-w-4xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">Get Started in 4 Steps</h2>
@@ -228,10 +254,10 @@ export default function ForExpertsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {[
-                            { step: '01', title: 'Create Account', desc: 'Free expert account — no cost to join.', color: '#4B8BB3' },
-                            { step: '02', title: 'Submit Proposal', desc: 'Describe your course idea and credentials.', color: '#78C0F0' },
-                            { step: '03', title: 'Build & Publish', desc: 'Use the course builder to create your content.', color: '#FF9300' },
-                            { step: '04', title: 'Start Earning', desc: 'Auto-approved on first publish. Revenue begins.', color: '#FF2600' },
+                            { step: '01', title: 'Create Account', desc: 'Create a trial account, once published your subscription is free.', color: '#4B8BB3' },
+                            { step: '02', title: 'Build Your Course', desc: 'Use our beautiful course builder to create your course.', color: '#78C0F0' },
+                            { step: '03', title: 'Submit Your Course', desc: 'Once you\u2019re done, simply submit your course for review.', color: '#FF9300' },
+                            { step: '04', title: 'Start Earning', desc: 'Once approved, your course is published and you start earning!', color: '#FF2600' },
                         ].map((step, i) => (
                             <FadeIn key={i} delay={i * 120}>
                                 <div className="text-center">
@@ -245,8 +271,10 @@ export default function ForExpertsPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* CTA */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section className="py-24 bg-[#0B1120]/40">
                 <div className="max-w-3xl mx-auto px-6 text-center">
                     <FadeIn>
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
@@ -263,6 +291,12 @@ export default function ForExpertsPage() {
                                 className="group px-10 py-5 rounded-full bg-[#FF9300] text-white font-bold text-xl hover:bg-[#FFa520] transition-all shadow-[0_0_30px_rgba(255,147,0,0.3)] hover:shadow-[0_0_50px_rgba(255,147,0,0.5)] flex items-center gap-2"
                             >
                                 Apply to Become an Expert <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/demo"
+                                className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white/[0.04] text-white font-semibold text-xl border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            >
+                                Schedule a Demo <ArrowRight size={24} className="opacity-50" />
                             </Link>
                         </div>
                     </FadeIn>

@@ -3,9 +3,22 @@ import Link from 'next/link';
 import {
     ArrowRight, Check, Brain, MessageSquare, GraduationCap,
     Sparkles, FolderOpen, BarChart3, Bot, Zap, BookOpen,
-    FileText, Layers, Target, Users, Shield
+    FileText, Layers, Target, Users, Shield, ShieldCheck,
+    ChevronRight, Building2, Wrench, Settings, Award, Swords
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+const anchorPills = [
+    { label: 'Overview', id: 'overview' },
+    { label: 'Course Assistant', id: 'course-assistant' },
+    { label: 'Course Tutor', id: 'course-tutor' },
+    { label: 'Prometheus', id: 'prometheus' },
+    { label: 'Collections', id: 'collections' },
+    { label: 'Analytics', id: 'analytics' },
+    { label: 'Context', id: 'context-scopes' },
+    { label: 'Guardrails', id: 'guardrails' },
+];
 
 export default function PlatformPage() {
     return (
@@ -31,11 +44,79 @@ export default function PlatformPage() {
                             Five specialized AI agents. Personal context that gets smarter over time. Collections that become knowledge brains. This is what an AI-native platform actually looks like.
                         </p>
                     </FadeIn>
+
+                    {/* Anchor Navigation Pills */}
+                    <FadeIn delay={200}>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+                            {anchorPills.map((pill) => (
+                                <a
+                                    key={pill.id}
+                                    href={`#${pill.id}`}
+                                    className="px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                >
+                                    {pill.label}
+                                </a>
+                            ))}
+                        </div>
+                    </FadeIn>
                 </div>
             </section>
 
+            <MarketingDivider />
+
+            {/* ═══════════════════════════════════════════
+                PLATFORM OVERVIEW
+            ═══════════════════════════════════════════ */}
+            <section id="overview" className="scroll-mt-28 py-20">
+                <div className="mx-auto max-w-7xl px-6">
+                    <FadeIn className="text-center max-w-3xl mx-auto mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
+                            <Settings size={12} /> THE PLATFORM
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">
+                            One Platform. Everything HR Needs.
+                        </h2>
+                        <p className="text-lg text-slate-400 leading-relaxed">
+                            From expert-led courses to AI-powered knowledge management, EnhancedHR enhances every aspect of how you learn, lead, and grow.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+                        {[
+                            { icon: <BookOpen size={20} />, color: '#4B8BB3', title: 'Academy', desc: 'Expert-led courses with AI companions that teach, test, and personalize.', href: '/academy' },
+                            { icon: <Brain size={20} />, color: '#4B8BB3', title: 'AI Intelligence', desc: 'Five specialized agents that understand your role, your org, and your goals.', href: '#course-assistant' },
+                            { icon: <FolderOpen size={20} />, color: '#FF9300', title: 'Collections', desc: 'Portable knowledge containers powered by AI that synthesize everything inside.', href: '/collections' },
+                            { icon: <Building2 size={20} />, color: '#4B8BB3', title: 'For Organizations', desc: 'Team management, assignments, custom courses, and analytics dashboards.', href: '/organizations' },
+                            { icon: <Wrench size={20} />, color: '#FF9300', title: 'AI Tools', desc: 'Specialized tools for roleplay, disruption forecasting, and HR strategy.', href: '/ai-tools' },
+                            { icon: <Award size={20} />, color: '#4B8BB3', title: 'Recertification', desc: 'Automatic SHRM & HRCI credit tracking with an audit-proof integrity ledger.', href: '/academy#recertification' },
+                        ].map((card, i) => (
+                            <FadeIn key={card.title} delay={i * 80}>
+                                <Link
+                                    href={card.href}
+                                    className="group flex flex-col p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all h-full"
+                                >
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                                        style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                                    >
+                                        {card.icon}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <h3 className="text-white font-semibold">{card.title}</h3>
+                                        <ChevronRight size={14} className="text-slate-600 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                                    </div>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{card.desc}</p>
+                                </Link>
+                            </FadeIn>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
             {/* AGENT 1: COURSE ASSISTANT */}
-            <section className="py-20 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="course-assistant" className="scroll-mt-28 py-20 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -83,8 +164,10 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* AGENT 2: COURSE TUTOR */}
-            <section className="py-20 border-t border-white/[0.04]">
+            <section id="course-tutor" className="scroll-mt-28 py-20">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <FadeIn direction="right" className="order-2 lg:order-1">
                         <div className="p-5 rounded-2xl bg-[#0A0D12] border border-white/[0.08] shadow-xl">
@@ -134,8 +217,10 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* AGENT 3: PLATFORM ASSISTANT (PROMETHEUS) */}
-            <section className="py-20 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="prometheus" className="scroll-mt-28 py-20 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -185,8 +270,10 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* AGENT 4: COLLECTION ASSISTANT */}
-            <section id="collections" className="py-20 border-t border-white/[0.04]">
+            <section id="collections" className="scroll-mt-28 py-20">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <FadeIn direction="right" className="order-2 lg:order-1">
                         <div className="p-5 rounded-2xl bg-[#0A0D12] border border-white/[0.08] shadow-xl">
@@ -241,8 +328,10 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* AGENT 5: ANALYTICS ASSISTANT */}
-            <section className="py-20 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section id="analytics" className="scroll-mt-28 py-20 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <div>
                         <FadeIn>
@@ -290,8 +379,241 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
+            {/* AI TOOLS */}
+            <section className="py-20 bg-[#0B1120]/40">
+                <div className="mx-auto max-w-7xl px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        <div>
+                            <FadeIn>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3] mb-4">
+                                    AI Tools
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                                    Not chatbots. Tools.
+                                </h2>
+                                <p className="text-lg text-slate-400 leading-relaxed">
+                                    Use structured AI workflows for real HR work&mdash;skills planning, disruption analysis, and conversation prep. Save the outputs into collections and reuse them across projects.
+                                </p>
+                            </FadeIn>
+                        </div>
+
+                        <FadeIn delay={150}>
+                            <div className="grid grid-cols-2 gap-4">
+                                {[
+                                    { icon: <Target size={20} />, color: '#FF9300', title: 'Role Disruption', desc: 'Forecast how AI changes a role, then plan the skills and transitions proactively.' },
+                                    { icon: <Swords size={20} />, color: '#4B8BB3', title: 'Roleplay Dojo', desc: 'Practice tough conversations with an AI trained for coaching\u2014not generic advice.' },
+                                    { icon: <Layers size={20} />, color: '#4B8BB3', title: 'Skills Gaps', desc: 'Identify gaps and map learning to outcomes for individuals, teams, or roles.' },
+                                    { icon: <Wrench size={20} />, color: '#FF9300', title: 'Tool Library', desc: 'A growing inventory of tools designed specifically for HR and leaders.' },
+                                ].map((card, i) => (
+                                    <FadeIn key={card.title} delay={100 + i * 80}>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full">
+                                            <div
+                                                className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                                                style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                                            >
+                                                {card.icon}
+                                            </div>
+                                            <h3 className="text-base font-bold text-white mb-2">{card.title}</h3>
+                                            <p className="text-sm text-slate-400 leading-relaxed">{card.desc}</p>
+                                        </div>
+                                    </FadeIn>
+                                ))}
+                            </div>
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* CONTEXT SCOPES */}
+            <section id="context-scopes" className="scroll-mt-28 py-20">
+                <div className="mx-auto max-w-7xl px-6">
+                    <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+                        <div className="lg:col-span-5">
+                            <FadeIn>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3]">
+                                    Context Engineering
+                                </div>
+                                <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                                    AI accuracy comes from boundaries.
+                                </h2>
+                                <p className="mt-5 text-base leading-relaxed text-slate-400">
+                                    EnhancedHR uses a retrieval layer that pulls only the most relevant context, from the correct scope, and layers in personal context for relevance.
+                                </p>
+                                <div className="mt-7">
+                                    <Link
+                                        href="/collections"
+                                        className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.08] transition-colors"
+                                    >
+                                        Learn About Collections <ArrowRight size={16} className="opacity-70" />
+                                    </Link>
+                                </div>
+                            </FadeIn>
+                        </div>
+
+                        <div className="lg:col-span-7">
+                            <FadeIn direction="left" delay={150}>
+                                <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0B1120]/60 p-7 backdrop-blur-xl">
+                                    <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#4B8BB3]/8 blur-[100px]" />
+                                    <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-[#FF9300]/6 blur-[110px]" />
+
+                                    <div className="relative">
+                                        <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3]">
+                                            Context Scopes
+                                        </div>
+                                        <div className="mt-3 text-xl font-bold text-white">
+                                            The agent is only as smart as its scope.
+                                        </div>
+                                        <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                                            EnhancedHR resolves the right scope automatically: course-only for accuracy, collection-only for projects, org-only for policies, plus personal context for relevance.
+                                        </p>
+
+                                        {/* SVG Diagram */}
+                                        <div className="mt-6 overflow-hidden rounded-xl border border-white/[0.06] bg-black/20">
+                                            <div className="relative aspect-[16/10] w-full">
+                                                <svg
+                                                    viewBox="0 0 640 400"
+                                                    className="absolute inset-0 h-full w-full"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    aria-hidden="true"
+                                                >
+                                                    <defs>
+                                                        <linearGradient id="scope-line" x1="0" y1="0" x2="1" y2="1">
+                                                            <stop offset="0" stopColor="#78C0F0" stopOpacity="0.95" />
+                                                            <stop offset="0.6" stopColor="#054C74" stopOpacity="0.7" />
+                                                            <stop offset="1" stopColor="#FF9300" stopOpacity="0.85" />
+                                                        </linearGradient>
+                                                        <radialGradient id="scope-dot" cx="50%" cy="50%" r="50%">
+                                                            <stop offset="0" stopColor="#78C0F0" stopOpacity="1" />
+                                                            <stop offset="1" stopColor="#78C0F0" stopOpacity="0.18" />
+                                                        </radialGradient>
+                                                    </defs>
+
+                                                    {/* Rings */}
+                                                    <g fill="none" stroke="url(#scope-line)" strokeWidth="1.6" opacity="0.55">
+                                                        <circle cx="320" cy="200" r="70" strokeDasharray="7 10" className="animate-border-flow" />
+                                                        <circle cx="320" cy="200" r="130" strokeDasharray="12 14" className="animate-border-flow" />
+                                                        <circle cx="320" cy="200" r="180" strokeDasharray="16 16" className="animate-border-flow" />
+                                                    </g>
+
+                                                    {/* Spokes */}
+                                                    <g fill="none" stroke="url(#scope-line)" strokeWidth="1.6" opacity="0.5">
+                                                        <path d="M320 200 L320 35" strokeDasharray="220" className="animate-border-flow" />
+                                                        <path d="M320 200 L520 110" strokeDasharray="220" className="animate-border-flow" />
+                                                        <path d="M320 200 L548 235" strokeDasharray="220" className="animate-border-flow" />
+                                                        <path d="M320 200 L430 356" strokeDasharray="220" className="animate-border-flow" />
+                                                        <path d="M320 200 L165 315" strokeDasharray="220" className="animate-border-flow" />
+                                                        <path d="M320 200 L120 150" strokeDasharray="220" className="animate-border-flow" />
+                                                    </g>
+
+                                                    {/* Dots */}
+                                                    <g>
+                                                        <circle cx="320" cy="200" r="14" fill="url(#scope-dot)" />
+                                                        <circle cx="320" cy="35" r="10" fill="url(#scope-dot)" />
+                                                        <circle cx="520" cy="110" r="10" fill="url(#scope-dot)" />
+                                                        <circle cx="548" cy="235" r="10" fill="url(#scope-dot)" />
+                                                        <circle cx="430" cy="356" r="10" fill="url(#scope-dot)" />
+                                                        <circle cx="165" cy="315" r="10" fill="url(#scope-dot)" />
+                                                        <circle cx="120" cy="150" r="10" fill="url(#scope-dot)" />
+                                                    </g>
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        {/* Scope Cards */}
+                                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                            {[
+                                                { t: 'COURSE', d: 'Only the active course (accuracy-first).' },
+                                                { t: 'COLLECTION', d: 'Only what\u2019s saved in the collection (project-first).' },
+                                                { t: 'ORG', d: 'Org knowledge + org courses (policy + enablement).' },
+                                                { t: 'PERSONAL', d: 'Role, goals, constraints (relevance-first).' },
+                                            ].map((row) => (
+                                                <div key={row.t} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+                                                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                        {row.t}
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold text-white/90">{row.d}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </FadeIn>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* GUARDRAILS */}
+            <section id="guardrails" className="scroll-mt-28 py-20">
+                <div className="mx-auto max-w-7xl px-6">
+                    <FadeIn>
+                        <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.02] p-10 backdrop-blur-xl">
+                            <div className="absolute -left-36 -top-36 h-96 w-96 rounded-full bg-[#4B8BB3]/8 blur-[110px]" />
+                            <div className="absolute -bottom-40 -right-40 h-[520px] w-[520px] rounded-full bg-[#FF9300]/6 blur-[120px]" />
+                            <div className="relative grid gap-10 lg:grid-cols-12 lg:items-center">
+                                <div className="lg:col-span-7">
+                                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#4B8BB3]">
+                                        Guardrails
+                                    </div>
+                                    <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                                        Built for organizations, not experiments.
+                                    </h2>
+                                    <p className="mt-5 text-base leading-relaxed text-slate-400">
+                                        Scope boundaries, org isolation, and permissioned access are designed into the system. The goal is not &ldquo;more AI.&rdquo; The goal is AI that stays accurate and relevant — without leaking across contexts.
+                                    </p>
+                                    <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                        <Link
+                                            href="/pricing"
+                                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#4B8BB3] px-6 py-3 text-sm font-bold text-white hover:bg-white hover:text-[#0A0D12] transition-colors shadow-[0_0_20px_rgba(75,139,179,0.25)]"
+                                        >
+                                            Pricing <ArrowRight size={16} />
+                                        </Link>
+                                        <Link
+                                            href="/login?view=signup"
+                                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.08] transition-colors"
+                                        >
+                                            Get Started <ArrowRight size={16} className="opacity-70" />
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-5">
+                                    <div className="grid gap-3">
+                                        {[
+                                            { t: 'Scoped retrieval', d: 'Course-only answers stay course-only.' },
+                                            { t: 'Org isolation', d: 'Org data stays in-org.' },
+                                            { t: 'Personal context', d: 'Relevance without overreach.' },
+                                            { t: 'Cited answers', d: 'Grounded outputs you can trust.' },
+                                        ].map((row) => (
+                                            <div
+                                                key={row.t}
+                                                className="rounded-xl border border-white/[0.06] bg-black/20 px-5 py-4"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <ShieldCheck size={18} className="text-[#4B8BB3]" />
+                                                    <div className="text-white font-semibold">{row.t}</div>
+                                                </div>
+                                                <p className="mt-2 text-sm text-slate-400">{row.d}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
             {/* PERSONAL CONTEXT */}
-            <section className="py-20 border-t border-white/[0.04]">
+            <section className="py-20">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">
@@ -321,22 +643,32 @@ export default function PlatformPage() {
                 </div>
             </section>
 
+            <MarketingDivider />
+
             {/* CTA */}
-            <section className="py-24 bg-[#0B1120]/40 border-t border-white/[0.04]">
+            <section className="py-24 bg-[#0B1120]/40">
                 <div className="max-w-3xl mx-auto px-6 text-center">
                     <FadeIn>
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                            Experience AI-Native Learning
+                            Deeply integrated AI. Scoped. Grounded. Useful.
                         </h2>
                         <p className="text-lg text-slate-400 mb-10">
-                            All five AI agents are included with every plan. Start your free trial and see the difference.
+                            EnhancedHR doesn&apos;t ship &ldquo;an AI chat.&rdquo; It ships a network of agents — each with a specific job, a specific context scope, and a retrieval layer that keeps answers anchored to your content.
                         </p>
-                        <Link
-                            href="/login?view=signup"
-                            className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
-                        >
-                            Start Free Trial <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
-                        </Link>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/login?view=signup"
+                                className="group inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white text-[#0A0D12] font-bold text-xl hover:bg-[#4B8BB3] hover:text-white transition-all shadow-2xl hover:shadow-[0_0_50px_rgba(75,139,179,0.4)] hover:scale-[1.02]"
+                            >
+                                Start Free Trial <ArrowRight size={24} className="group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/demo"
+                                className="inline-flex items-center gap-2 px-10 py-5 rounded-full bg-white/[0.04] text-white font-semibold text-xl border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            >
+                                Schedule a Demo <ArrowRight size={24} className="opacity-50" />
+                            </Link>
+                        </div>
                     </FadeIn>
                 </div>
             </section>
