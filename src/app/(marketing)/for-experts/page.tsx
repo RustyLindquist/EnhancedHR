@@ -252,7 +252,7 @@ export default function ForExpertsPage() {
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">Get Started in 4 Steps</h2>
                     </FadeIn>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {[
                             { step: '01', title: 'Create Account', desc: 'Create a trial account, once published your subscription is free.', color: '#4B8BB3' },
                             { step: '02', title: 'Build Your Course', desc: 'Use our beautiful course builder to create your course.', color: '#78C0F0' },

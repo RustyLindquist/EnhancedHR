@@ -315,7 +315,7 @@ export default function PlatformPage() {
                         <FadeIn delay={100}>
                             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                                 <h4 className="text-sm font-bold text-white mb-3">What you can add:</h4>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {['Academy courses', 'Individual lessons', 'Notes & ideas', 'Uploaded files', 'YouTube videos', 'AI conversations'].map((item, i) => (
                                         <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
                                             <Check size={12} className="text-[#FF9300] flex-shrink-0" /> {item}
@@ -400,7 +400,7 @@ export default function PlatformPage() {
                         </div>
 
                         <FadeIn delay={150}>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {[
                                     { icon: <Target size={20} />, color: '#FF9300', title: 'Role Disruption', desc: 'Forecast how AI changes a role, then plan the skills and transitions proactively.' },
                                     { icon: <Swords size={20} />, color: '#4B8BB3', title: 'Roleplay Dojo', desc: 'Practice tough conversations with an AI trained for coaching\u2014not generic advice.' },
@@ -553,7 +553,7 @@ export default function PlatformPage() {
             <section id="guardrails" className="scroll-mt-28 py-20">
                 <div className="mx-auto max-w-7xl px-6">
                     <FadeIn>
-                        <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.02] p-10 backdrop-blur-xl">
+                        <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-10 backdrop-blur-xl">
                             <div className="absolute -left-36 -top-36 h-96 w-96 rounded-full bg-[#4B8BB3]/8 blur-[110px]" />
                             <div className="absolute -bottom-40 -right-40 h-[520px] w-[520px] rounded-full bg-[#FF9300]/6 blur-[120px]" />
                             <div className="relative grid gap-10 lg:grid-cols-12 lg:items-center">

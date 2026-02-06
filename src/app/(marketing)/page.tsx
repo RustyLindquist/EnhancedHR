@@ -114,9 +114,9 @@ export default async function MarketingHomePage() {
                                 </div>
 
                                 {/* App Content */}
-                                <div className="p-6 grid grid-cols-12 gap-4 h-[380px]">
+                                <div className="p-4 sm:p-6 grid grid-cols-12 gap-3 sm:gap-4 h-[280px] sm:h-[380px]">
                                     {/* Sidebar */}
-                                    <div className="col-span-3 space-y-3">
+                                    <div className="col-span-4 sm:col-span-3 space-y-3 hidden sm:block">
                                         <div className="p-3 rounded-lg bg-[#4B8BB3]/10 border border-[#4B8BB3]/20">
                                             <div className="text-[10px] font-bold text-[#4B8BB3] uppercase tracking-wider mb-2">Collections</div>
                                             <div className="space-y-1.5">
@@ -141,7 +141,7 @@ export default async function MarketingHomePage() {
                                     </div>
 
                                     {/* Main Content */}
-                                    <div className="col-span-6 space-y-4">
+                                    <div className="col-span-8 sm:col-span-6 space-y-4">
                                         <div className="h-44 rounded-xl bg-gradient-to-br from-[#054C74]/40 to-[#4B8BB3]/10 border border-white/[0.06] relative overflow-hidden">
                                             <div className="absolute inset-0 flex items-center justify-center">
                                                 <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
@@ -170,7 +170,7 @@ export default async function MarketingHomePage() {
                                     </div>
 
                                     {/* AI Panel */}
-                                    <div className="col-span-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col">
+                                    <div className="col-span-4 sm:col-span-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col">
                                         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/[0.06]">
                                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#4B8BB3] to-[#054C74] flex items-center justify-center">
                                                 <Sparkles size={10} className="text-white" />
