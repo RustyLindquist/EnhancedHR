@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
 import MobileNav from '@/components/marketing/MobileNav';
+import MarketingDivider from '@/components/marketing/MarketingDivider';
 
 const navLinks = [
     { href: '/academy', label: 'Academy' },
@@ -25,7 +26,7 @@ export default async function MarketingLayout({
     return (
         <div className="min-h-screen bg-[#0A0D12] text-white font-sans selection:bg-[#4B8BB3]/30 selection:text-white">
             {/* Navigation */}
-            <nav className="fixed top-0 w-full z-50 bg-[#0A0D12]/70 backdrop-blur-2xl border-b border-white/[0.06]">
+            <nav className="fixed top-0 w-full z-50 bg-[#0A0D12]/70 backdrop-blur-2xl">
                 <div className="max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -82,12 +83,15 @@ export default async function MarketingLayout({
                     {/* Mobile Menu */}
                     <MobileNav isLoggedIn={!!user} />
                 </div>
+                <MarketingDivider />
             </nav>
 
             {/* Main Content */}
             <main className="pt-[72px]">
                 {children}
             </main>
+
+            <MarketingDivider />
 
             {/* Footer */}
             <footer className="bg-[#050810] border-t border-white/[0.06] relative overflow-hidden">

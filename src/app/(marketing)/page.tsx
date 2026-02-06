@@ -217,6 +217,8 @@ export default async function MarketingHomePage() {
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent via-[#0A0D12]/70 to-[#0A0D12]" />
             </section>
 
+            <MarketingDivider />
+
             {/* ═══════════════════════════════════════════
                 WHY NOW — Pain Points
             ═══════════════════════════════════════════ */}

@@ -6,6 +6,7 @@ import {
     Lock, Settings, UserCheck
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
 
 const anchorPills = [
@@ -21,12 +22,9 @@ export default function OrganizationsPage() {
         <div className="overflow-hidden">
 
             {/* HERO */}
-            <section className="relative py-24 md:py-32">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[15%] left-[20%] w-[500px] h-[500px] bg-[#4B8BB3]/8 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-[10%] right-[15%] w-[400px] h-[400px] bg-[#054C74]/10 rounded-full blur-[100px]" />
-                </div>
-                <div className="max-w-7xl mx-auto px-6 relative">
+            <section className="relative -mt-[72px] bg-[#0A0D12]">
+                <HeroBackground />
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-20">
                     <FadeIn className="text-center max-w-3xl mx-auto">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <Building2 size={12} /> FOR ORGANIZATIONS
