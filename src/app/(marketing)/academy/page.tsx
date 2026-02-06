@@ -6,6 +6,7 @@ import {
     Users, Target, FileText
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
+import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
 
 const anchorPills = [
@@ -21,12 +22,9 @@ export default function AcademyPage() {
         <div className="overflow-hidden">
 
             {/* HERO */}
-            <section className="relative py-24 md:py-32">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[20%] left-[20%] w-[400px] h-[400px] bg-[#4B8BB3]/8 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-0 right-[10%] w-[500px] h-[500px] bg-[#054C74]/10 rounded-full blur-[100px]" />
-                </div>
-                <div className="max-w-7xl mx-auto px-6 relative">
+            <section className="relative -mt-[72px] bg-[#0A0D12]">
+                <HeroBackground />
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-[120px] pb-20">
                     <FadeIn className="text-center max-w-3xl mx-auto">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4B8BB3]/10 border border-[#4B8BB3]/20 text-xs font-medium text-[#4B8BB3] tracking-wide mb-6">
                             <BookOpen size={12} /> THE ACADEMY
@@ -141,6 +139,8 @@ export default function AcademyPage() {
                     </div>
                 </div>
             </section>
+
+            <MarketingDivider />
 
             {/* AI-ENHANCED LEARNING */}
             <section id="ai-enhanced" className="scroll-mt-28 py-24 relative">
