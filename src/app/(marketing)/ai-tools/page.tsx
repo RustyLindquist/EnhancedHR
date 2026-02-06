@@ -35,6 +35,20 @@ export default function ToolsPage() {
                         <p className="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
                             Purpose-built AI tools designed for the challenges HR professionals and leaders face every day. A growing inventory that keeps expanding.
                         </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/login?view=signup"
+                                className="group px-8 py-4 rounded-full bg-[#4B8BB3] text-white font-bold text-lg hover:bg-[#5a9bc3] transition-all shadow-[0_0_30px_rgba(75,139,179,0.3)] hover:shadow-[0_0_50px_rgba(75,139,179,0.5)] hover:-translate-y-0.5 flex items-center gap-2"
+                            >
+                                Start Free Trial <ArrowRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                            <Link
+                                href="/demo"
+                                className="px-8 py-4 rounded-full bg-white/[0.04] text-white font-semibold text-lg border border-white/[0.08] hover:bg-white/[0.08] transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                            >
+                                Schedule a Demo <ArrowRight size={20} className="opacity-50" />
+                            </Link>
+                        </div>
                     </FadeIn>
 
                     {/* Anchor Navigation Pills */}
