@@ -158,7 +158,7 @@ export default function CollectionsPage() {
             {/* ═══════════════════════════════════════════
                 AT A GLANCE — Org vs Personal
             ═══════════════════════════════════════════ */}
-            <section id="at-a-glance" className="scroll-mt-28 py-20">
+            <section id="at-a-glance" className="scroll-mt-28 py-20 bg-[#0B1120]/40">
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FadeIn>
@@ -281,7 +281,7 @@ export default function CollectionsPage() {
             {/* ═══════════════════════════════════════════
                 COLLECTION BUILDER MOCKUP
             ═══════════════════════════════════════════ */}
-            <section id="builder" className="scroll-mt-28 py-20 relative">
+            <section id="builder" className="scroll-mt-28 py-20 bg-[#0B1120]/40 relative">
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         {/* Mockup */}
@@ -588,7 +588,7 @@ export default function CollectionsPage() {
             {/* ═══════════════════════════════════════════
                 FINAL CTA
             ═══════════════════════════════════════════ */}
-            <section className="relative py-24">
+            <section className="relative py-24 bg-[#0B1120]/40">
                 <div className="absolute inset-0 -z-10">
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#FF9300]/8 rounded-full blur-[140px]" />
                 </div>

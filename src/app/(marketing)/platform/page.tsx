@@ -382,7 +382,7 @@ export default function PlatformPage() {
             <MarketingDivider />
 
             {/* AI TOOLS */}
-            <section className="py-20 bg-[#0B1120]/40">
+            <section className="py-20">
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         <div>
@@ -429,7 +429,7 @@ export default function PlatformPage() {
             <MarketingDivider />
 
             {/* CONTEXT SCOPES */}
-            <section id="context-scopes" className="scroll-mt-28 py-20">
+            <section id="context-scopes" className="scroll-mt-28 py-20 bg-[#0B1120]/40">
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
                         <div className="lg:col-span-5">
@@ -613,7 +613,7 @@ export default function PlatformPage() {
             <MarketingDivider />
 
             {/* PERSONAL CONTEXT */}
-            <section className="py-20">
+            <section className="py-20 bg-[#0B1120]/40">
                 <div className="max-w-7xl mx-auto px-6">
                     <FadeIn className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">
@@ -646,7 +646,7 @@ export default function PlatformPage() {
             <MarketingDivider />
 
             {/* CTA */}
-            <section className="py-24 bg-[#0B1120]/40">
+            <section className="py-24">
                 <div className="max-w-3xl mx-auto px-6 text-center">
                     <FadeIn>
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
