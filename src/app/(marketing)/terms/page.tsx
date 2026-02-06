@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import React from 'react';
+
+export const metadata: Metadata = {
+    title: 'Terms of Service — EnhancedHR.ai',
+    description: 'EnhancedHR.ai terms of service. Read our terms and conditions for using the platform.',
+};
 
 export default function TermsPage() {
     return (

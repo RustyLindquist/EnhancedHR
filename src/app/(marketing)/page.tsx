@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -10,6 +11,11 @@ import { createClient } from '@/lib/supabase/server';
 import FadeIn from '@/components/marketing/FadeIn';
 import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+export const metadata: Metadata = {
+    title: 'EnhancedHR.ai — AI-Native Knowledge Platform for HR',
+    description: 'The AI-native professional development platform for HR leaders. Expert-led courses, AI agents, collections, and recertification credits.',
+};
 
 const anchorPills = [
     { label: 'Platform', id: 'pillars' },

@@ -48,7 +48,7 @@ export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {
                 <div className="flex justify-end p-6">
                     <button
                         onClick={() => setOpen(false)}
-                        className="text-white/70 hover:text-white transition-colors p-2"
+                        className="text-white/70 hover:text-white transition-colors p-3"
                         aria-label="Close menu"
                     >
                         <X size={24} />
@@ -79,7 +79,7 @@ export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {
                         Experts
                     </Link>
 
-                    <div className="flex flex-col items-center gap-4 pt-8 mt-8 border-t border-white/10 w-64">
+                    <div className="flex flex-col items-center gap-4 pt-8 mt-8 border-t border-white/10 w-full max-w-xs">
                         {isLoggedIn ? (
                             <Link
                                 href="/dashboard"
@@ -116,7 +116,7 @@ export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {
         <>
             <button
                 onClick={() => setOpen(true)}
-                className="lg:hidden text-white/70 hover:text-white transition-colors p-2 -mr-2"
+                className="lg:hidden text-white/70 hover:text-white transition-colors p-3 -mr-3"
                 aria-label="Open menu"
             >
                 <Menu size={24} />

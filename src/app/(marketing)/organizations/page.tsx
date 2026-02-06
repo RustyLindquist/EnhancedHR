@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -8,6 +9,11 @@ import {
 import FadeIn from '@/components/marketing/FadeIn';
 import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+export const metadata: Metadata = {
+    title: 'Organizations — EnhancedHR.ai',
+    description: 'Empower your entire HR team with group management, custom courses, curated collections, and organizational analytics.',
+};
 
 const anchorPills = [
     { label: 'Groups', id: 'groups' },

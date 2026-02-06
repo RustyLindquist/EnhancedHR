@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -8,6 +9,11 @@ import {
 import FadeIn from '@/components/marketing/FadeIn';
 import HeroBackground from '@/components/marketing/HeroBackground';
 import MarketingDivider from '@/components/marketing/MarketingDivider';
+
+export const metadata: Metadata = {
+    title: 'For Experts — EnhancedHR.ai',
+    description: 'Build and monetize HR courses on a legendary platform. Earn revenue, reach thousands of HR professionals, and grow your brand.',
+};
 
 const anchorPills = [
     { label: 'Why Build Here', id: 'why-build' },

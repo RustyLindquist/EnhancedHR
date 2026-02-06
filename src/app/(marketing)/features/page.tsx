@@ -1,6 +1,12 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Users, Zap, Shield, Star, PlayCircle, Globe, Award, Database, Layout, Lock } from 'lucide-react';
+
+export const metadata: Metadata = {
+    title: 'Features — EnhancedHR.ai',
+    description: 'Deep dive into the EnhancedHR platform. Expert-led courses, AI assistants, integrity ledger, and comprehensive learning ecosystem.',
+};
 
 export default function FeaturesPage() {
     return (
