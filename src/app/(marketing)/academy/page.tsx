@@ -93,7 +93,7 @@ export default function AcademyPage() {
                                 </p>
                             </FadeIn>
                             <FadeIn delay={150}>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {[
                                         'Leadership Development',
                                         'AI & Workforce Transformation',
@@ -399,7 +399,7 @@ export default function AcademyPage() {
                             </FadeIn>
                         </div>
 
-                        <FadeIn direction="left" delay={150}>
+                        <FadeIn direction="left" delay={150} className="hidden lg:block">
                             <div className="relative">
                                 {/* Blue glow behind cards */}
                                 <div className="absolute inset-0 -inset-x-8">

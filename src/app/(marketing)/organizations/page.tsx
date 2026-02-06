@@ -82,7 +82,7 @@ export default function OrganizationsPage() {
                             </p>
                         </FadeIn>
                         <FadeIn delay={150}>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {[
                                     'By team or department',
                                     'By function (managers, ICs)',
@@ -297,7 +297,7 @@ export default function OrganizationsPage() {
                         </div>
 
                         <FadeIn delay={150}>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {[
                                     { icon: <Building2 size={20} />, color: '#4B8BB3', title: 'Org Courses', desc: 'Create or upload internal courses and publish to your employees\u2014fully AI-integrated.' },
                                     { icon: <Users size={20} />, color: '#4B8BB3', title: 'Groups', desc: 'Create unlimited custom groups and assign required or recommended learning.' },

@@ -462,7 +462,7 @@ export default function CollectionsPage() {
 
                         <FadeIn delay={150}>
                             <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                                         <div className="flex items-center gap-2.5 mb-3">
                                             <div className="w-9 h-9 rounded-lg bg-[#4B8BB3]/15 flex items-center justify-center">
