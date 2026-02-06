@@ -3,7 +3,8 @@
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { login, signup, resetPassword, verifyEmail, resendVerification, signInWithOAuth } from './actions'
-import { Mail, Lock, User, ArrowRight, Loader2, Building, Eye, EyeOff, Menu } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Building, Eye, EyeOff } from 'lucide-react'
+import MobileNav from '@/components/marketing/MobileNav'
 import BackgroundSystem from '@/components/BackgroundSystem'
 import { BACKGROUND_THEMES } from '@/constants'
 import { useSearchParams } from 'next/navigation'
@@ -117,47 +118,63 @@ function LoginPageContent() {
             <BackgroundSystem theme={BACKGROUND_THEMES[0]} />
 
             {/* 2. Site Navigation Header */}
-            <nav className="fixed top-0 w-full z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <nav className="fixed top-0 w-full z-50 bg-[#0A0D12]/70 backdrop-blur-2xl border-b border-white/[0.06]">
+                <div className="max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 group">
+                    <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
                         <Image
                             src="/images/logos/EnhancedHR-logo.png"
                             alt="EnhancedHR"
-                            width={180}
-                            height={40}
-                            className="w-[180px] h-auto"
+                            width={160}
+                            height={36}
+                            className="w-[140px] md:w-[160px] h-auto"
+                            priority
                         />
                     </Link>
 
                     {/* Desktop Links */}
-                    <div className="hidden md:flex items-center gap-8">
-                        <Link href="/experts" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
-                            Experts
-                        </Link>
-                        <Link href="/#pricing" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
-                            Pricing
-                        </Link>
-                        <Link href="/login" className="text-sm font-medium text-white hover:text-brand-blue-light transition-colors">
+                    <div className="hidden lg:flex items-center gap-1">
+                        {[
+                            { href: '/academy', label: 'Academy' },
+                            { href: '/platform', label: 'Platform' },
+                            { href: '/collections', label: 'Collections' },
+                            { href: '/organizations', label: 'Organizations' },
+                            { href: '/for-experts', label: 'For Experts' },
+                            { href: '/pricing', label: 'Pricing' },
+                        ].map((link) => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                className="text-[13px] font-medium text-slate-400 hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-white/[0.04]"
+                            >
+                                {link.label}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Desktop Auth Buttons */}
+                    <div className="hidden lg:flex items-center gap-3">
+                        <Link
+                            href="/login"
+                            className="text-sm font-medium text-slate-400 hover:text-white transition-colors px-4 py-2"
+                        >
                             Log In
                         </Link>
                         <Link
                             href="/login?view=signup"
-                            className="px-5 py-2.5 rounded-full bg-brand-blue-light text-brand-black text-sm font-bold hover:bg-white transition-all shadow-[0_0_20px_rgba(120,192,240,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+                            className="px-5 py-2 rounded-full bg-[#4B8BB3] text-white text-sm font-semibold hover:bg-[#5a9bc3] transition-all shadow-[0_0_20px_rgba(75,139,179,0.25)] hover:shadow-[0_0_30px_rgba(75,139,179,0.4)] flex items-center gap-1.5"
                         >
-                            Get Started
+                            Get Started <ArrowRight size={14} />
                         </Link>
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <button className="md:hidden text-white">
-                        <Menu size={24} />
-                    </button>
+                    {/* Mobile Menu */}
+                    <MobileNav isLoggedIn={false} />
                 </div>
             </nav>
 
             {/* 3. Main Content Area - Side by Side Layout */}
-            <main className="flex-1 flex items-center justify-center relative z-10 pt-24 pb-12 px-6">
+            <main className="flex-1 flex items-center justify-center relative z-10 pt-[72px] pb-12 px-6">
                 {/* Centered container for logo + card */}
                 <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 w-full max-w-4xl">
 

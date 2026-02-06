@@ -41,7 +41,7 @@ export default function MobileNav({ isLoggedIn }: { isLoggedIn: boolean }) {
             >
                 {/* Backdrop */}
                 <div
-                    className={`absolute inset-0 bg-[#0A0D12]/95 backdrop-blur-2xl transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute inset-0 bg-[#0A0D12] backdrop-blur-2xl transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setOpen(false)}
                 />
 
