@@ -16,7 +16,24 @@ export async function linkStripeCustomer(userId: string, stripeCustomerId: strin
 
 export async function updateSubscriptionStatus(stripeCustomerId: string, status: string) {
     const supabase = createAdminClient();
-    
+
+    // Check if billing is admin-disabled for this user
+    const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('billing_disabled')
+        .eq('stripe_customer_id', stripeCustomerId)
+        .single();
+
+    if (fetchError) {
+        console.error('Error fetching profile for billing check:', fetchError);
+        throw fetchError;
+    }
+
+    if (profile?.billing_disabled === true) {
+        console.log(`[updateSubscriptionStatus] Skipping status update for customer ${stripeCustomerId} — billing is admin-disabled`);
+        return;
+    }
+
     // Map Stripe status to our internal status
     let membershipStatus: MembershipStatus = 'inactive';
     if (status === 'active' || status === 'trialing') {

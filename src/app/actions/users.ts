@@ -17,6 +17,7 @@ export interface AdminUser {
   orgName: string | null;
   isOrgOwner: boolean;
   billingDisabled: boolean;
+  isSales: boolean;
 }
 
 import { Pool } from 'pg';
@@ -48,6 +49,7 @@ export async function getUsers(): Promise<AdminUser[]> {
       membership_status,
       org_id,
       billing_disabled,
+      is_sales,
       organizations:org_id (
         id,
         name,
@@ -76,7 +78,8 @@ export async function getUsers(): Promise<AdminUser[]> {
       orgId: profile?.org_id || null,
       orgName: org?.name || null,
       isOrgOwner: org?.owner_id === user.id,
-      billingDisabled: profile?.billing_disabled || false
+      billingDisabled: profile?.billing_disabled || false,
+      isSales: profile?.is_sales || false
     };
   });
 }
@@ -104,6 +107,7 @@ async function getUsersDirect(): Promise<AdminUser[]> {
                 p.membership_status,
                 p.org_id,
                 p.billing_disabled,
+                p.is_sales,
                 o.name as org_name,
                 o.owner_id as org_owner_id
             FROM auth.users au
@@ -129,7 +133,8 @@ async function getUsersDirect(): Promise<AdminUser[]> {
             orgId: row.org_id || null,
             orgName: row.org_name || null,
             isOrgOwner: row.org_owner_id === row.id,
-            billingDisabled: row.billing_disabled || false
+            billingDisabled: row.billing_disabled || false,
+            isSales: row.is_sales || false
         }));
     } catch (e) {
         await pool.end(); // Ensure pool is closed
@@ -535,7 +540,9 @@ export async function transferOrgOwnership(
 }
 
 /**
- * Update a user's billing disabled status
+ * Update a user's billing disabled status.
+ * When disabling billing: converts trial users to active, cancels Stripe subscription.
+ * When re-enabling billing: just clears the flag (user must re-subscribe manually).
  */
 export async function updateBillingDisabled(
   userId: string,
@@ -543,13 +550,91 @@ export async function updateBillingDisabled(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createAdminClient();
 
+  if (disabled) {
+    // Fetch the user's profile to check current state
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('membership_status, stripe_subscription_id, stripe_customer_id')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error('[updateBillingDisabled] Error fetching profile:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    // Cancel Stripe subscription FIRST (before updating DB) to avoid inconsistent state
+    if (profile?.stripe_subscription_id) {
+      try {
+        const { stripe } = await import('@/lib/stripe');
+        console.log(`[updateBillingDisabled] Canceling Stripe subscription ${profile.stripe_subscription_id} for user ${userId}`);
+        await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+        console.log(`[updateBillingDisabled] Successfully canceled Stripe subscription ${profile.stripe_subscription_id}`);
+      } catch (stripeError: any) {
+        console.error('[updateBillingDisabled] Error canceling Stripe subscription:', stripeError);
+        return { success: false, error: `Failed to cancel Stripe subscription: ${stripeError.message}` };
+      }
+    }
+
+    // Build the update object — set billing_disabled and clear Stripe fields in one update
+    const updateData: Record<string, any> = {
+      billing_disabled: true,
+      stripe_subscription_id: null,
+      stripe_price_id: null,
+    };
+
+    // If user is on trial, convert to active
+    if (profile?.membership_status === 'trial') {
+      console.log(`[updateBillingDisabled] Converting user ${userId} from trial to active`);
+      updateData.membership_status = 'active';
+    }
+
+    // Apply the DB update
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('[updateBillingDisabled] Error updating profile:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    revalidatePath('/admin/users');
+    return { success: true };
+  } else {
+    // Re-enabling billing: just clear the flag
+    const { error } = await supabase
+      .from('profiles')
+      .update({ billing_disabled: false })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('[updateBillingDisabled] Error re-enabling billing:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/users');
+    return { success: true };
+  }
+}
+
+/**
+ * Update a user's sales account status
+ */
+export async function updateSalesStatus(
+  userId: string,
+  isSales: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createAdminClient();
+
   const { error } = await supabase
     .from('profiles')
-    .update({ billing_disabled: disabled })
+    .update({ is_sales: isSales })
     .eq('id', userId);
 
   if (error) {
-    console.error('Error updating billing disabled:', error);
+    console.error('Error updating sales status:', error);
     return { success: false, error: error.message };
   }
 

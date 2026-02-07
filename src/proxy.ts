@@ -83,7 +83,7 @@ export async function proxy(request: NextRequest) {
     if (user && (isProtectedRoute || isExpertApplicationPage) && !isBillingPage && !request.nextUrl.pathname.startsWith('/api')) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('membership_status, trial_minutes_used, role')
+            .select('membership_status, trial_minutes_used, role, billing_disabled')
             .eq('id', user.id)
             .single();
 
@@ -94,6 +94,11 @@ export async function proxy(request: NextRequest) {
                     return NextResponse.redirect(new URL('/expert-application', request.url))
                 }
                 // Allow them to stay on expert-application page
+                return response
+            }
+
+            // Users with billing disabled by admin have full access regardless of membership status
+            if (profile.billing_disabled) {
                 return response
             }
 
