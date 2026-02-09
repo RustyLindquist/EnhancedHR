@@ -11,6 +11,17 @@ export async function POST(req: NextRequest) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
+        // Check if billing is disabled for this user
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('billing_disabled')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.billing_disabled) {
+            return new NextResponse('Billing is disabled for this account', { status: 403 });
+        }
+
         const body = await req.json();
         const { priceId } = body;
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { getLeads, getLeadOwners } from '@/app/actions/leads';
-import LeadsTable from './LeadsTable';
+import LeadsTable from '@/app/admin/leads/LeadsTable';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeadsPage() {
+export default async function SalesLeadsPage() {
     const [leads, owners] = await Promise.all([getLeads(), getLeadOwners()]);
 
     return (

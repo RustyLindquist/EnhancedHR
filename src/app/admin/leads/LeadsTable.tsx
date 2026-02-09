@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import {
     Search, ChevronDown, Mail, Phone, Building2, Target,
-    Calendar, MessageSquare, ClipboardList, User, Loader2
+    Calendar, MessageSquare, ClipboardList, User, Loader2, Filter
 } from 'lucide-react';
-import { DemoLead, updateLeadStatus, updateLeadNotes } from '@/app/actions/leads';
+import { DemoLead, LeadOwner, updateLeadStatus, updateLeadNotes } from '@/app/actions/leads';
 
 const STATUS_STYLES: Record<string, string> = {
     new: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -22,31 +22,71 @@ const TIMELINE_LABELS: Record<string, string> = {
     just_exploring: 'Just exploring',
 };
 
-export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] }) {
+interface LeadsTableProps {
+    initialLeads: DemoLead[];
+    owners: LeadOwner[];
+}
+
+export default function LeadsTable({ initialLeads, owners }: LeadsTableProps) {
     const [leads, setLeads] = useState<DemoLead[]>(initialLeads);
     const [searchTerm, setSearchTerm] = useState('');
+    const [ownerFilter, setOwnerFilter] = useState<string>('open'); // 'open' | 'all' | owner_id
     const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
     const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
     const [savingNotes, setSavingNotes] = useState<string | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
+    // Compute tallies from leads data
+    const openCount = useMemo(() => leads.filter(l => !l.claimed_by).length, [leads]);
+    const allCount = leads.length;
+
     const filteredLeads = useMemo(() => {
-        if (!searchTerm.trim()) return leads;
-        const term = searchTerm.toLowerCase();
-        return leads.filter((lead) =>
-            lead.full_name.toLowerCase().includes(term) ||
-            (lead.email && lead.email.toLowerCase().includes(term)) ||
-            (lead.company_name && lead.company_name.toLowerCase().includes(term)) ||
-            (lead.phone && lead.phone.includes(term))
-        );
-    }, [leads, searchTerm]);
+        let result = leads;
+
+        // Apply owner filter
+        if (ownerFilter === 'open') {
+            result = result.filter(l => !l.claimed_by);
+        } else if (ownerFilter !== 'all') {
+            // Filter by specific owner ID
+            result = result.filter(l => l.claimed_by === ownerFilter);
+        }
+
+        // Apply search
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase();
+            result = result.filter((lead) =>
+                lead.full_name.toLowerCase().includes(term) ||
+                (lead.email && lead.email.toLowerCase().includes(term)) ||
+                (lead.company_name && lead.company_name.toLowerCase().includes(term)) ||
+                (lead.phone && lead.phone.includes(term))
+            );
+        }
+
+        return result;
+    }, [leads, searchTerm, ownerFilter]);
+
+    // Compute owner lead counts from current leads data
+    const ownerCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        leads.forEach(l => {
+            if (l.claimed_by) {
+                counts.set(l.claimed_by, (counts.get(l.claimed_by) || 0) + 1);
+            }
+        });
+        return counts;
+    }, [leads]);
 
     const handleStatusChange = async (leadId: string, newStatus: string) => {
         setUpdatingStatus(leadId);
         const result = await updateLeadStatus(leadId, newStatus);
         if (result.success) {
             setLeads((prev) =>
-                prev.map((l) => (l.id === leadId ? { ...l, status: newStatus as DemoLead['status'] } : l))
+                prev.map((l) => (l.id === leadId ? {
+                    ...l,
+                    status: newStatus as DemoLead['status'],
+                    claimed_by: result.claimed_by || l.claimed_by,
+                    claimed_by_name: result.claimed_by_name || l.claimed_by_name,
+                } : l))
             );
         }
         setUpdatingStatus(null);
@@ -80,16 +120,39 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
 
     return (
         <div className="space-y-6">
-            {/* Search */}
-            <div className="relative max-w-md">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Search leads..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-blue-light/50 transition-colors"
-                />
+            {/* Search + Filter Row */}
+            <div className="flex items-center gap-4">
+                {/* Search */}
+                <div className="relative max-w-md flex-1">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search leads..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-blue-light/50 transition-colors"
+                    />
+                </div>
+
+                {/* Owner Filter */}
+                <div className="relative">
+                    <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <select
+                        value={ownerFilter}
+                        onChange={(e) => setOwnerFilter(e.target.value)}
+                        className="appearance-none bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-10 text-sm text-white focus:outline-none focus:border-brand-blue-light/50 transition-colors cursor-pointer"
+                    >
+                        <option value="open" className="bg-[#0A0D12]">Open Leads ({openCount})</option>
+                        <option value="all" className="bg-[#0A0D12]">All Leads ({allCount})</option>
+                        <option disabled className="bg-[#0A0D12]">──────────</option>
+                        {owners.map((owner) => (
+                            <option key={owner.id} value={owner.id} className="bg-[#0A0D12]">
+                                {owner.full_name} ({ownerCounts.get(owner.id) || 0})
+                            </option>
+                        ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
             </div>
 
             {/* Table */}
@@ -102,6 +165,7 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Role</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">Owner</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">Date</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right w-12"></th>
                         </tr>
@@ -109,8 +173,8 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
                     <tbody className="divide-y divide-white/5">
                         {filteredLeads.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                                    {searchTerm ? 'No leads match your search.' : 'No leads yet.'}
+                                <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                    {searchTerm ? 'No leads match your search.' : ownerFilter === 'open' ? 'No open leads.' : 'No leads found.'}
                                 </td>
                             </tr>
                         ) : (
@@ -159,6 +223,9 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-400 hidden md:table-cell">
+                                            {lead.claimed_by_name || <span className="text-slate-600">Unclaimed</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-400 hidden md:table-cell">
                                             {new Date(lead.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -172,7 +239,7 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
                                     {/* Expandable Panel */}
                                     {expandedLeadId === lead.id && (
                                         <tr>
-                                            <td colSpan={7} className="p-0">
+                                            <td colSpan={8} className="p-0">
                                                 <div className="bg-slate-900/50 border-t border-white/5 px-6 py-8 animate-fade-in">
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
@@ -275,8 +342,11 @@ export default function LeadsTable({ initialLeads }: { initialLeads: DemoLead[] 
                                                                         <option value="closed" className="bg-[#0A0D12]">Closed</option>
                                                                     </select>
                                                                 </div>
+                                                                {lead.claimed_by_name && (
+                                                                    <DetailRow label="Claimed By" value={lead.claimed_by_name} />
+                                                                )}
                                                                 <div>
-                                                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Admin Notes</div>
+                                                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Notes</div>
                                                                     <textarea
                                                                         value={getNotesValue(lead)}
                                                                         onChange={(e) => setEditingNotes((prev) => ({ ...prev, [lead.id]: e.target.value }))}
