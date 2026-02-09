@@ -3,7 +3,7 @@ id: membership-billing
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-22
+last_updated: 2026-02-07
 surfaces:
   routes:
     - /settings/billing
@@ -15,7 +15,10 @@ data:
   storage: []
 backend:
   actions:
-    - (payments handled via Stripe client/server integration; not yet implemented in repo code)
+    - src/app/actions/users.ts (updateBillingDisabled — cancels Stripe, converts trial, clears fields)
+    - src/app/api/stripe/checkout/route.ts (individual checkout — guards billing_disabled)
+    - src/app/api/stripe/checkout-org/route.ts (org checkout — guards billing_disabled)
+    - src/lib/membership.ts (updateSubscriptionStatus — respects billing_disabled)
     - src/lib/expert-membership.ts (expert membership upgrade/downgrade)
 ai:
   context_scopes: []
@@ -34,6 +37,10 @@ invariants:
   - billing_period_end must be maintained on subscription updates to enforce expirations.
   - membership_status enum values: trial, active, inactive, employee, org_admin; UI must gate by these values.
   - billing_disabled=true exempts user from billing regardless of membership_status.
+  - When admin disables billing, Stripe subscription is canceled FIRST, then DB is updated (atomic order prevents inconsistency).
+  - Checkout routes (/api/stripe/checkout, /api/stripe/checkout-org) reject billing_disabled users with 403.
+  - Middleware (proxy.ts) bypasses upgrade redirect for billing_disabled users.
+  - Stripe webhook handler (membership.ts) skips status updates when billing_disabled=true.
   - Expert membership changes set billing_disabled but do not cancel Stripe subscriptions.
   - Stripe subscription status is checked via API during expert downgrade to determine if billing resumes.
 ---
