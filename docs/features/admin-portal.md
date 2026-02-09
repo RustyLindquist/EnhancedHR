@@ -3,7 +3,7 @@ id: admin-portal
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-27
+last_updated: 2026-02-07
 surfaces:
   routes:
     - /admin/*
@@ -18,7 +18,8 @@ data:
 backend:
   actions:
     - src/components/admin/SystemPromptManager.tsx
-    - admin actions within /admin tree (listing not exhaustive)
+    - src/app/actions/users.ts (getUsers, updateBillingDisabled, updateSalesStatus, updateAuthorStatus)
+    - src/app/actions/leads.ts (getLeads, updateLeadStatus, updateLeadNotes, getLeadOwners)
 ai:
   context_scopes: []
   models: []
@@ -31,6 +32,8 @@ invariants:
   - Admin access determined by profiles.role='admin'; RLS and UI gating must enforce this.
   - ai_system_prompts rows unique by agent_type; admin edits must preserve uniqueness.
   - Service-role usage in admin actions must be scoped to admin users to avoid cross-tenant leakage.
+  - Admin Users table includes Sales Account toggle (is_sales) and Billing Disabled toggle in Roles & Permissions.
+  - Admin Leads page (/admin/leads) shares LeadsTable component with Sales Console (/sales/leads).
 ---
 
 ## Overview

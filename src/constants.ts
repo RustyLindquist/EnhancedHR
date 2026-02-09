@@ -664,6 +664,7 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
+    { id: 'admin/leads', label: 'Leads', icon: ClipboardList },
     { id: 'admin/system', label: 'System Tools', icon: Layers },
 ];
 
@@ -689,6 +690,10 @@ export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
     { id: 'author/analytics', label: 'AI Analytics', icon: BarChart2 },
     { id: 'author/earnings', label: 'Earnings', icon: DollarSign },
     { id: 'author/profile', label: 'Expert Profile', icon: UserCircle },
+];
+
+export const SALES_NAV_ITEMS: NavItemConfig[] = [
+    { id: 'sales/leads', label: 'Leads', icon: ClipboardList },
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [

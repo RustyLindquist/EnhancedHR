@@ -360,9 +360,14 @@ export interface Lesson {
   duration: string;
   type: 'video' | 'quiz' | 'article';
   video_url?: string; // Mux Playback ID
-  content?: string; // Transcript or Article content
+  content?: string; // Transcript or Article content (legacy)
   quiz_data?: QuizData; // JSONB data for quizzes
   isCompleted: boolean; // User specific
+  // Transcript fields
+  ai_transcript?: string; // AI-generated transcript
+  user_transcript?: string; // User-provided transcript override
+  transcript_status?: 'pending' | 'generating' | 'ready' | 'failed';
+  transcript_source?: 'ai' | 'user' | 'mux-caption' | 'whisper' | 'youtube' | 'legacy' | 'none';
 }
 
 export interface Module {

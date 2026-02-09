@@ -5,8 +5,9 @@
 
 ## Last Session
 
-**Date**: 2026-01-27
-**Status**: Complete - All work pushed and merged (PR #182)
+**Date**: 2026-02-07
+**Branch**: RustyLindquist/memphis-v1
+**Status**: Complete — All work pushed and merged (PR #271)
 
 ## Quick Resume
 
@@ -18,120 +19,86 @@
 
 ## Summary
 
-Built 2 courses via direct database insertion (faster than browser automation), fixed a null duration crash in CoursePageV2, and added Supadata API as a fallback option in the YouTube transcript extraction pipeline. All changes merged in PR #182.
+Built the Sales Console (new user type, dedicated console, lead claiming with owner filtering), hardened the billing system (Stripe race condition fix, checkout guards, middleware bypass, webhook protection), and performed a 7-item pre-launch security audit with all findings resolved.
 
 ## Work Completed
 
-### Courses Created via Database
+### 1. Billing Disabled Enhancement
+- `updateBillingDisabled` in users.ts: Cancels Stripe subscription FIRST, then updates DB in one atomic write (billing_disabled + clear stripe fields + trial→active conversion)
+- Checkout routes reject billing_disabled users with 403
+- Middleware bypasses upgrade redirect for billing_disabled users
+- Webhook handler skips status updates for billing_disabled users
 
-| ID | Title | Videos | Duration | Category |
-|----|-------|--------|----------|----------|
-| 618 | Extraordinary vs Extravagant | 18 | 29 min | Leadership Development |
-| 621 | Choose To Thrive | 10 | 27 min | Leadership Development |
+### 2. Sales User Type
+- Added `is_sales` boolean to profiles (migration 20260206000001)
+- "Sales Account" toggle in Admin Console > Users > Roles & Permissions
+- `updateSalesStatus` server action
 
-Both courses use YouTube videos from Rusty Lindquist's playlists.
+### 3. Sales Console
+- `/sales/*` routes with muted orange sidebar (`from-[#3D2E1A] to-[#1A1208]`)
+- Auth: `is_sales` OR `role === 'admin'`
+- Profile menu link with amber TrendingUp icon
+- Reuses LeadsTable component from admin
 
-### Bug Fix: Null Duration Crash
+### 4. Lead Claiming System
+- `claimed_by` UUID FK on demo_leads (migration 20260206000002)
+- Auto-claim on status change with optimistic UI update
+- Owner filter dropdown: Open Leads (default), All Leads, per-person with tallies
+- RLS policies for sales users (SELECT + UPDATE)
 
-**File**: `src/components/course/CoursePageV2.tsx` (line 98)
+### 5. Pre-Launch Audit (7 Fixes)
+1. Auth guard on `updateLeadStatus()` — returns error if unauthenticated
+2. Optimistic `claimed_by` update in LeadsTable after status change
+3. Stripe race condition — cancel before DB update, fail if Stripe fails
+4. `billing_disabled` check on both checkout routes
+5. Auth guard on `updateLeadNotes()`
+6. Middleware fetches `billing_disabled`, bypasses upgrade redirect
+7. `is_sales` added to settings/account page profile query
 
-**Problem**: `course.duration.match()` crashed when duration was null
-
-**Fix**: Added null check before calling `.match()`
-
-### Feature: Supadata API Fallback for Transcripts
-
-Enhanced the transcript extraction pipeline with Supadata as a second-tier fallback:
-
-**Fallback Chain (Updated)**:
-1. Innertube API (youtube-transcript library) - Free, fast
-2. **Supadata API (NEW)** - Paid, better success rate for restricted videos
-3. Audio extraction (for YouTube) - Download audio, transcribe
-4. AI multimodal (Gemini) - Watches video directly
-
-### Files Modified
+### Files Modified (18)
 
 | File | Change |
 |------|--------|
-| `src/lib/youtube.ts` | Added `fetchYouTubeTranscriptWithFallback()` and `fetchYouTubeTranscriptSupadata()` |
-| `src/app/api/course-import/process-videos/route.ts` | Integrated full fallback chain |
-| `src/lib/video-transcript.ts` | Uses new fallback function |
-| `src/components/course/CoursePageV2.tsx` | Null duration fix |
-| `docs/features/video-ai-context.md` | Updated with Supadata in fallback chain |
+| `src/app/actions/leads.ts` | Lead CRUD with claiming, auth guards, owner queries |
+| `src/app/actions/users.ts` | Sales toggle, billing disabled hardening, lazy Stripe import |
+| `src/app/admin/leads/LeadsTable.tsx` | Owner filter, optimistic claimed_by update |
+| `src/app/admin/leads/page.tsx` | Pass owners prop |
+| `src/app/admin/users/UsersTable.tsx` | Sales Account toggle |
+| `src/app/api/stripe/checkout/route.ts` | billing_disabled guard |
+| `src/app/api/stripe/checkout-org/route.ts` | billing_disabled guard |
+| `src/app/settings/account/page.tsx` | is_sales in query |
+| `src/components/NavigationPanel.tsx` | Sales Console link |
+| `src/components/SalesPageLayout.tsx` | NEW: Sales layout |
+| `src/constants.ts` | SALES_NAV_ITEMS |
+| `src/lib/membership.ts` | billing_disabled webhook check |
+| `src/proxy.ts` | billing_disabled middleware bypass |
+| `src/app/sales/layout.tsx` | NEW: Sales auth layout |
+| `src/app/sales/page.tsx` | NEW: Redirect to /sales/leads |
+| `src/app/sales/leads/page.tsx` | NEW: Sales leads page |
+| `supabase/migrations/20260206000001_add_is_sales.sql` | NEW |
+| `supabase/migrations/20260206000002_add_leads_claimed_by.sql` | NEW |
 
-## Environment Setup
+## Documentation Updated
 
-Add to `.env.local` for Supadata support (optional but recommended):
-
-```
-SUPADATA_API_KEY=your_key_here
-```
-
-The Supadata API provides better success rates for YouTube videos with restricted caption access.
-
-## Documentation Created
-
-| Doc | Purpose |
-|-----|---------|
-| `docs/features/course-promotion.md` | Course promotion feature with transcript pipeline |
-| `docs/workflows/database-course-building.md` | Manual course creation via database |
-
-## Verification
-
-```bash
-# Check courses exist
-docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT id, title, duration FROM courses WHERE id IN (618, 621);"
-
-# Check lessons
-docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id IN (618, 621);"
-
-# Git status should be clean
-git status
-```
-
-## Next Steps
-
-1. **Test course promotion** with transcript generation on the new courses
-2. **Verify transcripts** appear correctly after promotion
-3. **Test AI assistant** can access course content via embeddings
-4. **Consider Supadata API key** - add to production environment for better transcript success
-
-## Pending Cleanup (After Migration Complete)
-
-Once all courses are migrated to production, consider removing:
-
-- Course promotion environment variables (`COURSE_IMPORT_SECRET`, `PROD_APP_URL`)
-- `src/app/api/course-import/` API routes
-- `src/components/admin/CoursePromotionModal.tsx`
-- Course promotion button in admin course list
-
-See `docs/features/course-promotion.md` for full cleanup instructions.
+| Doc | Change |
+|-----|--------|
+| `docs/features/sales-console.md` | NEW: Complete Sales Console feature doc |
+| `docs/features/FEATURE_INDEX.md` | Added Sales Console entry |
+| `docs/features/membership-billing.md` | Added billing hardening invariants and backend actions |
+| `docs/features/admin-portal.md` | Added sales toggle, leads management references |
+| `MEMORY.md` (auto memory) | Key patterns: Stripe import, console layout, dual client, RLS |
 
 ## Context to Remember
 
-- Database course building is much faster than browser automation for bulk operations
-- Supadata API is a paid service - use sparingly or only when Innertube fails
-- Course durations must not be null (causes crash in CoursePageV2)
-- YouTube video IDs in the 0521-0543 range have gaps due to re-uploads
+- **Lazy Stripe imports**: Never top-level `import stripe` in server actions — crashes Turbopack when env var missing
+- **Console layout pattern**: NAV_ITEMS in constants.ts → PageLayout.tsx → layout.tsx → NavigationPanel link
+- **Dual client pattern**: `createClient()` for auth, `createAdminClient()` for DB ops in server actions
+- **RLS OR semantics**: Multiple policies on same table coexist (admin + sales both work)
+- **Dev server freeze**: Clear `.next` cache if Turbopack hangs
 
----
+## Next Steps
 
-## Session Insights
-
-### Effective Patterns Used
-
-1. **Direct database insertion** for bulk course creation (18-28 lessons per course)
-2. **Multi-level API fallback** for robust transcript extraction
-3. **Null safety checks** for optional fields in UI components
-
-### Key Technical Decisions
-
-1. **Supadata placement**: Added as second fallback (after Innertube, before audio extraction) because:
-   - Faster than audio extraction
-   - Cheaper than AI multimodal
-   - Better success rate than Innertube for restricted videos
-
-2. **Database-first approach**: Chose direct SQL over admin UI for course creation because:
-   - 10-18 videos per course would take significant time in UI
-   - Browser automation unreliable for large batches
-   - Direct SQL provides immediate feedback and easy corrections
+1. Test all features on production after deploy
+2. Verify migrations run cleanly on production Supabase
+3. Consider adding more Sales Console pages (dashboard, analytics) as needed
+4. Consider explicit "unclaim" functionality if sales workflow requires it

@@ -14,6 +14,7 @@ import {
     changeUserOrg,
     transferOrgOwnership,
     updateBillingDisabled,
+    updateSalesStatus,
     emailTemporaryPassword,
     getAllOrganizations,
     getOrgMembersForTransfer
@@ -191,6 +192,15 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, billingDisabled: disabled } : u));
         } catch (error) {
             alert('Failed to update billing status');
+        }
+    };
+
+    const handleUpdateSalesStatus = async (userId: string, isSales: boolean) => {
+        try {
+            await updateSalesStatus(userId, isSales);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, isSales } : u));
+        } catch (error) {
+            alert('Failed to update sales status');
         }
     };
 
@@ -394,6 +404,18 @@ export default function UsersTable({ initialUsers }: UsersTableProps) {
                                                                 <ToggleSwitch
                                                                     checked={user.role === 'admin'}
                                                                     onChange={() => handlePromote(user.id, user.role)}
+                                                                />
+                                                            </div>
+
+                                                            {/* Sales Account Toggle */}
+                                                            <div className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors">
+                                                                <div>
+                                                                    <span className="text-sm text-slate-300">Sales Account</span>
+                                                                    <p className="text-xs text-slate-500 mt-0.5">Internal sales team member</p>
+                                                                </div>
+                                                                <ToggleSwitch
+                                                                    checked={user.isSales}
+                                                                    onChange={(checked) => handleUpdateSalesStatus(user.id, checked)}
                                                                 />
                                                             </div>
                                                         </div>

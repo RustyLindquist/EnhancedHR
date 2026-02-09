@@ -25,7 +25,8 @@ import {
   Layers, // Added Layers icon for custom collections
   Building,
   Plus,
-  Shield
+  Shield,
+  TrendingUp
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_ADMIN_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
@@ -181,7 +182,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [collectionsExpanded, setCollectionsExpanded] = useState(true);
   const [organizationExpanded, setOrganizationExpanded] = useState(true);
   const [menuView, setMenuView] = useState<'main' | 'roles'>('main');
-  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, avatarUrl?: string | null, org_id?: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, isSales?: boolean, avatarUrl?: string | null, org_id?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [hasOrgCourses, setHasOrgCourses] = useState(false);
   const [orgSelectorData, setOrgSelectorData] = useState<{
@@ -213,7 +214,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         // Get profile data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role, membership_status, author_status, avatar_url, org_id')
+          .select('full_name, role, membership_status, author_status, is_sales, avatar_url, org_id')
           .eq('id', user.id)
           .single();
 
@@ -232,6 +233,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           role,
           membershipStatus,
           authorStatus,
+          isSales: profile?.is_sales || false,
           avatarUrl: profile?.avatar_url,
           org_id: profile?.org_id
         });
@@ -793,6 +795,25 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                             <PenTool size={16} className="text-brand-orange" />
                           </div>
                           Expert Console
+                        </div>
+                        <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                      </button>
+                    )}
+
+                    {/* Sales Console Link - For sales users and platform admins */}
+                    {(userProfile?.isSales || userProfile?.role === 'admin') && (
+                      <button
+                        onClick={() => {
+                          router.push('/sales');
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center mr-3 group-hover:bg-amber-500/20 transition-colors">
+                            <TrendingUp size={16} className="text-amber-500" />
+                          </div>
+                          Sales Console
                         </div>
                         <ChevronRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
                       </button>
