@@ -180,13 +180,26 @@ VALUES (
 
 ## Database Access via Docker
 
+**IMPORTANT: The container name is case-sensitive!**
+
 ```bash
 # Connect to Supabase PostgreSQL
-docker exec -it supabase_db_enhancedhr psql -U postgres -d postgres
+docker exec -it supabase_db_EnhancedHR psql -U postgres -d postgres
 
 # Or run single query
-docker exec -i supabase_db_enhancedhr psql -U postgres -d postgres -c "SELECT * FROM courses ORDER BY id DESC LIMIT 5;"
+docker exec -i supabase_db_EnhancedHR psql -U postgres -d postgres -c "SELECT * FROM courses ORDER BY id DESC LIMIT 5;"
 ```
+
+## Technical Gotchas
+
+1. **Container name is case-sensitive**: Use `supabase_db_EnhancedHR` (NOT `supabase_db_enhancedhr`). This is the most common error.
+2. **Transcript column name**: The column is `ai_transcript` (NOT `transcript`). See `docs/features/dual-transcript-storage.md`.
+3. **WordPress nomenclature mapping**: If cross-referencing with WordPress/LearnDash data:
+   - WordPress "Lesson" = EnhancedHR "Module"
+   - WordPress "Video" = EnhancedHR "Lesson"
+4. **YouTube video IDs as cross-reference keys**: When matching courses between systems, extract and normalize YouTube video IDs from lesson video_url fields. This is the most reliable unique identifier.
+5. **Transcript generation**: The process-videos endpoint only generates transcripts for lessons with YouTube video URLs. Non-YouTube (Mux-only) lessons are skipped.
+6. **Course archiving**: Use status='archived' for soft delete. Never hard-delete courses.
 
 ## Related Docs
 

@@ -34,6 +34,7 @@ invariants:
   - Service-role usage in admin actions must be scoped to admin users to avoid cross-tenant leakage.
   - Admin Users table includes Sales Account toggle (is_sales) and Billing Disabled toggle in Roles & Permissions.
   - Admin Leads page (/admin/leads) shares LeadsTable component with Sales Console (/sales/leads).
+  - Admin Expert creation (/admin/experts/add) includes CredentialsEditor with standaloneExpertId support. Save/cancel buttons are in page header.
 ---
 
 ## Overview
@@ -42,6 +43,7 @@ Admin Portal provides privileged management of system resources such as AI syste
 ## User Surfaces
 - `/admin` pages (e.g., System Prompt Manager) for editing ai_system_prompts.
 - `/admin/courses/[id]/builder` for editing courses with full Quiz Builder support.
+- `/admin/experts/add` for creating expert profiles with credentials/skills management (CredentialsEditor).
 - Potential course/tool management pages under /admin (code scaffolding).
 
 ## Course Management Features

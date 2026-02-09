@@ -3,13 +3,16 @@ id: course-promotion
 owner: platform-engineering
 status: active
 stability: temporary
-last_updated: 2026-01-27
+last_updated: 2026-02-09
 surfaces:
   routes:
     - /admin/courses (promotion button on course list)
   api:
     - /api/course-import/initiate (POST - start promotion)
     - /api/course-import/process-videos (POST - process lessons with transcripts)
+    - /api/course-import/archive (POST - archive a course by setting status='archived')
+    - /api/course-import/status (GET - check import status for a course)
+    - /api/course-import/status/all (GET - check import status for all courses)
 data:
   tables:
     - public.courses (source in staging)
@@ -118,6 +121,41 @@ Processes lessons with transcript extraction.
   ]
 }
 ```
+
+### POST /api/course-import/archive
+
+Archives a course by setting its status to 'archived' (soft delete).
+
+**Request**:
+```json
+{
+  "courseId": 123,
+  "secretKey": "..."
+}
+```
+
+### GET /api/course-import/status
+
+Returns import/transcript processing status for a single course.
+
+**Query params**: `courseId`, `secretKey`
+
+### GET /api/course-import/status/all
+
+Returns import/transcript processing status for all courses.
+
+**Query params**: `secretKey`
+
+## Cross-Reference Tools
+
+Scripts in `scripts/` for WordPress-to-EnhancedHR course integrity:
+
+| Script | Purpose |
+|--------|---------|
+| `cross-reference-courses.ts` | Cross-reference WordPress and EnhancedHR courses using YouTube video IDs |
+| `production-sync-mapping.ts` | Map local courses to production by normalized title |
+| `archive-production-duplicates.ts` | Archive specific duplicate/orphan courses on production |
+| `trigger-all-transcripts.ts` | Bulk trigger transcript generation for all production courses |
 
 ## Environment Variables
 
