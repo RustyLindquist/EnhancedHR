@@ -32,6 +32,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Course Promotion (Temporary) | course-promotion | Medium | Backend | doc-discovery | Coupled to courses schema, video-ai-context (transcript pipeline); temporary feature for content migration | Exists |
 | Membership & Billing | membership-billing | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to org membership, roles, and access across the app | Exists |
 | Sales Console | sales-console | Medium | Backend + Frontend | doc-discovery, plan-lint | Coupled to admin-portal (sales toggle), auth-accounts (is_sales), leads (claiming), membership-billing (billing_disabled) | Exists |
+| Marketing Pages & SEO | marketing-pages | Low | Frontend | doc-discovery, style-validation | Separate from app-shell; coupled to experts (data fetch), leads (demo form); nav links duplicated in layout.tsx and MobileNav.tsx | Exists |
 
 ## Meta / Development Infrastructure
 
