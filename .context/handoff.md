@@ -5,9 +5,9 @@
 
 ## Last Session
 
-**Date**: 2026-02-07
-**Branch**: RustyLindquist/memphis-v1
-**Status**: Complete — All work pushed and merged (PR #271)
+**Date**: 2026-02-09
+**Branch**: RustyLindquist/session-feb-02
+**Status**: Complete — Ready to merge
 
 ## Quick Resume
 
@@ -19,86 +19,72 @@
 
 ## Summary
 
-Built the Sales Console (new user type, dedicated console, lead claiming with owner filtering), hardened the billing system (Stripe race condition fix, checkout guards, middleware bypass, webhook protection), and performed a 7-item pre-launch security audit with all findings resolved.
+Enhanced the Admin Expert page (credentials editor, save button UX), performed major course data integrity work cross-referencing 44 WordPress-migrated courses against production, fixed titles/duplicates/orphans, archived 8 bad courses on production, triggered transcript generation for all 44 active courses, and added a course archive API endpoint.
 
 ## Work Completed
 
-### 1. Billing Disabled Enhancement
-- `updateBillingDisabled` in users.ts: Cancels Stripe subscription FIRST, then updates DB in one atomic write (billing_disabled + clear stripe fields + trial→active conversion)
-- Checkout routes reject billing_disabled users with 403
-- Middleware bypasses upgrade redirect for billing_disabled users
-- Webhook handler skips status updates for billing_disabled users
+### 1. Admin Expert Page Enhancement
+- Added CredentialsEditor component (skills management) to Admin Console > Experts > Add Expert page
+- Moved save/cancel buttons from inside Profile Information card to page header for better UX
 
-### 2. Sales User Type
-- Added `is_sales` boolean to profiles (migration 20260206000001)
-- "Sales Account" toggle in Admin Console > Users > Roles & Permissions
-- `updateSalesStatus` server action
-
-### 3. Sales Console
-- `/sales/*` routes with muted orange sidebar (`from-[#3D2E1A] to-[#1A1208]`)
-- Auth: `is_sales` OR `role === 'admin'`
-- Profile menu link with amber TrendingUp icon
-- Reuses LeadsTable component from admin
-
-### 4. Lead Claiming System
-- `claimed_by` UUID FK on demo_leads (migration 20260206000002)
-- Auto-claim on status change with optimistic UI update
-- Owner filter dropdown: Open Leads (default), All Leads, per-person with tallies
-- RLS policies for sales users (SELECT + UPDATE)
-
-### 5. Pre-Launch Audit (7 Fixes)
-1. Auth guard on `updateLeadStatus()` — returns error if unauthenticated
-2. Optimistic `claimed_by` update in LeadsTable after status change
-3. Stripe race condition — cancel before DB update, fail if Stripe fails
-4. `billing_disabled` check on both checkout routes
-5. Auth guard on `updateLeadNotes()`
-6. Middleware fetches `billing_disabled`, bypasses upgrade redirect
-7. `is_sales` added to settings/account page profile query
-
-### Files Modified (18)
-
+**Files Modified:**
 | File | Change |
 |------|--------|
-| `src/app/actions/leads.ts` | Lead CRUD with claiming, auth guards, owner queries |
-| `src/app/actions/users.ts` | Sales toggle, billing disabled hardening, lazy Stripe import |
-| `src/app/admin/leads/LeadsTable.tsx` | Owner filter, optimistic claimed_by update |
-| `src/app/admin/leads/page.tsx` | Pass owners prop |
-| `src/app/admin/users/UsersTable.tsx` | Sales Account toggle |
-| `src/app/api/stripe/checkout/route.ts` | billing_disabled guard |
-| `src/app/api/stripe/checkout-org/route.ts` | billing_disabled guard |
-| `src/app/settings/account/page.tsx` | is_sales in query |
-| `src/components/NavigationPanel.tsx` | Sales Console link |
-| `src/components/SalesPageLayout.tsx` | NEW: Sales layout |
-| `src/constants.ts` | SALES_NAV_ITEMS |
-| `src/lib/membership.ts` | billing_disabled webhook check |
-| `src/proxy.ts` | billing_disabled middleware bypass |
-| `src/app/sales/layout.tsx` | NEW: Sales auth layout |
-| `src/app/sales/page.tsx` | NEW: Redirect to /sales/leads |
-| `src/app/sales/leads/page.tsx` | NEW: Sales leads page |
-| `supabase/migrations/20260206000001_add_is_sales.sql` | NEW |
-| `supabase/migrations/20260206000002_add_leads_claimed_by.sql` | NEW |
+| `src/components/admin/StandaloneExpertDetailsDashboard.tsx` | Added CredentialsEditor import/integration with `standaloneExpertId` prop; moved save/cancel to header |
+| `src/components/CredentialsEditor.tsx` | Added `standaloneExpertId?: string` prop for standalone expert mode; updated handlers to use standalone actions |
 
-## Documentation Updated
+### 2. Course Data Integrity (Major Work)
+- Cross-referenced 44 courses migrated from WordPress (LearnDash LMS) against EnhancedHR production
+- Used YouTube video IDs as unique identifiers for cross-referencing
+- Fixed wrong titles, removed duplicates, deleted orphan courses
+- Archived 8 duplicate/orphan courses on production (IDs: 612, 614, 615, 620, 621, 623, 624, 651)
+- Active production course IDs after cleanup: 613, 627-670 (excluding archived)
 
-| Doc | Change |
-|-----|--------|
-| `docs/features/sales-console.md` | NEW: Complete Sales Console feature doc |
-| `docs/features/FEATURE_INDEX.md` | Added Sales Console entry |
-| `docs/features/membership-billing.md` | Added billing hardening invariants and backend actions |
-| `docs/features/admin-portal.md` | Added sales toggle, leads management references |
-| `MEMORY.md` (auto memory) | Key patterns: Stripe import, console layout, dual client, RLS |
+**Scripts created:**
+| Script | Purpose |
+|--------|---------|
+| `scripts/cross-reference-courses.ts` | WordPress <> EnhancedHR cross-reference using YouTube video IDs |
+| `scripts/production-sync-mapping.ts` | Maps local courses to production by normalized title |
+| `scripts/archive-production-duplicates.ts` | Archives specific courses on production |
+| `scripts/trigger-all-transcripts.ts` | Triggers transcript generation for all 44 courses |
+
+### 3. Course Archive API
+- Created `src/app/api/course-import/archive/route.ts`
+- Archives courses by setting status to 'archived'
+- Authenticated via COURSE_IMPORT_SECRET
+
+### 4. Production Transcript Generation
+- Triggered transcript generation for all 44 active production courses
+- Results: 41/44 fully complete, 3 courses (667, 668, 669) have 4 "Elements Quick Review" lessons without transcripts (non-video review content, expected)
 
 ## Context to Remember
 
+### Technical Gotchas (IMPORTANT)
+- **Supabase container name is case-sensitive**: `supabase_db_EnhancedHR` (NOT `supabase_db_enhancedhr`)
+- **Transcript column**: `ai_transcript` (NOT `transcript`) — see `docs/features/dual-transcript-storage.md`
+- **Production credentials**: `PROD_APP_URL` and `COURSE_IMPORT_SECRET` in `.env.local`
+- **process-videos endpoint**: Only generates transcripts for YouTube videos; non-YouTube (Mux-only) lessons are skipped
+- **WordPress nomenclature**: "Lesson" in WordPress/LearnDash = "Module" in EnhancedHR; "Video" in WordPress = "Lesson" in EnhancedHR
+
+### Patterns Used
+- YouTube video IDs as cross-reference keys between WordPress and EnhancedHR
+- Course archive via status='archived' (soft delete, not hard delete)
+- Bulk transcript triggering via the course-import/process-videos API endpoint
 - **Lazy Stripe imports**: Never top-level `import stripe` in server actions — crashes Turbopack when env var missing
 - **Console layout pattern**: NAV_ITEMS in constants.ts → PageLayout.tsx → layout.tsx → NavigationPanel link
 - **Dual client pattern**: `createClient()` for auth, `createAdminClient()` for DB ops in server actions
-- **RLS OR semantics**: Multiple policies on same table coexist (admin + sales both work)
 - **Dev server freeze**: Clear `.next` cache if Turbopack hangs
 
 ## Next Steps
 
-1. Test all features on production after deploy
-2. Verify migrations run cleanly on production Supabase
-3. Consider adding more Sales Console pages (dashboard, analytics) as needed
-4. Consider explicit "unclaim" functionality if sales workflow requires it
+1. Verify all 44 courses display correctly on production
+2. Consider removing course-import API endpoints after migration is fully stable (see `docs/features/course-promotion.md`)
+3. The 4 "Elements Quick Review" lessons in courses 667-669 are non-video content; no transcript action needed
+
+---
+
+## Previous Session (2026-02-07)
+
+**Branch**: RustyLindquist/memphis-v1
+**Status**: Complete — All work pushed and merged (PR #271)
+**Summary**: Built Sales Console, hardened billing system, performed pre-launch security audit.

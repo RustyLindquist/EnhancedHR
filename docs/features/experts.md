@@ -56,6 +56,7 @@ Experts feature manages the expert registration flow and public expert directory
 - **Public expert directory** (`/experts`): Cards for approved experts with published courses.
 - **Expert detail page** (`/experts/[id]}` and Academy view): Bio/credentials and course list.
 - **Expert Console** (`/author/*`): Course building and management (accessible to pending/approved/rejected experts).
+- **Admin Console > Experts > Add Expert**: Standalone expert profile creation with CredentialsEditor (skills management). Save/cancel buttons in page header. Uses `standaloneExpertId` prop to support admin-side credential operations via standalone expert actions.
 - **Account settings**: Shows expert status messaging (pending/approved/rejected).
 
 ### Expert Detail Page UI (Academy View)
