@@ -134,6 +134,10 @@ async function main() {
             console.log(`   Login events: ${result.analytics.loginCount || 0}`);
             console.log(`   Conversations: ${result.analytics.conversationCount || 0}`);
             console.log(`   Credit entries: ${result.analytics.creditCount || 0}`);
+            if (result.analytics.errors?.length > 0) {
+                console.log('   ❌ Errors:');
+                result.analytics.errors.forEach((e: string) => console.log(`      ${e}`));
+            }
             console.log();
         }
 

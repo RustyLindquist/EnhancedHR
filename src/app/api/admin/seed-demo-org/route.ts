@@ -621,6 +621,7 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
   let loginCount = 0;
   let conversationCount = 0;
   let creditCount = 0;
+  const errors: string[] = [];
 
   // Progress config: email → { courseTitles[], completedCount }
   const progressConfig: Record<string, { courses: string[]; completed: number }> = {
@@ -739,7 +740,11 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
     }
 
     const { error } = await admin.from('login_events').insert(events);
-    if (!error) loginCount += events.length;
+    if (error) {
+      errors.push(`login_events(${email}): ${error.message} [${error.code}]`);
+    } else {
+      loginCount += events.length;
+    }
   }
 
   // 4. AI Conversations
@@ -761,7 +766,7 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
     if (!error) conversationCount++;
   }
 
-  return { progressCount, loginCount, conversationCount, creditCount };
+  return { progressCount, loginCount, conversationCount, creditCount, errors: errors.length > 0 ? errors : undefined };
 }
 
 // ============================================================================
