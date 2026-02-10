@@ -295,8 +295,18 @@ async function phaseDiscover(admin: any) {
 
   // Find existing users
   const allEmails = [...EXISTING_ACCOUNTS, ...NEW_EMPLOYEES].map(e => e.email);
-  const { data: profiles } = await admin.from('profiles').select('id, full_name, email, org_id, membership_status').in('email', allEmails);
-  log.existingUsers = profiles || [];
+  // Note: production profiles table doesn't have 'email' column — look up by auth user IDs instead
+  const { data: { users: allAuthUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const matchedAuthUsers = allAuthUsers?.filter((u: any) => allEmails.includes(u.email)) || [];
+  const matchedIds = matchedAuthUsers.map((u: any) => u.id);
+  const { data: profiles } = matchedIds.length > 0
+    ? await admin.from('profiles').select('id, full_name, org_id, membership_status').in('id', matchedIds)
+    : { data: [] };
+  // Attach email from auth for display
+  log.existingUsers = (profiles || []).map((p: any) => {
+    const authUser = matchedAuthUsers.find((u: any) => u.id === p.id);
+    return { ...p, email: authUser?.email };
+  });
 
   // Published courses
   const { data: courses } = await admin.from('courses').select('id, title').eq('status', 'published').order('title');
@@ -369,19 +379,19 @@ async function phaseUsers(admin: any) {
 
       userMap[account.email] = userId;
 
-      // Upsert profile
-      await admin.from('profiles').upsert({
+      // Upsert profile (production profiles table does NOT have email, headline, or onboarding_completed_at)
+      const { error: profileError } = await admin.from('profiles').upsert({
         id: userId,
         full_name: account.name,
-        email: account.email,
         avatar_url: `https://i.pravatar.cc/256?u=${account.email}`,
         role: account.platformRole,
         membership_status: account.membershipStatus,
         org_id: orgId,
-        headline: account.headline,
-        onboarding_completed_at: new Date().toISOString(),
         billing_disabled: true,
       });
+      if (profileError) {
+        console.error(`Profile upsert error for ${account.email}:`, profileError.message);
+      }
     } catch (err: any) {
       results.push({ email: account.email, name: account.name, status: 'error', error: err.message });
     }
