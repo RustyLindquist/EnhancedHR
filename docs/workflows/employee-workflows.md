@@ -18,6 +18,35 @@ Employees are organization members who consume learning content assigned by thei
 
 ## Primary Workflows
 
+### Accessing Organization Features
+
+**Goal**: Navigate to org-specific features (collections, assigned learning, org courses)
+**Frequency**: Daily
+**Features Involved**: `my-organization-hub`, `organization-membership`, `collections-and-context`
+
+#### Steps
+1. Click "My Organization" in the left navigation sidebar
+2. Hub page displays available feature cards (3-4 cards for employees)
+3. Click the desired card:
+   - Users and Groups — view team directory
+   - Organization Courses — browse published org courses (only if courses exist)
+   - Org Collections — browse shared collections
+   - My Assigned Learning — view required and recommended assignments
+
+#### Variations
+- Organization Courses card only visible if org has published courses
+- Analytics card is not visible to employees (org admin only)
+
+#### Success Criteria
+- Relevant cards visible based on employee permissions
+- Navigation leads to correct feature area
+
+#### Related Workflows
+- Daily Learning Dashboard
+- Course Completion
+
+---
+
 ### Daily Learning Dashboard
 
 **Goal**: See what to learn today and continue in-progress courses

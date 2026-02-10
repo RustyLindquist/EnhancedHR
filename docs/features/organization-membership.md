@@ -42,6 +42,7 @@ invariants:
 Organization Membership manages multi-tenant access, org-scoped collections, teams/groups, and content assignments. A user’s `profiles.org_id` and `membership_status` determine visibility and permissions for org resources.
 
 ## User Surfaces
+- My Organization hub page (virtual collection `my-org` in MainCanvas) — centralized entry point for all org features.
 - `/org/collections` and `/org/collections/[id]` for creating/editing org collections.
 - Org dashboards/pages under `/org/*`.
 - Join-org acceptance flow.
@@ -120,3 +121,4 @@ Read paths:
 - docs/features/membership-billing.md
 - docs/features/collections-and-context.md
 - docs/features/dashboard.md
+- docs/features/my-organization-hub.md

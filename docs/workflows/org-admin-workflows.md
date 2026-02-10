@@ -18,6 +18,38 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 
 ## Primary Workflows
 
+### Organization Hub Navigation
+
+**Goal**: Access organization features from the centralized hub
+**Frequency**: Daily
+**Features Involved**: `my-organization-hub`, `app-shell`
+
+#### Steps
+1. Click "My Organization" in the left navigation sidebar
+2. Hub page displays feature cards based on admin permissions (all 5 cards visible for org admins)
+3. Click the desired card to navigate to that feature area:
+   - Users and Groups — manage team members and groups
+   - Analytics — view org learning metrics
+   - Organization Courses — create/manage org courses
+   - Org Collections — manage shared collections
+   - My Assigned Learning — view personal assignments
+
+#### Variations
+- Hub replaces the old expandable "My Organization" nav section
+- Organization Courses card navigates to `/org-courses` (full page route)
+- Other cards navigate to virtual collections within MainCanvas
+
+#### Success Criteria
+- All relevant org feature cards visible
+- Each card navigates to the correct feature area
+
+#### Related Workflows
+- Team Member Management
+- Content Assignment
+- Organization Course Management
+
+---
+
 ### Team Member Management
 
 **Goal**: Add or remove employees from the organization
@@ -25,7 +57,7 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Features Involved**: `organization-membership`, `auth-accounts`
 
 #### Steps
-1. Navigate to Organization settings (`/org/team`)
+1. Navigate to My Organization hub, then click "Users and Groups" card (or navigate directly to `/org/team`)
 2. Click "Add Member" or select existing member
 3. For new: Enter email, select role
 4. System sends invitation email
@@ -54,7 +86,7 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Features Involved**: `organization-membership`, `collections-and-context`, `course-player-and-progress`
 
 #### Steps
-1. Navigate to Organization Collections (`/org/collections`)
+1. Navigate to My Organization hub, then click "Org Collections" card (or navigate directly to `/org/collections`)
 2. Select or create a collection
 3. Add courses to collection
 4. Assign collection to team/individuals
@@ -82,7 +114,7 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Features Involved**: `organization-membership`, `course-player-and-progress`, `dashboard`
 
 #### Steps
-1. Navigate to Organization Analytics (`/org/analytics`)
+1. Navigate to My Organization hub, then click "Analytics" card (or navigate directly to `/org/analytics`)
 2. View team progress dashboard
 3. Filter by team, individual, or content
 4. Identify completion rates, engagement
@@ -136,7 +168,7 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Features Involved**: `org-courses`, `organization-membership`, `ai-context-engine`
 
 #### Steps
-1. Navigate to Organization Courses (`/org-courses`)
+1. Navigate to My Organization hub, then click "Organization Courses" card (or navigate directly to `/org-courses`)
 2. Click "Create Course" to start a new course
 3. Use the course builder to add modules and lessons
 4. Upload videos and add content (descriptions, transcripts)
@@ -168,7 +200,7 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Features Involved**: `org-courses`, `organization-membership`, `content-assignments`
 
 #### Steps
-1. Navigate to Organization Courses (`/org-courses`)
+1. Navigate to My Organization hub, then click "Organization Courses" card (or navigate directly to `/org-courses`)
 2. Select a published course
 3. Use assignment controls to assign to:
    - Individual employees
