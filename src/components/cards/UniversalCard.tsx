@@ -128,17 +128,19 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isNewLayoutCard = ['COURSE', 'MODULE', 'LESSON', 'ACTIVITY'].includes(type);
     // Video card has its own layout: header -> title -> thumbnail
     const isVideoCard = type === 'VIDEO';
-    // Legacy media cards with background image: ORG_COURSE
-    const isMediaCard = ['ORG_COURSE'].includes(type);
+    // Legacy media cards with background image
+    const isMediaCard = false;
     // Text-heavy cards with colored header sections
-    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION', 'ORG_COLLECTION'].includes(type);
+    const isTextHeavy = ['CONVERSATION', 'CONTEXT', 'AI_INSIGHT', 'RESOURCE', 'PROFILE', 'HELP', 'NOTE', 'TOOL', 'TOOL_CONVERSATION', 'ORG_COLLECTION', 'ORG_COURSE', 'USERS_GROUPS', 'ORG_ANALYTICS', 'ASSIGNED_LEARNING'].includes(type);
+    // Org hub cards use glassy transparent style and hide the type header
+    const isOrgHubCard = ['USERS_GROUPS', 'ORG_ANALYTICS', 'ASSIGNED_LEARNING', 'ORG_COLLECTION', 'ORG_COURSE'].includes(type);
 
     // Height calculations for legacy layout
     const topHeight = isTextHeavy ? 'h-[45%]' : 'h-[60%]';
     const bottomHeight = isTextHeavy ? 'h-[55%]' : 'h-[40%]';
 
     // For Course, Module, Lesson, Activity, Conversation, Context, AI_Insight, Profile, Help, Note, Tool, Tool_Conversation, Org_Collection, Org_Course, and Video cards, the entire card body is clickable
-    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE' || type === 'VIDEO';
+    const isClickableCard = type === 'COURSE' || type === 'MODULE' || type === 'LESSON' || type === 'ACTIVITY' || type === 'CONVERSATION' || type === 'CONTEXT' || type === 'AI_INSIGHT' || type === 'PROFILE' || type === 'HELP' || type === 'NOTE' || type === 'TOOL' || type === 'TOOL_CONVERSATION' || type === 'ORG_COLLECTION' || type === 'ORG_COURSE' || type === 'VIDEO' || type === 'USERS_GROUPS' || type === 'ORG_ANALYTICS' || type === 'ASSIGNED_LEARNING';
 
     const [isDraggable, setIsDraggable] = React.useState(false);
     const [shouldPreventClick, setShouldPreventClick] = React.useState(false);
@@ -189,7 +191,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                     setTimeout(() => setShouldPreventClick(false), 100);
                 }}
                 onClick={handleClick}
-                className={`relative group w-full flex flex-col rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'VIDEO' ? 'border-purple-500/30' : type === 'ORG_COURSE' ? 'border-amber-500/30' : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'VIDEO' ? 'bg-gradient-to-br from-[#4A2F4A] to-[#7A3579]' : type === 'ORG_COURSE' ? 'bg-amber-950' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
+                className={`relative group w-full flex flex-col rounded-3xl overflow-hidden border ${type === 'LESSON' ? 'border-[#78C0F0]/20' : type === 'NOTE' ? 'border-[#FF9300]/30' : type === 'CONTEXT' ? 'border-[#BD4B18]/30' : type === 'CONVERSATION' ? 'border-[#085684]/30' : type === 'RESOURCE' ? 'border-[#521B23]/30' : type === 'VIDEO' ? 'border-purple-500/30' : isOrgHubCard ? config.borderColor : 'border-white/10'} ${type === 'COURSE' ? 'bg-gradient-to-br from-[#23355B] to-[#0B1120]' : type === 'MODULE' ? 'bg-gradient-to-br from-[#1B283B] to-[#235573]' : type === 'LESSON' ? 'bg-gradient-to-br from-[#054C74] to-[#50A7E2]' : type === 'ACTIVITY' ? 'bg-gradient-to-br from-[#800725] to-[#9E031A]' : type === 'NOTE' ? 'bg-gradient-to-br from-[#A87938] to-[#FF9300]' : type === 'CONTEXT' ? 'bg-gradient-to-br from-[#BD4B18] to-[#943C14]' : type === 'CONVERSATION' ? 'bg-gradient-to-br from-[#063B59] to-[#085684]' : type === 'RESOURCE' ? 'bg-gradient-to-br from-[#521B23] to-[#3A1218]' : type === 'VIDEO' ? 'bg-gradient-to-br from-[#4A2F4A] to-[#7A3579]' : isOrgHubCard ? 'bg-white/[0.03] backdrop-blur-xl' : 'bg-[#0B1120]'} shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : ''} ${isClickableCard && onAction ? 'cursor-pointer' : ''} aspect-[4/3] min-h-[310px]`}
             >
 
             {/* ========== NEW LAYOUT FOR COURSE/MODULE/LESSON ========== */}
@@ -423,7 +425,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                 {/* Header Section (Type, Actions, Metadata) */}
                 <div data-header-actions className="absolute top-0 left-0 w-full p-3 z-20 flex flex-col gap-2">
 
-                    {/* Row 1: Type Label & Core Actions */}
+                    {/* Row 1: Type Label & Core Actions - Hidden for org hub cards */}
+                    {!isOrgHubCard && (
                     <div className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
                         <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70 truncate mr-2">{type === 'AI_INSIGHT' ? 'CONTEXT' : type === 'HELP' ? 'FEATURES' : type === 'CONTEXT' && contextSubtype ? `CONTEXT (${contextSubtype})` : type.replace('_', ' ')}</span>
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -459,6 +462,7 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
 
                 {/* Title Section */}
