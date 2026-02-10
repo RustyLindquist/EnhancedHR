@@ -651,8 +651,6 @@ export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'tools', label: 'Tools', icon: Wrench, color: 'text-teal-400' },
-  { id: 'personal-context', label: 'Personal Context', icon: Brain },
-  { id: 'help', label: 'Help', icon: HelpCircle, color: 'text-brand-blue-light' },
 ];
 
 export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
@@ -680,7 +678,7 @@ export const ORG_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const EMPLOYEE_NAV_ITEMS: NavItemConfig[] = [
-    { id: 'assigned-learning', label: 'Assigned Learning', icon: ClipboardList, color: 'text-emerald-400' },
+    { id: 'assigned-learning', label: 'My Assigned Learning', icon: ClipboardList, color: 'text-emerald-400' },
 ];
 
 export const EXPERT_NAV_ITEMS: NavItemConfig[] = [
@@ -697,12 +695,12 @@ export const SALES_NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
+  { id: 'personal-context', label: 'Personal Context', icon: Brain },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
   { id: 'notes', label: 'All Notes', icon: StickyNote, color: 'text-amber-400' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },
   { id: 'research', label: 'Workspace', icon: Search, color: 'text-brand-orange' },
   { id: 'to_learn', label: 'Watchlist', icon: Clock, color: 'text-brand-blue-light' },
-  { id: 'new', label: 'New Collection', icon: Plus, color: 'text-brand-blue-light' },
 ];
 
 export const CONVERSATION_NAV_ITEMS: NavItemConfig[] = [
