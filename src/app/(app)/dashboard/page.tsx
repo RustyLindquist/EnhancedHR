@@ -72,6 +72,7 @@ function HomeContent() {
   const [isOrgAdmin, setIsOrgAdmin] = useState<boolean>(false); // Track if user is org admin
   const [userOrgId, setUserOrgId] = useState<string | null>(null); // Track user's org ID for nav
   const [viewingGroupName, setViewingGroupName] = useState<string | null>(null); // Current group name for AI Panel title
+  const [hasOrgCourses, setHasOrgCourses] = useState<boolean>(false); // Whether org has published courses
 
   // Global Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -142,6 +143,13 @@ function HomeContent() {
         // 6. Get current org ID for navigation panel
         const currentOrgId = await getCurrentOrgId();
         setUserOrgId(currentOrgId);
+
+        // 7. Check if org has published courses
+        if (currentOrgId) {
+          const { hasPublishedOrgCourses } = await import('@/app/actions/org-courses');
+          const result = await hasPublishedOrgCourses(currentOrgId);
+          setHasOrgCourses(result.hasPublished);
+        }
       }
     }
     initUserAndCollections();
@@ -701,6 +709,8 @@ function HomeContent() {
             setOrgCollections(updated);
           }}
           onViewingGroupChange={setViewingGroupName}
+          hasOrgCourses={hasOrgCourses}
+          orgMemberCount={orgMemberCount}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
@@ -712,7 +722,7 @@ function HomeContent() {
             agentType={
               activeCourseId
                 ? 'course_assistant'
-                : activeCollectionId === 'dashboard'
+                : (activeCollectionId === 'dashboard' || activeCollectionId === 'my-org')
                   ? 'platform_assistant'
                   : ['users-and-groups', 'org-team'].includes(activeCollectionId)
                     ? 'team_analytics_assistant'

@@ -48,6 +48,7 @@ import HelpPanel from './help/HelpPanel';
 import { HelpTopicId } from './help/HelpContent';
 import ToolsCollectionView from './tools/ToolsCollectionView';
 import OrgCollectionsView from './org/OrgCollectionsView';
+import MyOrganizationHub from './org/MyOrganizationHub';
 import { fetchToolsAction } from '@/app/actions/tools';
 import { deleteOrgCollection } from '@/app/actions/org';
 import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
@@ -86,6 +87,8 @@ interface MainCanvasProps {
     isOrgAdmin?: boolean; // Whether user can edit org collections
     onOrgCollectionsUpdate?: () => void; // Callback when org collections change
     onViewingGroupChange?: (groupName: string | null) => void; // Callback when viewing a group (passes group name for AI panel)
+    hasOrgCourses?: boolean; // Whether org has published courses
+    orgMemberCount?: number; // Count of org members
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -850,7 +853,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     orgCollections = [],
     isOrgAdmin = false,
     onOrgCollectionsUpdate,
-    onViewingGroupChange
+    onViewingGroupChange,
+    hasOrgCourses = false,
+    orgMemberCount = 0
 }) => {
     // --- ROUTER ---
     const router = useRouter();
@@ -1110,6 +1115,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         'favorites',          // Favorites
         'to_learn',           // Watchlist
         'instructors',        // Experts directory
+        'my-org',             // Organization hub
         // Note: 'assigned-learning' uses its own dedicated AssignedLearningCanvas
     ];
 
@@ -2528,6 +2534,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
+        if (activeCollectionId === 'my-org') return 'My Organization';
         if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
         if (activeCollectionId === 'org-collections') return 'Org Collections';
         if (activeCollectionId === 'company') return 'Org Collection';
@@ -2553,6 +2560,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
         if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
+        if (activeCollectionId === 'my-org') return 'Organization Hub';
         if (activeCollectionId === 'new-org-collection') return 'Create Collection';
         if (activeCollectionId === 'org-collections') return 'Organization';
         if (activeCollectionId === 'company') return 'Org Collection';
@@ -2630,7 +2638,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
         const loadMixedItems = async () => {
             // Guard: Don't fetch for system pages that aren't collections
-            if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy') {
+            if (activeCollectionId === 'dashboard' || activeCollectionId === 'academy' || activeCollectionId === 'my-org') {
                 setCollectionItems([]);
                 return;
             }
@@ -4196,6 +4204,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
                                         activeCollectionId === 'org-collections' ||
+                                        activeCollectionId === 'my-org' ||
                                         viewingOrgCollection ||
                                         activeCollectionId === 'instructors' ||
                                         activeCollectionId === 'dashboard' ||
@@ -4482,6 +4491,19 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         // Navigate to tool page
                                         window.location.href = `/tools/${slug}`;
                                     }}
+                                />
+                            </div>
+                        ) : activeCollectionId === 'my-org' ? (
+                            // --- MY ORGANIZATION HUB ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <MyOrganizationHub
+                                    orgMemberCount={orgMemberCount}
+                                    orgCollectionsCount={orgCollections?.length || 0}
+                                    isOrgAdmin={isOrgAdmin || false}
+                                    hasOrgCourses={hasOrgCourses}
+                                    viewMode={collectionViewMode}
+                                    onSelectCollection={onSelectCollection}
+                                    onNavigateToOrgCourses={() => { window.location.href = '/org-courses'; }}
                                 />
                             </div>
                         ) : activeCollectionId === 'org-collections' ? (

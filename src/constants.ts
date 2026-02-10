@@ -648,6 +648,7 @@ export const MOCK_COURSES: Course[] = [
 
 export const MAIN_NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'my-org', label: 'My Organization', icon: Building },
   { id: 'academy', label: 'Academy', icon: GraduationCap, isActive: true },
   { id: 'prometheus', label: 'Prometheus AI', icon: Flame, color: 'text-brand-orange' },
   { id: 'tools', label: 'Tools', icon: Wrench, color: 'text-teal-400' },

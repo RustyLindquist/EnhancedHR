@@ -1,6 +1,6 @@
-import { FileText, MessageSquare, User, HelpCircle, StickyNote, Wrench, Building, BookOpen, Video, Paperclip, LucideIcon } from 'lucide-react';
+import { FileText, MessageSquare, User, HelpCircle, StickyNote, Wrench, Building, BookOpen, Video, Paperclip, Users, TrendingUp, ClipboardList, LucideIcon } from 'lucide-react';
 
-export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE' | 'VIDEO';
+export type CardType = 'COURSE' | 'MODULE' | 'LESSON' | 'ACTIVITY' | 'RESOURCE' | 'CONVERSATION' | 'CONTEXT' | 'AI_INSIGHT' | 'PROFILE' | 'HELP' | 'NOTE' | 'TOOL' | 'TOOL_CONVERSATION' | 'ORG_COLLECTION' | 'ORG_COURSE' | 'VIDEO' | 'USERS_GROUPS' | 'ORG_ANALYTICS' | 'ASSIGNED_LEARNING';
 
 export interface CardTypeConfig {
     headerColor: string;
@@ -142,24 +142,24 @@ export const CARD_TYPE_CONFIGS: Record<CardType, CardTypeConfig> = {
         bodyColor: 'bg-[#0D9488]/90'
     },
     ORG_COLLECTION: {
-        headerColor: 'bg-[#1e3a5f]',
-        borderColor: 'border-blue-500/30',
-        labelColor: 'text-blue-200',
-        barColor: 'bg-[#1e3a5f]',
+        headerColor: 'bg-transparent',
+        borderColor: 'border-blue-500/20',
+        labelColor: 'text-blue-300',
+        barColor: 'bg-transparent',
         icon: Building,
         buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
         glowColor: 'rgba(59, 130, 246, 0.5)',
-        bodyColor: 'bg-[#1e3a5f]/90'
+        bodyColor: 'bg-black/25'
     },
     ORG_COURSE: {
-        headerColor: 'bg-amber-950',
-        borderColor: 'border-amber-500/30',
-        labelColor: 'text-amber-200',
-        barColor: 'bg-amber-600/80',
+        headerColor: 'bg-transparent',
+        borderColor: 'border-amber-500/20',
+        labelColor: 'text-amber-300',
+        barColor: 'bg-transparent',
         icon: BookOpen,
         buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
         glowColor: 'rgba(217, 119, 6, 0.5)',
-        bodyColor: 'bg-amber-950'
+        bodyColor: 'bg-black/25'
     },
     VIDEO: {
         headerColor: 'bg-transparent',
@@ -169,6 +169,36 @@ export const CARD_TYPE_CONFIGS: Record<CardType, CardTypeConfig> = {
         icon: Video,
         buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
         glowColor: 'rgba(168, 85, 247, 0.7)',
+        bodyColor: 'bg-black/25'
+    },
+    USERS_GROUPS: {
+        headerColor: 'bg-transparent',
+        borderColor: 'border-cyan-500/20',
+        labelColor: 'text-cyan-300',
+        barColor: 'bg-transparent',
+        icon: Users,
+        buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+        glowColor: 'rgba(6, 182, 212, 0.5)',
+        bodyColor: 'bg-black/25'
+    },
+    ORG_ANALYTICS: {
+        headerColor: 'bg-transparent',
+        borderColor: 'border-purple-400/20',
+        labelColor: 'text-purple-300',
+        barColor: 'bg-transparent',
+        icon: TrendingUp,
+        buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+        glowColor: 'rgba(168, 85, 247, 0.5)',
+        bodyColor: 'bg-black/25'
+    },
+    ASSIGNED_LEARNING: {
+        headerColor: 'bg-transparent',
+        borderColor: 'border-emerald-500/20',
+        labelColor: 'text-emerald-300',
+        barColor: 'bg-transparent',
+        icon: ClipboardList,
+        buttonStyle: 'bg-white/10 hover:bg-white/20 text-white',
+        glowColor: 'rgba(16, 185, 129, 0.5)',
         bodyColor: 'bg-black/25'
     }
 };
@@ -196,6 +226,9 @@ export const getTypeDisplayLabel = (itemType: string): string => {
         TOOL: 'Tool',
         ORG_COLLECTION: 'Collection',
         ORG_COURSE: 'Org Course',
+        USERS_GROUPS: 'Users & Groups',
+        ORG_ANALYTICS: 'Analytics',
+        ASSIGNED_LEARNING: 'Assigned Learning',
     };
     return labels[itemType] || itemType;
 };
@@ -225,6 +258,9 @@ export const getTypeIcon = (itemType: string): LucideIcon | null => {
         TOOL: 'TOOL',
         ORG_COLLECTION: 'ORG_COLLECTION',
         ORG_COURSE: 'ORG_COURSE',
+        USERS_GROUPS: 'USERS_GROUPS',
+        ORG_ANALYTICS: 'ORG_ANALYTICS',
+        ASSIGNED_LEARNING: 'ASSIGNED_LEARNING',
     };
 
     const cardType = typeMap[itemType];
@@ -256,6 +292,9 @@ export const getTypeGlowColor = (itemType: string): string => {
         TOOL: 'TOOL',
         ORG_COLLECTION: 'ORG_COLLECTION',
         ORG_COURSE: 'ORG_COURSE',
+        USERS_GROUPS: 'USERS_GROUPS',
+        ORG_ANALYTICS: 'ORG_ANALYTICS',
+        ASSIGNED_LEARNING: 'ASSIGNED_LEARNING',
     };
 
     const cardType = typeMap[itemType];

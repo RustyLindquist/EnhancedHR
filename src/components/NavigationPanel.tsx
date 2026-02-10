@@ -29,7 +29,7 @@ import {
   TrendingUp,
   HelpCircle
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_ADMIN_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
+import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 import { hasPublishedOrgCourses } from '@/app/actions/org-courses';
 import { switchPlatformAdminOrg, getOrgSelectorData } from '@/app/actions/org';
@@ -181,7 +181,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
   const [isConversationsOpen, setIsConversationsOpen] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [collectionsExpanded, setCollectionsExpanded] = useState(true);
-  const [organizationExpanded, setOrganizationExpanded] = useState(true);
+
   const [menuView, setMenuView] = useState<'main' | 'roles'>('main');
   const [userProfile, setUserProfile] = useState<{ fullName: string, email: string, initials: string, role?: string, membershipStatus?: string, authorStatus?: string, isSales?: boolean, avatarUrl?: string | null, org_id?: string | null } | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
@@ -508,7 +508,12 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
         {/* Main Navigation (Top) */}
         <div className="px-4 mb-4">
           <div className="space-y-1">
-            {(customNavItems || MAIN_NAV_ITEMS).map(item => (
+            {(customNavItems || MAIN_NAV_ITEMS).filter(item => {
+              if (item.id === 'my-org') {
+                return userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee' || userProfile?.role === 'admin';
+              }
+              return true;
+            }).map(item => (
               <div key={item.id} onMouseEnter={(e) => handleItemHover(item, e, () => {
                 if (item.id.startsWith('admin/') || item.id === 'admin') {
                   router.push(`/${item.id}`);
@@ -603,110 +608,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
           </div>
         )}
 
-        {/* My Organization (For employees, org admins, and platform admins) */}
-        {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee' || userProfile?.role === 'admin') && (
-          <div className="px-4 mb-4">
-            {isOpen && (
-              <button
-                onClick={() => setOrganizationExpanded(!organizationExpanded)}
-                className="flex items-center justify-between w-full text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest pl-2 pr-1 drop-shadow-sm hover:text-slate-400 transition-colors"
-              >
-                <span>My Organization</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-300 ${organizationExpanded ? '' : '-rotate-90'}`}
-                />
-              </button>
-            )}
-            <div className={`
-              overflow-hidden transition-all duration-300 ease-in-out
-              ${organizationExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}
-            `}>
-              <div className="space-y-1">
-                {/* 1. Users and Groups - All Org Members */}
-                {ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'users-groups').map((item) => (
-                  <div
-                    key={item.id}
-                    onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
-                    onMouseLeave={handleItemLeave}
-                  >
-                    <NavItem
-                      item={item}
-                      isOpen={isOpen}
-                      count={item.id === 'users-groups' ? orgMemberCount : undefined}
-                      isActive={activeCollectionId === item.id}
-                      onClick={() => onSelectCollection(item.id)}
-                    />
-                  </div>
-                ))}
-
-                {/* 2. Analytics - Org Admin Only */}
-                {(userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.role === 'admin') && ORG_ADMIN_NAV_ITEMS.filter(item => item.id === 'org-analytics').map((item) => (
-                  <div
-                    key={item.id}
-                    onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
-                    onMouseLeave={handleItemLeave}
-                  >
-                    <NavItem
-                      item={item}
-                      isOpen={isOpen}
-                      isActive={activeCollectionId === item.id}
-                      onClick={() => onSelectCollection(item.id)}
-                    />
-                  </div>
-                ))}
-
-                {/* 3. Organization Courses - Visible to Everyone */}
-                {ORG_NAV_ITEMS.filter(item => item.id === 'org-courses').map((item) => (
-                  <div
-                    key={item.id}
-                    onMouseEnter={(e) => handleItemHover(item, e, () => router.push('/org-courses'))}
-                    onMouseLeave={handleItemLeave}
-                  >
-                    <NavItem
-                      item={item}
-                      isOpen={isOpen}
-                      isActive={activeCollectionId === item.id}
-                      onClick={() => router.push('/org-courses')}
-                    />
-                  </div>
-                ))}
-
-                {/* 4. Org Collections - Visible to Everyone */}
-                <div
-                  onMouseEnter={(e) => handleItemHover({ id: 'org-collections', label: 'Org Collections', icon: Building }, e, () => onSelectCollection('org-collections'))}
-                  onMouseLeave={handleItemLeave}
-                >
-                  <NavItem
-                    item={{ id: 'org-collections', label: 'Org Collections', icon: Building, color: 'text-slate-400' }}
-                    isOpen={isOpen}
-                    isActive={activeCollectionId === 'org-collections' || activeCollectionId === 'company' || activeCollectionId.startsWith('org-collection-')}
-                    count={orgCollections.length}
-                    onClick={() => onSelectCollection('org-collections')}
-                  />
-                </div>
-
-                {/* 5. Assigned Learning - Visible to Everyone */}
-                {EMPLOYEE_NAV_ITEMS.map((item) => (
-                  <div
-                    key={item.id}
-                    onMouseEnter={(e) => handleItemHover(item, e, () => onSelectCollection(item.id))}
-                    onMouseLeave={handleItemLeave}
-                  >
-                    <NavItem
-                      item={item}
-                      isOpen={isOpen}
-                      isActive={activeCollectionId === item.id}
-                      onClick={() => onSelectCollection(item.id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Employee Groups section removed - groups are now accessed through Users and Groups collection */}
+        {/* Organization features are now accessed through the My Organization hub page */}
       </div>
 
       {/* User Profile Summary (Bottom) */}
