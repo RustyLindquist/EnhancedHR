@@ -25,6 +25,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Video AI Context | video-ai-context | Medium | Backend | doc-discovery, plan-lint | Coupled to ai-context-engine, collections-and-context, video-mux; transcript generation enables video RAG | Exists |
 | Help System (Help Collection) | help-collection | Medium | Frontend + Backend | doc-discovery | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
 | Organization Membership (Employee Experience) | organization-membership | High | Backend | doc-discovery, plan-lint | Coupled to auth/roles, billing/seats, and admin gating | Exists |
+| My Organization Hub | my-organization-hub | Medium | Frontend | doc-discovery, style-validation | Coupled to app-shell (virtual collection), organization-membership (roles/visibility), org-courses (hasOrgCourses), collections-and-context (org-collections), dynamic-groups (users-groups); hub is read-only aggregator | Exists |
 | Organization Courses | org-courses | High | Backend + Frontend | doc-discovery, plan-lint, test-from-docs | Coupled to AI context engine (RAG scope 8), org-membership, course player; org-scoped content | Exists |
 | Dynamic Groups | dynamic-groups | Medium | Backend | doc-discovery | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
 | Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, and admin review/approval flows | Exists |

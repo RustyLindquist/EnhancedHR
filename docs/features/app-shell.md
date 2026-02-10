@@ -128,7 +128,7 @@ See `docs/features/browser-back-navigation.md` for full documentation including:
 - Fire collection:refresh (e.g., after AI save); nav counts refresh without reload.
 
 ## Change Guide
--.adding new nav items: update constants and ensure MainCanvas handles the collection id.
+- Adding new nav items: update MAIN_NAV_ITEMS in constants.ts, add rendering branch in MainCanvas, and add nav visibility filter in NavigationPanel.tsx if role-gated (see my-org pattern in docs/features/my-organization-hub.md).
 - Modifying drag/drop: keep onDrop handlers consistent with collection action signatures.
 - If refactoring layout, preserve event wiring for collection refresh and active collection state.
 
@@ -152,3 +152,4 @@ See `docs/features/browser-back-navigation.md` for full documentation including:
 - docs/features/collections-and-context.md
 - docs/features/dashboard.md
 - docs/features/browser-back-navigation.md - Browser back button interception for in-app navigation
+- docs/features/my-organization-hub.md - My Organization hub (virtual collection pattern example)
