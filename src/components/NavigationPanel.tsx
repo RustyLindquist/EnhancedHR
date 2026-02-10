@@ -26,7 +26,8 @@ import {
   Building,
   Plus,
   Shield,
-  TrendingUp
+  TrendingUp,
+  HelpCircle
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS, ORG_ADMIN_NAV_ITEMS, ORG_NAV_ITEMS, EMPLOYEE_NAV_ITEMS } from '../constants';
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
@@ -119,7 +120,7 @@ const NavItem: React.FC<{
       <div
         onClick={onClick}
         className={`
-      group flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 mb-1
+      group flex items-center px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5
       ${isActive
             ? 'bg-white/10 border border-white/10 shadow-[0_0_15px_rgba(120,192,240,0.1)] backdrop-blur-sm'
             : 'hover:bg-white/5 border border-transparent hover:border-white/5'}
@@ -127,7 +128,7 @@ const NavItem: React.FC<{
         {showIcon && (
           <div className={`relative flex items-center justify-center ${!isOpen ? 'w-full' : ''}`}>
             <Icon
-              size={20}
+              size={18}
               className={`
               transition-colors duration-200
               ${isActive ? 'text-brand-blue-light drop-shadow-[0_0_8px_rgba(120,192,240,0.5)]' : (item.color || 'text-slate-400')}
@@ -502,10 +503,10 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
       </div>
 
       {/* Nav Items */}
-      <div className="flex-1 overflow-y-auto py-8 no-scrollbar relative z-10">
+      <div className="flex-1 overflow-y-auto py-4 no-scrollbar relative z-10">
 
         {/* Main Navigation (Top) */}
-        <div className="px-4 mb-8">
+        <div className="px-4 mb-4">
           <div className="space-y-1">
             {(customNavItems || MAIN_NAV_ITEMS).map(item => (
               <div key={item.id} onMouseEnter={(e) => handleItemHover(item, e, () => {
@@ -535,18 +536,27 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
         {/* Collections (Only show if not in custom mode) */}
         {!customNavItems && (
-          <div className="px-4 mb-8">
+          <div className="px-4 mb-4">
             {isOpen && (
-              <button
-                onClick={() => setCollectionsExpanded(!collectionsExpanded)}
-                className="flex items-center justify-between w-full text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 pr-1 drop-shadow-sm hover:text-slate-400 transition-colors"
-              >
-                <span>My Collections</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-300 ${collectionsExpanded ? '' : '-rotate-90'}`}
-                />
-              </button>
+              <div className="flex items-center justify-between w-full mb-2 pl-2 pr-1">
+                <button
+                  onClick={() => setCollectionsExpanded(!collectionsExpanded)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest drop-shadow-sm hover:text-slate-400 transition-colors"
+                >
+                  <span>My Collections</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-300 ${collectionsExpanded ? '' : '-rotate-90'}`}
+                  />
+                </button>
+                <button
+                  onClick={() => onSelectCollection('new')}
+                  className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-slate-400 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 hover:shadow-[0_0_10px_rgba(120,192,240,0.15)] transition-all duration-200"
+                >
+                  <Plus size={10} />
+                  New
+                </button>
+              </div>
             )}
             <div className={`
               overflow-hidden transition-all duration-300 ease-in-out
@@ -555,10 +565,6 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
               <div className="space-y-1">
                 <div className="space-y-1">
                   {(() => {
-                    // Split collections for correct ordering: Default (minus New) -> Custom -> New
-                    const staticCollections = COLLECTION_NAV_ITEMS.filter(i => i.id !== 'new');
-                    const newCollectionAction = COLLECTION_NAV_ITEMS.find(i => i.id === 'new');
-
                     // Sort custom collections alphabetically
                     const sortedCustom = [...(customCollections || [])]
                       .filter(c => c.isCustom) // Ensure only custom ones
@@ -571,9 +577,8 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                       } as NavItemConfig));
 
                     const finalItems = [
-                      ...staticCollections,
+                      ...COLLECTION_NAV_ITEMS,
                       ...sortedCustom,
-                      ...(newCollectionAction ? [newCollectionAction] : [])
                     ];
 
                     return finalItems.map(item => (
@@ -600,11 +605,11 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
 
         {/* My Organization (For employees, org admins, and platform admins) */}
         {!customNavItems && (userProfile?.role === 'employee' || userProfile?.role === 'org_admin' || userProfile?.membershipStatus === 'org_admin' || userProfile?.membershipStatus === 'employee' || userProfile?.role === 'admin') && (
-          <div className="px-4 mb-8">
+          <div className="px-4 mb-4">
             {isOpen && (
               <button
                 onClick={() => setOrganizationExpanded(!organizationExpanded)}
-                className="flex items-center justify-between w-full text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest pl-2 pr-1 drop-shadow-sm hover:text-slate-400 transition-colors"
+                className="flex items-center justify-between w-full text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest pl-2 pr-1 drop-shadow-sm hover:text-slate-400 transition-colors"
               >
                 <span>My Organization</span>
                 <ChevronDown
@@ -779,6 +784,19 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
                         <Settings size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
                       </div>
                       Settings
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onSelectCollection('help');
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center mr-3 group-hover:bg-brand-blue-light/20 transition-colors">
+                        <HelpCircle size={16} className="text-slate-400 group-hover:text-brand-blue-light transition-colors" />
+                      </div>
+                      Help
                     </button>
 
                     {/* Expert Console Link - For experts (pending, approved, rejected) and platform admins */}
