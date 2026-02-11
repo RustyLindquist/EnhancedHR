@@ -14,6 +14,8 @@
 - RAG embeddings are generated asynchronously; embedding failure does not block the upload.
 - FileUploadZone enforces a 25MB file size limit and validates against supported document/image types.
 - Expert module resource actions require checkExpertCourseAccess() authorization before delegating to shared course-builder actions.
+- resources.estimated_duration defaults to '0m'; file resources and quiz lessons accept optional estimated time input from course builders.
+- Total course duration = sum of all video durations + quiz estimated durations + file resource estimated durations.
 
 ---
 
@@ -27,6 +29,7 @@ Inline Module Resources allows course creators to embed documents and files dire
 
 - **Add Item button**: Each module has an "Add Item" button (previously "Add Lesson") that opens the LessonEditorPanel.
 - **File type option**: The element type selector includes "File" (with Upload icon) alongside Video and Quiz. Selecting File shows the FileUploadZone drag-and-drop component.
+- **Estimated Completion Time**: When File or Quiz type is selected, an optional "Estimated Completion Time (minutes)" input appears below the type-specific content. Input validates for positive numbers and converts to standard duration format (e.g., "15m", "1h 30m"). This value is included in the aggregate course time calculation.
 - **Resource cards in module**: Uploaded resources appear as cards within the module grid, visually distinguished by a red RESOURCE badge and Paperclip icon.
 - **Click-to-edit**: Clicking a resource card opens the LessonEditorPanel in resource editing mode (title editing, file info display, download link, delete action).
 - **Reordering**: Lessons and resources share the `order` column within a module.
@@ -57,6 +60,13 @@ CREATE INDEX IF NOT EXISTS idx_resources_module_id
   ON public.resources(module_id) WHERE module_id IS NOT NULL;
 ```
 
+Migration: `supabase/migrations/20260211_add_resource_estimated_duration.sql`
+
+```sql
+ALTER TABLE public.resources
+ADD COLUMN IF NOT EXISTS estimated_duration text DEFAULT '0m';
+```
+
 ### Type Definitions (`src/types.ts`)
 
 ```typescript
@@ -67,7 +77,8 @@ export interface Resource {
   url: string;
   size?: string;
   module_id?: string;  // When set, resource appears inline within this module
-  order?: number;       // Display order within module (shared with lessons)
+  order?: number;              // Display order within module (shared with lessons)
+  estimated_duration?: string; // Expected completion time (e.g., "15m", "1h 30m")
 }
 
 export interface Lesson {
@@ -86,8 +97,9 @@ export type ModuleItem =
 
 | Operation | Server Action | Description |
 |-----------|---------------|-------------|
-| Upload file to module | `uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer)` | Uploads file, detects type, computes shared order, inserts resource with `module_id` |
-| Update resource title | `updateModuleResource(resourceId, courseId, data)` | Updates resource title |
+| Upload file to module | `uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration?)` | Uploads file, detects type, computes shared order, inserts resource with `module_id` and optional `estimated_duration` |
+| Update resource | `updateModuleResource(resourceId, courseId, data)` | Updates resource title and/or `estimated_duration` |
+| Reset course durations | `resetCourseDurations(courseId)` | Fetches video durations, aggregates with quiz/file estimated times, updates `course.duration` |
 | Delete module resource | `deleteModuleResource(resourceId, courseId)` | Deletes resource, cleans up storage file and embeddings |
 | Reorder module items | `reorderModuleItems(moduleId, courseId, orderedItems)` | Sets `order` on both lessons and resources within a module |
 
@@ -115,11 +127,12 @@ Reusable drag-and-drop upload component. Features: drag feedback, click-to-brows
 
 ### LessonEditorPanel / ExpertLessonEditorPanel
 
-Updated to support two modes:
-1. **Lesson mode** (default): Standard lesson editor with type selector.
-2. **Resource editing mode** (when `resourceId` prop set): Shows file info, download link, title-only editing, delete action.
+Updated to support three modes:
+1. **Lesson mode** (default): Standard lesson editor with type selector. For Quiz type, includes QuizBuilder and estimated completion time input.
+2. **Resource editing mode** (when `resourceId` prop set): Shows file info, download link, title and estimated time editing, delete action.
+3. **File creation mode** (type "File" + new): Shows FileUploadZone and estimated completion time input.
 
-When type is "File", shows FileUploadZone instead of text editor.
+When type is Quiz or File, shows "Estimated Completion Time (minutes)" input that validates for positive numbers and saves as standard duration format.
 
 ### Builder Resource Cards
 
@@ -155,6 +168,8 @@ Accepts `moduleResources` prop, merges with lessons by `order`, renders in grid/
 4. **Image detection heuristic**: Dual check via `Resource.type === 'IMG'` and URL extension regex.
 5. **Mutually exclusive active states**: `activeLessonId` and `activeResourceId` never set simultaneously.
 6. **Async embedding generation**: Non-blocking, failures logged but don't block upload.
+7. **Optional estimated duration**: Time estimates are optional for quiz/file; default to '0m' if not provided.
+8. **Unified duration aggregation**: `resetCourseDurations()` sums video durations (auto-fetched) + quiz estimated times + file estimated times into one course total.
 
 ## Files Modified
 

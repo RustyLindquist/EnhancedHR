@@ -1010,7 +1010,8 @@ export async function uploadModuleResourceFile(
     moduleId: string,
     fileName: string,
     fileType: string,
-    fileBuffer: ArrayBuffer
+    fileBuffer: ArrayBuffer,
+    estimatedDuration?: string
 ): Promise<{ success: boolean; resource?: { id: string; title: string; type: string; url: string; size?: string; module_id: string; order: number }; error?: string }> {
     const admin = await createAdminClient();
 
@@ -1079,7 +1080,8 @@ export async function uploadModuleResourceFile(
                 mime_type: fileType,
                 parsed_text_length: textContent.length,
                 parse_error: parseResult.success ? null : parseResult.error,
-                summary
+                summary,
+                estimated_duration: estimatedDuration || '0m'
             })
             .select()
             .single();
@@ -1141,12 +1143,13 @@ export async function uploadModuleResourceFile(
 export async function updateModuleResource(
     resourceId: string,
     courseId: number,
-    data: { title?: string }
+    data: { title?: string; estimated_duration?: string }
 ) {
     const admin = await createAdminClient();
 
     const updateData: Record<string, unknown> = {};
     if (data.title !== undefined) updateData.title = data.title.trim();
+    if (data.estimated_duration !== undefined) updateData.estimated_duration = data.estimated_duration;
 
     if (Object.keys(updateData).length === 0) {
         return { success: true };
@@ -2701,6 +2704,18 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
                     // Still count existing duration if processing failed
                     totalCourseDurationSeconds += parseDurationToSeconds(lesson.duration);
                 }
+            }
+        }
+
+        // Also include estimated durations from module resources (files)
+        const { data: allResources, error: resourcesError } = await admin
+            .from('resources')
+            .select('estimated_duration, module_id')
+            .eq('course_id', courseId);
+
+        if (!resourcesError && allResources) {
+            for (const resource of allResources) {
+                totalCourseDurationSeconds += parseDurationToSeconds(resource.estimated_duration);
             }
         }
 

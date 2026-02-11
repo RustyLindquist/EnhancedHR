@@ -710,14 +710,15 @@ export async function uploadExpertModuleResourceFile(
     moduleId: string,
     fileName: string,
     fileType: string,
-    fileBuffer: ArrayBuffer
+    fileBuffer: ArrayBuffer,
+    estimatedDuration?: string
 ) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
         return { success: false, error: accessCheck.error };
     }
 
-    return uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer);
+    return uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration);
 }
 
 /**
@@ -739,7 +740,7 @@ export async function reorderExpertModuleItems(
 export async function updateExpertModuleResource(
     resourceId: string,
     courseId: number,
-    data: { title?: string }
+    data: { title?: string; estimated_duration?: string }
 ) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
