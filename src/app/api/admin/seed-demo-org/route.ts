@@ -295,8 +295,18 @@ async function phaseDiscover(admin: any) {
 
   // Find existing users
   const allEmails = [...EXISTING_ACCOUNTS, ...NEW_EMPLOYEES].map(e => e.email);
-  const { data: profiles } = await admin.from('profiles').select('id, full_name, email, org_id, membership_status').in('email', allEmails);
-  log.existingUsers = profiles || [];
+  // Note: production profiles table doesn't have 'email' column — look up by auth user IDs instead
+  const { data: { users: allAuthUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const matchedAuthUsers = allAuthUsers?.filter((u: any) => allEmails.includes(u.email)) || [];
+  const matchedIds = matchedAuthUsers.map((u: any) => u.id);
+  const { data: profiles } = matchedIds.length > 0
+    ? await admin.from('profiles').select('id, full_name, org_id, membership_status').in('id', matchedIds)
+    : { data: [] };
+  // Attach email from auth for display
+  log.existingUsers = (profiles || []).map((p: any) => {
+    const authUser = matchedAuthUsers.find((u: any) => u.id === p.id);
+    return { ...p, email: authUser?.email };
+  });
 
   // Published courses
   const { data: courses } = await admin.from('courses').select('id, title').eq('status', 'published').order('title');
@@ -369,19 +379,19 @@ async function phaseUsers(admin: any) {
 
       userMap[account.email] = userId;
 
-      // Upsert profile
-      await admin.from('profiles').upsert({
+      // Upsert profile (production profiles table does NOT have email, headline, or onboarding_completed_at)
+      const { error: profileError } = await admin.from('profiles').upsert({
         id: userId,
         full_name: account.name,
-        email: account.email,
         avatar_url: `https://i.pravatar.cc/256?u=${account.email}`,
         role: account.platformRole,
         membership_status: account.membershipStatus,
         org_id: orgId,
-        headline: account.headline,
-        onboarding_completed_at: new Date().toISOString(),
         billing_disabled: true,
       });
+      if (profileError) {
+        console.error(`Profile upsert error for ${account.email}:`, profileError.message);
+      }
     } catch (err: any) {
       results.push({ email: account.email, name: account.name, status: 'error', error: err.message });
     }
@@ -621,6 +631,7 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
   let loginCount = 0;
   let conversationCount = 0;
   let creditCount = 0;
+  const errors: string[] = [];
 
   // Progress config: email → { courseTitles[], completedCount }
   const progressConfig: Record<string, { courses: string[]; completed: number }> = {
@@ -739,7 +750,11 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
     }
 
     const { error } = await admin.from('login_events').insert(events);
-    if (!error) loginCount += events.length;
+    if (error) {
+      errors.push(`login_events(${email}): ${error.message} [${error.code}]`);
+    } else {
+      loginCount += events.length;
+    }
   }
 
   // 4. AI Conversations
@@ -761,7 +776,7 @@ async function phaseAnalytics(admin: any, orgId: string, userMap: Record<string,
     if (!error) conversationCount++;
   }
 
-  return { progressCount, loginCount, conversationCount, creditCount };
+  return { progressCount, loginCount, conversationCount, creditCount, errors: errors.length > 0 ? errors : undefined };
 }
 
 // ============================================================================
