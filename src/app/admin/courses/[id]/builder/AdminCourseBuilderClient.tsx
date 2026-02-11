@@ -45,6 +45,7 @@ export default function AdminCourseBuilderClient({
     const [activePanel, setActivePanel] = useState<CourseBuilderPanelType>(null);
     const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+    const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
 
     // Status dropdown state
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
@@ -73,17 +74,20 @@ export default function AdminCourseBuilderClient({
     const handleOpenPanel = useCallback((
         panel: CourseBuilderPanelType,
         moduleId?: string,
-        lessonId?: string
+        lessonId?: string,
+        resourceId?: string
     ) => {
         setActivePanel(panel);
         setEditingModuleId(moduleId || null);
         setEditingLessonId(lessonId || null);
+        setEditingResourceId(resourceId || null);
     }, []);
 
     const handleClosePanel = useCallback(() => {
         setActivePanel(null);
         setEditingModuleId(null);
         setEditingLessonId(null);
+        setEditingResourceId(null);
     }, []);
 
     const handlePanelSave = useCallback(() => {
@@ -241,6 +245,12 @@ export default function AdminCourseBuilderClient({
         const module = initialSyllabus.find(m => m.id === editingModuleId);
         return module?.lessons.find(l => l.id === editingLessonId);
     }, [editingLessonId, editingModuleId, initialSyllabus]);
+
+    // Get the current editing resource's details
+    const editingResource = useMemo(() => {
+        if (!editingResourceId) return null;
+        return initialResources.find(r => r.id === editingResourceId) || null;
+    }, [editingResourceId, initialResources]);
 
     return (
         <div className="min-h-screen">
@@ -460,6 +470,7 @@ export default function AdminCourseBuilderClient({
                     activePanel={activePanel}
                     editingModuleId={editingModuleId}
                     editingLessonId={editingLessonId}
+                    editingResourceId={editingResourceId}
                     onOpenPanel={handleOpenPanel}
                     onClosePanel={handleClosePanel}
                 >
@@ -542,14 +553,15 @@ export default function AdminCourseBuilderClient({
                 isOpen={activePanel === 'lesson'}
                 onClose={handleClosePanel}
                 moduleId={editingModuleId || ''}
+                courseId={initialCourse.id}
                 lessonId={editingLessonId}
-                lessonTitle={editingLesson?.title || ''}
-                lessonType={editingLesson?.type || 'video'}
+                lessonTitle={editingResource?.title || editingLesson?.title || ''}
+                lessonType={editingResource ? 'article' : (editingLesson?.type || 'video')}
                 lessonVideoUrl={editingLesson?.video_url || ''}
                 lessonContent={editingLesson?.content || ''}
                 lessonDuration={editingLesson?.duration || ''}
                 lessonQuizData={editingLesson?.quiz_data}
-                isNewLesson={!editingLessonId}
+                isNewLesson={!editingLessonId && !editingResourceId}
                 onSave={handlePanelSave}
                 onDelete={handlePanelSave}
                 // Transcript props - use undefined instead of '' for proper ?? fallback to lessonContent
@@ -557,6 +569,11 @@ export default function AdminCourseBuilderClient({
                 lessonUserTranscript={editingLesson?.user_transcript || undefined}
                 lessonTranscriptStatus={editingLesson?.transcript_status || 'pending'}
                 lessonTranscriptSource={editingLesson?.transcript_source || 'none'}
+                // Resource editing props
+                resourceId={editingResourceId}
+                resourceUrl={editingResource?.url}
+                resourceType={editingResource?.type}
+                resourceSize={editingResource?.size}
             />
 
             {/* ============================================ */}

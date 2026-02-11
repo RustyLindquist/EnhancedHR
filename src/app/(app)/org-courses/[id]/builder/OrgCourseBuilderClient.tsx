@@ -649,6 +649,7 @@ export default function OrgCourseBuilderClient({
                 isOpen={activePanel === 'lesson'}
                 onClose={handleClosePanel}
                 moduleId={editingModuleId || ''}
+                courseId={initialCourse.id}
                 lessonId={editingLessonId}
                 lessonTitle={editingLesson?.title || ''}
                 lessonType={editingLesson?.type || 'video'}

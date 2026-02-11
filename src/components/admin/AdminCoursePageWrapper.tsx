@@ -23,7 +23,8 @@ interface AdminCourseContextType {
     activePanel: CourseBuilderPanelType;
     editingModuleId: string | null;
     editingLessonId: string | null;
-    openPanel: (panel: CourseBuilderPanelType, moduleId?: string, lessonId?: string) => void;
+    editingResourceId: string | null;
+    openPanel: (panel: CourseBuilderPanelType, moduleId?: string, lessonId?: string, resourceId?: string) => void;
     closePanel: () => void;
     refreshCourse: () => void;
 }
@@ -53,7 +54,8 @@ interface AdminCoursePageWrapperProps {
     activePanel: CourseBuilderPanelType;
     editingModuleId: string | null;
     editingLessonId: string | null;
-    onOpenPanel: (panel: CourseBuilderPanelType, moduleId?: string, lessonId?: string) => void;
+    editingResourceId?: string | null;
+    onOpenPanel: (panel: CourseBuilderPanelType, moduleId?: string, lessonId?: string, resourceId?: string) => void;
     onClosePanel: () => void;
     children: React.ReactNode;
 }
@@ -67,6 +69,7 @@ export default function AdminCoursePageWrapper({
     activePanel,
     editingModuleId,
     editingLessonId,
+    editingResourceId = null,
     onOpenPanel,
     onClosePanel,
     children
@@ -76,6 +79,7 @@ export default function AdminCoursePageWrapper({
         activePanel,
         editingModuleId,
         editingLessonId,
+        editingResourceId,
         openPanel: onOpenPanel,
         closePanel: onClosePanel,
         refreshCourse: onRefresh

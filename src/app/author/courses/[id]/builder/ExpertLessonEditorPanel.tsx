@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useEffect, useRef } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, RefreshCw, Bot, User, Timer } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, RefreshCw, Bot, User, Timer, Paperclip } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { createExpertLesson, updateExpertLesson, deleteExpertLesson } from '@/app/actions/expert-course-builder';
+import { createExpertLesson, updateExpertLesson, deleteExpertLesson, uploadExpertModuleResourceFile, updateExpertModuleResource, deleteExpertModuleResource } from '@/app/actions/expert-course-builder';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
 import { getDurationFromPlaybackId } from '@/app/actions/mux';
 import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from '@/app/actions/video-metadata';
@@ -11,6 +11,7 @@ import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
 import TranscriptRequiredModal from '@/components/TranscriptRequiredModal';
 import LessonVideoPreview from '@/components/admin/LessonVideoPreview';
+import FileUploadZone from '@/components/admin/FileUploadZone';
 import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
@@ -32,11 +33,16 @@ interface ExpertLessonEditorPanelProps {
     isNewLesson?: boolean;
     onSave: () => void;
     onDelete?: () => void;
+    // Resource editing props
+    resourceId?: string | null;
+    resourceUrl?: string;
+    resourceType?: string;
+    resourceSize?: string;
 }
 
 const LESSON_TYPES = [
     { value: 'video', label: 'Video', icon: Video, color: 'text-blue-400' },
-    { value: 'article', label: 'Article', icon: FileText, color: 'text-green-400' },
+    { value: 'article', label: 'File', icon: Upload, color: 'text-green-400' },
     { value: 'quiz', label: 'Quiz', icon: HelpCircle, color: 'text-purple-400' }
 ];
 
@@ -54,7 +60,11 @@ export default function ExpertLessonEditorPanel({
     lessonQuizData,
     isNewLesson = false,
     onSave,
-    onDelete
+    onDelete,
+    resourceId,
+    resourceUrl,
+    resourceType,
+    resourceSize
 }: ExpertLessonEditorPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -81,6 +91,10 @@ export default function ExpertLessonEditorPanel({
 
     // Legacy content computed from transcripts (user takes priority)
     const content = userTranscript || aiTranscript;
+
+    // File upload state (for "File" type, displayed as article)
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
 
     // Video source selection
     const [videoSource, setVideoSource] = useState<VideoSourceType>('upload');
@@ -121,6 +135,8 @@ export default function ExpertLessonEditorPanel({
             setIsGeneratingTranscript(false);
             setShowTranscriptModal(false);
             setOriginalVideoUrl(lessonVideoUrl); // Track original video URL for change detection
+            setSelectedFiles([]);
+            setIsUploadingFile(false);
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData]);
 
@@ -257,10 +273,72 @@ export default function ExpertLessonEditorPanel({
         return videoUrl !== originalVideoUrl && originalVideoUrl !== '';
     }, [videoUrl, originalVideoUrl]);
 
+    // Handle resource delete
+    const handleDeleteResource = useCallback(() => {
+        if (!resourceId) return;
+        setError(null);
+        startTransition(async () => {
+            const result = await deleteExpertModuleResource(resourceId, courseId);
+            if (result.success) {
+                onDelete?.();
+                onClose();
+            } else {
+                setError(result.error || 'Failed to delete resource');
+            }
+        });
+    }, [resourceId, courseId, onDelete, onClose]);
+
     // Perform the actual save operation
     const performSave = useCallback((contentToSave?: string) => {
         setError(null);
         startTransition(async () => {
+            // Handle resource title update (editing existing resource)
+            if (resourceId) {
+                const result = await updateExpertModuleResource(resourceId, courseId, { title: title.trim() });
+                if (result.success) {
+                    setShowSuccess(true);
+                    setTimeout(() => {
+                        setShowSuccess(false);
+                        onSave();
+                    }, 1000);
+                } else {
+                    setError(result.error || 'Failed to update resource');
+                }
+                return;
+            }
+
+            // Handle file upload for "File" type (article with file)
+            if (type === 'article' && selectedFiles.length > 0) {
+                setIsUploadingFile(true);
+                try {
+                    const file = selectedFiles[0];
+                    const buffer = await file.arrayBuffer();
+                    const result = await uploadExpertModuleResourceFile(
+                        courseId,
+                        moduleId,
+                        file.name,
+                        file.type,
+                        buffer
+                    );
+
+                    if (result.success) {
+                        setShowSuccess(true);
+                        setSelectedFiles([]);
+                        setTimeout(() => {
+                            setShowSuccess(false);
+                            onSave();
+                        }, 1000);
+                    } else {
+                        setError(result.error || 'Failed to upload file');
+                    }
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to upload file');
+                } finally {
+                    setIsUploadingFile(false);
+                }
+                return;
+            }
+
             const finalContent = contentToSave !== undefined ? contentToSave : content;
             let result;
             if (isNewLesson) {
@@ -296,11 +374,17 @@ export default function ExpertLessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
-            setError('Lesson title is required');
+            setError('Element title is required');
+            return;
+        }
+
+        // For file type, ensure a file is selected for new elements
+        if (type === 'article' && isNewLesson && selectedFiles.length === 0) {
+            setError('Please select a file to upload');
             return;
         }
 
@@ -327,7 +411,7 @@ export default function ExpertLessonEditorPanel({
 
         // All checks passed, proceed with save
         performSave();
-    }, [title, type, content, videoUrl, isGeneratingTranscript, hasValidTranscript, hasVideoUrlChanged, performSave]);
+    }, [title, type, content, videoUrl, isGeneratingTranscript, hasValidTranscript, hasVideoUrlChanged, performSave, selectedFiles, isNewLesson]);
 
     // Modal callback: User wants to enter transcript manually
     const handleEnterManually = useCallback(() => {
@@ -440,18 +524,18 @@ export default function ExpertLessonEditorPanel({
             )}
             <button
                 onClick={handleSave}
-                disabled={isPending || !title.trim() || isUploading}
+                disabled={isPending || !title.trim() || isUploading || isUploadingFile || (type === 'article' && isNewLesson && !resourceId && selectedFiles.length === 0)}
                 className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg text-sm font-bold hover:bg-brand-orange/80 transition-colors disabled:opacity-50"
             >
-                {isPending ? (
+                {isPending || isUploadingFile ? (
                     <>
                         <Loader2 size={16} className="animate-spin" />
-                        Saving...
+                        {isUploadingFile ? 'Uploading...' : 'Saving...'}
                     </>
-                ) : isNewLesson ? (
+                ) : isNewLesson && !resourceId ? (
                     <>
                         <Plus size={16} />
-                        Create Lesson
+                        Create Element
                     </>
                 ) : (
                     'Save Changes'
@@ -466,7 +550,7 @@ export default function ExpertLessonEditorPanel({
         <DropdownPanel
             isOpen={isOpen}
             onClose={onClose}
-            title={isNewLesson ? 'Add New Lesson' : 'Edit Lesson'}
+            title={resourceId ? 'Edit Resource' : isNewLesson ? 'Add Learning Element' : 'Edit Learning Element'}
             icon={TypeIcon}
             iconColor="text-brand-blue-light"
             headerActions={headerActions}
@@ -481,7 +565,7 @@ export default function ExpertLessonEditorPanel({
                 {/* Lesson Title */}
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Lesson Title *
+                        Element Title *
                     </label>
                     <input
                         type="text"
@@ -493,10 +577,11 @@ export default function ExpertLessonEditorPanel({
                     />
                 </div>
 
-                {/* Lesson Type */}
+                {/* Lesson Type - hidden when editing an existing resource */}
+                {!resourceId && (
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                        Lesson Type
+                        Element Type
                     </label>
                     <div className="flex gap-3">
                         {LESSON_TYPES.map((lessonTypeOption) => {
@@ -521,6 +606,7 @@ export default function ExpertLessonEditorPanel({
                         })}
                     </div>
                 </div>
+                )}
 
                 {/* Video Settings - Only show for video type */}
                 {type === 'video' && (
@@ -640,12 +726,64 @@ export default function ExpertLessonEditorPanel({
                     />
                 )}
 
-                {/* Transcript / Content - Only show for video and article types */}
-                {type !== 'quiz' && (
+                {/* File Upload - Only show for file type */}
+                {type === 'article' && (
+                    <div>
+                        {resourceId && resourceUrl ? (
+                            <>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                    Attached File
+                                </label>
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-red-500/20">
+                                            <Paperclip size={16} className="text-red-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-white">{resourceType || 'File'} document</p>
+                                            {resourceSize && <p className="text-xs text-slate-400">{resourceSize}</p>}
+                                        </div>
+                                    </div>
+                                    <a
+                                        href={resourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-xs font-medium transition-all"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Download
+                                    </a>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                    Upload File
+                                </label>
+                                <FileUploadZone
+                                    onFilesSelected={(files) => {
+                                        setSelectedFiles(files);
+                                        if (!title.trim() && files.length > 0) {
+                                            setTitle(files[0].name.replace(/\.[^/.]+$/, ''));
+                                        }
+                                    }}
+                                    onRemoveFile={() => setSelectedFiles([])}
+                                    selectedFiles={selectedFiles}
+                                    maxFiles={1}
+                                    disabled={isPending || isUploadingFile}
+                                    uploadingIndex={isUploadingFile ? 0 : undefined}
+                                />
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* Transcript / Content - Only show for video type */}
+                {type === 'video' && (
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                {type === 'video' ? 'Transcript / Script' : 'Article Content'}
+                                Transcript / Script
                             </label>
                         </div>
 
@@ -781,7 +919,7 @@ export default function ExpertLessonEditorPanel({
                 )}
 
                 {/* Delete Section */}
-                {!isNewLesson && lessonId && (
+                {(!isNewLesson && lessonId || resourceId) && (
                     <div className="pt-6 border-t border-white/5">
                         {!showDeleteConfirm ? (
                             <button
@@ -789,20 +927,20 @@ export default function ExpertLessonEditorPanel({
                                 className="flex items-center gap-2 px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
                             >
                                 <Trash2 size={16} />
-                                Delete Lesson
+                                Delete Element
                             </button>
                         ) : (
                             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
                                 <div className="flex items-start gap-3">
                                     <AlertTriangle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
                                     <div className="flex-1">
-                                        <h4 className="font-bold text-red-400 mb-1">Delete this lesson?</h4>
+                                        <h4 className="font-bold text-red-400 mb-1">Delete this element?</h4>
                                         <p className="text-sm text-slate-400 mb-4">
-                                            This will permanently delete the lesson.
+                                            This will permanently delete this element.
                                         </p>
                                         <div className="flex gap-3">
                                             <button
-                                                onClick={handleDelete}
+                                                onClick={resourceId ? handleDeleteResource : handleDelete}
                                                 disabled={isPending}
                                                 className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
                                             >

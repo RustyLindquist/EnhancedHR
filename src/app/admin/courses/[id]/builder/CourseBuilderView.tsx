@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { BookOpen, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Layers, GripVertical } from 'lucide-react';
+import { BookOpen, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Layers, GripVertical, Paperclip } from 'lucide-react';
 import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
 import CourseDescriptionSectionAdmin from './CourseDescriptionSectionAdmin';
@@ -336,7 +336,9 @@ export default function CourseBuilderView({
                                     onToggle={() => handleToggleModule(module.id)}
                                     onEditModule={() => openPanel('module', module.id)}
                                     onEditLesson={(lessonId) => openPanel('lesson', module.id, lessonId)}
+                                    onEditResource={(resourceId) => openPanel('lesson', module.id, undefined, resourceId)}
                                     onAddLesson={() => openPanel('lesson', module.id)}
+                                    moduleResources={resources.filter(r => r.module_id === module.id)}
                                 />
                             ))}
 
@@ -382,11 +384,14 @@ export default function CourseBuilderView({
                             <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
                         </div>
 
-                        {/* Resources Preview */}
+                        {/* Resources Preview (course-level only) */}
+                        {(() => {
+                            const courseLevelResources = resources.filter(r => !r.module_id);
+                            return (
                         <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10">
-                            {resources.length > 0 ? (
+                            {courseLevelResources.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                    {resources.map((resource) => (
+                                    {courseLevelResources.map((resource) => (
                                         <div
                                             key={resource.id}
                                             className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5"
@@ -404,6 +409,8 @@ export default function CourseBuilderView({
                                 </div>
                             )}
                         </div>
+                            );
+                        })()}
 
                         {/* Edit Overlay */}
                         <div className="absolute inset-0 bg-brand-blue-light/5 border-2 border-brand-blue-light/30 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center pointer-events-none z-10">
@@ -491,7 +498,7 @@ function DroppableAddLessonButton({ moduleId, onClick }: DroppableAddLessonButto
                 <Plus size={16} />
             </div>
             <span className="text-xs font-medium">
-                {isOver ? 'Drop here' : 'Add Lesson'}
+                {isOver ? 'Drop here' : 'Add Item'}
             </span>
         </button>
     );
@@ -508,7 +515,9 @@ interface ModuleContainerAdminProps {
     onToggle: () => void;
     onEditModule: () => void;
     onEditLesson: (lessonId: string) => void;
+    onEditResource: (resourceId: string) => void;
     onAddLesson: () => void;
+    moduleResources?: Resource[];
 }
 
 function ModuleContainerAdmin({
@@ -518,7 +527,9 @@ function ModuleContainerAdmin({
     onToggle,
     onEditModule,
     onEditLesson,
-    onAddLesson
+    onEditResource,
+    onAddLesson,
+    moduleResources = []
 }: ModuleContainerAdminProps) {
     return (
         <div className={`
@@ -566,24 +577,47 @@ function ModuleContainerAdmin({
                 ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
             `}>
                 <div className="overflow-hidden">
-                    <DroppableModuleZone moduleId={module.id} isExpanded={isExpanded} isEmpty={!module.lessons || module.lessons.length === 0}>
+                    <DroppableModuleZone moduleId={module.id} isExpanded={isExpanded} isEmpty={!module.lessons || (module.lessons.length === 0 && moduleResources.length === 0)}>
                         <div className="px-5 pt-3 pb-5">
-                            {/* Lessons Grid with Drag and Drop */}
+                            {/* Merged Lessons + Resources Grid with Drag and Drop */}
                             <SortableContext
                                 items={module.lessons?.map((l: Lesson) => l.id) || []}
                                 strategy={rectSortingStrategy}
                             >
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {module.lessons.map((lesson, lessonIndex) => (
-                                        <SortableLessonCardAdmin
-                                            key={lesson.id}
-                                            lesson={lesson}
-                                            lessonNumber={`${moduleIndex + 1}.${lessonIndex + 1}`}
-                                            onEdit={() => onEditLesson(lesson.id)}
-                                        />
-                                    ))}
+                                    {/* Merge lessons and resources by order, then render */}
+                                    {(() => {
+                                        const items: Array<{ type: 'lesson'; data: Lesson; order: number } | { type: 'resource'; data: Resource; order: number }> = [
+                                            ...module.lessons.map((l, i) => ({ type: 'lesson' as const, data: l, order: l.order ?? i })),
+                                            ...moduleResources.map((r, i) => ({ type: 'resource' as const, data: r, order: r.order ?? (1000 + i) }))
+                                        ];
+                                        items.sort((a, b) => a.order - b.order);
 
-                                    {/* Add Lesson Button - also acts as drop target */}
+                                        let lessonCounter = 0;
+                                        return items.map((item) => {
+                                            if (item.type === 'lesson') {
+                                                lessonCounter++;
+                                                return (
+                                                    <SortableLessonCardAdmin
+                                                        key={item.data.id}
+                                                        lesson={item.data}
+                                                        lessonNumber={`${moduleIndex + 1}.${lessonCounter}`}
+                                                        onEdit={() => onEditLesson(item.data.id)}
+                                                    />
+                                                );
+                                            } else {
+                                                return (
+                                                    <ModuleResourceCardAdmin
+                                                        key={`resource-${item.data.id}`}
+                                                        resource={item.data}
+                                                        onEdit={() => onEditResource(item.data.id)}
+                                                    />
+                                                );
+                                            }
+                                        });
+                                    })()}
+
+                                    {/* Add Item Button - also acts as drop target */}
                                     <DroppableAddLessonButton
                                         moduleId={module.id}
                                         onClick={onAddLesson}
@@ -704,6 +738,51 @@ function SortableLessonCardAdmin({ lesson, lessonNumber, onEdit }: SortableLesso
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// ============================================
+// Module Resource Card (Admin)
+// ============================================
+
+function ModuleResourceCardAdmin({ resource, onEdit }: { resource: Resource; onEdit: () => void }) {
+    return (
+        <div
+            className="group relative rounded-xl cursor-pointer transition-all duration-300 bg-white/[0.03] border border-red-500/20 hover:bg-red-500/5 hover:border-red-500/30 overflow-hidden"
+            onClick={onEdit}
+        >
+            <div className="px-4 py-4">
+                {/* Top Row */}
+                <div className="flex items-center justify-between mb-2">
+                    <span className="px-2 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30">
+                        RESOURCE
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500">
+                        {resource.size || ''}
+                    </span>
+                </div>
+
+                {/* Resource Title */}
+                <h4 className="text-sm font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors">
+                    {resource.title || 'Untitled Resource'}
+                </h4>
+
+                {/* File Type Indicator */}
+                <div className="mt-2 flex items-center gap-1.5">
+                    <Paperclip size={12} className="text-red-400" />
+                    <span className="text-[10px] text-slate-500">
+                        {resource.type} file
+                    </span>
+                </div>
+            </div>
+
+            {/* Hover Edit Overlay */}
+            <div className="absolute inset-0 bg-red-500/5 border-2 border-red-500/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center pointer-events-none z-10">
+                <div className="p-2 rounded-full bg-black/70 border border-red-500/50 shadow-lg">
+                    <Edit3 size={14} className="text-red-400" />
+                </div>
+            </div>
         </div>
     );
 }

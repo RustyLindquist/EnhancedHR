@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BookOpen, LayoutGrid, List } from 'lucide-react';
+import { BookOpen, LayoutGrid, List, FileText, Download, Paperclip, ChevronLeft, ChevronRight, Sparkles, Bookmark } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
 import { useBackHandler } from '@/hooks/useBackHandler';
@@ -52,6 +52,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     // Active content state
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
     const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+    const [activeResourceId, setActiveResourceId] = useState<string | null>(null);
 
     // UI state
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -161,6 +162,53 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         return syllabus.find(m => m.id === activeModuleId) || null;
     }, [activeModuleId, syllabus]);
 
+    // Get active resource (when viewing an inline module resource)
+    const activeResource = useMemo(() => {
+        if (!activeResourceId) return null;
+        return resources.find(r => r.id === activeResourceId) || null;
+    }, [activeResourceId, resources]);
+
+    // Split resources: course-level vs module-level
+    const courseResources = useMemo(() => resources.filter(r => !r.module_id), [resources]);
+    const moduleResourcesMap = useMemo(() => {
+        const map: Record<string, Resource[]> = {};
+        resources.forEach(r => {
+            if (r.module_id) {
+                if (!map[r.module_id]) map[r.module_id] = [];
+                map[r.module_id].push(r);
+            }
+        });
+        return map;
+    }, [resources]);
+
+    // Build flat navigation list across all modules (lessons + resources merged by order)
+    const navigationItems = useMemo(() => {
+        const items: Array<{ kind: 'lesson' | 'resource'; id: string; moduleId: string }> = [];
+        for (const module of syllabus) {
+            const moduleRes = moduleResourcesMap[module.id] || [];
+            const merged: Array<{ kind: 'lesson' | 'resource'; id: string; order: number }> = [
+                ...module.lessons.map((l, i) => ({ kind: 'lesson' as const, id: l.id, order: l.order ?? i })),
+                ...moduleRes.map((r, i) => ({ kind: 'resource' as const, id: r.id, order: r.order ?? (1000 + i) })),
+            ];
+            merged.sort((a, b) => a.order - b.order);
+            for (const item of merged) {
+                items.push({ kind: item.kind, id: item.id, moduleId: module.id });
+            }
+        }
+        return items;
+    }, [syllabus, moduleResourcesMap]);
+
+    // Find current position in the flat navigation list
+    const currentItemIndex = useMemo(() => {
+        if (activeLessonId) {
+            return navigationItems.findIndex(item => item.kind === 'lesson' && item.id === activeLessonId);
+        }
+        if (activeResourceId) {
+            return navigationItems.findIndex(item => item.kind === 'resource' && item.id === activeResourceId);
+        }
+        return -1;
+    }, [navigationItems, activeLessonId, activeResourceId]);
+
     // Find lesson index within module
     const getLessonIndex = useCallback((lessonId: string): { moduleIndex: number; lessonIndex: number } | null => {
         for (let moduleIndex = 0; moduleIndex < syllabus.length; moduleIndex++) {
@@ -179,51 +227,34 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         return `${indices.moduleIndex + 1}.${indices.lessonIndex + 1}`;
     }, [getLessonIndex]);
 
-    // Navigation functions with slide transitions
-    const goToNextLesson = useCallback(() => {
-        if (!activeLessonId || isTransitioning) return;
+    // Navigation functions with slide transitions (unified for lessons + resources)
+    const goToNextItem = useCallback(() => {
+        if (currentItemIndex < 0 || currentItemIndex >= navigationItems.length - 1 || isTransitioning) return;
 
-        const indices = getLessonIndex(activeLessonId);
-        if (!indices) return;
+        const nextItem = navigationItems[currentItemIndex + 1];
 
-        const currentMod = syllabus[indices.moduleIndex];
-        let nextLessonId: string | null = null;
-        let nextModuleId: string | null = null;
-
-        // Try next lesson in same module
-        if (indices.lessonIndex < currentMod.lessons.length - 1) {
-            nextLessonId = currentMod.lessons[indices.lessonIndex + 1].id;
-            nextModuleId = currentMod.id;
+        // Enable auto-play only when navigating to a lesson
+        if (nextItem.kind === 'lesson') {
+            setShouldAutoPlay(true);
         }
-        // Try first lesson of next module
-        else if (indices.moduleIndex < syllabus.length - 1) {
-            const nextModule = syllabus[indices.moduleIndex + 1];
-            if (nextModule.lessons.length > 0) {
-                nextLessonId = nextModule.lessons[0].id;
-                nextModuleId = nextModule.id;
-            }
-        }
-
-        if (!nextLessonId) return;
-
-        // Enable auto-play for the next lesson
-        setShouldAutoPlay(true);
 
         // Animate transition: slide left (forward)
         setIsTransitioning(true);
         setSlideDirection('left');
         setTransitionPhase('exit');
 
-        // Record that user accessed next lesson
-        if (nextLessonId) {
-            updateLastAccessed(nextLessonId);
-        }
-
         setTimeout(() => {
-            setActiveLessonId(nextLessonId);
-            setActiveModuleId(nextModuleId);
-            if (nextModuleId && !expandedModules.includes(nextModuleId)) {
-                setExpandedModules(prev => [...prev, nextModuleId!]);
+            if (nextItem.kind === 'lesson') {
+                setActiveLessonId(nextItem.id);
+                setActiveResourceId(null);
+                updateLastAccessed(nextItem.id);
+            } else {
+                setActiveResourceId(nextItem.id);
+                setActiveLessonId(null);
+            }
+            setActiveModuleId(nextItem.moduleId);
+            if (!expandedModules.includes(nextItem.moduleId)) {
+                setExpandedModules(prev => [...prev, nextItem.moduleId]);
             }
             setTransitionPhase('enter');
 
@@ -232,46 +263,30 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setIsTransitioning(false);
             }, 350);
         }, 350);
-    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules, updateLastAccessed]);
+    }, [currentItemIndex, navigationItems, isTransitioning, expandedModules, updateLastAccessed]);
 
-    const goToPreviousLesson = useCallback(() => {
-        if (!activeLessonId || isTransitioning) return;
+    const goToPreviousItem = useCallback(() => {
+        if (currentItemIndex <= 0 || isTransitioning) return;
 
-        const indices = getLessonIndex(activeLessonId);
-        if (!indices) return;
-
-        let prevLessonId: string | null = null;
-        let prevModuleId: string | null = null;
-
-        // Try previous lesson in same module
-        if (indices.lessonIndex > 0) {
-            prevLessonId = syllabus[indices.moduleIndex].lessons[indices.lessonIndex - 1].id;
-            prevModuleId = syllabus[indices.moduleIndex].id;
-        }
-        // Try last lesson of previous module
-        else if (indices.moduleIndex > 0) {
-            const prevModule = syllabus[indices.moduleIndex - 1];
-            if (prevModule.lessons.length > 0) {
-                prevLessonId = prevModule.lessons[prevModule.lessons.length - 1].id;
-                prevModuleId = prevModule.id;
-            }
-        }
-
-        if (!prevLessonId) return;
+        const prevItem = navigationItems[currentItemIndex - 1];
 
         // Animate transition: slide right (backward)
         setIsTransitioning(true);
         setSlideDirection('right');
         setTransitionPhase('exit');
 
-        // Record that user accessed previous lesson
-        updateLastAccessed(prevLessonId);
-
         setTimeout(() => {
-            setActiveLessonId(prevLessonId);
-            setActiveModuleId(prevModuleId);
-            if (prevModuleId && !expandedModules.includes(prevModuleId)) {
-                setExpandedModules(prev => [...prev, prevModuleId!]);
+            if (prevItem.kind === 'lesson') {
+                setActiveLessonId(prevItem.id);
+                setActiveResourceId(null);
+                updateLastAccessed(prevItem.id);
+            } else {
+                setActiveResourceId(prevItem.id);
+                setActiveLessonId(null);
+            }
+            setActiveModuleId(prevItem.moduleId);
+            if (!expandedModules.includes(prevItem.moduleId)) {
+                setExpandedModules(prev => [...prev, prevItem.moduleId]);
             }
             setTransitionPhase('enter');
 
@@ -280,33 +295,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setIsTransitioning(false);
             }, 350);
         }, 350);
-    }, [activeLessonId, getLessonIndex, syllabus, isTransitioning, expandedModules, updateLastAccessed]);
+    }, [currentItemIndex, navigationItems, isTransitioning, expandedModules, updateLastAccessed]);
 
-    // Check if there's a next/previous lesson
-    const hasNextLesson = useMemo(() => {
-        if (!activeLessonId) return false;
-        const indices = getLessonIndex(activeLessonId);
-        if (!indices) return false;
-
-        const currentMod = syllabus[indices.moduleIndex];
-        if (indices.lessonIndex < currentMod.lessons.length - 1) return true;
-        if (indices.moduleIndex < syllabus.length - 1) {
-            return syllabus[indices.moduleIndex + 1].lessons.length > 0;
-        }
-        return false;
-    }, [activeLessonId, getLessonIndex, syllabus]);
-
-    const hasPreviousLesson = useMemo(() => {
-        if (!activeLessonId) return false;
-        const indices = getLessonIndex(activeLessonId);
-        if (!indices) return false;
-
-        if (indices.lessonIndex > 0) return true;
-        if (indices.moduleIndex > 0) {
-            return syllabus[indices.moduleIndex - 1].lessons.length > 0;
-        }
-        return false;
-    }, [activeLessonId, getLessonIndex, syllabus]);
+    // Check if there's a next/previous item
+    const hasNextItem = useMemo(() => currentItemIndex >= 0 && currentItemIndex < navigationItems.length - 1, [currentItemIndex, navigationItems]);
+    const hasPreviousItem = useMemo(() => currentItemIndex > 0, [currentItemIndex]);
 
     // View mode transition handlers
     const transitionToPlayer = useCallback((lessonId?: string, moduleId?: string) => {
@@ -375,9 +368,10 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
         setTimeout(() => {
             setViewMode('description');
-            // Clear active lesson/module when returning to description
+            // Clear active lesson/module/resource when returning to description
             setActiveLessonId(null);
             setActiveModuleId(null);
+            setActiveResourceId(null);
             setTransitionPhase('enter');
 
             setTimeout(() => {
@@ -390,6 +384,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     // Handle lesson click
     const handleLessonClick = useCallback((lesson: Lesson, moduleId: string) => {
         if (isTransitioning) return;
+
+        // Clear any active resource when switching to a lesson
+        setActiveResourceId(null);
 
         if (viewMode === 'description') {
             transitionToPlayer(lesson.id, moduleId);
@@ -439,6 +436,51 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         }
     }, [viewMode, transitionToPlayer, expandedModules, isTransitioning, activeLessonId, getLessonIndex, updateLastAccessed]);
 
+    // Handle resource click (inline module resource)
+    const handleResourceClick = useCallback((resource: Resource, moduleId: string) => {
+        if (isTransitioning) return;
+
+        // Clear lesson, set resource
+        setActiveLessonId(null);
+        setActiveResourceId(resource.id);
+        setActiveModuleId(moduleId);
+
+        if (viewMode === 'description') {
+            // Transition to player mode showing the resource
+            setIsTransitioning(true);
+            setSlideDirection('left');
+            setTransitionPhase('exit');
+
+            setTimeout(() => {
+                setViewMode('player');
+                if (!expandedModules.includes(moduleId)) {
+                    setExpandedModules(prev => [...prev, moduleId]);
+                }
+                setTransitionPhase('enter');
+                setTimeout(() => {
+                    setTransitionPhase('stable');
+                    setIsTransitioning(false);
+                }, 350);
+            }, 350);
+        } else {
+            // Already in player mode — animate transition
+            setIsTransitioning(true);
+            setSlideDirection('left');
+            setTransitionPhase('exit');
+
+            setTimeout(() => {
+                if (!expandedModules.includes(moduleId)) {
+                    setExpandedModules(prev => [...prev, moduleId]);
+                }
+                setTransitionPhase('enter');
+                setTimeout(() => {
+                    setTransitionPhase('stable');
+                    setIsTransitioning(false);
+                }, 350);
+            }, 350);
+        }
+    }, [viewMode, expandedModules, isTransitioning]);
+
     // Handle module toggle
     const handleModuleToggle = useCallback((moduleId: string) => {
         setExpandedModules(prev =>
@@ -480,11 +522,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         if (savedAssessmentProgress?.lessonId === activeLessonId) {
             setSavedAssessmentProgress(null);
         }
-        // Navigate to next lesson after panel closes
+        // Navigate to next item after panel closes
         setTimeout(() => {
-            goToNextLesson();
+            goToNextItem();
         }, 500); // Wait for panel close animation
-    }, [goToNextLesson, savedAssessmentProgress?.lessonId, activeLessonId]);
+    }, [goToNextItem, savedAssessmentProgress?.lessonId, activeLessonId]);
 
     const handleSaveAssessmentProgress = useCallback((responses: Record<string, string>, currentIndex: number) => {
         if (activeLessonId) {
@@ -581,6 +623,121 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                             onAskPrometheus={onAskPrometheus}
                             onViewExpert={onViewExpert}
                         />
+                    ) : activeResource ? (
+                        /* Resource Viewer */
+                        <div className="relative animate-fade-in">
+                            {activeResource.type === 'IMG' || /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?|$)/i.test(activeResource.url) ? (
+                                /* Image Resource — inline preview */
+                                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5">
+                                    <img
+                                        src={activeResource.url}
+                                        alt={activeResource.title}
+                                        className="w-full h-full object-contain"
+                                    />
+                                    {/* Title overlay — top left */}
+                                    <div className="absolute top-4 left-4 max-w-[60%]">
+                                        <div className="px-3 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/10">
+                                            <span className="px-1.5 py-0.5 bg-red-700/30 text-red-400 text-[8px] font-bold uppercase rounded border border-red-700/40 inline-block mb-1">
+                                                RESOURCE
+                                            </span>
+                                            <h2 className="text-sm font-semibold text-white/90 truncate">{activeResource.title}</h2>
+                                        </div>
+                                    </div>
+                                    {/* Download button — top right */}
+                                    <div className="absolute top-4 right-4">
+                                        <a
+                                            href={activeResource.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            download
+                                            className="flex items-center gap-2 px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm border border-white/10 hover:border-white/20 text-white/80 hover:text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                                        >
+                                            <Download size={14} />
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Non-image Resource — title + download */
+                                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5 flex flex-col items-center justify-center">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="w-16 h-16 rounded-2xl bg-red-700/20 border border-red-700/30 flex items-center justify-center">
+                                            <FileText size={32} className="text-red-400" />
+                                        </div>
+                                        <div className="text-center">
+                                            <span className="px-2.5 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30 mb-3 inline-block">
+                                                RESOURCE
+                                            </span>
+                                            <h2 className="text-xl font-bold text-white mb-1">{activeResource.title}</h2>
+                                            <p className="text-sm text-slate-400">
+                                                {activeResource.type} file{activeResource.size ? ` · ${activeResource.size}` : ''}
+                                            </p>
+                                        </div>
+                                        <a
+                                            href={activeResource.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            download
+                                            className="flex items-center gap-2 px-6 py-3 bg-red-700/20 hover:bg-red-700/30 border border-red-700/30 hover:border-red-700/50 text-red-400 hover:text-red-300 rounded-xl font-bold text-sm uppercase tracking-wider transition-all hover:shadow-[0_0_20px_rgba(185,28,28,0.2)]"
+                                        >
+                                            <Download size={16} />
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+                            {/* Resource Info Bar with Navigation */}
+                            <div className="mt-4 flex items-center gap-4">
+                                {/* Previous Item Arrow */}
+                                <button
+                                    onClick={goToPreviousItem}
+                                    disabled={!hasPreviousItem}
+                                    className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                                        hasPreviousItem
+                                            ? 'bg-white/[0.05] border border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:scale-105'
+                                            : 'bg-white/[0.02] border border-white/5 text-slate-600 cursor-not-allowed'
+                                    }`}
+                                    aria-label="Previous item"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+
+                                {/* Resource Info Container */}
+                                <div className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl p-4 flex items-center justify-between backdrop-blur-sm">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-3 mb-0.5">
+                                                <span className="text-[10px] font-bold tracking-wider text-red-400 uppercase">
+                                                    RESOURCE
+                                                </span>
+                                                {activeResource.size && (
+                                                    <span className="text-[10px] text-slate-500">{activeResource.size}</span>
+                                                )}
+                                            </div>
+                                            <h2 className="text-base font-bold text-white truncate">{activeResource.title}</h2>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                        <Paperclip size={14} className="text-red-400" />
+                                        <span className="text-sm text-slate-400">{activeResource.type} file</span>
+                                    </div>
+                                </div>
+
+                                {/* Next Item Arrow */}
+                                <button
+                                    onClick={goToNextItem}
+                                    disabled={!hasNextItem}
+                                    className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                                        hasNextItem
+                                            ? 'bg-white/[0.05] border border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:scale-105'
+                                            : 'bg-white/[0.02] border border-white/5 text-slate-600 cursor-not-allowed'
+                                    }`}
+                                    aria-label="Next item"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
+                        </div>
                     ) : (
                         currentLesson && (
                             <LessonPlayerSection
@@ -588,10 +745,10 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                 lessonNumber={getLessonNumber(currentLesson.id)}
                                 course={course}
                                 onLessonComplete={handleLessonComplete}
-                                onNextLesson={goToNextLesson}
-                                onPreviousLesson={goToPreviousLesson}
-                                hasNext={hasNextLesson}
-                                hasPrevious={hasPreviousLesson}
+                                onNextLesson={goToNextItem}
+                                onPreviousLesson={goToPreviousItem}
+                                hasNext={hasNextItem}
+                                hasPrevious={hasPreviousItem}
                                 onAskPrometheus={onAskPrometheus}
                                 onAddToCollection={onAddToCollection}
                                 userId={userId}
@@ -652,23 +809,26 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                 isExpanded={expandedModules.includes(module.id)}
                                 isFirstModule={index === 0}
                                 activeLessonId={activeLessonId}
+                                activeResourceId={activeResourceId}
                                 completedLessons={completedLessons}
                                 onToggle={() => handleModuleToggle(module.id)}
                                 onLessonClick={(lesson) => handleLessonClick(lesson, module.id)}
+                                onResourceClick={(resource) => handleResourceClick(resource, module.id)}
                                 onAskPrometheus={onAskPrometheus}
                                 onAddToCollection={onAddToCollection}
                                 onDragStart={onDragStart}
                                 courseTitle={course.title}
                                 lessonViewMode={lessonViewMode}
+                                moduleResources={moduleResourcesMap[module.id] || []}
                             />
                         ))}
                     </div>
                 </div>
 
-                {/* Resources Section */}
-                {resources.length > 0 && (
+                {/* Resources Section (course-level only) */}
+                {courseResources.length > 0 && (
                     <CourseResourcesSection
-                        resources={resources}
+                        resources={courseResources}
                         courseTitle={course.title}
                         onAddToCollection={onAddToCollection}
                         onDragStart={onDragStart}
@@ -686,7 +846,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                     quizData={currentLesson.quiz_data}
                     onComplete={handleAssessmentComplete}
                     onContinueToNext={handleAssessmentContinueToNext}
-                    hasNextLesson={hasNextLesson}
+                    hasNextLesson={hasNextItem}
                     savedProgress={currentLessonSavedProgress}
                     onSaveProgress={handleSaveAssessmentProgress}
                 />

@@ -1932,7 +1932,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             // Fetch real resources from database
             const { data: dbResources } = await supabase
                 .from('resources')
-                .select('id, title, type, url, size')
+                .select('id, title, type, url, size, module_id, order')
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 
@@ -2049,7 +2049,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             // Fetch real resources from database
             const { data: dbResources } = await supabase
                 .from('resources')
-                .select('id, title, type, url, size')
+                .select('id, title, type, url, size, module_id, order')
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 
@@ -2105,7 +2105,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             // Fetch real resources from database
             const { data: dbResources } = await supabase
                 .from('resources')
-                .select('id, title, type, url, size')
+                .select('id, title, type, url, size, module_id, order')
                 .eq('course_id', courseId)
                 .order('created_at', { ascending: true });
 

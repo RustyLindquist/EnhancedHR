@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 import { parseFileContent } from '@/lib/file-parser';
 import { deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
+import { uploadModuleResourceFile, reorderModuleItems, updateModuleResource, deleteModuleResource } from '@/app/actions/course-builder';
 
 // ============================================
 // Permission Check Helper
@@ -241,7 +242,9 @@ export async function getExpertCourseForBuilder(courseId: number) {
             title: r.title,
             type: r.type,
             url: r.url,
-            size: r.size
+            size: r.size,
+            module_id: r.module_id || null,
+            order: r.order ?? 0
         })),
         canEdit: course.status === 'draft'
     };
@@ -538,9 +541,23 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
         .order('order', { ascending: false })
         .limit(1);
 
-    const nextOrder = existingLessons && existingLessons.length > 0
-        ? (existingLessons[0].order || 0) + 1
-        : 0;
+    const lessonMax = existingLessons && existingLessons.length > 0
+        ? (existingLessons[0].order || 0)
+        : -1;
+
+    // Check module resources for shared ordering
+    const { data: existingModuleResources } = await supabase
+        .from('resources')
+        .select('order')
+        .eq('module_id', moduleId)
+        .order('order', { ascending: false })
+        .limit(1);
+
+    const resourceMax = existingModuleResources && existingModuleResources.length > 0
+        ? (existingModuleResources[0].order || 0)
+        : -1;
+
+    const nextOrder = Math.max(lessonMax, resourceMax) + 1;
 
     const { data: lesson, error } = await supabase
         .from('lessons')
@@ -682,6 +699,66 @@ export async function addExpertCourseResource(courseId: number, data: {
 
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true, resource };
+}
+
+/**
+ * Upload a file as a module-level resource (expert version with access check)
+ * Delegates to the admin uploadModuleResourceFile after verifying ownership
+ */
+export async function uploadExpertModuleResourceFile(
+    courseId: number,
+    moduleId: string,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer
+) {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    return uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer);
+}
+
+/**
+ * Reorder items (lessons + resources) within a module (expert version)
+ */
+export async function reorderExpertModuleItems(
+    moduleId: string,
+    courseId: number,
+    orderedItems: { id: string; type: 'lesson' | 'resource' }[]
+) {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    return reorderModuleItems(moduleId, courseId, orderedItems);
+}
+
+export async function updateExpertModuleResource(
+    resourceId: string,
+    courseId: number,
+    data: { title?: string }
+) {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    return updateModuleResource(resourceId, courseId, data);
+}
+
+export async function deleteExpertModuleResource(
+    resourceId: string,
+    courseId: number
+) {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    return deleteModuleResource(resourceId, courseId);
 }
 
 /**

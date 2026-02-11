@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, Send, AlertTriangle, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Star, BookOpen, Layers, X, GripVertical } from 'lucide-react';
+import { ArrowLeft, Eye, Send, AlertTriangle, Plus, Edit3, ChevronDown, Video, HelpCircle, FileText, Star, BookOpen, Layers, X, GripVertical, Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import { Course, Module, Resource, Lesson } from '@/types';
 import ExpertCoursePageWrapper, { ExpertCoursePanelType } from './ExpertCoursePageWrapper';
@@ -187,6 +187,43 @@ function SortableLessonCard({ lesson, moduleIndex, lessonIndex, moduleId, onOpen
     );
 }
 
+// Module Resource Card (Expert)
+function ExpertModuleResourceCard({ resource, onEdit }: { resource: Resource; onEdit: () => void }) {
+    return (
+        <div
+            className="group relative rounded-xl cursor-pointer transition-all duration-300 bg-white/[0.03] border border-red-500/20 hover:bg-red-500/5 hover:border-red-500/30 overflow-hidden"
+            onClick={onEdit}
+        >
+            <div className="px-4 py-4">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="px-2 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30">
+                        RESOURCE
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500">
+                        {resource.size || ''}
+                    </span>
+                </div>
+                <h4 className="text-sm font-semibold leading-tight text-slate-200 group-hover:text-white transition-colors">
+                    {resource.title || 'Untitled Resource'}
+                </h4>
+                <div className="mt-2 flex items-center gap-1.5">
+                    <Paperclip size={12} className="text-red-400" />
+                    <span className="text-[10px] text-slate-500">
+                        {resource.type} file
+                    </span>
+                </div>
+            </div>
+
+            {/* Hover Edit Overlay */}
+            <div className="absolute inset-0 bg-red-500/5 border-2 border-red-500/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center pointer-events-none z-10">
+                <div className="p-2 rounded-full bg-black/70 border border-red-500/50 shadow-lg">
+                    <Edit3 size={14} className="text-red-400" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Drag Overlay Component - shows during drag
 function LessonDragOverlay({ lesson, moduleIndex, lessonIndex }: { lesson: Lesson; moduleIndex: number; lessonIndex: number }) {
     const isQuiz = lesson.type === 'quiz';
@@ -294,7 +331,7 @@ function DroppableAddLessonButton({ moduleId, onClick }: DroppableAddLessonButto
                 <Plus size={16} />
             </div>
             <span className="text-xs font-medium">
-                {isOver ? 'Drop here' : 'Add Lesson'}
+                {isOver ? 'Drop here' : 'Add Item'}
             </span>
         </button>
     );
@@ -326,6 +363,7 @@ export default function ExpertCourseBuilderClient({
     const [activePanel, setActivePanel] = useState<ExpertCoursePanelType>(null);
     const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+    const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
 
     // Submit modal state
     const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -533,17 +571,20 @@ export default function ExpertCourseBuilderClient({
     const handleOpenPanel = useCallback((
         panel: ExpertCoursePanelType,
         moduleId?: string,
-        lessonId?: string
+        lessonId?: string,
+        resourceId?: string
     ) => {
         setActivePanel(panel);
         setEditingModuleId(moduleId || null);
         setEditingLessonId(lessonId || null);
+        setEditingResourceId(resourceId || null);
     }, []);
 
     const handleClosePanel = useCallback(() => {
         setActivePanel(null);
         setEditingModuleId(null);
         setEditingLessonId(null);
+        setEditingResourceId(null);
     }, []);
 
     const handlePanelSave = useCallback(() => {
@@ -587,6 +628,12 @@ export default function ExpertCourseBuilderClient({
         const module = initialSyllabus.find(m => m.id === editingModuleId);
         return module?.lessons?.find((l: Lesson) => l.id === editingLessonId);
     }, [editingLessonId, editingModuleId, initialSyllabus]);
+
+    // Get the current editing resource's details
+    const editingResource = useMemo(() => {
+        if (!editingResourceId) return null;
+        return initialResources.find(r => r.id === editingResourceId) || null;
+    }, [editingResourceId, initialResources]);
 
     const skills = initialCourse.skills || [];
 
@@ -812,26 +859,49 @@ export default function ExpertCourseBuilderClient({
                                         ${expandedModules.includes(module.id) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
                                     `}>
                                         <div className="overflow-hidden">
-                                            <DroppableModuleZone moduleId={module.id} isExpanded={expandedModules.includes(module.id)} isEmpty={!module.lessons || module.lessons.length === 0}>
+                                            <DroppableModuleZone moduleId={module.id} isExpanded={expandedModules.includes(module.id)} isEmpty={!module.lessons || (module.lessons.length === 0 && !initialResources.some(r => r.module_id === module.id))}>
                                                 <div className="px-5 pt-3 pb-5">
-                                                    {/* Lessons Card Grid with Drag and Drop */}
+                                                    {/* Merged Lessons + Resources Grid with Drag and Drop */}
                                                     <SortableContext
                                                         items={module.lessons?.map((l: Lesson) => l.id) || []}
                                                         strategy={rectSortingStrategy}
                                                     >
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                                            {module.lessons?.map((lesson: Lesson, lessonIndex: number) => (
-                                                                <SortableLessonCard
-                                                                    key={lesson.id}
-                                                                    lesson={lesson}
-                                                                    moduleIndex={index}
-                                                                    lessonIndex={lessonIndex}
-                                                                    moduleId={module.id}
-                                                                    onOpenPanel={handleOpenPanel}
-                                                                />
-                                                            ))}
+                                                            {(() => {
+                                                                const moduleResources = initialResources.filter(r => r.module_id === module.id);
+                                                                const items: Array<{ type: 'lesson'; data: Lesson; order: number } | { type: 'resource'; data: Resource; order: number }> = [
+                                                                    ...(module.lessons || []).map((l: Lesson, i: number) => ({ type: 'lesson' as const, data: l, order: l.order ?? i })),
+                                                                    ...moduleResources.map((r, i) => ({ type: 'resource' as const, data: r, order: r.order ?? (1000 + i) }))
+                                                                ];
+                                                                items.sort((a, b) => a.order - b.order);
 
-                                                            {/* Add Lesson Button - also acts as drop target */}
+                                                                let lessonCounter = 0;
+                                                                return items.map((item) => {
+                                                                    if (item.type === 'lesson') {
+                                                                        lessonCounter++;
+                                                                        return (
+                                                                            <SortableLessonCard
+                                                                                key={item.data.id}
+                                                                                lesson={item.data}
+                                                                                moduleIndex={index}
+                                                                                lessonIndex={lessonCounter - 1}
+                                                                                moduleId={module.id}
+                                                                                onOpenPanel={handleOpenPanel}
+                                                                            />
+                                                                        );
+                                                                    } else {
+                                                                        return (
+                                                                            <ExpertModuleResourceCard
+                                                                                key={`resource-${item.data.id}`}
+                                                                                resource={item.data}
+                                                                                onEdit={() => handleOpenPanel('lesson', module.id, undefined, item.data.id)}
+                                                                            />
+                                                                        );
+                                                                    }
+                                                                });
+                                                            })()}
+
+                                                            {/* Add Item Button - also acts as drop target */}
                                                             <DroppableAddLessonButton
                                                                 moduleId={module.id}
                                                                 onClick={() => handleOpenPanel('lesson', module.id)}
@@ -887,9 +957,11 @@ export default function ExpertCourseBuilderClient({
                                 <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
                             </div>
 
-                            {initialResources.length > 0 ? (
+                            {(() => {
+                                const courseLevelResources = initialResources.filter(r => !r.module_id);
+                                return courseLevelResources.length > 0 ? (
                                 <div className="space-y-2">
-                                    {initialResources.map((resource) => (
+                                    {courseLevelResources.map((resource) => (
                                         <div
                                             key={resource.id}
                                             className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10"
@@ -907,7 +979,8 @@ export default function ExpertCourseBuilderClient({
                                     <Layers size={32} className="mx-auto text-slate-600 mb-2" />
                                     <p className="text-slate-500 text-sm">No resources yet. Click to add.</p>
                                 </div>
-                            )}
+                            );
+                            })()}
 
                             {/* Edit Overlay */}
                             <div className="absolute inset-0 bg-brand-blue-light/0 group-hover:bg-brand-blue-light/5 rounded-2xl transition-all duration-200 flex items-center justify-center pointer-events-none">
@@ -965,15 +1038,19 @@ export default function ExpertCourseBuilderClient({
                 courseId={initialCourse.id}
                 moduleId={editingModuleId || ''}
                 lessonId={editingLessonId}
-                lessonTitle={editingLesson?.title || ''}
-                lessonType={editingLesson?.type || 'video'}
+                lessonTitle={editingResource?.title || editingLesson?.title || ''}
+                lessonType={editingResource ? 'article' : (editingLesson?.type || 'video')}
                 lessonVideoUrl={(editingLesson as any)?.video_url || ''}
                 lessonContent={editingLesson?.content || ''}
                 lessonDuration={editingLesson?.duration || ''}
                 lessonQuizData={editingLesson?.quiz_data}
-                isNewLesson={!editingLessonId}
+                isNewLesson={!editingLessonId && !editingResourceId}
                 onSave={handlePanelSave}
                 onDelete={handlePanelSave}
+                resourceId={editingResourceId}
+                resourceUrl={editingResource?.url}
+                resourceType={editingResource?.type}
+                resourceSize={editingResource?.size}
             />
 
             <ResourcesEditorPanel
