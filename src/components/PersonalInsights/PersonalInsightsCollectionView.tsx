@@ -48,32 +48,38 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
     const init = async () => {
       setIsLoading(true);
 
-      // Check if we need to regenerate
-      const status = await shouldRegenerateInsights(userId);
+      try {
+        // Check if we need to regenerate
+        const status = await shouldRegenerateInsights(userId);
 
-      let loaded: PersonalInsight[] = [];
+        let loaded: PersonalInsight[] = [];
 
-      if (status.shouldRegenerate) {
-        setIsGenerating(true);
-        loaded = await generatePersonalInsights(userId);
-        setIsGenerating(false);
-      } else {
-        loaded = await fetchPersonalInsights(userId);
-      }
-
-      setInsights(loaded);
-      setIsLoading(false);
-
-      // If initialInsightId provided, auto-open that insight's detail panel
-      if (initialInsightId && loaded.length > 0) {
-        const target = loaded.find((i) => i.id === initialInsightId);
-        if (target) {
-          // Short timeout to ensure state is committed before opening panel
-          setTimeout(() => {
-            setSelectedInsight(target);
-            setIsDetailOpen(true);
-          }, 100);
+        if (status.shouldRegenerate) {
+          setIsGenerating(true);
+          loaded = await generatePersonalInsights(userId);
+          setIsGenerating(false);
+        } else {
+          loaded = await fetchPersonalInsights(userId);
         }
+
+        setInsights(loaded);
+
+        // If initialInsightId provided, auto-open that insight's detail panel
+        if (initialInsightId && loaded.length > 0) {
+          const target = loaded.find((i) => i.id === initialInsightId);
+          if (target) {
+            // Short timeout to ensure state is committed before opening panel
+            setTimeout(() => {
+              setSelectedInsight(target);
+              setIsDetailOpen(true);
+            }, 100);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load personal insights:', err);
+        setIsGenerating(false);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -84,9 +90,14 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
 
   const handleRefresh = useCallback(async () => {
     setIsGenerating(true);
-    const newInsights = await generatePersonalInsights(userId);
-    setInsights(newInsights);
-    setIsGenerating(false);
+    try {
+      const newInsights = await generatePersonalInsights(userId);
+      setInsights(newInsights);
+    } catch (err) {
+      console.error('Failed to refresh insights:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   }, [userId]);
 
   const handleViewDetail = useCallback((insight: PersonalInsight) => {

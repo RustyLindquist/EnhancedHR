@@ -22,7 +22,6 @@ import { COLLECTION_NAV_ITEMS } from '../constants';
 import { fetchCourseModules, fetchUserCourseProgress } from '../lib/courses';
 import { createClient } from '@/lib/supabase/client';
 import { Course, Collection, Module, DragItem, Resource, ContextCard, Conversation, ToolConversation, UserContextItem, ContextItemType, HelpTopic, LessonSearchResult, Note, Tool } from '../types';
-import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
 import { deleteContextItem } from '@/app/actions/context';
 import { deleteVideoResource } from '@/app/actions/videoResources';
@@ -1117,6 +1116,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         'to_learn',           // Watchlist
         'instructors',        // Experts directory
         'my-org',             // Organization hub
+        'personal-insights',  // Personal Insights
         // Note: 'assigned-learning' uses its own dedicated AssignedLearningCanvas
     ];
 
@@ -1458,18 +1458,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         }
     };
 
-    // Dashboard Stats for V3 Header
-    const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
-        totalTime: '0h 0m',
-        coursesCompleted: 0,
-        creditsEarned: 0,
-        streak: 0,
-        longestStreak: 0,
-        conversationCount: 0,
-        notesCount: 0,
-        insightsCount: 0,
-    });
-    const [statsLoading, setStatsLoading] = useState(true);
 
     // Fetch User on mount
     useEffect(() => {
@@ -1582,22 +1570,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         fetchUserAndMigrate();
     }, []);
 
-    // Fetch Dashboard Stats for V3 Header
-    useEffect(() => {
-        if (useDashboardV3 && activeCollectionId === 'dashboard' && user?.id) {
-            const loadStats = async () => {
-                try {
-                    const data = await fetchDashboardData(user.id);
-                    setDashboardStats(data.stats);
-                    setStatsLoading(false);
-                } catch (error) {
-                    console.error('Failed to load dashboard stats', error);
-                    setStatsLoading(false);
-                }
-            };
-            loadStats();
-        }
-    }, [useDashboardV3, activeCollectionId, user?.id]);
 
 
     // Track mouse for custom drag layer
@@ -4117,56 +4089,6 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                                 );
                                             })()}
                                         </div>
-                                    ) : useDashboardV3 && activeCollectionId === 'dashboard' ? (
-                                        /* Dashboard V3 Stats in Header - Smaller with warm glow */
-                                        <div className="flex items-center gap-4">
-                                            <div className="group relative flex items-center gap-1.5 cursor-default">
-                                                <div className="p-1.5 rounded-md text-brand-blue-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(120,192,240,0.6)]">
-                                                    <Clock size={14} />
-                                                </div>
-                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.totalTime}</span>
-                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                                    Total Learning Time
-                                                </div>
-                                            </div>
-
-                                            <div className="w-px h-4 bg-white/10" />
-
-                                            <div className="group relative flex items-center gap-1.5 cursor-default">
-                                                <div className="p-1.5 rounded-md text-purple-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
-                                                    <BookOpen size={14} />
-                                                </div>
-                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.coursesCompleted}</span>
-                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                                    Courses Completed
-                                                </div>
-                                            </div>
-
-                                            <div className="w-px h-4 bg-white/10" />
-
-                                            <div className="group relative flex items-center gap-1.5 cursor-default">
-                                                <div className="p-1.5 rounded-md text-brand-orange transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(255,147,0,0.6)]">
-                                                    <Award size={14} />
-                                                </div>
-                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.creditsEarned}</span>
-                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                                    Credits Earned
-                                                </div>
-                                            </div>
-
-                                            <div className="w-px h-4 bg-white/10" />
-
-                                            <div className="group relative flex items-center gap-1.5 cursor-default">
-                                                <div className="p-1.5 rounded-md text-emerald-400 transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">
-                                                    <Zap size={14} />
-                                                </div>
-                                                <span className="text-base font-light text-white/80 group-hover:text-white transition-colors">{statsLoading ? '—' : dashboardStats.streak}</span>
-                                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                                    Day Streak
-                                                </div>
-                                            </div>
-                                        </div>
-
                                     ) : (
                                         /* Standard Actions */
                                         <>
@@ -4219,6 +4141,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         activeCollectionId === 'research' ||
                                         activeCollectionId === 'to_learn' ||
                                         activeCollectionId === 'personal-context' ||
+                                        activeCollectionId === 'personal-insights' ||
                                         activeCollectionId === 'org-collections' ||
                                         activeCollectionId === 'my-org' ||
                                         viewingOrgCollection ||
@@ -4524,15 +4447,15 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                             // --- PERSONAL INSIGHTS COLLECTION VIEW ---
                             <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
                                 <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
-                                    <PersonalInsightsCollectionView
-                                        userId={user?.id}
+                                    {user?.id && <PersonalInsightsCollectionView
+                                        userId={user.id}
                                         viewMode={collectionViewMode}
                                         onAskPrometheus={(prompt) => {
                                             onSetAIPrompt(prompt);
                                             onOpenAIPanel();
                                         }}
                                         onOpenAIPanel={onOpenAIPanel}
-                                    />
+                                    />}
                                 </div>
                             </div>
                         ) : activeCollectionId === 'org-collections' ? (

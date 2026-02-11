@@ -45,12 +45,12 @@ const formatDateForInput = (date: Date) => date.toISOString().split('T')[0];
 
 // Stat card configs (no icons, centered)
 const STAT_CARDS = [
-    { key: 'totalActivities', label: 'Total Activities', color: 'text-brand-blue-light', glow: 'rgba(120,192,240,0.12)' },
-    { key: 'learningTime', label: 'Learning Time', color: 'text-blue-400', glow: 'rgba(96,165,250,0.12)' },
-    { key: 'aiInteractions', label: 'AI Interactions', color: 'text-purple-400', glow: 'rgba(167,139,250,0.12)' },
-    { key: 'coursesCompleted', label: 'Courses Done', color: 'text-emerald-400', glow: 'rgba(52,211,153,0.12)' },
-    { key: 'creditsEarned', label: 'Credits Earned', color: 'text-amber-400', glow: 'rgba(251,191,36,0.12)' },
-    { key: 'streak', label: 'Streak', color: 'text-orange-400', glow: 'rgba(251,146,60,0.12)' },
+    { key: 'totalActivities', label: 'Total Activities', color: 'text-brand-blue-light' },
+    { key: 'learningTime', label: 'Learning Time', color: 'text-blue-400' },
+    { key: 'aiInteractions', label: 'AI Interactions', color: 'text-purple-400' },
+    { key: 'coursesCompleted', label: 'Courses Done', color: 'text-emerald-400' },
+    { key: 'creditsEarned', label: 'Credits Earned', color: 'text-amber-400' },
+    { key: 'streak', label: 'Streak', color: 'text-orange-400' },
 ] as const;
 
 type PresetType = '7d' | '30d' | '60d' | '90d' | 'month' | 'all';
@@ -263,7 +263,7 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
             {/* Heatmap (left) + Stat Cards 3-col grid (right) — balanced row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 {/* Heatmap */}
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
+                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-5 hover:bg-white/[0.04] hover:border-white/[0.08] transition-[background-color,border-color] duration-300">
                     <h3 className="text-sm font-medium text-slate-300 mb-4 flex items-center gap-2">
                         <Flame size={14} className="text-orange-400" />
                         Activity
@@ -275,9 +275,13 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
                             startDate={formatDateForInput(startDate)}
                             endDate={formatDateForInput(endDate)}
                         />
-                    ) : (
+                    ) : loading ? (
                         <div className="h-[130px] flex items-center justify-center">
                             <div className="w-5 h-5 border-2 border-white/20 border-t-brand-blue-light rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                        <div className="h-[130px] flex items-center justify-center text-xs text-slate-500">
+                            No activity data available
                         </div>
                     )}
                 </div>
@@ -287,8 +291,7 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
                     {STAT_CARDS.map((card) => (
                         <div
                             key={card.key}
-                            className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-300 flex flex-col items-center justify-center text-center"
-                            style={{ boxShadow: `0 0 16px ${card.glow}` }}
+                            className="bg-white/[0.03] rounded-xl p-3 hover:bg-white/[0.06] transition-[background-color,transform] duration-300 hover:scale-[1.03] flex flex-col items-center justify-center text-center cursor-default"
                         >
                             <div className={`text-xl font-bold ${card.color} leading-none`}>
                                 {loading ? '—' : getStatValue(card.key)}
@@ -302,7 +305,7 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
             </div>
 
             {/* Full-Width Activity Trends Chart */}
-            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
+            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-5 hover:bg-white/[0.04] hover:border-white/[0.08] transition-[background-color,border-color] duration-300">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-medium text-slate-300">
                         Activity Trends
