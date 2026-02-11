@@ -34,6 +34,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Membership & Billing | membership-billing | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to org membership, roles, and access across the app | Exists |
 | Sales Console | sales-console | Medium | Backend + Frontend | doc-discovery, plan-lint | Coupled to admin-portal (sales toggle), auth-accounts (is_sales), leads (claiming), membership-billing (billing_disabled) | Exists |
 | Marketing Pages & SEO | marketing-pages | Low | Frontend | doc-discovery, style-validation | Separate from app-shell; coupled to experts (data fetch), leads (demo form); nav links duplicated in layout.tsx and MobileNav.tsx | Exists |
+| Inline Module Resources | inline-module-resources | Medium | Backend + Frontend | doc-discovery, plan-lint | Coupled to course-player-and-progress (navigation), author-portal (builder), admin-portal (builder), expert-resources (upload pattern); shared order column between lessons and resources | Exists |
 
 ## Meta / Development Infrastructure
 

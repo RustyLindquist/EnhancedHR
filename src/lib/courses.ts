@@ -123,7 +123,8 @@ export async function fetchCourseModules(courseId: number): Promise<Module[]> {
                 type: l.type,
                 video_url: l.video_url,
                 content: l.content,
-                quiz_data: l.quiz_data
+                quiz_data: l.quiz_data,
+                order: l.order ?? 0
             }))
     }));
 }

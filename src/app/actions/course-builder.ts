@@ -690,9 +690,23 @@ export async function createLesson(moduleId: string, data: {
         .order('order', { ascending: false })
         .limit(1);
 
-    const nextOrder = existingLessons && existingLessons.length > 0
-        ? (existingLessons[0].order || 0) + 1
-        : 0;
+    const lessonMax = existingLessons && existingLessons.length > 0
+        ? (existingLessons[0].order || 0)
+        : -1;
+
+    // Check module resources for shared ordering
+    const { data: existingModuleResources } = await admin
+        .from('resources')
+        .select('order')
+        .eq('module_id', moduleId)
+        .order('order', { ascending: false })
+        .limit(1);
+
+    const resourceMax = existingModuleResources && existingModuleResources.length > 0
+        ? (existingModuleResources[0].order || 0)
+        : -1;
+
+    const nextOrder = Math.max(lessonMax, resourceMax) + 1;
 
     const { data: lesson, error } = await admin
         .from('lessons')
@@ -947,7 +961,6 @@ export async function uploadCourseResourceFile(
 
         // 8. Generate embeddings for RAG (async, don't block)
         if (textContent && textContent.length > 0) {
-            const chunks = chunkText(textContent, 1000, 200);
             embedCourseResource(
                 resource.id,
                 courseId,
@@ -986,6 +999,250 @@ export async function uploadCourseResourceFile(
             error: error instanceof Error ? error.message : 'Failed to upload resource'
         };
     }
+}
+
+/**
+ * Upload a file as a module-level resource (inline within a module alongside lessons)
+ * Reuses the same upload/parse/embed logic as course-level resources
+ */
+export async function uploadModuleResourceFile(
+    courseId: number,
+    moduleId: string,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer
+): Promise<{ success: boolean; resource?: { id: string; title: string; type: string; url: string; size?: string; module_id: string; order: number }; error?: string }> {
+    const admin = await createAdminClient();
+
+    try {
+        // 1. Create File object for upload
+        const file = new File([fileBuffer], fileName, { type: fileType });
+
+        // 2. Upload to Supabase Storage
+        const uploadResult = await uploadCourseResourceToStorage(file, courseId);
+        if (!uploadResult.success) {
+            return { success: false, error: uploadResult.error || 'Failed to upload file' };
+        }
+
+        // 3. Parse file content for RAG
+        const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
+        const textContent = parseResult.success ? parseResult.text : '';
+
+        // 4. Generate AI summary if we have text content
+        let summary: string | null = null;
+        if (textContent && textContent.length > 50) {
+            try {
+                const truncatedText = textContent.substring(0, 2500);
+                const summaryPrompt = `Summarize the following document in 2-3 sentences, focusing on its main topic and key points:\n\n${truncatedText}`;
+                summary = await generateQuickAIResponse(summaryPrompt, 150);
+            } catch (err) {
+                console.warn('[uploadModuleResourceFile] Summary generation failed:', err);
+            }
+        }
+
+        // 5. Determine resource type and file size
+        const resourceType = detectResourceType(fileName, fileType);
+        const fileSizeFormatted = formatFileSize(fileBuffer.byteLength);
+
+        // 6. Compute shared order (max of lessons + resources in this module)
+        const { data: existingLessons } = await admin
+            .from('lessons')
+            .select('order')
+            .eq('module_id', moduleId)
+            .order('order', { ascending: false })
+            .limit(1);
+
+        const { data: existingResources } = await admin
+            .from('resources')
+            .select('order')
+            .eq('module_id', moduleId)
+            .order('order', { ascending: false })
+            .limit(1);
+
+        const lessonMax = existingLessons?.[0]?.order ?? -1;
+        const resourceMax = existingResources?.[0]?.order ?? -1;
+        const nextOrder = Math.max(lessonMax, resourceMax) + 1;
+
+        // 7. Insert resource record with module_id and order
+        const { data: resource, error: insertError } = await admin
+            .from('resources')
+            .insert({
+                course_id: courseId,
+                module_id: moduleId,
+                title: fileName,
+                type: resourceType,
+                url: uploadResult.url,
+                size: fileSizeFormatted,
+                order: nextOrder,
+                storage_path: uploadResult.path,
+                file_size_bytes: fileBuffer.byteLength,
+                mime_type: fileType,
+                parsed_text_length: textContent.length,
+                parse_error: parseResult.success ? null : parseResult.error,
+                summary
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[uploadModuleResourceFile] Insert error:', insertError);
+            await deleteFileFromStorage(uploadResult.path);
+            return { success: false, error: insertError.message };
+        }
+
+        // 8. Generate embeddings for RAG (async, don't block)
+        if (textContent && textContent.length > 0) {
+            embedCourseResource(
+                resource.id,
+                courseId,
+                fileName,
+                resourceType,
+                uploadResult.url,
+                textContent
+            ).then(result => {
+                if (result.success) {
+                    console.log(`[uploadModuleResourceFile] Created ${result.embeddingCount} embeddings for "${fileName}"`);
+                } else {
+                    console.error(`[uploadModuleResourceFile] Embedding failed: ${result.error}`);
+                }
+            }).catch(err => {
+                console.error('[uploadModuleResourceFile] Embedding error:', err);
+            });
+        }
+
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
+
+        return {
+            success: true,
+            resource: {
+                id: resource.id,
+                title: resource.title,
+                type: resource.type,
+                url: resource.url,
+                size: resource.size,
+                module_id: moduleId,
+                order: nextOrder
+            }
+        };
+
+    } catch (error) {
+        console.error('[uploadModuleResourceFile] Unexpected error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to upload module resource'
+        };
+    }
+}
+
+/**
+ * Update a module-level resource (title, etc.)
+ */
+export async function updateModuleResource(
+    resourceId: string,
+    courseId: number,
+    data: { title?: string }
+) {
+    const admin = await createAdminClient();
+
+    const updateData: Record<string, unknown> = {};
+    if (data.title !== undefined) updateData.title = data.title.trim();
+
+    if (Object.keys(updateData).length === 0) {
+        return { success: true };
+    }
+
+    const { error } = await admin
+        .from('resources')
+        .update(updateData)
+        .eq('id', resourceId);
+
+    if (error) {
+        console.error('[updateModuleResource] Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
+
+    return { success: true };
+}
+
+/**
+ * Delete a module-level resource
+ * Cleans up storage file and embeddings before removing the record
+ */
+export async function deleteModuleResource(
+    resourceId: string,
+    courseId: number
+) {
+    const admin = await createAdminClient();
+
+    // Get resource to check for storage_path
+    const { data: resource } = await admin
+        .from('resources')
+        .select('storage_path')
+        .eq('id', resourceId)
+        .single();
+
+    // Delete embeddings first (before the resource record)
+    deleteCourseResourceEmbeddings(resourceId).catch(err => {
+        console.error('[deleteModuleResource] Failed to delete embeddings:', err);
+    });
+
+    // Delete file from storage if it exists
+    if (resource?.storage_path) {
+        deleteFileFromStorage(resource.storage_path).catch(err => {
+            console.error('[deleteModuleResource] Failed to delete file from storage:', err);
+        });
+    }
+
+    const { error } = await admin
+        .from('resources')
+        .delete()
+        .eq('id', resourceId);
+
+    if (error) {
+        console.error('[deleteModuleResource] Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
+
+    return { success: true };
+}
+
+/**
+ * Reorder items (lessons + resources) within a module
+ * Updates the order column on both lessons and resources tables
+ */
+export async function reorderModuleItems(
+    moduleId: string,
+    courseId: number,
+    orderedItems: { id: string; type: 'lesson' | 'resource' }[]
+) {
+    const admin = await createAdminClient();
+
+    const updates = orderedItems.map((item, index) => {
+        const table = item.type === 'lesson' ? 'lessons' : 'resources';
+        return admin
+            .from(table)
+            .update({ order: index })
+            .eq('id', item.id);
+    });
+
+    const results = await Promise.all(updates);
+    const failed = results.find(r => r.error);
+
+    if (failed?.error) {
+        console.error('[reorderModuleItems] Error:', failed.error);
+        return { success: false, error: failed.error.message };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
+    return { success: true };
 }
 
 /**
@@ -1204,6 +1461,7 @@ export async function getCourseForBuilder(courseId: number) {
                 content: l.content,
                 quiz_data: l.quiz_data,
                 isCompleted: false,
+                order: l.order ?? 0,
                 // Transcript fields
                 ai_transcript: l.ai_transcript,
                 user_transcript: l.user_transcript,
@@ -1217,7 +1475,9 @@ export async function getCourseForBuilder(courseId: number) {
         title: r.title,
         type: r.type,
         url: r.url,
-        size: r.size
+        size: r.size,
+        module_id: r.module_id || null,
+        order: r.order ?? 0
     }));
 
     return {

@@ -363,6 +363,7 @@ export interface Lesson {
   content?: string; // Transcript or Article content (legacy)
   quiz_data?: QuizData; // JSONB data for quizzes
   isCompleted: boolean; // User specific
+  order?: number; // Display order within module (shared with resources)
   // Transcript fields
   ai_transcript?: string; // AI-generated transcript
   user_transcript?: string; // User-provided transcript override
@@ -404,7 +405,14 @@ export interface Resource {
   type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
   url: string;
   size?: string;
+  module_id?: string; // When set, resource appears inline within this module. null = course-level.
+  order?: number; // Display order within module (shared with lessons)
 }
+
+// Union type for items displayed within a module (lessons + inline resources)
+export type ModuleItem =
+  | { kind: 'lesson'; data: Lesson; order: number }
+  | { kind: 'resource'; data: Resource; order: number };
 
 // --- Standalone Expert Types ---
 // For expert profiles not tied to user accounts (e.g., experts no longer with the platform)
