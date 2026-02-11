@@ -19,6 +19,18 @@ type TranscriptTab = 'ai' | 'user';
 type TranscriptStatus = 'pending' | 'generating' | 'ready' | 'failed';
 type TranscriptSource = 'ai' | 'user' | 'mux-caption' | 'whisper' | 'youtube' | 'legacy' | 'none';
 
+function parseDurationToMinutes(duration: string | null | undefined): number {
+    if (!duration) return 0;
+    let totalSeconds = 0;
+    const hoursMatch = duration.match(/(\d+)\s*h/i);
+    if (hoursMatch) totalSeconds += parseInt(hoursMatch[1], 10) * 3600;
+    const minsMatch = duration.match(/(\d+)\s*m(?!s)/i);
+    if (minsMatch) totalSeconds += parseInt(minsMatch[1], 10) * 60;
+    const secsMatch = duration.match(/(\d+)\s*s/i);
+    if (secsMatch) totalSeconds += parseInt(secsMatch[1], 10);
+    return Math.round(totalSeconds / 60);
+}
+
 interface LessonEditorPanelProps {
     isOpen: boolean;
     onClose: () => void;
@@ -39,6 +51,7 @@ interface LessonEditorPanelProps {
     resourceUrl?: string;
     resourceType?: string;
     resourceSize?: string;
+    resourceEstimatedDuration?: string;
     // New dual transcript props
     lessonAiTranscript?: string;
     lessonUserTranscript?: string;
@@ -123,6 +136,7 @@ export default function LessonEditorPanel({
     resourceUrl,
     resourceType,
     resourceSize,
+    resourceEstimatedDuration,
     // New dual transcript props with fallback
     lessonAiTranscript,
     lessonUserTranscript = '',
@@ -180,6 +194,9 @@ export default function LessonEditorPanel({
     // Quiz data state
     const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
 
+    // Estimated time state (for quiz and file types)
+    const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
+
     // Transcript generation
     const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
 
@@ -191,6 +208,18 @@ export default function LessonEditorPanel({
             setVideoUrl(lessonVideoUrl);
             setDuration(lessonDuration);
             setQuizData(lessonQuizData);
+            // Initialize estimated minutes from existing data
+            if (resourceEstimatedDuration) {
+                // Editing an existing resource (file type)
+                const mins = parseDurationToMinutes(resourceEstimatedDuration);
+                setEstimatedMinutes(mins > 0 ? String(mins) : '');
+            } else if (lessonType === 'quiz' && lessonDuration) {
+                // Editing an existing quiz lesson
+                const mins = parseDurationToMinutes(lessonDuration);
+                setEstimatedMinutes(mins > 0 ? String(mins) : '');
+            } else {
+                setEstimatedMinutes('');
+            }
             setError(null);
             setShowDeleteConfirm(false);
             setIsUploading(false);
@@ -206,7 +235,7 @@ export default function LessonEditorPanel({
             setTranscriptStatus(lessonTranscriptStatus);
             setTranscriptSource(lessonTranscriptSource);
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, lessonAiTranscript, lessonUserTranscript, lessonTranscriptStatus, lessonTranscriptSource]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, lessonAiTranscript, lessonUserTranscript, lessonTranscriptStatus, lessonTranscriptSource, resourceEstimatedDuration]);
 
     // Helper function to format duration
     const formatDuration = (seconds: number): string => {
@@ -410,7 +439,19 @@ export default function LessonEditorPanel({
         startTransition(async () => {
             // Handle resource title update (editing existing resource)
             if (resourceId) {
-                const result = await updateModuleResource(resourceId, courseId, { title: title.trim() });
+                let resourceDuration: string | undefined;
+                if (estimatedMinutes) {
+                    const mins = parseFloat(estimatedMinutes);
+                    if (!isNaN(mins) && mins >= 0) {
+                        resourceDuration = mins >= 60
+                            ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                            : `${Math.round(mins)}m`;
+                    }
+                }
+                const result = await updateModuleResource(resourceId, courseId, {
+                    title: title.trim(),
+                    estimated_duration: resourceDuration
+                });
                 if (result.success) {
                     setShowSuccess(true);
                     setTimeout(() => {
@@ -429,12 +470,23 @@ export default function LessonEditorPanel({
                 try {
                     const file = selectedFiles[0];
                     const buffer = await file.arrayBuffer();
+                    // Convert minutes to duration string for resource
+                    let resourceDuration = '0m';
+                    if (estimatedMinutes) {
+                        const mins = parseFloat(estimatedMinutes);
+                        if (!isNaN(mins) && mins >= 0) {
+                            resourceDuration = mins >= 60
+                                ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                                : `${Math.round(mins)}m`;
+                        }
+                    }
                     const result = await uploadModuleResourceFile(
                         courseId,
                         moduleId,
                         file.name,
                         file.type,
-                        buffer
+                        buffer,
+                        resourceDuration
                     );
 
                     if (result.success) {
@@ -461,6 +513,17 @@ export default function LessonEditorPanel({
             // For backward compat, also set content to the effective transcript
             const effectiveContent = contentToSave !== undefined ? contentToSave : (finalUserTranscript || finalAiTranscript);
 
+            // Convert estimated minutes to duration string for quiz type
+            let effectiveDuration = duration;
+            if (type !== 'video' && estimatedMinutes) {
+                const mins = parseFloat(estimatedMinutes);
+                if (!isNaN(mins) && mins >= 0) {
+                    effectiveDuration = mins >= 60
+                        ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                        : `${Math.round(mins)}m`;
+                }
+            }
+
             let result;
             if (isNewLesson) {
                 result = await createLesson(moduleId, {
@@ -468,7 +531,7 @@ export default function LessonEditorPanel({
                     type,
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: effectiveContent || undefined,
-                    duration: duration || undefined,
+                    duration: effectiveDuration || undefined,
                     quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else if (lessonId) {
@@ -476,7 +539,7 @@ export default function LessonEditorPanel({
                     title: title.trim(),
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: effectiveContent || undefined,
-                    duration: duration || undefined,
+                    duration: effectiveDuration || undefined,
                     quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else {
@@ -495,7 +558,7 @@ export default function LessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, aiTranscript, userTranscript, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, aiTranscript, userTranscript, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -1151,6 +1214,37 @@ export default function LessonEditorPanel({
                                 {transcriptTab === 'ai' && ' Switch to "Manual Entry" to edit directly.'}
                             </p>
                         )}
+                    </div>
+                )}
+
+                {/* Estimated Time - For non-video types */}
+                {(type === 'quiz' || type === 'article') && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Estimated Completion Time
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={estimatedMinutes}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '' || (/^\d*\.?\d*$/.test(val) && parseFloat(val) >= 0)) {
+                                            setEstimatedMinutes(val);
+                                        }
+                                    }}
+                                    placeholder="0"
+                                    className="w-24 p-3 rounded-xl bg-white/5 border border-white/10 text-white text-center font-medium placeholder-slate-600 outline-none focus:border-brand-blue-light/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-slate-400 text-sm">minutes</span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-2">
+                            Estimate how long this {type === 'quiz' ? 'quiz' : 'resource'} will take learners to complete. This is added to the total course time.
+                        </p>
                     </div>
                 )}
 

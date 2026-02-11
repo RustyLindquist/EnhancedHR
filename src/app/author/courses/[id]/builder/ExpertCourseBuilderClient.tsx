@@ -1051,6 +1051,7 @@ export default function ExpertCourseBuilderClient({
                 resourceUrl={editingResource?.url}
                 resourceType={editingResource?.type}
                 resourceSize={editingResource?.size}
+                resourceEstimatedDuration={(editingResource as any)?.estimated_duration}
             />
 
             <ResourcesEditorPanel

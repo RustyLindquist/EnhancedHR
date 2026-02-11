@@ -18,6 +18,18 @@ type LessonType = 'video' | 'quiz' | 'article';
 type VideoSourceType = 'url' | 'upload';
 type TranscriptTab = 'ai' | 'user';
 
+function parseDurationToMinutes(duration: string | null | undefined): number {
+    if (!duration) return 0;
+    let totalSeconds = 0;
+    const hoursMatch = duration.match(/(\d+)\s*h/i);
+    if (hoursMatch) totalSeconds += parseInt(hoursMatch[1], 10) * 3600;
+    const minsMatch = duration.match(/(\d+)\s*m(?!s)/i);
+    if (minsMatch) totalSeconds += parseInt(minsMatch[1], 10) * 60;
+    const secsMatch = duration.match(/(\d+)\s*s/i);
+    if (secsMatch) totalSeconds += parseInt(secsMatch[1], 10);
+    return Math.round(totalSeconds / 60);
+}
+
 interface ExpertLessonEditorPanelProps {
     isOpen: boolean;
     onClose: () => void;
@@ -38,6 +50,7 @@ interface ExpertLessonEditorPanelProps {
     resourceUrl?: string;
     resourceType?: string;
     resourceSize?: string;
+    resourceEstimatedDuration?: string;
 }
 
 const LESSON_TYPES = [
@@ -64,7 +77,8 @@ export default function ExpertLessonEditorPanel({
     resourceId,
     resourceUrl,
     resourceType,
-    resourceSize
+    resourceSize,
+    resourceEstimatedDuration
 }: ExpertLessonEditorPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -83,6 +97,9 @@ export default function ExpertLessonEditorPanel({
     const [videoUrl, setVideoUrl] = useState(lessonVideoUrl);
     const [duration, setDuration] = useState(lessonDuration);
     const [quizData, setQuizData] = useState<QuizData | undefined>(lessonQuizData);
+
+    // Estimated time state (for quiz and file types)
+    const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
 
     // Dual transcript state
     const [aiTranscript, setAiTranscript] = useState(lessonContent);
@@ -129,6 +146,16 @@ export default function ExpertLessonEditorPanel({
             setTranscriptTab('ai');
             setDuration(lessonDuration);
             setQuizData(lessonQuizData);
+            // Initialize estimated minutes from existing data
+            if (resourceEstimatedDuration) {
+                const mins = parseDurationToMinutes(resourceEstimatedDuration);
+                setEstimatedMinutes(mins > 0 ? String(mins) : '');
+            } else if (lessonType === 'quiz' && lessonDuration) {
+                const mins = parseDurationToMinutes(lessonDuration);
+                setEstimatedMinutes(mins > 0 ? String(mins) : '');
+            } else {
+                setEstimatedMinutes('');
+            }
             setError(null);
             setShowDeleteConfirm(false);
             setIsUploading(false);
@@ -138,7 +165,7 @@ export default function ExpertLessonEditorPanel({
             setSelectedFiles([]);
             setIsUploadingFile(false);
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration]);
 
     const handleGenerateTranscript = useCallback(async () => {
         if (!videoUrl) {
@@ -294,7 +321,19 @@ export default function ExpertLessonEditorPanel({
         startTransition(async () => {
             // Handle resource title update (editing existing resource)
             if (resourceId) {
-                const result = await updateExpertModuleResource(resourceId, courseId, { title: title.trim() });
+                let resourceDuration: string | undefined;
+                if (estimatedMinutes) {
+                    const mins = parseFloat(estimatedMinutes);
+                    if (!isNaN(mins) && mins >= 0) {
+                        resourceDuration = mins >= 60
+                            ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                            : `${Math.round(mins)}m`;
+                    }
+                }
+                const result = await updateExpertModuleResource(resourceId, courseId, {
+                    title: title.trim(),
+                    estimated_duration: resourceDuration
+                });
                 if (result.success) {
                     setShowSuccess(true);
                     setTimeout(() => {
@@ -313,12 +352,23 @@ export default function ExpertLessonEditorPanel({
                 try {
                     const file = selectedFiles[0];
                     const buffer = await file.arrayBuffer();
+                    // Convert minutes to duration string for resource
+                    let resourceDuration = '0m';
+                    if (estimatedMinutes) {
+                        const mins = parseFloat(estimatedMinutes);
+                        if (!isNaN(mins) && mins >= 0) {
+                            resourceDuration = mins >= 60
+                                ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                                : `${Math.round(mins)}m`;
+                        }
+                    }
                     const result = await uploadExpertModuleResourceFile(
                         courseId,
                         moduleId,
                         file.name,
                         file.type,
-                        buffer
+                        buffer,
+                        resourceDuration
                     );
 
                     if (result.success) {
@@ -340,6 +390,18 @@ export default function ExpertLessonEditorPanel({
             }
 
             const finalContent = contentToSave !== undefined ? contentToSave : content;
+
+            // Convert estimated minutes to duration string for quiz type
+            let effectiveDuration = duration;
+            if (type !== 'video' && estimatedMinutes) {
+                const mins = parseFloat(estimatedMinutes);
+                if (!isNaN(mins) && mins >= 0) {
+                    effectiveDuration = mins >= 60
+                        ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
+                        : `${Math.round(mins)}m`;
+                }
+            }
+
             let result;
             if (isNewLesson) {
                 result = await createExpertLesson(moduleId, courseId, {
@@ -347,7 +409,7 @@ export default function ExpertLessonEditorPanel({
                     type,
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: finalContent || undefined,
-                    duration: duration || undefined,
+                    duration: effectiveDuration || undefined,
                     quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else if (lessonId) {
@@ -355,7 +417,7 @@ export default function ExpertLessonEditorPanel({
                     title: title.trim(),
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: finalContent || undefined,
-                    duration: duration || undefined,
+                    duration: effectiveDuration || undefined,
                     quiz_data: type === 'quiz' ? quizData : undefined
                 });
             } else {
@@ -374,7 +436,7 @@ export default function ExpertLessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -888,6 +950,37 @@ export default function ExpertLessonEditorPanel({
                                 {transcriptTab === 'ai' && ' Switch to "Manual Entry" to edit directly.'}
                             </p>
                         )}
+                    </div>
+                )}
+
+                {/* Estimated Time - For non-video types */}
+                {(type === 'quiz' || type === 'article') && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Estimated Completion Time
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={estimatedMinutes}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '' || (/^\d*\.?\d*$/.test(val) && parseFloat(val) >= 0)) {
+                                            setEstimatedMinutes(val);
+                                        }
+                                    }}
+                                    placeholder="0"
+                                    className="w-24 p-3 rounded-xl bg-white/5 border border-white/10 text-white text-center font-medium placeholder-slate-600 outline-none focus:border-brand-blue-light/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-slate-400 text-sm">minutes</span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-2">
+                            Estimate how long this {type === 'quiz' ? 'quiz' : 'resource'} will take learners to complete. This is added to the total course time.
+                        </p>
                     </div>
                 )}
 
