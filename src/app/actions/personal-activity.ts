@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export interface PersonalActivityFilters {
   startDate: string; // ISO date string (YYYY-MM-DD)
   endDate: string;   // ISO date string (YYYY-MM-DD)
+  includeHeatmap?: boolean; // default true — set false to skip 5 heatmap queries
 }
 
 export interface ActivityCategoryData {
@@ -100,17 +101,21 @@ export async function fetchPersonalActivityData(
   filters: PersonalActivityFilters
 ): Promise<PersonalActivityData> {
   const supabase = createAdminClient();
-  const { startDate, endDate } = filters;
+  const { startDate, endDate, includeHeatmap = true } = filters;
 
   // Build ISO timestamps for range queries
   const startISO = `${startDate}T00:00:00.000Z`;
   const endISO = `${endDate}T23:59:59.999Z`;
 
   // Heatmap date range (always 91 days, independent of filter range)
-  const ninetyOneDaysAgo = new Date();
-  ninetyOneDaysAgo.setDate(ninetyOneDaysAgo.getDate() - 91);
-  const heatmapStartDate = ninetyOneDaysAgo.toISOString().split('T')[0];
-  const heatmapEndDate = new Date().toISOString().split('T')[0];
+  let heatmapStartDate = '';
+  let heatmapEndDate = '';
+  if (includeHeatmap) {
+    const ninetyOneDaysAgo = new Date();
+    ninetyOneDaysAgo.setDate(ninetyOneDaysAgo.getDate() - 91);
+    heatmapStartDate = ninetyOneDaysAgo.toISOString().split('T')[0];
+    heatmapEndDate = new Date().toISOString().split('T')[0];
+  }
   const heatmapStartISO = `${heatmapStartDate}T00:00:00.000Z`;
   const heatmapEndISO = `${heatmapEndDate}T23:59:59.999Z`;
 
@@ -121,7 +126,10 @@ export async function fetchPersonalActivityData(
     .eq('user_id', userId);
   const collectionIds = userCollections?.map((c: any) => c.id) || [];
 
-  // Run ALL queries in parallel (main + heatmap) since they're independent
+  // Empty result placeholder for skipped heatmap queries
+  const emptyResult = Promise.resolve({ data: [] as any[] });
+
+  // Run queries in parallel — skip heatmap queries when includeHeatmap is false
   const [
     loginsResult,
     aiResult,
@@ -139,7 +147,7 @@ export async function fetchPersonalActivityData(
     heatContext,
     heatProgress,
   ] = await Promise.all([
-    // === Main date-range queries ===
+    // === Main date-range queries (always run) ===
 
     // 1. Logins
     supabase
@@ -165,7 +173,7 @@ export async function fetchPersonalActivityData(
           .in('collection_id', collectionIds)
           .gte('added_at', startISO)
           .lte('added_at', endISO)
-      : Promise.resolve({ data: [] as any[] }),
+      : emptyResult,
 
     // 3b. Collections created
     supabase
@@ -225,38 +233,38 @@ export async function fetchPersonalActivityData(
       .gte('issued_at', startISO)
       .lte('issued_at', endISO),
 
-    // === Heatmap queries (91-day fixed range) ===
+    // === Heatmap queries (91-day fixed range) — skipped when includeHeatmap is false ===
 
-    supabase
+    includeHeatmap ? supabase
       .from('login_events')
       .select('created_at')
       .eq('user_id', userId)
       .gte('created_at', heatmapStartISO)
-      .lte('created_at', heatmapEndISO),
-    supabase
+      .lte('created_at', heatmapEndISO) : emptyResult,
+    includeHeatmap ? supabase
       .from('ai_logs')
       .select('created_at')
       .eq('user_id', userId)
       .gte('created_at', heatmapStartISO)
-      .lte('created_at', heatmapEndISO),
-    supabase
+      .lte('created_at', heatmapEndISO) : emptyResult,
+    includeHeatmap ? supabase
       .from('notes')
       .select('created_at')
       .eq('user_id', userId)
       .gte('created_at', heatmapStartISO)
-      .lte('created_at', heatmapEndISO),
-    supabase
+      .lte('created_at', heatmapEndISO) : emptyResult,
+    includeHeatmap ? supabase
       .from('user_context_items')
       .select('created_at')
       .eq('user_id', userId)
       .gte('created_at', heatmapStartISO)
-      .lte('created_at', heatmapEndISO),
-    supabase
+      .lte('created_at', heatmapEndISO) : emptyResult,
+    includeHeatmap ? supabase
       .from('user_progress')
       .select('last_accessed')
       .eq('user_id', userId)
       .gte('last_accessed', heatmapStartISO)
-      .lte('last_accessed', heatmapEndISO),
+      .lte('last_accessed', heatmapEndISO) : emptyResult,
   ]);
 
   // Build daily buckets

@@ -29,6 +29,8 @@
   --animate-count-glow: count-glow 1000ms ease-out forwards;
   --animate-mist-drift-1: mist-drift 20s ease-in-out infinite;
   --animate-mist-drift-2: mist-drift 25s ease-in-out infinite reverse;
+  --animate-insight-orbit: insight-orbit 3s linear infinite;
+  --animate-insight-glow: insight-glow-pulse 3s ease-in-out infinite;
 
   /* Keyframes */
   @keyframes count-glow {
@@ -147,6 +149,29 @@
   @keyframes shine {
     100% {
       left: 125%;
+    }
+  }
+
+  @keyframes insight-orbit {
+    0% {
+      transform: translate(-50%, -50%) rotate(0deg) translateX(28px) rotate(0deg);
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 0.3;
+    }
+    100% {
+      transform: translate(-50%, -50%) rotate(360deg) translateX(28px) rotate(-360deg);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes insight-glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), 0 0 60px rgba(168, 85, 247, 0.05);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.25), 0 0 80px rgba(168, 85, 247, 0.1);
     }
   }
 

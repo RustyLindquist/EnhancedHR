@@ -49,6 +49,7 @@ import { HelpTopicId } from './help/HelpContent';
 import ToolsCollectionView from './tools/ToolsCollectionView';
 import OrgCollectionsView from './org/OrgCollectionsView';
 import MyOrganizationHub from './org/MyOrganizationHub';
+import PersonalInsightsCollectionView from './PersonalInsights/PersonalInsightsCollectionView';
 import { fetchToolsAction } from '@/app/actions/tools';
 import { deleteOrgCollection } from '@/app/actions/org';
 import { getCollectionSurfacePreferenceAction, updateCollectionSurfacePreferenceAction } from '@/app/actions/profile';
@@ -2547,6 +2548,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return prometheusConversationTitle || 'Prometheus AI';
         if (activeCollectionId === 'tools') return 'AI-Powered Tools';
         if (activeCollectionId === 'help') return 'Platform Features';
+        if (activeCollectionId === 'personal-insights') return 'Personal Insights';
         if (activeCollectionId === 'my-org') return 'My Organization';
         if (activeCollectionId === 'new-org-collection') return 'New Org Collection';
         if (activeCollectionId === 'org-collections') return 'Org Collections';
@@ -2573,6 +2575,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeCollectionId === 'prometheus') return 'AI Assistant';
         if (activeCollectionId === 'tools') return 'Tools Collection';
         if (activeCollectionId === 'help') return 'Help Collection';
+        if (activeCollectionId === 'personal-insights') return 'AI-Powered Insights';
         if (activeCollectionId === 'my-org') return 'Organization Hub';
         if (activeCollectionId === 'new-org-collection') return 'Create Collection';
         if (activeCollectionId === 'org-collections') return 'Organization';
@@ -4516,6 +4519,21 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     onSelectCollection={onSelectCollection}
                                     onNavigateToOrgCourses={() => { window.location.href = '/org-courses'; }}
                                 />
+                            </div>
+                        ) : activeCollectionId === 'personal-insights' ? (
+                            // --- PERSONAL INSIGHTS COLLECTION VIEW ---
+                            <div className="flex-1 w-full h-full overflow-y-auto relative z-10 custom-scrollbar">
+                                <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
+                                    <PersonalInsightsCollectionView
+                                        userId={user?.id}
+                                        viewMode={collectionViewMode}
+                                        onAskPrometheus={(prompt) => {
+                                            onSetAIPrompt(prompt);
+                                            onOpenAIPanel();
+                                        }}
+                                        onOpenAIPanel={onOpenAIPanel}
+                                    />
+                                </div>
                             </div>
                         ) : activeCollectionId === 'org-collections' ? (
                             // --- ORG COLLECTIONS VIEW ---
