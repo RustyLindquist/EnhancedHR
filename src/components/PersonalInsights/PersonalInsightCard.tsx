@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sprout,
   BarChart3,
@@ -107,7 +107,7 @@ interface PersonalInsightCardProps {
   animationDelay?: number;
 }
 
-export default function PersonalInsightCard({
+const PersonalInsightCard = React.memo(function PersonalInsightCard({
   insight,
   onViewDetail,
   onSave,
@@ -133,7 +133,7 @@ export default function PersonalInsightCard({
       className={`
         bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 cursor-pointer
         hover:bg-white/[0.06] hover:border-white/[0.12]
-        transition-all duration-200
+        transition-[background-color,border-color,color,opacity,transform] duration-200
         ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
       `}
       style={{ transitionDelay: `${animationDelay}ms` }}
@@ -159,7 +159,7 @@ export default function PersonalInsightCard({
               if (!isSaved) onSave(insight.id);
             }}
             className={`
-              p-1.5 rounded-lg transition-all duration-200
+              p-1.5 rounded-lg transition-[background-color,border-color,color,opacity,transform] duration-200
               ${isSaved
                 ? 'text-emerald-400 bg-emerald-500/10'
                 : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -174,7 +174,7 @@ export default function PersonalInsightCard({
               e.stopPropagation();
               onDismiss(insight.id);
             }}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-[background-color,border-color,color,opacity,transform] duration-200"
             title="Dismiss insight"
           >
             <X className="w-4 h-4" />
@@ -210,7 +210,7 @@ export default function PersonalInsightCard({
               if (insight.reaction !== 'helpful') onReact(insight.id, 'helpful');
             }}
             className={`
-              inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all duration-200
+              inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-[background-color,border-color,color,opacity,transform] duration-200
               ${insight.reaction === 'helpful'
                 ? 'text-emerald-400 bg-emerald-500/10'
                 : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -226,7 +226,7 @@ export default function PersonalInsightCard({
               if (insight.reaction !== 'not_helpful') onReact(insight.id, 'not_helpful');
             }}
             className={`
-              inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all duration-200
+              inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-[background-color,border-color,color,opacity,transform] duration-200
               ${insight.reaction === 'not_helpful'
                 ? 'text-red-400 bg-red-500/10'
                 : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -244,4 +244,6 @@ export default function PersonalInsightCard({
       </div>
     </div>
   );
-}
+});
+
+export default PersonalInsightCard;
