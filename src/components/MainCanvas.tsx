@@ -1462,7 +1462,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         totalTime: '0h 0m',
         coursesCompleted: 0,
         creditsEarned: 0,
-        streak: 0
+        streak: 0,
+        longestStreak: 0,
+        conversationCount: 0,
+        notesCount: 0,
+        insightsCount: 0,
     });
     const [statsLoading, setStatsLoading] = useState(true);
 
@@ -1863,6 +1867,15 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     };
 
     const handleOpenDrawer = () => toggleDrawer('filters');
+
+    // Listen for custom event from AIPanel to open prompt drawer
+    useEffect(() => {
+        const handleOpenPromptDrawer = () => {
+            toggleDrawer('prompts');
+        };
+        window.addEventListener('open:prompt-drawer', handleOpenPromptDrawer);
+        return () => window.removeEventListener('open:prompt-drawer', handleOpenPromptDrawer);
+    }, []);
 
     const handleCloseDrawer = () => {
         setIsDrawerOpen(false);
@@ -4380,11 +4393,9 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         onStartCourse={handleCourseClick}
                                         onOpenAIPanel={onOpenAIPanel}
                                         onSetAIPrompt={onSetAIPrompt}
-                                        onSetPrometheusPagePrompt={handlePrometheusPagePrompt}
                                         onAddCourse={(course) => onOpenModal(course)}
                                         onResumeConversation={onResumeConversation}
                                         onCourseDragStart={handleCourseDragStart}
-                                        onOpenDrawer={() => toggleDrawer('prompts')}
                                         onDeleteConversation={handleDeleteConversation}
                                         onConversationDragStart={(conv) => handleDragStart({
                                             type: 'CONVERSATION',

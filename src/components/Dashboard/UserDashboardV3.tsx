@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Clock,
     Award,
     TrendingUp,
     Play,
     Sparkles,
-    BookOpen,
-    Zap,
     MessageSquare,
     Layers,
     Loader2,
@@ -22,7 +19,7 @@ import { fetchConversationsAction } from '@/app/actions/conversations';
 import UniversalCard from '../cards/UniversalCard';
 import UniversalCollectionListItem from '../UniversalCollectionListItem';
 import { CollectionItemDetail } from '../UniversalCollectionCard';
-import PrometheusDashboardWidget from '../PrometheusDashboardWidget';
+import PersonalInsightsWidget from './PersonalInsightsWidget';
 
 interface UserDashboardV3Props {
     user: any;
@@ -32,11 +29,9 @@ interface UserDashboardV3Props {
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
     onSetAIPrompt: (prompt: string) => void;
-    onSetPrometheusPagePrompt: (prompt: string) => void;
     onAddCourse: (course: Course) => void;
     onResumeConversation?: (conversation: Conversation) => void;
     onCourseDragStart?: (courseId: number) => void;
-    onOpenDrawer: () => void;
     onDeleteConversation?: (conversationId: string) => void;
     onConversationDragStart?: (conversation: Conversation) => void;
     onAddConversation?: (conversation: Conversation) => void;
@@ -50,11 +45,9 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     onStartCourse,
     onOpenAIPanel,
     onSetAIPrompt,
-    onSetPrometheusPagePrompt,
     onAddCourse,
     onResumeConversation,
     onCourseDragStart,
-    onOpenDrawer,
     onDeleteConversation,
     onConversationDragStart,
     onAddConversation
@@ -63,13 +56,16 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
         totalTime: '0h 0m',
         coursesCompleted: 0,
         creditsEarned: 0,
-        streak: 0
+        streak: 0,
+        longestStreak: 0,
+        conversationCount: 0,
+        notesCount: 0,
+        insightsCount: 0,
     });
     const [loading, setLoading] = useState(true);
     const [trendingIds, setTrendingIds] = useState<number[]>([]);
     const [recertifications, setRecertifications] = useState<any[]>([]);
     const [userProgress, setUserProgress] = useState<Record<number, { progress: number, lastAccessed: string }>>({});
-
     // Tab State - Recommended is now first/default
     const [activeTab, setActiveTab] = useState<'trending' | 'recommended'>('recommended');
     const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
@@ -187,10 +183,6 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
 
     const trendingCourses = courses.filter(c => trendingIds.includes(c.id));
 
-    const handlePromptClick = (prompt: string) => {
-        onSetPrometheusPagePrompt(prompt);
-    };
-
     return (
         <div className="w-full h-full overflow-y-auto custom-scrollbar pb-32 relative">
             {/* Scrollable content - wider container for more cards per row */}
@@ -198,13 +190,10 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
             <div className="max-w-[1800px] mx-auto px-8 pt-[50px]">
 
                 {/* ══════════════════════════════════════════════════════════════════
-                    PROMETHEUS AI SECTION - Using Widget Component
+                    MY PROGRESS SECTION - Personal Insights Widget
                 ══════════════════════════════════════════════════════════════════ */}
                 <div className="relative z-10 mb-12">
-                    <PrometheusDashboardWidget
-                        onSetPrometheusPagePrompt={onSetPrometheusPagePrompt}
-                        onOpenDrawer={onOpenDrawer}
-                    />
+                    {user?.id && <PersonalInsightsWidget userId={user.id} />}
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════════

@@ -6,6 +6,10 @@ export interface DashboardStats {
     coursesCompleted: number;
     creditsEarned: number;
     streak: number;
+    longestStreak: number;
+    conversationCount: number;
+    notesCount: number;
+    insightsCount: number;
 }
 
 export interface DashboardData {
@@ -17,14 +21,107 @@ export interface DashboardData {
     trendingCourseIds: number[];
 }
 
+export async function fetchUserStreak(userId: string): Promise<number> {
+    const supabase = createClient();
+    try {
+        const { data, error } = await supabase.rpc('get_user_streak', { p_user_id: userId });
+        if (error) {
+            console.error('Error getting streak:', error);
+            return 0;
+        }
+        return data || 0;
+    } catch (e) {
+        console.error('Streak calculation failed:', e);
+        return 0;
+    }
+}
+
 export async function fetchDashboardData(userId: string): Promise<DashboardData> {
     const supabase = createClient();
 
-    // 1. Fetch User Progress Stats
-    const { data: progressData, error: progressError } = await supabase
-        .from('user_progress')
-        .select('view_time_seconds, is_completed, course_id, last_accessed')
-        .eq('user_id', userId);
+    // Streak RPC - kept in try-catch as RPC can fail differently
+    let streak = 0;
+    try {
+        const { data: streakData, error: streakError } = await supabase
+            .rpc('get_user_streak', { p_user_id: userId });
+
+        if (streakError) {
+            console.error('Error getting streak:', streakError);
+        } else {
+            streak = streakData || 0;
+        }
+    } catch (e) {
+        console.error('Streak calculation failed:', e);
+    }
+
+    // Run all independent queries in parallel
+    const [
+        progressResult,
+        creditsResult,
+        trendingResult,
+        certsResult,
+        conversationsResult,
+        notesResult,
+        insightsResult,
+        longestStreakResult,
+    ] = await Promise.all([
+        // User progress
+        supabase
+            .from('user_progress')
+            .select('view_time_seconds, is_completed, course_id, last_accessed')
+            .eq('user_id', userId),
+        // Credits ledger
+        supabase
+            .from('user_credits_ledger')
+            .select('amount')
+            .eq('user_id', userId),
+        // Trending courses
+        supabase
+            .from('courses')
+            .select('id')
+            .order('rating', { ascending: false })
+            .limit(4),
+        // Certificates
+        supabase
+            .from('certificates')
+            .select('*')
+            .eq('user_id', userId)
+            .order('issued_at', { ascending: false })
+            .limit(5),
+        // Conversation count
+        supabase
+            .from('conversations')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId),
+        // Notes count
+        supabase
+            .from('notes')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId),
+        // Insights count
+        supabase
+            .from('user_context_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('type', 'AI_INSIGHT'),
+        // Longest streak
+        supabase
+            .from('user_streaks')
+            .select('longest_streak')
+            .eq('user_id', userId)
+            .order('longest_streak', { ascending: false })
+            .limit(1),
+    ]);
+
+    // Destructure results
+    const { data: progressData, error: progressError } = progressResult;
+    const { data: creditsData } = creditsResult;
+    const { data: trendingData } = trendingResult;
+    const { data: certsData } = certsResult;
+    const { count: conversationCount } = conversationsResult;
+    const { count: notesCount } = notesResult;
+    const { count: insightsCount } = insightsResult;
+    const { data: longestStreakData } = longestStreakResult;
 
     if (progressError) {
         console.error('Error fetching progress:', progressError);
@@ -45,78 +142,15 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const totalTime = `${hours}h ${minutes}m`;
 
-    // 2. Fetch Credits (Mock for now, or fetch from ledger if exists)
-    // We'll assume a 'user_credits_ledger' table exists based on previous context, 
-    // but if not, we'll default to 0.
-    const { data: creditsData } = await supabase
-        .from('user_credits_ledger')
-        .select('amount')
-        .eq('user_id', userId);
-    
     const creditsEarned = creditsData?.reduce((sum, c) => sum + (Number(c.amount) || 0), 0) || 0;
 
-    // 3. Fetch In-Progress Courses details
-    // We need to fetch the actual course details for the active IDs
-    // Since we don't have a direct "get courses by IDs" helper easily accessible here without importing from lib/courses which might fetch ALL,
-    // we'll rely on the client-side 'courses' prop passed to the dashboard for rendering the course cards,
-    // BUT we can return the IDs here to filter them.
-    // Actually, for "Continue Learning", we want the most recently accessed ones.
-    
-    // Let's just return the stats and let the component filter the courses prop for now to save a network request,
-    // OR we can fetch specific course data if we want to be robust.
-    // Given the prompt asked to "connect to database", let's assume the 'courses' prop in UserDashboard 
-    // is already the full list. We just need to know WHICH ones are in progress.
-    
-    // 4. Streak - Get current streak
-    // Activity is recorded on app mount in MainCanvas, this just retrieves the streak value
-    let streak = 0;
-    try {
-        const { data: streakData, error: streakError } = await supabase
-            .rpc('get_user_streak', { p_user_id: userId });
-
-        if (streakError) {
-            console.error('Error getting streak:', streakError);
-        } else {
-            streak = streakData || 0;
-        }
-    } catch (e) {
-        console.error('Streak calculation failed:', e);
-    } 
-
-    // 5. Trending Courses (Mock for now, or fetch top rated)
-    // In a real app, we'd query: supabase.from('courses').select('*').order('rating', { ascending: false }).limit(4);
-    // Since we don't have the full course list here to return Course objects easily without a join, 
-    // we will return IDs or let the component handle it if it has the full list.
-    // The component has 'courses', so let's just return IDs of trending.
-    // Actually, let's just return the IDs of the top 4 rated courses from the DB.
-    const { data: trendingData } = await supabase
-        .from('courses')
-        .select('id')
-        .order('rating', { ascending: false })
-        .limit(4);
-    
     const trendingCourseIds = trendingData?.map(c => c.id) || [];
-
-    // 6. Recertifications (Fetch from certificates table)
-    const { data: certsData } = await supabase
-        .from('certificates')
-        .select('*')
-        .eq('user_id', userId)
-        .order('issued_at', { ascending: false })
-        .limit(5);
 
     // Map progress data for easy lookup
     const userProgress: Record<number, { progress: number, lastAccessed: string }> = {};
     progressData?.forEach(p => {
         if (!p.is_completed) {
-             // Calculate progress percentage if available, or default to something
-             // The table has view_time_seconds. We need total duration to calc %.
-             // Since we don't have course duration here, we might need to store % in user_progress or calc it on client.
-             // For now, let's assume the client will calculate it or we pass raw seconds.
-             // Wait, the user_progress table might not have % column.
-             // Let's check the schema if possible, or just pass what we have.
-             // The previous code used `p.view_time_seconds`.
-             userProgress[p.course_id] = { 
+             userProgress[p.course_id] = {
                  progress: 0, // Placeholder, will be calculated in component if needed or if we add column
                  lastAccessed: p.last_accessed
              };
@@ -128,13 +162,17 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
             totalTime,
             coursesCompleted: completedCount,
             creditsEarned,
-            streak
+            streak,
+            longestStreak: longestStreakData?.[0]?.longest_streak || 0,
+            conversationCount: conversationCount || 0,
+            notesCount: notesCount || 0,
+            insightsCount: insightsCount || 0,
         },
-        userProgress, // New field
-        inProgressCourses: [], 
+        userProgress,
+        inProgressCourses: [],
         completedCourses: [],
         recentCertificates: certsData || [],
-        trendingCourseIds
+        trendingCourseIds,
     };
 }
 
