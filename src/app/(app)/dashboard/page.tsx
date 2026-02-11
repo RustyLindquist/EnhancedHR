@@ -602,6 +602,7 @@ function HomeContent() {
       'org-collections': 'Company Collections',
       'assigned-learning': 'Assigned Learning',
       'recents': 'Recent Activity',
+      'personal-insights': 'Personal Insights',
     };
 
     // Check system collections first
@@ -724,9 +725,11 @@ function HomeContent() {
                 ? 'course_assistant'
                 : (activeCollectionId === 'dashboard' || activeCollectionId === 'my-org')
                   ? 'platform_assistant'
-                  : ['users-and-groups', 'org-team'].includes(activeCollectionId)
-                    ? 'team_analytics_assistant'
-                    : 'collection_assistant'
+                  : activeCollectionId === 'personal-insights'
+                    ? 'personal_insights_agent'
+                    : ['users-and-groups', 'org-team'].includes(activeCollectionId)
+                      ? 'team_analytics_assistant'
+                      : 'collection_assistant'
             }
             contextScope={contextScope}
             contextTitle={contextTitle}

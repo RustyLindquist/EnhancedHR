@@ -1,4 +1,4 @@
-export type AgentType = 'course_assistant' | 'course_tutor' | 'platform_assistant' | 'collection_assistant' | 'analytics_assistant' | 'org_engagement_analyst' | 'learning_roi_advisor' | 'skills_gap_detector' | 'conversation_insights_agent' | 'team_analytics_assistant' | 'org_course_assistant';
+export type AgentType = 'course_assistant' | 'course_tutor' | 'platform_assistant' | 'collection_assistant' | 'analytics_assistant' | 'org_engagement_analyst' | 'learning_roi_advisor' | 'skills_gap_detector' | 'conversation_insights_agent' | 'team_analytics_assistant' | 'org_course_assistant' | 'personal_insights_agent';
 
 export type ContextScopeType = 'COURSE' | 'COLLECTION' | 'PLATFORM' | 'USER' | 'ORG_COURSES';
 

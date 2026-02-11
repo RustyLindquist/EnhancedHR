@@ -189,9 +189,10 @@ export async function syncCourseCollections(userId: string, courseId: number, ta
 
 export const SYSTEM_COLLECTION_IDS = {
     favorites: 'Favorites',
-    research: 'Workspace', 
+    research: 'Workspace',
     to_learn: 'Watchlist',
-    'personal-context': 'Personal Context'
+    'personal-context': 'Personal Context',
+    'personal-insights': 'Personal Insights'
 };
 
 export async function ensureSystemCollections(userId: string): Promise<Record<string, string>> {
@@ -203,10 +204,11 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         .select('id, label')
         .eq('user_id', userId)
         .in('label', [
-            SYSTEM_COLLECTION_IDS.favorites, 
+            SYSTEM_COLLECTION_IDS.favorites,
             SYSTEM_COLLECTION_IDS.research,
             SYSTEM_COLLECTION_IDS.to_learn,
-            SYSTEM_COLLECTION_IDS['personal-context']
+            SYSTEM_COLLECTION_IDS['personal-context'],
+            SYSTEM_COLLECTION_IDS['personal-insights']
         ]);
         
     const map: Record<string, string> = {}; // { research: uuid, ... }
@@ -218,6 +220,7 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         if (c.label === SYSTEM_COLLECTION_IDS.research) map['research'] = c.id;
         if (c.label === SYSTEM_COLLECTION_IDS.to_learn) map['to_learn'] = c.id;
         if (c.label === SYSTEM_COLLECTION_IDS['personal-context']) map['personal-context'] = c.id;
+        if (c.label === SYSTEM_COLLECTION_IDS['personal-insights']) map['personal-insights'] = c.id;
     });
     
     // 2. Create missing ones
@@ -230,6 +233,7 @@ export async function ensureSystemCollections(userId: string): Promise<Record<st
         if (key === 'research') color = '#FF9300';
         if (key === 'to_learn') color = '#78C0F0';
         if (key === 'personal-context') color = '#64748B';
+        if (key === 'personal-insights') color = '#A78BFA';
         
         const { data } = await supabase
             .from('user_collections')

@@ -20,6 +20,7 @@ import {
   DollarSign,
   BarChart2,
   HelpCircle,
+  Lightbulb,
   StickyNote,
   Wrench,
   ClipboardList,
@@ -697,6 +698,7 @@ export const SALES_NAV_ITEMS: NavItemConfig[] = [
 
 export const COLLECTION_NAV_ITEMS: NavItemConfig[] = [
   { id: 'personal-context', label: 'Personal Context', icon: Brain },
+  { id: 'personal-insights', label: 'Personal Insights', icon: Lightbulb, color: 'text-purple-400' },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare, color: 'text-brand-blue-light' },
   { id: 'notes', label: 'All Notes', icon: StickyNote, color: 'text-amber-400' },
   { id: 'favorites', label: 'Favorites', icon: Star, color: 'text-brand-red' },

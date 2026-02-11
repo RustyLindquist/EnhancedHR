@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronDown, Check, Flame } from 'lucide-react';
 import { fetchPersonalActivityData, PersonalActivityData } from '@/app/actions/personal-activity';
 import { fetchUserStreak } from '@/lib/dashboard';
@@ -82,6 +82,10 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
     const [activityData, setActivityData] = useState<PersonalActivityData | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Request versioning — discard stale responses from rapid clicks
+    const requestVersionRef = useRef(0);
+    const hasLoadedRef = useRef(false);
+
     // Streak (from dashboard.ts, not date-filtered)
     const [streak, setStreak] = useState(0);
 
@@ -108,20 +112,32 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
     }, [userId]);
 
     // Fetch activity data when date range changes
+    // Debounced (250ms) to prevent multiple concurrent server calls from rapid clicks
+    // After first load, keeps old data visible (no loading flash) during transitions
     useEffect(() => {
         if (!userId) return;
-        setLoading(true);
-        const startStr = startDate.toISOString().split('T')[0];
-        const endStr = endDate.toISOString().split('T')[0];
-        fetchPersonalActivityData(userId, { startDate: startStr, endDate: endStr })
-            .then(data => {
-                setActivityData(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error('Failed to fetch activity data:', err);
-                setLoading(false);
-            });
+        const version = ++requestVersionRef.current;
+
+        const doFetch = () => {
+            if (!hasLoadedRef.current) setLoading(true);
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            fetchPersonalActivityData(userId, { startDate: startStr, endDate: endStr, includeHeatmap: false })
+                .then(data => {
+                    if (version !== requestVersionRef.current) return;
+                    hasLoadedRef.current = true;
+                    setActivityData(data);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    if (version !== requestVersionRef.current) return;
+                    console.error('Failed to fetch activity data:', err);
+                    setLoading(false);
+                });
+        };
+
+        const timer = setTimeout(doFetch, 250);
+        return () => clearTimeout(timer);
     }, [userId, startDate, endDate]);
 
     const handlePreset = (preset: PresetType) => {
@@ -150,6 +166,25 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
         setSelectedPreset(null);
         setEndDate(new Date(e.target.value));
     };
+
+    // Derive heatmap data from daily activity (eliminates separate heatmap queries)
+    const heatmapData = useMemo(() => {
+        if (!activityData?.dailyActivity) return [];
+        return activityData.dailyActivity.map(day => ({
+            date: day.date,
+            count: day.logins + day.aiInteractions + day.collectionUsage +
+                   day.notes + day.personalContext + day.customContent +
+                   day.lessonsCompleted + day.coursesCompleted,
+        }));
+    }, [activityData]);
+
+    // Dynamic heatmap header label
+    const rangeLabel = useMemo(() => {
+        if (selectedPreset === 'all') return 'All Time';
+        if (selectedPreset === 'month') return 'This Month';
+        const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return `${days} days`;
+    }, [startDate, endDate, selectedPreset]);
 
     // Compute stat card values
     const stats = activityData?.stats;
@@ -232,10 +267,14 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
                     <h3 className="text-sm font-medium text-slate-300 mb-4 flex items-center gap-2">
                         <Flame size={14} className="text-orange-400" />
                         Activity
-                        <span className="text-[10px] text-slate-600 font-normal ml-1">91 days</span>
+                        <span className="text-[10px] text-slate-600 font-normal ml-1">{rangeLabel}</span>
                     </h3>
                     {activityData ? (
-                        <ActivityHeatmap activityData={activityData.heatmapData} />
+                        <ActivityHeatmap
+                            activityData={heatmapData}
+                            startDate={formatDateForInput(startDate)}
+                            endDate={formatDateForInput(endDate)}
+                        />
                     ) : (
                         <div className="h-[130px] flex items-center justify-center">
                             <div className="w-5 h-5 border-2 border-white/20 border-t-brand-blue-light rounded-full animate-spin" />

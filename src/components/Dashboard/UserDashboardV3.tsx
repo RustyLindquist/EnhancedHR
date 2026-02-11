@@ -20,6 +20,7 @@ import UniversalCard from '../cards/UniversalCard';
 import UniversalCollectionListItem from '../UniversalCollectionListItem';
 import { CollectionItemDetail } from '../UniversalCollectionCard';
 import PersonalInsightsWidget from './PersonalInsightsWidget';
+import PersonalInsightsPreview from './PersonalInsightsPreview';
 
 interface UserDashboardV3Props {
     user: any;
@@ -195,6 +196,19 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                 <div className="relative z-10 mb-12">
                     {user?.id && <PersonalInsightsWidget userId={user.id} />}
                 </div>
+
+                {/* ══════════════════════════════════════════════════════════════════
+                    PERSONAL INSIGHTS PREVIEW - AI-Generated Insights
+                ══════════════════════════════════════════════════════════════════ */}
+                {user?.id && (
+                    <PersonalInsightsPreview
+                        userId={user.id}
+                        onViewAll={() => onNavigate('personal-insights')}
+                        onViewInsight={(insightId) => {
+                            onNavigate('personal-insights');
+                        }}
+                    />
+                )}
 
                 {/* ══════════════════════════════════════════════════════════════════
                     TABBED LEARNING SECTION - Trending / Recommended

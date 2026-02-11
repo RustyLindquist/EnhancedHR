@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { ContextResolver } from '@/lib/ai/context-resolver';
 import { generateQueryEmbedding } from '@/lib/ai/embedding';
 import { extractInsights, stripInsightTags } from '@/lib/ai/insight-analyzer';
@@ -223,6 +224,46 @@ export async function POST(req: NextRequest) {
             } catch (teamError) {
                 console.error('[Stream API] Error fetching team context:', teamError);
             }
+        }
+
+        // Inject user preference profile (from reaction feedback loop)
+        try {
+            const adminClient = createAdminClient();
+            const { data: prefProfile } = await adminClient
+                .from('user_context_items')
+                .select('content')
+                .eq('user_id', user.id)
+                .eq('title', 'Reaction Preference Profile')
+                .eq('type', 'AI_INSIGHT')
+                .maybeSingle();
+
+            if (prefProfile?.content && typeof prefProfile.content === 'object') {
+                const profile = prefProfile.content as any;
+                const prefLines: string[] = ['=== USER PREFERENCE PROFILE ==='];
+
+                // Category preferences
+                if (profile.categoryPreferences) {
+                    const sorted = Object.entries(profile.categoryPreferences)
+                        .sort((a: any, b: any) => b[1].score - a[1].score);
+                    const preferred = sorted.filter((e: any) => e[1].score >= 0.6).map(([c]) => c.replace(/_/g, ' '));
+                    const avoided = sorted.filter((e: any) => e[1].score < 0.4).map(([c]) => c.replace(/_/g, ' '));
+                    if (preferred.length > 0) prefLines.push(`Topics this user values: ${preferred.join(', ')}`);
+                    if (avoided.length > 0) prefLines.push(`Topics this user finds less helpful: ${avoided.join(', ')}`);
+                }
+
+                // Topic keywords
+                if (profile.topicsLiked?.length > 0) prefLines.push(`Preferred topics: ${profile.topicsLiked.join(', ')}`);
+                if (profile.topicsDisliked?.length > 0) prefLines.push(`Less preferred topics: ${profile.topicsDisliked.join(', ')}`);
+
+                // Engagement
+                if (profile.engagementLevel) prefLines.push(`Engagement level: ${profile.engagementLevel}`);
+
+                if (prefLines.length > 1) {
+                    contextString = `${contextString}\n\n${prefLines.join('\n')}`;
+                }
+            }
+        } catch (prefError) {
+            console.error('[Stream API] Error fetching preference profile:', prefError);
         }
 
         const encoder = new TextEncoder();
