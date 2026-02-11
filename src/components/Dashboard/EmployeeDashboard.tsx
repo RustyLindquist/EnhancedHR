@@ -37,7 +37,11 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
         totalTime: '0h 0m',
         coursesCompleted: 0,
         creditsEarned: 0,
-        streak: 0
+        streak: 0,
+        longestStreak: 0,
+        conversationCount: 0,
+        notesCount: 0,
+        insightsCount: 0,
     });
     const [loading, setLoading] = useState(true);
     const [isPromptPanelOpen, setIsPromptPanelOpen] = useState(false);

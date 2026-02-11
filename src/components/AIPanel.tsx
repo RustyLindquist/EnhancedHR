@@ -7,6 +7,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { parseStreamResponse, stripInsightTags, StreamInsightMetadata } from '@/lib/ai/insight-stream-parser';
 import { AIResponseFooter } from '@/components/ai';
 import AIPanelNotesTab from './AIPanelNotesTab';
+import { PromptSuggestion, fetchPromptSuggestionsAction } from '@/app/actions/prompts';
 
 interface NoteDragItem {
   type: 'NOTE';
@@ -32,6 +33,15 @@ interface AIPanelProps {
 }
 
 import { Message } from '@/types';
+
+const PROMPT_ACCENT_COLORS = [
+    'from-blue-500/20 to-transparent',
+    'from-emerald-500/20 to-transparent',
+    'from-purple-500/20 to-transparent',
+    'from-amber-500/20 to-transparent',
+    'from-rose-500/20 to-transparent',
+    'from-cyan-500/20 to-transparent'
+];
 
 const AIPanel: React.FC<AIPanelProps> = ({
   isOpen,
@@ -84,6 +94,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
   // Insight metadata from the last AI response
   const [insightMetadata, setInsightMetadata] = useState<StreamInsightMetadata | null>(null);
 
+  // Dashboard prompt suggestions for platform_assistant
+  const [dashboardPrompts, setDashboardPrompts] = useState<PromptSuggestion[]>([]);
+
   // Store conversation state per mode (for Course scope - separate Assistant vs Tutor conversations)
   interface ConversationState {
     id: string | null;
@@ -123,6 +136,17 @@ const AIPanel: React.FC<AIPanelProps> = ({
       document.body.style.cursor = 'default';
     };
   }, [isDragging]);
+
+  // Fetch dashboard prompts for platform_assistant
+  useEffect(() => {
+    if (effectiveAgentType === 'platform_assistant') {
+      const loadPrompts = async () => {
+        const prompts = await fetchPromptSuggestionsAction('user_dashboard');
+        setDashboardPrompts(prompts.slice(0, 6));
+      };
+      loadPrompts();
+    }
+  }, [effectiveAgentType]);
 
   const lastProcessedPromptRef = useRef<string | undefined>(undefined);
 
@@ -730,8 +754,8 @@ const AIPanel: React.FC<AIPanelProps> = ({
                       )}
                       {effectiveAgentType === 'platform_assistant' && (
                         <>
-                          <p>I'm Prometheus, your Platform Assistant.</p>
-                          <p className="mt-2 text-slate-400 text-xs">Ask me about any course, help finding content, or general HR questions.</p>
+                          <p><em>I'm Prometheus, the platform assistant</em></p>
+                          <p className="mt-2 text-slate-400 text-xs">What would you like help with today? Click an option below, or start your own conversation.</p>
                         </>
                       )}
                       {effectiveAgentType === 'collection_assistant' && (
@@ -777,17 +801,36 @@ const AIPanel: React.FC<AIPanelProps> = ({
                         </button>
                       </>
                     )}
-                    {effectiveAgentType === 'platform_assistant' && (
-                      <>
-                        <button onClick={() => handleSendMessage("Find courses on Leadership")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                          Find Leadership courses
-                        </button>
-                        <button onClick={() => handleSendMessage("How do I earn credits?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-orange/30 text-slate-400 hover:text-brand-orange px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
-                          How to earn credits?
-                        </button>
-                      </>
-                    )}
                   </div>
+
+                  {/* Platform Assistant Prompt Cards */}
+                  {effectiveAgentType === 'platform_assistant' && dashboardPrompts.length > 0 && (
+                    <div className="pl-11 space-y-3">
+                      <div className="grid grid-cols-1 gap-2">
+                        {dashboardPrompts.map((prompt, index) => (
+                          <button
+                            key={prompt.id}
+                            onClick={() => handleSendMessage(prompt.prompt)}
+                            className="group relative bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-3 text-left transition-all duration-300"
+                          >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${PROMPT_ACCENT_COLORS[index % PROMPT_ACCENT_COLORS.length]} opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-500`} />
+                            <div className="relative z-10">
+                              <h3 className="text-xs font-medium text-slate-300 group-hover:text-white transition-colors line-clamp-2 leading-relaxed">{prompt.label}</h3>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-center pt-2">
+                        <button
+                          onClick={() => window.dispatchEvent(new Event('open:prompt-drawer'))}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 hover:bg-brand-blue-light/20 border border-brand-blue-light/30 text-brand-blue-light text-[10px] font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_12px_rgba(120,192,240,0.2)]"
+                        >
+                          <Sparkles size={10} />
+                          <span>See More Prompt Ideas</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Disclaimer Text */}
                   <div className="w-full flex justify-center pt-4 pb-2">
