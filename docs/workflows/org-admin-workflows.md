@@ -1,7 +1,7 @@
 # Organization Admin Workflows
 
 > **Status**: Stub — to be populated as workflows are discovered and documented
-> **Last Updated**: 2026-01-04
+> **Last Updated**: 2026-02-12
 
 ## Role Overview
 
@@ -17,6 +17,34 @@ Organization Admins manage their company's learning program on EnhancedHR.ai. Th
 **Access Level**: Organization-scoped access via `/org/*` routes
 
 ## Primary Workflows
+
+### Marketing Evaluation and Demo Request
+
+**Goal**: Evaluate platform fit and request a guided rollout conversation
+**Frequency**: One-time / Quarterly reassessment
+**Features Involved**: `marketing-pages`, `membership-billing`, `organization-membership`
+
+#### Steps
+1. Visit a marketing route (homepage, `/platform`, `/organizations`, or campaign pages under `/lp/*`)
+2. Review org-fit messaging (groups, org courses, collections, analytics, pricing)
+3. Click either:
+   - `Start Free Trial` (`/login?view=signup`) for self-guided evaluation
+   - `Schedule a Demo` (`/demo`) for a guided rollout conversation
+4. Complete signup or demo form
+5. Continue into org onboarding and initial team setup
+
+#### Variations
+- Campaign-specific landing pages (`/lp/1`, `/lp/2`, `/lp/3`)
+- Returning user sees `Go to Dashboard` instead of `Start Free Trial`
+
+#### Success Criteria
+- Admin can quickly understand org use cases and pricing
+- Admin can choose a frictionless next step (trial or demo)
+- Handoff to onboarding/setup flow is clear
+
+#### Related Workflows
+- Team Member Management
+- Organization Course Management
 
 ### Organization Hub Navigation
 
