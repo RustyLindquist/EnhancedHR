@@ -951,6 +951,98 @@ export default async function MarketingHomePage() {
             <MarketingDivider />
 
             {/* ═══════════════════════════════════════════
+                EXPLORE MORE — Landing Page Links
+            ═══════════════════════════════════════════ */}
+            <section className="py-28 relative">
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
+                            <Layers size={12} /> DIVE DEEPER
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                            Want to Learn More?
+                        </h2>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                            Explore different perspectives on how EnhancedHR transforms the way HR teams learn, lead, and grow.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[
+                            {
+                                title: 'From Human Resources to Human Relevance',
+                                desc: 'An identity-first perspective on why HR leaders deserve a platform built for them.',
+                                href: '/lp/9',
+                                color: '#FF9300',
+                                label: 'Identity',
+                            },
+                            {
+                                title: 'AI Won\u2019t Save You. Your People Will.',
+                                desc: 'A provocative take on why AI is table stakes and decision velocity is the real advantage.',
+                                href: '/lp/8',
+                                color: '#4B8BB3',
+                                label: 'Challenger',
+                            },
+                            {
+                                title: 'Learn Faster. Know More. Stay Certified.',
+                                desc: 'A features-first walkthrough of everything the platform delivers, from AI agents to recertification.',
+                                href: '/lp/7',
+                                color: '#78C0F0',
+                                label: 'Features',
+                            },
+                            {
+                                title: 'Build the Capability Operating System',
+                                desc: 'A systems-thinking approach to turning scattered knowledge into organizational capability.',
+                                href: '/lp/3',
+                                color: '#FF2600',
+                                label: 'Systems',
+                            },
+                            {
+                                title: 'AI Is Table Stakes. What\u2019s Next?',
+                                desc: 'A thought-leadership challenge to rethink how organizations turn knowledge into speed.',
+                                href: '/lp/2',
+                                color: '#FF9300',
+                                label: 'Thought Leadership',
+                            },
+                            {
+                                title: 'One Platform for Learning, Knowledge & AI',
+                                desc: 'A comprehensive overview of how academy, collections, AI agents, and org tools work together.',
+                                href: '/lp/1',
+                                color: '#4B8BB3',
+                                label: 'Overview',
+                            },
+                        ].map((page, i) => (
+                            <FadeIn key={i} delay={i * 80}>
+                                <Link
+                                    href={page.href}
+                                    className="group block p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-300 h-full"
+                                >
+                                    <div className="mb-4">
+                                        <span
+                                            className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                                            style={{ backgroundColor: `${page.color}15`, color: page.color }}
+                                        >
+                                            {page.label}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-3 leading-snug">
+                                        {page.title}
+                                    </h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed mb-4">{page.desc}</p>
+                                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold group-hover:gap-2 transition-all" style={{ color: page.color }}>
+                                        Read More
+                                        <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                    </span>
+                                </Link>
+                            </FadeIn>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* ═══════════════════════════════════════════
                 FINAL CTA
             ═══════════════════════════════════════════ */}
             <section className="py-32 bg-[#0B1120]/40 relative overflow-hidden">
