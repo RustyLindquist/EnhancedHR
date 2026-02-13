@@ -4,7 +4,7 @@ import {
     ArrowRight, Check, BookOpen, Brain, Users,
     Building2, Award, MessageSquare,
     GraduationCap, Layers, BarChart3, Sparkles,
-    FolderOpen, Bot, Target, Zap, Shield,
+    FolderOpen, Bot, Target, Zap, Shield, Wrench,
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
 import HeroBackground from '@/components/marketing/HeroBackground';
@@ -45,6 +45,20 @@ const platformPillars = [
         body: 'Custom groups, org-specific courses, centralized knowledge bases, and analytics. Deploy learning with the controls you actually need.',
         color: '#4B8BB3',
         href: '/organizations',
+    },
+    {
+        icon: <Wrench size={20} />,
+        title: 'AI Tools',
+        body: 'Purpose-built tools for HR: RolePlay Dojo for difficult conversations, Disruption Forecasting for AI impact, Skills Gap Analysis for workforce planning.',
+        color: '#FF2600',
+        href: '/ai-tools',
+    },
+    {
+        icon: <Award size={20} />,
+        title: 'Recertification',
+        body: 'Automatic SHRM PDC and HRCI credit tracking from the moment you start watching. Audit-proof certificates generated instantly upon completion.',
+        color: '#FF9300',
+        href: '/academy',
     },
 ];
 
@@ -337,11 +351,11 @@ export default function LP7FeaturesValuePage() {
                             One Platform. Everything HR Needs.
                         </h2>
                         <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                            Four integrated pillars covering learning, knowledge management, AI intelligence, and organizational tools.
+                            Six integrated pillars covering learning, knowledge management, AI intelligence, organizational tools, and professional growth.
                         </p>
                     </FadeIn>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {platformPillars.map((pillar, index) => (
                             <FadeIn key={pillar.title} delay={index * 80}>
                                 <Link
