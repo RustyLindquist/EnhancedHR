@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, History, Bookmark, Info } from 'lucide-react';
 import {
   PersonalInsight,
   fetchPersonalInsights,
+  fetchPastInsights,
   generatePersonalInsights,
   saveInsightToContext,
   dismissInsight,
@@ -15,7 +16,6 @@ import PersonalInsightCard from './PersonalInsightCard';
 import PersonalInsightListItem from './PersonalInsightListItem';
 import PersonalInsightDetailPanel from './PersonalInsightDetailPanel';
 import InsightGenerationOverlay from './InsightGenerationOverlay';
-import PersonalInsightsWidget from '@/components/Dashboard/PersonalInsightsWidget';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +37,7 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
   initialInsightId,
 }) => {
   const [insights, setInsights] = useState<PersonalInsight[]>([]);
+  const [pastInsightsList, setPastInsightsList] = useState<PersonalInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<PersonalInsight | null>(null);
@@ -56,13 +57,19 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
 
         if (status.shouldRegenerate) {
           setIsGenerating(true);
-          loaded = await generatePersonalInsights(userId);
+          loaded = await generatePersonalInsights(userId, {
+            noveltyMode: status.noveltyMode,
+          });
           setIsGenerating(false);
         } else {
           loaded = await fetchPersonalInsights(userId);
         }
 
         setInsights(loaded);
+
+        // Fetch past insights (previous generation batch)
+        const past = await fetchPastInsights(userId);
+        setPastInsightsList(past);
 
         // If initialInsightId provided, auto-open that insight's detail panel
         if (initialInsightId && loaded.length > 0) {
@@ -91,8 +98,11 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
   const handleRefresh = useCallback(async () => {
     setIsGenerating(true);
     try {
-      const newInsights = await generatePersonalInsights(userId);
+      const newInsights = await generatePersonalInsights(userId, { noveltyMode: true });
       setInsights(newInsights);
+      // After refresh, the previous active batch is now expired — re-fetch past insights
+      const past = await fetchPastInsights(userId);
+      setPastInsightsList(past);
     } catch (err) {
       console.error('Failed to refresh insights:', err);
     } finally {
@@ -114,19 +124,17 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
     async (insightId: string) => {
       const result = await saveInsightToContext(insightId, userId);
       if (result.success) {
-        // Update local state to reflect saved status
+        const savedUpdate = { status: 'saved' as const, saved_at: new Date().toISOString() };
+        // Update both recent and past local state
         setInsights((prev) =>
-          prev.map((i) =>
-            i.id === insightId
-              ? { ...i, status: 'saved' as const, saved_at: new Date().toISOString() }
-              : i,
-          ),
+          prev.map((i) => (i.id === insightId ? { ...i, ...savedUpdate } : i)),
+        );
+        setPastInsightsList((prev) =>
+          prev.map((i) => (i.id === insightId ? { ...i, ...savedUpdate } : i)),
         );
         // Also update detail panel if open
         setSelectedInsight((prev) =>
-          prev?.id === insightId
-            ? { ...prev, status: 'saved' as const, saved_at: new Date().toISOString() }
-            : prev,
+          prev?.id === insightId ? { ...prev, ...savedUpdate } : prev,
         );
       }
     },
@@ -136,8 +144,9 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
   const handleDismiss = useCallback(
     async (insightId: string) => {
       await dismissInsight(insightId, userId);
-      // Remove from local state
+      // Remove from both recent and past local state
       setInsights((prev) => prev.filter((i) => i.id !== insightId));
+      setPastInsightsList((prev) => prev.filter((i) => i.id !== insightId));
       // Close detail if viewing this insight
       setSelectedInsight((prev) => {
         if (prev?.id === insightId) {
@@ -153,8 +162,11 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
   const handleReact = useCallback(
     async (insightId: string, reaction: 'helpful' | 'not_helpful') => {
       await reactToInsight(insightId, reaction, userId);
-      // Update local state
+      // Update both recent and past local state
       setInsights((prev) =>
+        prev.map((i) => (i.id === insightId ? { ...i, reaction } : i)),
+      );
+      setPastInsightsList((prev) =>
         prev.map((i) => (i.id === insightId ? { ...i, reaction } : i)),
       );
       setSelectedInsight((prev) =>
@@ -187,7 +199,7 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
           <div className="flex items-center gap-3">
             <Sparkles size={20} className="text-purple-400" />
             <div>
-              <h2 className="text-xl font-bold text-white">Personal Insights</h2>
+              <h2 className="text-xl font-bold text-white">Recent Insights</h2>
               <p className="text-sm text-slate-500 mt-0.5">
                 AI-generated insights based on your platform activity
               </p>
@@ -257,8 +269,65 @@ const PersonalInsightsCollectionView: React.FC<PersonalInsightsCollectionViewPro
         )}
       </div>
 
-      {/* ── Section: Platform Activity ── */}
-      <PersonalInsightsWidget userId={userId} />
+      {/* ── Retention Note + Past Insights ── */}
+      {!isLoading && !isGenerating && insights.length > 0 && (
+        <div className="flex items-start gap-3 rounded-xl bg-blue-500/[0.06] border border-blue-400/[0.1] px-5 py-4">
+          <Info size={18} className="text-blue-400/70 shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Personal Insights are automatically saved for 30 days. If there&apos;s an insight you
+            want to keep longer, click the{' '}
+            <Bookmark size={13} className="inline-block text-slate-300 -mt-0.5" />{' '}
+            bookmark icon to add it to your Personal Context Collection, where you can manage
+            it separately.
+          </p>
+        </div>
+      )}
+
+      {pastInsightsList.length > 0 && (
+        <>
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <History size={20} className="text-slate-500" />
+              <div>
+                <h2 className="text-xl font-bold text-white">Past Insights</h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Previous insights from the last 30 days
+                </p>
+              </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {pastInsightsList.map((insight, index) => (
+                  <PersonalInsightCard
+                    key={insight.id}
+                    insight={insight}
+                    onViewDetail={handleViewDetail}
+                    onSave={handleSave}
+                    onDismiss={handleDismiss}
+                    onReact={handleReact}
+                    animationDelay={index * 100}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pastInsightsList.map((insight, index) => (
+                  <PersonalInsightListItem
+                    key={insight.id}
+                    insight={insight}
+                    onViewDetail={handleViewDetail}
+                    onSave={handleSave}
+                    onDismiss={handleDismiss}
+                    onReact={handleReact}
+                    animationDelay={index * 80}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* ── Detail Panel ── */}
       <PersonalInsightDetailPanel

@@ -30,11 +30,30 @@ export interface PersonalInsight {
   created_at: string;
 }
 
+// Agent types that represent system/admin processes rather than personal learning behavior.
+// These are excluded from the data fed to the Personal Insights agent.
+const EXCLUDED_AGENT_TYPES = [
+  'generate_recommendations',  // System-triggered course recommendation engine
+  'personal_insights_agent',   // Circular — the agent's own previous calls
+  'backend_ai',                // Backend processing (summarization, extraction)
+  'org_engagement_analyst',    // Org admin analytics
+  'learning_roi_advisor',      // Org admin analytics
+  'skills_gap_detector',       // Org admin analytics
+  'conversation_insights_agent', // Org admin analytics
+  'team_analytics_assistant',  // Org admin analytics
+  'org_course_assistant',      // Org admin analytics
+  'analytics_assistant',       // Admin analytics tool
+];
+
 // ── 1. generatePersonalInsights ──────────────────────────────────────────────
 
-export async function generatePersonalInsights(userId: string): Promise<PersonalInsight[]> {
+export async function generatePersonalInsights(
+  userId: string,
+  options?: { noveltyMode?: boolean }
+): Promise<PersonalInsight[]> {
   try {
     const supabase = createAdminClient();
+    const noveltyMode = options?.noveltyMode ?? false;
 
     // ── a) Gather ALL user data in parallel ──────────────────────────────────
 
@@ -70,6 +89,7 @@ export async function generatePersonalInsights(userId: string): Promise<Personal
         .from('ai_logs')
         .select('agent_type, page_context, created_at')
         .eq('user_id', userId)
+        .not('agent_type', 'in', `(${EXCLUDED_AGENT_TYPES.join(',')})`)
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
@@ -95,7 +115,7 @@ export async function generatePersonalInsights(userId: string): Promise<Personal
     // Edge case: user with no data at all
     const hasAnyData =
       (conversations?.length ?? 0) > 0 ||
-      (contextItems?.length ?? 0) > 0 ||
+      (contextItems?.length ?? 0) > 0 ||  // Use unfiltered here — any context = not a blank user
       (courseProgress?.length ?? 0) > 0 ||
       (certificates?.length ?? 0) > 0 ||
       (aiLogs?.length ?? 0) > 0 ||
@@ -144,12 +164,18 @@ export async function generatePersonalInsights(userId: string): Promise<Personal
       (coursesData || []).forEach((c) => coursesMap.set(c.id, c));
     }
 
-    // ── b) Count source items ────────────────────────────────────────────────
+    // ── b) Filter and count source items ─────────────────────────────────────
+
+    // Exclude system-generated context items (Reaction Preference Profile is
+    // already handled in the dedicated PAST INSIGHT REACTIONS section)
+    const filteredContextItems = (contextItems || []).filter(
+      (item) => !(item.type === 'AI_INSIGHT' && item.title === 'Reaction Preference Profile'),
+    );
 
     const sourceSummary = {
       conversations: (conversations || []).length,
       courses: (courseProgress || []).length,
-      contextItems: (contextItems || []).length,
+      contextItems: filteredContextItems.length,
       notes: (notes || []).length,
       aiInteractions: (aiLogs || []).length,
       certificates: (certificates || []).length,
@@ -162,8 +188,8 @@ export async function generatePersonalInsights(userId: string): Promise<Personal
 
     // User context
     promptSections.push('=== USER PROFILE & CONTEXT ===');
-    if ((contextItems || []).length > 0) {
-      for (const item of contextItems || []) {
+    if (filteredContextItems.length > 0) {
+      for (const item of filteredContextItems) {
         const contentPreview = typeof item.content === 'string'
           ? item.content.slice(0, 200)
           : JSON.stringify(item.content).slice(0, 200);
@@ -319,6 +345,26 @@ export async function generatePersonalInsights(userId: string): Promise<Personal
     }
     promptSections.push('');
 
+    // Novelty mode: include current active insights so the AI avoids repeating them
+    if (noveltyMode) {
+      const { data: currentInsights } = await supabase
+        .from('personal_insights')
+        .select('title, summary, category')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('generated_at', { ascending: false })
+        .limit(15);
+
+      if (currentInsights && currentInsights.length > 0) {
+        promptSections.push('=== PREVIOUS INSIGHTS (DO NOT REPEAT) ===');
+        promptSections.push('The user has already seen these insights. You MUST generate substantially different insights.\n');
+        for (const insight of currentInsights) {
+          promptSections.push(`  - [${insight.category}] "${insight.title}" — ${insight.summary}`);
+        }
+        promptSections.push('');
+      }
+    }
+
     promptSections.push(`Generate 5-10 insights as a JSON array. Each insight must have: title (string), summary (string, 1-2 sentences), full_content (string, detailed paragraph), category (one of: growth_opportunity, learning_pattern, strength, connection, goal_alignment, recommendation), confidence (high, medium, or low).
 
 IMPORTANT — Reaction-Aware Generation Rules:
@@ -326,7 +372,13 @@ IMPORTANT — Reaction-Aware Generation Rules:
 2. Avoid repeating the exact topics or framing of insights marked "not helpful" or "dismissed".
 3. For categories with low scores (<0.4), only include if you have HIGH confidence evidence.
 4. Learn from HELPFUL insights: match that level of specificity, actionability, and tone.
-5. If a user liked observational insights but disliked prescriptive ones, adjust accordingly.
+5. If a user liked observational insights but disliked prescriptive ones, adjust accordingly.${noveltyMode ? `
+
+CRITICAL — Novelty Requirement:
+6. Each insight MUST present a substantially different observation, pattern, or recommendation than the PREVIOUS INSIGHTS listed above.
+7. Look for new angles: different data connections, underexplored patterns, emerging trends, fresh actionable recommendations.
+8. Do NOT restate the same insight with different wording. If the previous insights covered a topic, either skip it entirely or find a genuinely new dimension of that topic.
+9. Prioritize insights the user has NOT seen before — surprising connections, overlooked strengths, or new patterns from recent activity.` : ''}
 
 Return ONLY the JSON array, no extra text.`);
 
@@ -376,6 +428,20 @@ Return ONLY the JSON array, no extra text.`);
       .eq('user_id', userId)
       .eq('status', 'active');
 
+    // ── g2) Clean up insights older than 30 days ─────────────────────────────
+    // Insights are retained for 30 days. Users can bookmark insights to save
+    // them permanently to their Personal Context Collection.
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    await supabase
+      .from('personal_insights')
+      .delete()
+      .eq('user_id', userId)
+      .in('status', ['expired', 'dismissed'])
+      .lt('generated_at', thirtyDaysAgo.toISOString());
+
     // ── h) Insert new insights and return ────────────────────────────────────
 
     const insightRows = insights.map((insight: any) => ({
@@ -411,6 +477,30 @@ export async function fetchPersonalInsights(userId: string): Promise<PersonalIns
     .eq('user_id', userId)
     .eq('status', 'active')
     .order('generated_at', { ascending: false });
+  return (data as PersonalInsight[]) || [];
+}
+
+// ── 2b. fetchPastInsights ──────────────────────────────────────────────────
+
+/**
+ * Fetches all non-active insights from the last 30 days (expired + saved).
+ * Insights older than 30 days are not shown — users should bookmark insights
+ * they want to keep permanently.
+ */
+export async function fetchPastInsights(userId: string): Promise<PersonalInsight[]> {
+  const supabase = createAdminClient();
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data } = await supabase
+    .from('personal_insights')
+    .select('*')
+    .eq('user_id', userId)
+    .in('status', ['expired', 'saved'])
+    .gte('generated_at', thirtyDaysAgo.toISOString())
+    .order('generated_at', { ascending: false });
+
   return (data as PersonalInsight[]) || [];
 }
 
@@ -507,9 +597,18 @@ export async function reactToInsight(
 
 // ── 6. shouldRegenerateInsights ──────────────────────────────────────────────
 
+export interface RegenerationDecision {
+  shouldRegenerate: boolean;
+  noveltyMode: boolean;
+  lastGenerated: string | null;
+  activeCount: number;
+  activityScore: number;
+  reason: 'no_insights' | 'meaningful_activity' | 'some_activity' | 'already_generated_today' | 'insufficient_activity';
+}
+
 export async function shouldRegenerateInsights(
   userId: string
-): Promise<{ shouldRegenerate: boolean; lastGenerated: string | null; activeCount: number }> {
+): Promise<RegenerationDecision> {
   const supabase = createAdminClient();
   const { data, count } = await supabase
     .from('personal_insights')
@@ -522,17 +621,210 @@ export async function shouldRegenerateInsights(
   const activeCount = count || 0;
   const lastGenerated = data?.[0]?.generated_at || null;
 
+  // No insights at all → always regenerate
   if (activeCount === 0 || !lastGenerated) {
-    return { shouldRegenerate: true, lastGenerated: null, activeCount: 0 };
+    return {
+      shouldRegenerate: true,
+      noveltyMode: false,
+      lastGenerated: null,
+      activeCount: 0,
+      activityScore: 0,
+      reason: 'no_insights',
+    };
   }
 
-  // Check if stale (> 24 hours old)
-  const hoursSince = (Date.now() - new Date(lastGenerated).getTime()) / (1000 * 60 * 60);
+  // Already generated today → skip
+  const lastGeneratedDate = new Date(lastGenerated);
+  const now = new Date();
+  const isToday =
+    lastGeneratedDate.getFullYear() === now.getFullYear() &&
+    lastGeneratedDate.getMonth() === now.getMonth() &&
+    lastGeneratedDate.getDate() === now.getDate();
+
+  if (isToday) {
+    return {
+      shouldRegenerate: false,
+      noveltyMode: false,
+      lastGenerated,
+      activeCount,
+      activityScore: 0,
+      reason: 'already_generated_today',
+    };
+  }
+
+  // Generated before today → assess activity significance
+  const activityScore = await assessActivitySignificance(userId, lastGeneratedDate);
+
+  if (activityScore >= 10) {
+    return {
+      shouldRegenerate: true,
+      noveltyMode: false,
+      lastGenerated,
+      activeCount,
+      activityScore,
+      reason: 'meaningful_activity',
+    };
+  }
+
+  if (activityScore >= 5) {
+    return {
+      shouldRegenerate: true,
+      noveltyMode: true,
+      lastGenerated,
+      activeCount,
+      activityScore,
+      reason: 'some_activity',
+    };
+  }
+
   return {
-    shouldRegenerate: hoursSince > 24,
+    shouldRegenerate: false,
+    noveltyMode: false,
     lastGenerated,
     activeCount,
+    activityScore,
+    reason: 'insufficient_activity',
   };
+}
+
+// ── 6b. assessActivitySignificance ──────────────────────────────────────────
+
+/**
+ * Computes a weighted activity score for a user since a given timestamp.
+ * Used to determine whether enough meaningful activity has occurred
+ * to justify regenerating personal insights.
+ *
+ * Scoring weights:
+ *   Certificate earned:    15 pts (course completion = major milestone)
+ *   Credit earned:         10 pts (formal achievement)
+ *   Assessment passed:      8 pts (demonstrated knowledge gain)
+ *   New conversation (2+):  4 pts (reveals goals, challenges, context)
+ *   New note created:       3 pts (active reflection/synthesis)
+ *   New context item:       3 pts (user curating their knowledge)
+ *   Lesson completed:       2 pts (incremental learning progress)
+ *   Assessment attempted:   2 pts (engagement with assessment)
+ *   Course rating:          2 pts (evaluation/reflection)
+ *   Watch time (per 30min): 1 pt  (passive but present)
+ */
+async function assessActivitySignificance(
+  userId: string,
+  since: Date
+): Promise<number> {
+  const supabase = createAdminClient();
+  const sinceISO = since.toISOString();
+
+  const [
+    { count: certCount },
+    { count: creditCount },
+    { data: assessments },
+    { data: conversations },
+    { count: noteCount },
+    { count: contextItemCount },
+    { data: lessonProgress },
+    { count: ratingCount },
+  ] = await Promise.all([
+    // Certificates earned since
+    supabase
+      .from('certificates')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('issued_at', sinceISO),
+    // Credits earned since
+    supabase
+      .from('user_credits_ledger')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('awarded_at', sinceISO),
+    // Assessments since (need passed vs attempted breakdown)
+    supabase
+      .from('user_assessment_attempts')
+      .select('passed')
+      .eq('user_id', userId)
+      .gte('created_at', sinceISO),
+    // Conversations with message counts since
+    supabase
+      .from('conversations')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', sinceISO),
+    // Notes created since
+    supabase
+      .from('notes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', sinceISO),
+    // Context items created since
+    supabase
+      .from('user_context_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', sinceISO),
+    // Lesson progress since (completed lessons + watch time)
+    supabase
+      .from('user_progress')
+      .select('is_completed, view_time_seconds, lesson_id')
+      .eq('user_id', userId)
+      .gte('last_accessed', sinceISO),
+    // Course ratings since
+    supabase
+      .from('course_ratings')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', sinceISO),
+  ]);
+
+  let score = 0;
+
+  // Certificates: 15 pts each
+  score += (certCount || 0) * 15;
+
+  // Credits: 10 pts each
+  score += (creditCount || 0) * 10;
+
+  // Assessments: 8 pts passed, 2 pts attempted
+  const passedCount = (assessments || []).filter((a) => a.passed).length;
+  const attemptedCount = (assessments || []).length - passedCount;
+  score += passedCount * 8;
+  score += attemptedCount * 2;
+
+  // Conversations with 2+ messages: 4 pts each (need to check message count)
+  if (conversations && conversations.length > 0) {
+    const convIds = conversations.map((c) => c.id);
+    const { data: msgCounts } = await supabase
+      .from('conversation_messages')
+      .select('conversation_id')
+      .in('conversation_id', convIds)
+      .eq('role', 'user');
+
+    // Count user messages per conversation
+    const msgCountByConv = new Map<string, number>();
+    for (const msg of msgCounts || []) {
+      msgCountByConv.set(msg.conversation_id, (msgCountByConv.get(msg.conversation_id) || 0) + 1);
+    }
+
+    for (const [, count] of msgCountByConv) {
+      score += count >= 2 ? 4 : 1; // Substantial conversation vs brief
+    }
+  }
+
+  // Notes: 3 pts each
+  score += (noteCount || 0) * 3;
+
+  // Context items: 3 pts each
+  score += (contextItemCount || 0) * 3;
+
+  // Lesson progress: 2 pts per completed lesson
+  const completedLessons = (lessonProgress || []).filter((p) => p.is_completed && p.lesson_id).length;
+  score += completedLessons * 2;
+
+  // Watch time: 1 pt per 30-min block
+  const totalWatchSeconds = (lessonProgress || []).reduce((sum, p) => sum + (p.view_time_seconds || 0), 0);
+  score += Math.floor(totalWatchSeconds / 1800); // 30 min = 1800 seconds
+
+  // Course ratings: 2 pts each
+  score += (ratingCount || 0) * 2;
+
+  return score;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

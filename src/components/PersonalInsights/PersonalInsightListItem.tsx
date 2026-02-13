@@ -63,10 +63,10 @@ const PersonalInsightListItem = React.memo(function PersonalInsightListItem({
       className={`
         bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.08]
         rounded-xl p-4 cursor-pointer
-        transition-[background-color,border-color,color,opacity,transform] duration-200
+        transition-colors duration-200
         ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
       `}
-      style={{ transitionDelay: `${animationDelay}ms` }}
+      style={visible ? undefined : { transition: 'opacity 0.3s ease-out, transform 0.3s ease-out', transitionDelay: `${animationDelay}ms` }}
     >
       <div className="flex items-start gap-3">
         {/* Category icon */}
@@ -98,7 +98,7 @@ const PersonalInsightListItem = React.memo(function PersonalInsightListItem({
                   if (insight.reaction !== 'helpful') onReact(insight.id, 'helpful');
                 }}
                 className={`
-                  p-1.5 rounded-lg transition-[background-color,border-color,color,opacity,transform] duration-200
+                  p-1.5 rounded-lg transition-colors duration-150
                   ${insight.reaction === 'helpful'
                     ? 'text-emerald-400 bg-emerald-500/10'
                     : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -114,7 +114,7 @@ const PersonalInsightListItem = React.memo(function PersonalInsightListItem({
                   if (insight.reaction !== 'not_helpful') onReact(insight.id, 'not_helpful');
                 }}
                 className={`
-                  p-1.5 rounded-lg transition-[background-color,border-color,color,opacity,transform] duration-200
+                  p-1.5 rounded-lg transition-colors duration-150
                   ${insight.reaction === 'not_helpful'
                     ? 'text-red-400 bg-red-500/10'
                     : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -135,7 +135,7 @@ const PersonalInsightListItem = React.memo(function PersonalInsightListItem({
                   if (!isSaved) onSave(insight.id);
                 }}
                 className={`
-                  p-1.5 rounded-lg transition-[background-color,border-color,color,opacity,transform] duration-200
+                  p-1.5 rounded-lg transition-colors duration-150
                   ${isSaved
                     ? 'text-emerald-400 bg-emerald-500/10'
                     : 'text-slate-500 hover:text-white hover:bg-white/[0.06]'
@@ -152,7 +152,7 @@ const PersonalInsightListItem = React.memo(function PersonalInsightListItem({
                   e.stopPropagation();
                   onDismiss(insight.id);
                 }}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-[background-color,border-color,color,opacity,transform] duration-200"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors duration-150"
                 title="Dismiss insight"
               >
                 <X className="w-3.5 h-3.5" />
