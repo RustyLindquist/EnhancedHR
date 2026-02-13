@@ -4,7 +4,7 @@ import {
     ArrowRight, Check, BookOpen, Brain, Users,
     Bot, Sparkles, Zap, Target, Layers,
     FolderOpen, GraduationCap, BarChart3,
-    MessageSquare, Clock,
+    MessageSquare, Clock, Search,
 } from 'lucide-react';
 import FadeIn from '@/components/marketing/FadeIn';
 import HeroBackground from '@/components/marketing/HeroBackground';
@@ -183,6 +183,143 @@ export default function LP8ChallengerPage() {
                                     <div className="text-6xl font-bold mb-3" style={{ color: item.color }}>{item.stat}</div>
                                     <div className="text-sm text-slate-400 leading-relaxed mb-2">{item.label}</div>
                                     <div className="text-[10px] text-slate-600">Source: {item.source}</div>
+                                </div>
+                            </FadeIn>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* ── THE HIDDEN TAX ── */}
+            <section className="py-28 bg-[#0B1120]/40 relative">
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#FF9300]/5 rounded-full blur-[120px] pointer-events-none" />
+
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                            <Clock size={12} /> THE HIDDEN TAX
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                            Your Company Doesn&apos;t Have a Knowledge Problem.
+                            <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9300] to-[#FF2600]">
+                                You Have a Context Problem.
+                            </span>
+                        </h2>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                            Knowledge lives everywhere &mdash; SharePoint, Google Drive, Slack, wikis, people&apos;s heads.
+                            When context is scattered, AI just accelerates the confusion.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                        {[
+                            {
+                                stat: '25%',
+                                label: 'of work time wasted searching for information',
+                                source: 'Atlassian',
+                                color: '#FF9300',
+                            },
+                            {
+                                stat: '47%',
+                                label: 'of digital workers struggle to find what they need',
+                                source: 'Gartner',
+                                color: '#FF2600',
+                            },
+                            {
+                                stat: '~10',
+                                label: 'hours lost per week per employee to information fragmentation',
+                                source: 'APQC',
+                                color: '#FF9300',
+                            },
+                        ].map((item, i) => (
+                            <FadeIn key={i} delay={i * 120}>
+                                <div className="text-center p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                    <div
+                                        className="text-6xl md:text-7xl font-bold mb-3"
+                                        style={{ color: item.color }}
+                                    >
+                                        {item.stat}
+                                    </div>
+                                    <div className="text-sm text-slate-400 leading-relaxed mb-2">
+                                        {item.label}
+                                    </div>
+                                    <div className="text-[10px] text-slate-600">
+                                        Source: {item.source}
+                                    </div>
+                                </div>
+                            </FadeIn>
+                        ))}
+                    </div>
+
+                    <FadeIn delay={400} className="text-center mt-12">
+                        <p className="text-base text-slate-500 max-w-xl mx-auto italic">
+                            This is the hidden tax on every organization. And it compounds &mdash;
+                            the faster you grow, the worse it gets.
+                        </p>
+                    </FadeIn>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* ── THE COST ISN'T ABSTRACT ── */}
+            <section className="py-28 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#4B8BB3]/5 rounded-full blur-[120px] pointer-events-none" />
+
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-slate-400 tracking-wide mb-6">
+                            <Target size={12} /> EVERY DAY, YOUR TEAM EXPERIENCES THIS
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                            The Cost Isn&apos;t Abstract.
+                            <br />
+                            It&apos;s Personal.
+                        </h2>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+                        {[
+                            {
+                                icon: <Clock size={22} />,
+                                title: 'New hires take too long to become confident',
+                                body: 'Onboarding stretches into months because tribal knowledge lives in people\u2019s heads. The handbook says one thing. Reality is another. And nobody has time to bridge the gap.',
+                                color: '#FF9300',
+                            },
+                            {
+                                icon: <MessageSquare size={22} />,
+                                title: 'Managers answer the same questions repeatedly',
+                                body: 'Policy questions, process questions, \u201cwhere do I find...\u201d questions. Your most experienced people spend their days as human search engines instead of leading.',
+                                color: '#4B8BB3',
+                            },
+                            {
+                                icon: <Search size={22} />,
+                                title: 'Teams reinvent work because they can\u2019t find the last version',
+                                body: 'The playbook exists. Somewhere. In someone\u2019s Google Drive. Maybe. So the team builds it again from scratch, losing days they\u2019ll never get back.',
+                                color: '#4B8BB3',
+                            },
+                            {
+                                icon: <Sparkles size={22} />,
+                                title: 'Your best insights evaporate',
+                                body: 'A brilliant coaching conversation happens. A great solution is found during a training session. And then it\u2019s gone. Unrecorded. Unreusable. Lost to the next meeting.',
+                                color: '#FF9300',
+                            },
+                        ].map((card, i) => (
+                            <FadeIn key={i} delay={i * 80}>
+                                <div className="p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] h-full">
+                                    <div className="flex items-center gap-3 mb-5">
+                                        <div
+                                            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                                            style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                                        >
+                                            {card.icon}
+                                        </div>
+                                        <h3 className="text-white font-bold text-base leading-snug">{card.title}</h3>
+                                    </div>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{card.body}</p>
                                 </div>
                             </FadeIn>
                         ))}
