@@ -26,6 +26,7 @@ interface UserDashboardV3Props {
     user: any;
     courses: Course[];
     onNavigate: (collectionId: string) => void;
+    onNavigateToInsight?: (insightId: string) => void;
     onNavigateWithFilter?: (collectionId: string, statusFilter: string[]) => void;
     onStartCourse: (courseId: number) => void;
     onOpenAIPanel: () => void;
@@ -42,6 +43,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     user,
     courses,
     onNavigate,
+    onNavigateToInsight,
     onNavigateWithFilter,
     onStartCourse,
     onOpenAIPanel,
@@ -205,7 +207,11 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                         userId={user.id}
                         onViewAll={() => onNavigate('personal-insights')}
                         onViewInsight={(insightId) => {
-                            onNavigate('personal-insights');
+                            if (onNavigateToInsight) {
+                                onNavigateToInsight(insightId);
+                            } else {
+                                onNavigate('personal-insights');
+                            }
                         }}
                     />
                 )}
