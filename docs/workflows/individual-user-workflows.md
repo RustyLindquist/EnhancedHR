@@ -1,7 +1,7 @@
 # Individual User Workflows
 
 > **Status**: Stub — to be populated as workflows are discovered and documented
-> **Last Updated**: 2026-01-04
+> **Last Updated**: 2026-02-12
 
 ## Role Overview
 
@@ -17,6 +17,34 @@ Individual Users are self-directed learners with personal subscriptions. They ha
 **Access Level**: Personal subscription, full platform access (non-admin)
 
 ## Primary Workflows
+
+### Marketing Evaluation and Trial Start
+
+**Goal**: Evaluate platform value and begin personal trial
+**Frequency**: One-time / Occasional revisit
+**Features Involved**: `marketing-pages`, `academy`, `collections-and-context`
+
+#### Steps
+1. Visit a marketing page (homepage or campaign pages under `/lp/*`)
+2. Review feature/value narrative and role-relevant use cases
+3. Click either:
+   - `Start Free Trial` (`/login?view=signup`)
+   - `Schedule a Demo` (`/demo`) if guided onboarding is preferred
+4. Complete signup or demo request
+5. Continue into dashboard and course discovery
+
+#### Variations
+- Returning users see `Go to Dashboard` instead of `Start Free Trial`
+- Campaign-specific routes (`/lp/1`, `/lp/2`, `/lp/3`)
+
+#### Success Criteria
+- User understands platform differentiation quickly
+- Conversion path to trial or demo is clear
+- Post-signup path to first learning action is obvious
+
+#### Related Workflows
+- Content Discovery
+- Self-Directed Learning
 
 ### Content Discovery
 

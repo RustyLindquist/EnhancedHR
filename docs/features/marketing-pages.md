@@ -3,7 +3,7 @@ id: marketing-pages
 owner: frontend
 status: active
 stability: evolving
-last_updated: 2026-02-09
+last_updated: 2026-02-13
 surfaces:
   routes:
     - / (homepage)
@@ -12,6 +12,10 @@ surfaces:
     - /ai-tools
     - /collections
     - /organizations
+    - /lp/1
+    - /lp/2
+    - /lp/3
+    - /lp/ad-sets
     - /pricing
     - /for-experts
     - /experts
@@ -55,6 +59,7 @@ invariants:
   - Anchor pill sections on inner pages use `mt-[82px]` spacing. Homepage uses `mt-10`.
   - HeroBackground is a server component. Do not add hooks or client-side logic to it.
   - When adding a new marketing page, it must be added to sitemap.ts.
+  - Ad landing pages under `/lp/*` intentionally do not appear in desktop/mobile nav. They are campaign destinations and should remain accessible by direct URL and sitemap.
 ---
 
 ## Overview
@@ -285,6 +290,9 @@ Checklist for adding a new marketing page:
 | `/ai-tools` | `(marketing)/ai-tools/page.tsx` | Server | Static export |
 | `/collections` | `(marketing)/collections/page.tsx` | Server | Static export |
 | `/organizations` | `(marketing)/organizations/page.tsx` | Server | Static export |
+| `/lp/1` | `(marketing)/lp/1/page.tsx` | Server (async) | Static export |
+| `/lp/2` | `(marketing)/lp/2/page.tsx` | Server (async) | Static export |
+| `/lp/3` | `(marketing)/lp/3/page.tsx` | Server (async) | Static export |
 | `/pricing` | `(marketing)/pricing/page.tsx` | Server | Static export |
 | `/for-experts` | `(marketing)/for-experts/page.tsx` | Server | Static export |
 | `/features` | `(marketing)/features/page.tsx` | Server | Static export |
