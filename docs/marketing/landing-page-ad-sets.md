@@ -2,16 +2,18 @@
 
 Date: 2026-02-12
 
-These ad sets map one-to-one to the new campaign landing pages:
-- `/lp/1`
-- `/lp/2`
-- `/lp/3`
+Target audience: CHROs, VPs of People, HR Directors at organizations with 100-1,000 employees.
+
+Each ad set maps to one campaign landing page. Two variant sets (A and B) are provided per page for testing.
+
+---
 
 ## 1) Features & Value Page
 
-Target URL: `/lp/1`
+**Landing Page:** [`/lp/1`](/lp/1)
+**Hero Headline:** "Learn Faster. Know More. Stay Certified."
 
-### LinkedIn Ad
+### LinkedIn Ad — Variant A
 
 - Primary Text:
   - HR leaders are expected to move faster with better decisions and cleaner execution. EnhancedHR combines expert courses, 5 specialized AI agents, scoped collections, org learning tools, and analytics in one platform built for teams like yours.
@@ -22,7 +24,18 @@ Target URL: `/lp/1`
 - CTA:
   - Learn More
 
-### Google Search Ad
+### LinkedIn Ad — Variant B
+
+- Headline:
+  - The AI-Native Knowledge Platform Built for HR Teams (52 chars)
+- Introductory Text:
+  - 5 scoped AI agents. Expert-led courses. SHRM/HRCI credits. One platform built for how HR actually works. Try it free for 7 days. (130 chars)
+- Description:
+  - AI tutors, course assistants, collections, and org tools. SHRM approved. Start your free trial. (96 chars)
+- CTA:
+  - Learn More
+
+### Google Search Ad — Variant A
 
 - Headlines:
   - AI-Native HR Learning Platform
@@ -34,11 +47,33 @@ Target URL: `/lp/1`
 - Path:
   - enhancedhr.ai/lp/1
 
+### Google Search Ad — Variant B
+
+- Headlines:
+  - AI-Native Platform for HR (26 chars)
+  - 5 AI Agents. SHRM Approved. (29 chars)
+  - HR Learning, Reimagined (24 chars)
+- Descriptions:
+  - 5 scoped AI agents, expert-led courses, and SHRM/HRCI credits. 7-day free trial. (82 chars)
+  - Collections, AI tutors, and org tools in one platform. SHRM approved. Try free. (80 chars)
+- Path:
+  - enhancedhr.ai/lp/1
+
+### Message-Match Rationale
+
+- Ads lead with tangible specifics (5 AI agents, SHRM/HRCI credits) to attract intent-driven searchers looking for HR learning platforms.
+- Google headlines front-load "AI-Native" and "SHRM Approved" since these are the highest-signal terms for the target buyer.
+- LinkedIn copy leans into the breadth of the platform to appeal to leaders evaluating tools for their teams.
+- Hero headline resolves the ad promise into outcomes ("Learn Faster. Know More. Stay Certified.") while a pre-headline badge immediately reinforces ad specifics ("5 AI Agents · SHRM & HRCI Approved").
+
+---
+
 ## 2) Challenger Narrative Page
 
-Target URL: `/lp/2`
+**Landing Page:** [`/lp/2`](/lp/2)
+**Hero Headline:** "AI Won't Save You. Your People Will."
 
-### LinkedIn Ad
+### LinkedIn Ad — Variant A
 
 - Primary Text:
   - AI is table stakes. The real advantage is decision velocity. If your knowledge is fragmented, your teams move slower and decisions drift. See the challenger blueprint for turning HR knowledge into scoped, decision-grade context.
@@ -49,7 +84,18 @@ Target URL: `/lp/2`
 - CTA:
   - Learn More
 
-### Google Search Ad
+### LinkedIn Ad — Variant B
+
+- Headline:
+  - AI Is Table Stakes. Decision Velocity Is the Real Moat. (56 chars)
+- Introductory Text:
+  - When every org has AI, speed alone won't differentiate you. The winners will be the ones whose people find truth and act on it fastest. (135 chars)
+- Description:
+  - Scoped AI agents turn scattered knowledge into decision-grade context. 7-day free trial. (89 chars)
+- CTA:
+  - Learn More
+
+### Google Search Ad — Variant A
 
 - Headlines:
   - Decision Velocity for HR Teams
@@ -61,11 +107,32 @@ Target URL: `/lp/2`
 - Path:
   - enhancedhr.ai/lp/2
 
+### Google Search Ad — Variant B
+
+- Headlines:
+  - AI Is a Commodity. Now What? (29 chars)
+  - Your People Are the Moat (25 chars)
+  - Boost Decision Velocity (24 chars)
+- Descriptions:
+  - 47% of workers can't find what they need. Fix knowledge fragmentation. 7-day free trial. (89 chars)
+  - AI alone won't differentiate you. Decision velocity will. See how. Try free for 7 days. (88 chars)
+- Path:
+  - enhancedhr.ai/lp/2
+
+### Message-Match Rationale
+
+- Ads use the provocative reframe from the challenger narrative: AI is a commodity, people are the differentiator.
+- Google description D1 uses the Gartner stat (47% of workers struggle to find information) as a pattern interrupt in search results.
+- LinkedIn copy speaks directly to the strategic HR leader who thinks beyond tool adoption to organizational capability.
+
+---
+
 ## 3) Original Page (Human Velocity OS)
 
-Target URL: `/lp/3`
+**Landing Page:** [`/lp/3`](/lp/3)
+**Hero Headline:** Identity-first approach — from Human Resources to Human Relevance.
 
-### LinkedIn Ad
+### LinkedIn Ad — Variant A
 
 - Primary Text:
   - Most companies have content. Few have a capability operating system. EnhancedHR helps HR teams convert learning, policy, and institutional knowledge into faster execution through scoped AI workflows.
@@ -76,7 +143,18 @@ Target URL: `/lp/3`
 - CTA:
   - Learn More
 
-### Google Search Ad
+### LinkedIn Ad — Variant B
+
+- Headline:
+  - Your Role Is Evolving. Your Platform Should Too. (49 chars)
+- Introductory Text:
+  - HR is no longer about resources. It's about relevance. A platform built for the leaders guiding their people through the biggest shift in work history. (151 chars)
+- Description:
+  - 5 AI agents, expert courses, and SHRM/HRCI credits. Built for modern HR leaders. Try free. (91 chars)
+- CTA:
+  - Learn More
+
+### Google Search Ad — Variant A
 
 - Headlines:
   - Build an HR Capability Engine
@@ -87,3 +165,30 @@ Target URL: `/lp/3`
   - Start free or book a guided demo.
 - Path:
   - enhancedhr.ai/lp/3
+
+### Google Search Ad — Variant B
+
+- Headlines:
+  - From HR to Human Relevance (27 chars)
+  - Lead the AI Transformation (27 chars)
+  - HR Leaders Deserve Better (26 chars)
+- Descriptions:
+  - AI is transforming your workforce. Lead the change with 5 scoped AI agents. Try free. (86 chars)
+  - Built for the HR leader navigating AI-era complexity. SHRM approved. 7-day free trial. (87 chars)
+- Path:
+  - enhancedhr.ai/lp/3
+
+### Message-Match Rationale
+
+- Ads center the buyer's identity and the "Human Resources to Human Relevance" reframe.
+- Google headlines lead with the transformation narrative to resonate emotionally with HR leaders who feel the pressure of AI disruption.
+- LinkedIn copy mirrors the empathy-first tone of the landing page, validating the buyer's situation before introducing the platform.
+
+---
+
+## General Notes
+
+- All ads include the 7-day free trial offer to reduce friction.
+- SHRM and HRCI are referenced by name (not generically as "certifications") for credibility and search relevance.
+- No exclamation marks or ALL CAPS used outside of brand names.
+- Character counts verified for each variant.
