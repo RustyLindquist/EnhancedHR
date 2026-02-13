@@ -113,6 +113,24 @@ const recertItems = [
     'Multi-session tracking \u2014 pick up where you left off',
 ];
 
+const rolloutSteps = [
+    {
+        step: '01',
+        title: 'Activate Your Core Learning Stack',
+        body: 'Launch Academy access and AI-assisted learning for leaders, managers, and critical functions.',
+    },
+    {
+        step: '02',
+        title: 'Load Your Organizational Context',
+        body: 'Build collections for onboarding, policies, benefits, and operating playbooks your team needs daily.',
+    },
+    {
+        step: '03',
+        title: 'Assign, Measure, and Iterate',
+        body: 'Use groups, required learning, and analytics to continuously improve adoption and capability lift.',
+    },
+];
+
 const individualFeatures = [
     'Unlimited access to all Academy courses',
     'All 5 AI agents (Tutor, Assistant, Prometheus, Collection, Analytics)',
@@ -482,6 +500,96 @@ export default function LP7FeaturesValuePage() {
 
             <MarketingDivider />
 
+            {/* ── KNOWLEDGE BRAIN ── */}
+            <section className="py-28">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        <div>
+                            <FadeIn>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                                    <FolderOpen size={12} /> KNOWLEDGE MANAGEMENT
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
+                                    Build Your
+                                    <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9300] to-[#FF2600]">
+                                        Knowledge Brain
+                                    </span>
+                                </h2>
+                                <p className="text-lg text-slate-400 mb-8 leading-relaxed">
+                                    Collections are portable, AI-powered knowledge bases. Add courses, notes, files, videos &mdash; anything relevant to your project. Then let the Collection Assistant synthesize it all into actionable strategy.
+                                </p>
+                            </FadeIn>
+
+                            <FadeIn delay={150}>
+                                <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-6">
+                                    <h4 className="text-sm font-bold text-white mb-3">Example: Redesigning Onboarding</h4>
+                                    <ol className="space-y-2.5 text-sm text-slate-400">
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">1.</span>
+                                            Create a &quot;Strategic Onboarding&quot; collection
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">2.</span>
+                                            Add Academy courses on onboarding best practices
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">3.</span>
+                                            Upload your company handbook and current SOPs
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">4.</span>
+                                            Add notes on goals, timelines, and budget constraints
+                                        </li>
+                                        <li className="flex gap-2">
+                                            <span className="text-[#FF9300] font-bold flex-shrink-0">5.</span>
+                                            Ask the Collection Assistant to draft your 90-day plan
+                                        </li>
+                                    </ol>
+                                </div>
+                            </FadeIn>
+
+                            <FadeIn delay={250}>
+                                <p className="text-sm text-slate-500 leading-relaxed">
+                                    Your handbook becomes a live assistant. Your courses become searchable knowledge. Your notes, files, and research combine into a single AI brain that helps you build &mdash; not just learn.
+                                </p>
+                            </FadeIn>
+                        </div>
+
+                        <FadeIn delay={200} direction="left">
+                            <div className="relative">
+                                <div className="absolute -inset-4 bg-[#FF9300]/10 rounded-3xl blur-[60px] -z-10" />
+                                <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-6 space-y-4">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-lg bg-[#FF9300]/10 flex items-center justify-center">
+                                            <FolderOpen size={16} className="text-[#FF9300]" />
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-semibold text-white">Strategic Onboarding</div>
+                                            <div className="text-[10px] text-slate-500">Collection &middot; 12 resources</div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {['Academy: Onboarding Best Practices', 'Company Handbook v4.2', 'Manager Quick-Start Guide', 'Q1 Goals & OKRs'].map((item) => (
+                                            <div key={item} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04] text-xs text-slate-400">
+                                                <Check size={10} className="text-[#FF9300] flex-shrink-0" />
+                                                {item}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 p-3 rounded-lg bg-[#FF9300]/[0.04] border border-[#FF9300]/10">
+                                        <div className="text-[10px] text-[#FF9300] font-medium mb-1">Collection Assistant</div>
+                                        <div className="text-xs text-slate-400">&quot;Based on your handbook and the onboarding course, here&apos;s a 90-day plan that aligns with your Q1 OKRs...&quot;</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </FadeIn>
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
             {/* ── MID-PAGE CTA ── */}
             <section className="py-20">
                 <div className="max-w-3xl mx-auto px-6 text-center">
@@ -619,8 +727,39 @@ export default function LP7FeaturesValuePage() {
 
             <MarketingDivider />
 
-            {/* ── PRICING ── */}
+            {/* ── LAUNCH IN THREE ── */}
             <section className="py-28">
+                <div className="max-w-7xl mx-auto px-6">
+                    <FadeIn className="text-center max-w-3xl mx-auto mb-14">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FF9300]/10 border border-[#FF9300]/20 text-xs font-medium text-[#FF9300] tracking-wide mb-6">
+                            <Target size={12} /> IMPLEMENTATION FLOW
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-5">
+                            Launch in Three Clear Moves
+                        </h2>
+                        <p className="text-lg text-slate-400">
+                            Start with high-friction workflows first, then scale across teams as usage compounds.
+                        </p>
+                    </FadeIn>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {rolloutSteps.map((step, index) => (
+                            <FadeIn key={step.step} delay={index * 90}>
+                                <div className="h-full rounded-2xl border border-white/[0.07] bg-black/20 p-6">
+                                    <div className="text-[#FF9300] text-xs font-bold tracking-[0.16em] mb-4">STEP {step.step}</div>
+                                    <h3 className="text-white font-semibold mb-3 text-lg">{step.title}</h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed">{step.body}</p>
+                                </div>
+                            </FadeIn>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <MarketingDivider />
+
+            {/* ── PRICING ── */}
+            <section className="py-28 bg-[#0B1120]/40">
                 <div className="max-w-5xl mx-auto px-6">
                     <FadeIn className="text-center mb-14">
                         <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-5">
@@ -697,7 +836,7 @@ export default function LP7FeaturesValuePage() {
             <MarketingDivider />
 
             {/* ── FINAL CTA ── */}
-            <section className="py-28 bg-[#0B1120]/40">
+            <section className="py-28">
                 <div className="max-w-4xl mx-auto px-6 text-center">
                     <FadeIn>
                         <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">
