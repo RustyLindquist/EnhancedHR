@@ -84,16 +84,13 @@ export default function PersonalInsightsPreview({
       setIsLoading(true);
       const status = await shouldRegenerateInsights(userId);
 
-      if (status.activeCount > 0) {
-        // Load existing insights
-        const all = await fetchPersonalInsights(userId);
-        setInsights(all.slice(0, 3));
-        setIsLoading(false);
-      } else {
-        // No insights exist — auto-trigger generation
+      if (status.shouldRegenerate) {
+        // Regenerate: either no insights, meaningful activity, or borderline activity
         setIsLoading(false);
         setIsGenerating(true);
-        const generated = await generatePersonalInsights(userId);
+        const generated = await generatePersonalInsights(userId, {
+          noveltyMode: status.noveltyMode,
+        });
         setIsGenerating(false);
 
         if (generated.length === 0) {
@@ -102,6 +99,14 @@ export default function PersonalInsightsPreview({
         } else {
           setInsights(generated.slice(0, 3));
         }
+      } else if (status.activeCount > 0) {
+        // Show existing insights (already generated today or insufficient activity)
+        const all = await fetchPersonalInsights(userId);
+        setInsights(all.slice(0, 3));
+        setIsLoading(false);
+      } else {
+        // No insights and shouldn't regenerate (edge case)
+        setIsLoading(false);
       }
     };
     load();

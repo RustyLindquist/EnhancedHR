@@ -89,6 +89,8 @@ interface MainCanvasProps {
     onViewingGroupChange?: (groupName: string | null) => void; // Callback when viewing a group (passes group name for AI panel)
     hasOrgCourses?: boolean; // Whether org has published courses
     orgMemberCount?: number; // Count of org members
+    initialInsightId?: string | null; // Auto-open a specific personal insight
+    onNavigateToInsight?: (insightId: string) => void; // Navigate to personal insights with a specific insight open
 }
 
 // Added 'mounting' state to handle the "pre-enter" position explicitly
@@ -855,7 +857,9 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     onOrgCollectionsUpdate,
     onViewingGroupChange,
     hasOrgCourses = false,
-    orgMemberCount = 0
+    orgMemberCount = 0,
+    initialInsightId,
+    onNavigateToInsight,
 }) => {
     // --- ROUTER ---
     const router = useRouter();
@@ -4315,6 +4319,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                         user={user}
                                         courses={courses}
                                         onNavigate={onSelectCollection}
+                                        onNavigateToInsight={onNavigateToInsight}
                                         onNavigateWithFilter={onNavigateWithFilter}
                                         onStartCourse={handleCourseClick}
                                         onOpenAIPanel={onOpenAIPanel}
@@ -4455,6 +4460,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                             onOpenAIPanel();
                                         }}
                                         onOpenAIPanel={onOpenAIPanel}
+                                        initialInsightId={initialInsightId ?? undefined}
                                     />}
                                 </div>
                             </div>

@@ -401,6 +401,11 @@ function HomeContent() {
         // This ensures the AI panel starts fresh with the new context/agent/RAG
         // Note: handleResumeConversation explicitly sets activeConversationId for resuming
         setActiveConversationId(null);
+
+        // Clear initial insight ID when navigating away from personal insights
+        if (activeCollectionId === 'personal-insights') {
+          setInitialInsightId(null);
+        }
       }
 
       // Always clear the active course when selecting a collection
@@ -457,6 +462,8 @@ function HomeContent() {
   const [academyResetKey, setAcademyResetKey] = useState(0);
   // Initial status filter for Academy (e.g., ['IN_PROGRESS'] from "view all" on dashboard)
   const [initialStatusFilter, setInitialStatusFilter] = useState<string[]>([]);
+  // Initial insight ID to auto-open when navigating to Personal Insights
+  const [initialInsightId, setInitialInsightId] = useState<string | null>(null);
 
   const handleOpenAIPanel = () => {
     if (activeCollectionId !== 'prometheus') {
@@ -482,6 +489,12 @@ function HomeContent() {
   const handleNavigateWithFilter = useCallback((collectionId: string, statusFilter: string[]) => {
     setInitialStatusFilter(statusFilter);
     setActiveCollectionId(collectionId);
+  }, []);
+
+  // Navigate to Personal Insights with a specific insight pre-selected
+  const handleNavigateToInsight = useCallback((insightId: string) => {
+    setInitialInsightId(insightId);
+    setActiveCollectionId('personal-insights');
   }, []);
 
   // Handle Resuming Conversation from MainCanvas
@@ -712,6 +725,8 @@ function HomeContent() {
           onViewingGroupChange={setViewingGroupName}
           hasOrgCourses={hasOrgCourses}
           orgMemberCount={orgMemberCount}
+          initialInsightId={initialInsightId}
+          onNavigateToInsight={handleNavigateToInsight}
         />
 
         {/* Right AI Panel - Hidden if in Prometheus Full Page Mode */}
