@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { embedCourseResource, deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
+import { embedCourseResource, deleteCourseResourceEmbeddings, embedPlatformLessonContent } from '@/lib/context-embeddings';
 import { fetchYouTubeMetadata, fetchYouTubeTranscript, isYouTubeUrl } from '@/lib/youtube';
 import { generateTranscriptFromYouTubeAudio } from '@/lib/audio-transcription';
 import {
@@ -2779,6 +2779,7 @@ export interface RegenerateTranscriptsResult {
         lessonsGenerated: number;
         lessonsSkipped: number;
         lessonsFailed: number;
+        embeddingsCreated?: number;
         details: LessonTranscriptDetail[];
     };
     error?: string;
@@ -2800,7 +2801,7 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
         // Fetch all modules with their lessons
         const { data: modules, error: modulesError } = await admin
             .from('modules')
-            .select('id, title, lessons(id, title, video_url, type, user_transcript, ai_transcript, transcript_source)')
+            .select('id, title, lessons(id, title, description, video_url, type, user_transcript, ai_transcript, transcript_source)')
             .eq('course_id', courseId)
             .order('order');
 
@@ -2817,12 +2818,14 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
         let lessonsGenerated = 0;
         let lessonsSkipped = 0;
         let lessonsFailed = 0;
+        let embeddingsCreated = 0;
 
         // Process each module
         for (const courseModule of modules) {
             const lessons = courseModule.lessons as Array<{
                 id: string;
                 title: string;
+                description: string | null;
                 video_url: string | null;
                 type: string | null;
                 user_transcript: string | null;
@@ -2882,6 +2885,26 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
                             });
                             lessonsFailed++;
                         } else {
+                            // Generate embeddings for RAG (cleans up stale embeddings automatically)
+                            try {
+                                const embedResult = await embedPlatformLessonContent(
+                                    lesson.id,
+                                    courseId,
+                                    lesson.title,
+                                    lesson.description || undefined,
+                                    result.transcript,
+                                    courseModule.title
+                                );
+                                if (embedResult.success) {
+                                    embeddingsCreated += embedResult.embeddingCount;
+                                    console.log(`[regenerateCourseTranscripts] Created ${embedResult.embeddingCount} embeddings for "${lesson.title}"`);
+                                } else {
+                                    console.warn(`[regenerateCourseTranscripts] Embedding failed for "${lesson.title}": ${embedResult.error}`);
+                                }
+                            } catch (embedErr) {
+                                console.warn(`[regenerateCourseTranscripts] Embedding error for "${lesson.title}":`, embedErr);
+                            }
+
                             details.push({
                                 lessonId: lesson.id,
                                 lessonTitle: lesson.title,
@@ -2923,7 +2946,7 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
         revalidatePath(`/author/courses/${courseId}/builder`);
         revalidatePath(`/courses/${courseId}`);
 
-        console.log(`[regenerateCourseTranscripts] Complete - Generated: ${lessonsGenerated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}`);
+        console.log(`[regenerateCourseTranscripts] Complete - Generated: ${lessonsGenerated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}, Embeddings: ${embeddingsCreated}`);
 
         return {
             success: true,
@@ -2931,6 +2954,7 @@ export async function regenerateCourseTranscripts(courseId: number): Promise<Reg
                 lessonsGenerated,
                 lessonsSkipped,
                 lessonsFailed,
+                embeddingsCreated,
                 details
             }
         };

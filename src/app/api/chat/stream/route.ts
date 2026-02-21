@@ -116,9 +116,27 @@ function formatContextForPrompt(items: any[]): string {
         });
     }
 
+    // User notes
+    if (grouped['note']) {
+        sections.push('\n=== USER\'S NOTES ===');
+        grouped['note'].forEach(item => {
+            const noteTitle = item.metadata?.title || 'Note';
+            sections.push(`[${noteTitle}]\n${item.content}`);
+        });
+    }
+
+    // Saved conversations
+    if (grouped['conversation']) {
+        sections.push('\n=== SAVED CONVERSATIONS ===');
+        grouped['conversation'].forEach(item => {
+            const convTitle = item.metadata?.title || 'Conversation';
+            sections.push(`[${convTitle}]\n${item.content}`);
+        });
+    }
+
     // Any other content
     const otherTypes = Object.keys(grouped).filter(t =>
-        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course', 'resource', 'org_course'].includes(t)
+        !['custom_context', 'profile', 'file', 'lesson', 'module', 'course', 'resource', 'org_course', 'note', 'conversation'].includes(t)
     );
     otherTypes.forEach(type => {
         if (grouped[type].length > 0) {
