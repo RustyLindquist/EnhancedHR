@@ -28,6 +28,15 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
     const [isPlaying, setIsPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const playerRef = React.useRef<any>(null);
+
+    // Playback speed persistence
+    const [playbackRate, setPlaybackRate] = useState<number>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('enhancedhr-playback-speed');
+            return saved ? parseFloat(saved) : 1;
+        }
+        return 1;
+    });
     const router = useRouter();
 
     // Progress Tracker
@@ -81,6 +90,31 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
         localStorage.setItem('enhancedhr-preferred-view-mode', mode);
         setViewMode(mode);
     };
+
+    // Persist playback speed when user changes it via Mux player controls
+    useEffect(() => {
+        const player = playerRef.current;
+        if (!player) return;
+
+        const handleRateChange = () => {
+            const rate = player.playbackRate;
+            if (rate && rate !== playbackRate) {
+                setPlaybackRate(rate);
+                localStorage.setItem('enhancedhr-playback-speed', String(rate));
+            }
+        };
+
+        player.addEventListener('ratechange', handleRateChange);
+        return () => player.removeEventListener('ratechange', handleRateChange);
+    }, [playbackRate]);
+
+    // Apply saved playback rate when player mounts or lesson changes
+    useEffect(() => {
+        const player = playerRef.current;
+        if (player && playbackRate !== 1) {
+            player.playbackRate = playbackRate;
+        }
+    }, [activeLessonId, playbackRate]);
 
     const handleTimeUpdate = (e: any) => {
         setCurrentTime(e.target.currentTime);
@@ -180,6 +214,7 @@ const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, syllabus, resources
                                         viewer_user_id: userId,
                                     }}
                                     renditionOrder="desc"
+                                    playbackRate={playbackRate}
                                     primaryColor="#78C0F0"
                                     secondaryColor="#000000"
                                     accentColor="#FF9300"

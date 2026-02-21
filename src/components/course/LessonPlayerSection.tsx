@@ -102,6 +102,15 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
     const [showPlayOverlay, setShowPlayOverlay] = useState(true);
     const playerRef = useRef<any>(null);
 
+    // Playback speed persistence
+    const [playbackRate, setPlaybackRate] = useState<number>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('enhancedhr-playback-speed');
+            return saved ? parseFloat(saved) : 1;
+        }
+        return 1;
+    });
+
     // YouTube Player ref for programmatic control
     const youtubePlayerRef = useRef<any>(null);
     const [youtubeReady, setYoutubeReady] = useState(false);
@@ -335,6 +344,31 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
         return () => clearTimeout(timer);
     }, [lesson?.id, autoPlay, lesson?.video_url, isQuiz, youtubeReady, onAutoPlayConsumed]);
 
+    // Persist playback speed when user changes it via Mux player controls
+    useEffect(() => {
+        const player = playerRef.current;
+        if (!player) return;
+
+        const handleRateChange = () => {
+            const rate = player.playbackRate;
+            if (rate && rate !== playbackRate) {
+                setPlaybackRate(rate);
+                localStorage.setItem('enhancedhr-playback-speed', String(rate));
+            }
+        };
+
+        player.addEventListener('ratechange', handleRateChange);
+        return () => player.removeEventListener('ratechange', handleRateChange);
+    }, [playbackRate]);
+
+    // Apply saved playback rate when player mounts
+    useEffect(() => {
+        const player = playerRef.current;
+        if (player && playbackRate !== 1) {
+            player.playbackRate = playbackRate;
+        }
+    }, [lesson.id, playbackRate]);
+
     // Get instructor data from course authorDetails or fallback to basic info
     const authorDetails = (course as any).authorDetails;
     const instructor = {
@@ -411,6 +445,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                                             playbackId={!lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
                                             src={lesson.video_url.startsWith('http') ? lesson.video_url : undefined}
                                             autoPlay={isPlaying}
+                                            playbackRate={playbackRate}
                                             metadata={{
                                                 video_id: lesson.id,
                                                 video_title: lesson.title,
