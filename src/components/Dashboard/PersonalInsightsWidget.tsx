@@ -68,6 +68,27 @@ const DATE_PRESETS: { label: string; value: PresetType }[] = [
 const platformCategories = ALL_CATEGORIES.filter(k => CATEGORY_CONFIG[k].group === 'Platform');
 const academyCategories = ALL_CATEGORIES.filter(k => CATEGORY_CONFIG[k].group === 'Academy');
 
+// --- sessionStorage caching to avoid re-fetching on remount ---
+const STREAK_CACHE_KEY = 'ehr:widget-streak';
+const ACTIVITY_CACHE_KEY = 'ehr:widget-activity';
+const CACHE_TTL = 300_000; // 5 minutes
+
+interface CacheEntry<T> { data: T; timestamp: number; }
+
+function readCache<T>(key: string): CacheEntry<T> | null {
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
+function writeCache<T>(key: string, data: T): void {
+    try {
+        sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {}
+}
+
 const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId }) => {
     // Date range — default 30 days (lazy initializer avoids recomputing on every render)
     const [startDate, setStartDate] = useState<Date>(() => {
@@ -108,18 +129,37 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
     // Fetch streak on mount (lightweight query, not the full dashboard data)
     useEffect(() => {
         if (!userId) return;
-        fetchUserStreak(userId).then(setStreak).catch(console.error);
+        const cached = readCache<number>(STREAK_CACHE_KEY);
+        if (cached) {
+            setStreak(cached.data);
+            if (Date.now() - cached.timestamp < CACHE_TTL) return;
+        }
+        fetchUserStreak(userId)
+            .then(s => { setStreak(s); writeCache(STREAK_CACHE_KEY, s); })
+            .catch(console.error);
     }, [userId]);
 
     // Fetch activity data when date range changes
     // Debounced (250ms) to prevent multiple concurrent server calls from rapid clicks
     // After first load, keeps old data visible (no loading flash) during transitions
+    // On first load, checks sessionStorage cache to avoid refetching on remount
     useEffect(() => {
         if (!userId) return;
         const version = ++requestVersionRef.current;
 
         const doFetch = () => {
-            if (!hasLoadedRef.current) setLoading(true);
+            if (!hasLoadedRef.current) {
+                // On first load, check cache
+                const cacheKey = `${ACTIVITY_CACHE_KEY}:${startDate.toISOString().split('T')[0]}:${endDate.toISOString().split('T')[0]}`;
+                const cached = readCache<PersonalActivityData>(cacheKey);
+                if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+                    hasLoadedRef.current = true;
+                    setActivityData(cached.data);
+                    setLoading(false);
+                    return;
+                }
+                setLoading(true);
+            }
             const startStr = startDate.toISOString().split('T')[0];
             const endStr = endDate.toISOString().split('T')[0];
             fetchPersonalActivityData(userId, { startDate: startStr, endDate: endStr, includeHeatmap: false })
@@ -128,6 +168,9 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
                     hasLoadedRef.current = true;
                     setActivityData(data);
                     setLoading(false);
+                    // Cache the result
+                    const cacheKey = `${ACTIVITY_CACHE_KEY}:${startStr}:${endStr}`;
+                    writeCache(cacheKey, data);
                 })
                 .catch(err => {
                     if (version !== requestVersionRef.current) return;
@@ -139,6 +182,22 @@ const PersonalInsightsWidget: React.FC<PersonalInsightsWidgetProps> = ({ userId 
         const timer = setTimeout(doFetch, 250);
         return () => clearTimeout(timer);
     }, [userId, startDate, endDate]);
+
+    // Listen for cache invalidation events (e.g. after completing a course)
+    useEffect(() => {
+        const handler = () => {
+            try {
+                const keys = Object.keys(sessionStorage);
+                keys.forEach(k => {
+                    if (k.startsWith(ACTIVITY_CACHE_KEY) || k === STREAK_CACHE_KEY) {
+                        sessionStorage.removeItem(k);
+                    }
+                });
+            } catch {}
+        };
+        window.addEventListener('dashboard:invalidate', handler);
+        return () => window.removeEventListener('dashboard:invalidate', handler);
+    }, []);
 
     const handlePreset = (preset: PresetType) => {
         const now = new Date();

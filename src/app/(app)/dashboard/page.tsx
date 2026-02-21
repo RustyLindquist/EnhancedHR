@@ -10,10 +10,9 @@ import NewOrgCollectionModal from '@/components/NewOrgCollectionModal';
 import HelpPanel from '@/components/help/HelpPanel';
 import { HelpTopicId } from '@/components/help/HelpContent';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { BACKGROUND_THEMES, DEFAULT_COLLECTIONS } from '@/constants';
 import { BackgroundTheme, Course, Collection, ContextCard, DragItem } from '@/types';
-import { fetchCoursesAction } from '@/app/actions/courses';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ContextScope } from '@/lib/ai/types';
 import { useNavigationSafe } from '@/contexts/NavigationContext';
@@ -39,29 +38,35 @@ function HomeContent() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpTopicId, setHelpTopicId] = useState<HelpTopicId>('notes');
 
-  // Onboarding State
-  const {
-    showOnboarding,
-    isLoading: onboardingLoading,
-    profile: onboardingProfile,
-    completeOnboarding,
-    dismissOnboarding
-  } = useOnboarding();
+  // Dashboard data with caching
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData();
 
-  // Lifted State: Courses source of truth
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Onboarding state derived from dashboard data
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const onboardingProfile = dashboardData?.onboardingProfile ?? null;
 
+  // Compute showOnboarding when dashboardData loads
   useEffect(() => {
-    async function loadCourses() {
-      const { courses, debug } = await fetchCoursesAction();
-      console.log('[Dashboard] Courses Loaded:', courses.length);
-      if (debug) console.log('[Dashboard] Server Debug:', debug);
-      setCourses(courses);
-      setIsLoading(false);
+    if (dashboardData?.onboardingProfile) {
+      const p = dashboardData.onboardingProfile;
+      setShowOnboarding(!p.onboarding_completed_at && !p.onboarding_skipped_at);
     }
-    loadCourses();
+  }, [dashboardData?.onboardingProfile]);
+
+  const completeOnboarding = useCallback(async () => {
+    const { completeOnboardingAction } = await import('@/app/actions/profile');
+    await completeOnboardingAction();
+    setShowOnboarding(false);
   }, []);
+
+  const dismissOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    import('@/app/actions/profile').then(m => m.skipOnboardingAction()).catch(console.error);
+  }, []);
+
+  // Local state for courses (supports optimistic updates from mutations)
+  const [courses, setCourses] = useState<Course[]>([]);
+  const isLoading = dashboardLoading;
 
   // Navigation & Collection State
   const [customCollections, setCustomCollections] = useState<Collection[]>(DEFAULT_COLLECTIONS);
@@ -92,68 +97,35 @@ function HomeContent() {
     setCollectionCounts(mappedCounts);
   };
 
+  // Sync server data to local state when dashboardData changes
   useEffect(() => {
-    async function initUserAndCollections() {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+    if (!dashboardData) return;
 
-      if (user) {
-        setUser(user);
-        const { fetchUserCollections, ensureSystemCollections } = await import('@/lib/collections');
+    // Set user
+    setUser(dashboardData.user);
 
-        // 0. Ensure System Collections exist (Sync)
-        await ensureSystemCollections(user.id);
+    // Sync courses
+    setCourses(dashboardData.courses);
 
-        // 1. Fetch ALL Collections (System + Custom)
-        const dbCollections = await fetchUserCollections(user.id);
-
-        // Merge logic: DB is source of truth now.
-        // Deduplicate by label to prevent UI bug
-        const uniqueMap = new Map();
-        dbCollections.forEach((c: Collection) => {
-          if (!uniqueMap.has(c.label)) {
-            uniqueMap.set(c.label, c);
-          }
-        });
-        setCustomCollections(Array.from(uniqueMap.values()) as Collection[]);
-
-        // 2. Initial Count Fetch
-        // We can call the new function here, but need to be careful with closure/dependency interaction
-        // Since refreshCollectionCounts depends on 'user' state which might not be set in closure yet if we just set it.
-        // Actually, we define refreshCollectionCounts to use 'user' state, but inside this useEffect 'user' variable is local.
-        // So let's duplicate the logic slightly or pass user to the function?
-        // Better: pass user ID to function to avoid state dependency issues.
-
-        await refreshCountsForUser(user.id);
-
-        // 3. Fetch org member count for navigation badge
-        const { getOrgMemberCount, getOrgCollections, checkIsOrgAdmin, getCurrentOrgId } = await import('@/app/actions/org');
-        const memberCount = await getOrgMemberCount();
-        setOrgMemberCount(memberCount);
-
-        // 4. Fetch org collections
-        const orgColls = await getOrgCollections();
-        setOrgCollections(orgColls);
-
-        // 5. Get org admin status
-        const isAdmin = await checkIsOrgAdmin();
-        setIsOrgAdmin(isAdmin);
-
-        // 6. Get current org ID for navigation panel
-        const currentOrgId = await getCurrentOrgId();
-        setUserOrgId(currentOrgId);
-
-        // 7. Check if org has published courses
-        if (currentOrgId) {
-          const { hasPublishedOrgCourses } = await import('@/app/actions/org-courses');
-          const result = await hasPublishedOrgCourses(currentOrgId);
-          setHasOrgCourses(result.hasPublished);
-        }
+    // Sync collections (deduplicate by label to prevent UI bug)
+    const uniqueMap = new Map<string, Collection>();
+    dashboardData.collections.forEach((c) => {
+      if (!uniqueMap.has(c.label)) {
+        uniqueMap.set(c.label, c);
       }
-    }
-    initUserAndCollections();
-  }, []);
+    });
+    setCustomCollections(Array.from(uniqueMap.values()));
+
+    // Sync counts
+    setCollectionCounts(dashboardData.collectionCounts);
+
+    // Sync org data
+    setOrgMemberCount(dashboardData.orgMemberCount);
+    setOrgCollections(dashboardData.orgCollections);
+    setIsOrgAdmin(dashboardData.isOrgAdmin);
+    setUserOrgId(dashboardData.orgId);
+    setHasOrgCourses(dashboardData.hasOrgCourses);
+  }, [dashboardData]);
 
   const refreshCountsForUser = async (userId: string) => {
     const { getCollectionCountsAction } = await import('@/app/actions/collections');
@@ -328,6 +300,7 @@ function HomeContent() {
     // This ensures the item appears in the target collection when viewing it
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('collection:refresh'));
+      window.dispatchEvent(new Event('dashboard:invalidate'));
     }
 
     setIsAddModalOpen(false);
@@ -766,7 +739,7 @@ function HomeContent() {
       />
 
       {/* Onboarding Modal - Shows for new users */}
-      {!onboardingLoading && showOnboarding && user && (
+      {!dashboardLoading && showOnboarding && user && (
         <OnboardingModal
           isOpen={showOnboarding}
           onClose={dismissOnboarding}
