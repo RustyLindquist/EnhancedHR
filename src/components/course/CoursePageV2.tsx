@@ -12,6 +12,7 @@ import CourseDescriptionSection from './CourseDescriptionSection';
 import LessonPlayerSection from './LessonPlayerSection';
 import ModuleContainer from './ModuleContainer';
 import CourseResourcesSection from './CourseResourcesSection';
+import CourseResourcePanel from './CourseResourcePanel';
 import AssessmentPanel from '../assessment/AssessmentPanel';
 
 interface CoursePageV2Props {
@@ -53,6 +54,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
     const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
     const [activeResourceId, setActiveResourceId] = useState<string | null>(null);
+
+    // Course resource panel state (for course-level resources opened in drop-down panel)
+    const [panelResource, setPanelResource] = useState<Resource | null>(null);
 
     // UI state
     const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -832,10 +836,18 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                         courseTitle={course.title}
                         onAddToCollection={onAddToCollection}
                         onDragStart={onDragStart}
-                        onResourceClick={(resource) => handleResourceClick(resource, null)}
+                        onResourceClick={(resource) => setPanelResource(resource)}
                     />
                 )}
             </div>
+
+            {/* Course Resource Panel (drop-down for course-level resources) */}
+            <CourseResourcePanel
+                isOpen={!!panelResource}
+                onClose={() => setPanelResource(null)}
+                resource={panelResource}
+                courseTitle={course.title}
+            />
 
             {/* Assessment Panel */}
             {currentLesson?.type === 'quiz' && currentLesson?.quiz_data && (
