@@ -10,13 +10,15 @@ interface CourseResourcesSectionProps {
     courseTitle: string;
     onAddToCollection: (item: DragItem) => void;
     onDragStart: (item: DragItem) => void;
+    onResourceClick?: (resource: Resource) => void;
 }
 
 const CourseResourcesSection: React.FC<CourseResourcesSectionProps> = ({
     resources,
     courseTitle,
     onAddToCollection,
-    onDragStart
+    onDragStart,
+    onResourceClick
 }) => {
     if (resources.length === 0) {
         return null;
@@ -68,6 +70,7 @@ const CourseResourcesSection: React.FC<CourseResourcesSectionProps> = ({
                         courseTitle={courseTitle}
                         fileSize={resource.size}
                         fileUrl={resource.url}
+                        onClick={onResourceClick ? () => onResourceClick(resource) : undefined}
                         onAdd={() => handleAdd(resource)}
                         showRemove={false}
                         draggable
