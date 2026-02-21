@@ -2589,10 +2589,10 @@ function parseDurationToSeconds(duration: string | null | undefined): number {
         totalSeconds += parseInt(minsMatch[1], 10) * 60;
     }
 
-    // Match seconds
-    const secsMatch = duration.match(/(\d+)\s*s/i);
+    // Match seconds (supports fractional like "29.656s")
+    const secsMatch = duration.match(/(\d+(?:\.\d+)?)\s*s/i);
     if (secsMatch) {
-        totalSeconds += parseInt(secsMatch[1], 10);
+        totalSeconds += Math.round(parseFloat(secsMatch[1]));
     }
 
     return totalSeconds;
