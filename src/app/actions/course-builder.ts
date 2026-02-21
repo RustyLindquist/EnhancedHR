@@ -568,6 +568,26 @@ export async function deleteModule(moduleId: string) {
         }
     }
 
+    // Delete all module-level resources (where module_id = moduleId)
+    const { data: moduleResources } = await admin
+        .from('resources')
+        .select('id, storage_path')
+        .eq('module_id', moduleId);
+
+    if (moduleResources && moduleResources.length > 0) {
+        for (const resource of moduleResources) {
+            if (resource.storage_path) {
+                deleteFileFromStorage(resource.storage_path).catch(err => {
+                    console.error(`[deleteModule] Failed to delete file from storage for resource ${resource.id}:`, err);
+                });
+            }
+            deleteCourseResourceEmbeddings(resource.id).catch(err => {
+                console.error(`[deleteModule] Failed to delete embeddings for resource ${resource.id}:`, err);
+            });
+        }
+        await admin.from('resources').delete().eq('module_id', moduleId);
+    }
+
     // Delete all lessons in this module
     await admin
         .from('lessons')
@@ -585,7 +605,7 @@ export async function deleteModule(moduleId: string) {
     }
 
     if (module) {
-        revalidatePath(`/admin/courses/${module.course_id}/builder`);
+        await recalculateCourseDuration(module.course_id);
     }
     return { success: true };
 }
@@ -708,6 +728,21 @@ export async function createLesson(moduleId: string, data: {
 
     const nextOrder = Math.max(lessonMax, resourceMax) + 1;
 
+    // Auto-fetch duration from video URL if not provided
+    let effectiveDuration = data.duration || '0m';
+    if ((!data.duration || data.duration === '0m') && data.video_url) {
+        try {
+            if (await isYouTubeUrl(data.video_url)) {
+                const ytResult = await fetchYouTubeMetadata(data.video_url);
+                if (ytResult.success && ytResult.metadata?.duration) {
+                    effectiveDuration = formatDurationForCourse(ytResult.metadata.duration);
+                }
+            }
+        } catch (err) {
+            console.warn('[createLesson] Auto-fetch duration failed:', err);
+        }
+    }
+
     const { data: lesson, error } = await admin
         .from('lessons')
         .insert({
@@ -715,7 +750,7 @@ export async function createLesson(moduleId: string, data: {
             title: data.title,
             type: data.type,
             order: nextOrder,
-            duration: data.duration || '0m',
+            duration: effectiveDuration,
             video_url: data.video_url,
             content: data.content,
             quiz_data: data.quiz_data
@@ -729,8 +764,7 @@ export async function createLesson(moduleId: string, data: {
     }
 
     if (module) {
-        revalidatePath(`/admin/courses/${module.course_id}/builder`);
-        recalculateCourseDuration(module.course_id).catch(() => {});
+        await recalculateCourseDuration(module.course_id);
     }
     return { success: true, lesson };
 }
@@ -774,13 +808,28 @@ export async function updateLesson(lessonId: string, data: {
     // Get current lesson to check if video_url changed
     const { data: currentLesson } = await admin
         .from('lessons')
-        .select('video_url, module_id, modules(course_id)')
+        .select('video_url, duration, module_id, modules(course_id)')
         .eq('id', lessonId)
         .single();
 
+    // Auto-fetch duration from YouTube if video_url changed and no duration provided
+    const updateData = { ...data };
+    if (data.video_url && (!data.duration || data.duration === '0m') && data.video_url !== currentLesson?.video_url) {
+        try {
+            if (await isYouTubeUrl(data.video_url)) {
+                const ytResult = await fetchYouTubeMetadata(data.video_url);
+                if (ytResult.success && ytResult.metadata?.duration) {
+                    updateData.duration = formatDurationForCourse(ytResult.metadata.duration);
+                }
+            }
+        } catch (err) {
+            console.warn('[updateLesson] Auto-fetch duration failed:', err);
+        }
+    }
+
     const { error } = await admin
         .from('lessons')
-        .update(data)
+        .update(updateData)
         .eq('id', lessonId);
 
     if (error) {
@@ -790,9 +839,10 @@ export async function updateLesson(lessonId: string, data: {
 
     if (currentLesson?.modules) {
         const courseId = (currentLesson.modules as any).course_id;
-        revalidatePath(`/admin/courses/${courseId}/builder`);
-        if (data.duration !== undefined) {
-            recalculateCourseDuration(courseId).catch(() => {});
+        if (updateData.duration !== undefined) {
+            await recalculateCourseDuration(courseId);
+        } else {
+            revalidatePath(`/admin/courses/${courseId}/builder`);
         }
     }
 
@@ -839,8 +889,7 @@ export async function deleteLesson(lessonId: string) {
 
     if (lesson?.modules) {
         const courseId = (lesson.modules as any).course_id;
-        revalidatePath(`/admin/courses/${courseId}/builder`);
-        recalculateCourseDuration(courseId).catch(() => {});
+        await recalculateCourseDuration(courseId);
     }
     return { success: true };
 }
@@ -1156,9 +1205,7 @@ export async function uploadModuleResourceFile(
             });
         }
 
-        revalidatePath(`/admin/courses/${courseId}/builder`);
-        revalidatePath(`/author/courses/${courseId}/builder`);
-        recalculateCourseDuration(courseId).catch(() => {});
+        await recalculateCourseDuration(courseId);
 
         return {
             success: true,
@@ -1211,10 +1258,11 @@ export async function updateModuleResource(
         return { success: false, error: error.message };
     }
 
-    revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
     if (data.estimated_duration !== undefined) {
-        recalculateCourseDuration(courseId).catch(() => {});
+        await recalculateCourseDuration(courseId);
+    } else {
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
     }
 
     return { success: true };
@@ -1259,9 +1307,7 @@ export async function deleteModuleResource(
         return { success: false, error: error.message };
     }
 
-    revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
-    recalculateCourseDuration(courseId).catch(() => {});
+    await recalculateCourseDuration(courseId);
 
     return { success: true };
 }
@@ -1351,8 +1397,7 @@ export async function deleteCourseResource(resourceId: string, courseId: number)
         return { success: false, error: error.message };
     }
 
-    revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
+    await recalculateCourseDuration(courseId);
     return { success: true };
 }
 
@@ -2579,7 +2624,7 @@ export interface ResetDurationsResult {
  * and resource estimated_durations. Does NOT re-fetch from external video APIs.
  * Called automatically after mutations that affect duration.
  */
-async function recalculateCourseDuration(courseId: number): Promise<void> {
+export async function recalculateCourseDuration(courseId: number): Promise<void> {
     const admin = await createAdminClient();
 
     try {
@@ -2619,6 +2664,8 @@ async function recalculateCourseDuration(courseId: number): Promise<void> {
             .update({ duration: totalDuration })
             .eq('id', courseId);
 
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        revalidatePath(`/author/courses/${courseId}/builder`);
         revalidatePath(`/courses/${courseId}`);
     } catch (err) {
         console.error('[recalculateCourseDuration] Error:', err);

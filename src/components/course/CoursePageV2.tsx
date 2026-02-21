@@ -129,15 +129,16 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         const completedCount = completedLessons.size;
         const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-        // Parse duration string (e.g., "2h 30m" -> minutes)
+        // Parse duration string (e.g., "0m", "5m", "5m 30s", "1h", "1h 30m", "2h 15m" -> minutes)
         let totalMinutes = 0;
         if (course.duration) {
-            const durationMatch = course.duration.match(/(\d+)h?\s*(\d+)?m?/);
-            if (durationMatch) {
-                const hours = parseInt(durationMatch[1]) || 0;
-                const mins = parseInt(durationMatch[2]) || 0;
-                totalMinutes = hours * 60 + mins;
-            }
+            const hoursMatch = course.duration.match(/(\d+)\s*h/i);
+            const minsMatch = course.duration.match(/(\d+)\s*m(?!s)/i);  // m not followed by s (avoid matching 'ms')
+            const secsMatch = course.duration.match(/(\d+)\s*s/i);
+            const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+            const mins = minsMatch ? parseInt(minsMatch[1], 10) : 0;
+            const secs = secsMatch ? parseInt(secsMatch[1], 10) : 0;
+            totalMinutes = hours * 60 + mins + Math.ceil(secs / 60);
         }
 
         const remainingMinutes = Math.round(totalMinutes * (1 - progressPercent / 100));
