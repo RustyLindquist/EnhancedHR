@@ -63,6 +63,31 @@ const INSIGHT_CATEGORIES: Record<
   },
 };
 
+// --- sessionStorage cache helpers (avoid re-running expensive AI insight generation on remount) ---
+const INSIGHTS_CACHE_KEY = 'ehr:insights-preview';
+const CACHE_TTL = 600_000; // 10 minutes
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+function readCache<T>(key: string): CacheEntry<T> | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeCache<T>(key: string, data: T): void {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {}
+}
+
 interface PersonalInsightsPreviewProps {
   userId: string;
   onViewAll: () => void;
@@ -81,12 +106,22 @@ export default function PersonalInsightsPreview({
 
   useEffect(() => {
     const load = async () => {
-      setIsLoading(true);
+      // Check cache first — show cached insights immediately on remount
+      const cached = readCache<PersonalInsight[]>(INSIGHTS_CACHE_KEY);
+      if (cached && cached.data.length > 0) {
+        setInsights(cached.data);
+        setIsLoading(false);
+        // If cache is fresh, skip regeneration check entirely
+        if (Date.now() - cached.timestamp < CACHE_TTL) return;
+      }
+
+      // No cache or stale cache — run the full logic
+      if (!cached) setIsLoading(true);
       const status = await shouldRegenerateInsights(userId);
 
       if (status.shouldRegenerate) {
         // Regenerate: either no insights, meaningful activity, or borderline activity
-        setIsLoading(false);
+        if (!cached) setIsLoading(false);
         setIsGenerating(true);
         const generated = await generatePersonalInsights(userId, {
           noveltyMode: status.noveltyMode,
@@ -97,12 +132,16 @@ export default function PersonalInsightsPreview({
           // Brand new user with no platform activity
           setIsNewUser(true);
         } else {
-          setInsights(generated.slice(0, 3));
+          const sliced = generated.slice(0, 3);
+          setInsights(sliced);
+          writeCache(INSIGHTS_CACHE_KEY, sliced);
         }
       } else if (status.activeCount > 0) {
         // Show existing insights (already generated today or insufficient activity)
         const all = await fetchPersonalInsights(userId);
-        setInsights(all.slice(0, 3));
+        const sliced = all.slice(0, 3);
+        setInsights(sliced);
+        writeCache(INSIGHTS_CACHE_KEY, sliced);
         setIsLoading(false);
       } else {
         // No insights and shouldn't regenerate (edge case)
@@ -111,6 +150,17 @@ export default function PersonalInsightsPreview({
     };
     load();
   }, [userId]);
+
+  // Invalidate insights cache when dashboard signals a reset
+  useEffect(() => {
+    const handler = () => {
+      try {
+        sessionStorage.removeItem(INSIGHTS_CACHE_KEY);
+      } catch {}
+    };
+    window.addEventListener('dashboard:invalidate', handler);
+    return () => window.removeEventListener('dashboard:invalidate', handler);
+  }, []);
 
   return (
     <div className="mb-14">
