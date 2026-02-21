@@ -26,8 +26,8 @@ function parseDurationToMinutes(duration: string | null | undefined): number {
     if (hoursMatch) totalSeconds += parseInt(hoursMatch[1], 10) * 3600;
     const minsMatch = duration.match(/(\d+)\s*m(?!s)/i);
     if (minsMatch) totalSeconds += parseInt(minsMatch[1], 10) * 60;
-    const secsMatch = duration.match(/(\d+)\s*s/i);
-    if (secsMatch) totalSeconds += parseInt(secsMatch[1], 10);
+    const secsMatch = duration.match(/(\d+(?:\.\d+)?)\s*s/i);
+    if (secsMatch) totalSeconds += Math.round(parseFloat(secsMatch[1]));
     return Math.round(totalSeconds / 60);
 }
 

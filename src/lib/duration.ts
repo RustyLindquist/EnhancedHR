@@ -40,17 +40,18 @@ export function formatDurationForCourse(seconds: number): string {
 /**
  * Parse a human-readable duration string to seconds.
  * Handles: "1h 30m", "45m", "2m 30s", "1h", "30s", "0m", null, undefined
+ * Also handles fractional seconds like "7m 29.656556s"
  */
 export function parseDurationToSeconds(duration: string | null | undefined): number {
     if (!duration) return 0;
 
     const hoursMatch = duration.match(/(\d+)\s*h/i);
     const minsMatch = duration.match(/(\d+)\s*m(?!s)/i);
-    const secsMatch = duration.match(/(\d+)\s*s/i);
+    const secsMatch = duration.match(/(\d+(?:\.\d+)?)\s*s/i);
 
     const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
     const mins = minsMatch ? parseInt(minsMatch[1], 10) : 0;
-    const secs = secsMatch ? parseInt(secsMatch[1], 10) : 0;
+    const secs = secsMatch ? Math.round(parseFloat(secsMatch[1])) : 0;
 
     return hours * 3600 + mins * 60 + secs;
 }
