@@ -339,7 +339,7 @@ export interface QuizQuestion {
 
 export interface QuizData {
   questions: QuizQuestion[];
-  passingScore: number; // e.g. 80
+  passingScore?: number | null; // e.g. 80 — optional; when absent, quiz shows score without pass/fail
 }
 
 export interface UserAssessmentAttempt {

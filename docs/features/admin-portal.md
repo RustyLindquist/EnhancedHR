@@ -53,7 +53,8 @@ Admins can create and edit quiz assessments for lessons:
 - **Location**: Admin Lesson Editor Panel (LessonEditorPanel.tsx)
 - **Access**: Select "Quiz" as the lesson type to reveal the Quiz Builder UI
 - **Features**:
-  - Set passing score (0-100%) - note: this does NOT gate lesson completion
+  - Set passing score (0-100%, optional) - note: this does NOT gate lesson completion
+  - **Import Questions from Excel**: Upload .xlsx/.xls spreadsheet to bulk-add questions (see `docs/features/quiz-import.md`)
   - Add/remove questions with text input
   - Add/remove answer options per question (minimum 2)
   - Mark correct answer (one per question)
@@ -61,6 +62,7 @@ Admins can create and edit quiz assessments for lessons:
   - Reorder questions with up/down arrows
 
 See `docs/features/course-player-and-progress.md` for quiz data model and behavior details.
+See `docs/features/quiz-import.md` for quiz import feature details.
 
 ### Drag-and-Drop Lesson Reordering
 Admins can reorder lessons within and between modules using drag-and-drop:

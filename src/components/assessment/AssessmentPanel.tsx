@@ -122,7 +122,8 @@ const AssessmentPanel: React.FC<AssessmentPanelProps> = ({
 
         setIsSaving(true);
         const calculatedScore = calculateScore();
-        const isPassed = calculatedScore >= quizData.passingScore;
+        const hasPassingScore = quizData.passingScore != null && quizData.passingScore > 0;
+        const isPassed = hasPassingScore ? calculatedScore >= quizData.passingScore! : true;
 
         setScore(calculatedScore);
         setPassed(isPassed);
@@ -150,7 +151,7 @@ const AssessmentPanel: React.FC<AssessmentPanelProps> = ({
             }
         }
         setIsSaving(false);
-    }, [allAnswered, calculateScore, quizData.passingScore, lessonId, responses, onComplete]);
+    }, [allAnswered, calculateScore, quizData, lessonId, responses, onComplete]);
 
     const handleCloseAttempt = useCallback(() => {
         if (hasUnsavedProgress) {

@@ -57,7 +57,7 @@ Quiz data is stored in the `lessons.quiz_data` JSONB column with the following s
 ```typescript
 interface QuizData {
   questions: QuizQuestion[];
-  passingScore: number;  // 0-100 percentage, default 80
+  passingScore?: number | null;  // 0-100 percentage, optional — when absent, quiz shows score without pass/fail
 }
 
 interface QuizQuestion {
@@ -80,6 +80,7 @@ interface QuizOption {
 - The passing score is purely for learner self-assessment
 - Learners receive lesson completion credit regardless of their quiz score
 - This supports the recertification model where attempting is what matters, not passing
+- Passing score is **optional** — when not set, learners see their score without pass/fail framing
 
 **Explanations**
 - Optional per-question explanations can be added by course creators
@@ -96,7 +97,8 @@ Course creators (Admins, Org Admins, and Experts) can build quizzes using the Qu
 - **Location**: `src/components/admin/QuizBuilder.tsx`
 - **Available in**: Admin Course Builder, Org Course Builder, Expert Course Builder
 - **Features**:
-  - Set passing score (0-100%)
+  - Set passing score (0-100%, optional — leave blank for no pass/fail threshold)
+  - **Import Questions from Excel**: Upload .xlsx/.xls spreadsheet to bulk-add questions (see `docs/features/quiz-import.md`)
   - Add/remove questions
   - Add/remove answer options (minimum 2 per question)
   - Mark correct answer (radio behavior - one per question)
