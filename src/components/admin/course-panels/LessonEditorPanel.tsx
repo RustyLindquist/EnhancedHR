@@ -252,7 +252,7 @@ export default function LessonEditorPanel({
             const remainingMins = mins % 60;
             return `${hrs}h ${remainingMins}m`;
         }
-        return secs > 0 ? `${mins}m ${secs}s` : `${mins} min`;
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
     };
 
     // Handler for fetching YouTube metadata

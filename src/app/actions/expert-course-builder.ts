@@ -3,9 +3,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
-import { parseFileContent } from '@/lib/file-parser';
+import { parseFileContent, deleteFileFromStorage } from '@/lib/file-parser';
 import { deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
-import { uploadModuleResourceFile, reorderModuleItems, updateModuleResource, updateCourseResource, deleteModuleResource } from '@/app/actions/course-builder';
+import { uploadModuleResourceFile, reorderModuleItems, updateModuleResource, updateCourseResource, deleteModuleResource, recalculateCourseDuration } from '@/app/actions/course-builder';
+import { formatDurationForCourse } from '@/lib/duration';
+import { isYouTubeUrl, fetchYouTubeMetadata } from '@/lib/youtube';
+import { deleteCourseResourceEmbeddings } from '@/lib/context-embeddings';
 
 // ============================================
 // Permission Check Helper
@@ -502,6 +505,33 @@ export async function deleteExpertModule(moduleId: string, courseId: number) {
         .delete()
         .eq('module_id', moduleId);
 
+    // Delete module-level resources (storage files, embeddings, and records)
+    const { data: moduleResources } = await supabase
+        .from('resources')
+        .select('id, storage_path')
+        .eq('module_id', moduleId);
+
+    if (moduleResources && moduleResources.length > 0) {
+        for (const resource of moduleResources) {
+            // Delete embeddings
+            deleteCourseResourceEmbeddings(resource.id).catch(err => {
+                console.error(`[deleteExpertModule] Failed to delete embeddings for resource ${resource.id}:`, err);
+            });
+            // Delete storage file if it exists
+            if (resource.storage_path) {
+                deleteFileFromStorage(resource.storage_path).catch(err => {
+                    console.error(`[deleteExpertModule] Failed to delete file from storage for resource ${resource.id}:`, err);
+                });
+            }
+        }
+
+        // Delete all resource records for this module
+        await supabase
+            .from('resources')
+            .delete()
+            .eq('module_id', moduleId);
+    }
+
     const { error } = await supabase
         .from('modules')
         .delete()
@@ -511,6 +541,8 @@ export async function deleteExpertModule(moduleId: string, courseId: number) {
         console.error('Error deleting module:', error);
         return { success: false, error: error.message };
     }
+
+    await recalculateCourseDuration(courseId);
 
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
@@ -560,6 +592,21 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
 
     const nextOrder = Math.max(lessonMax, resourceMax) + 1;
 
+    // Auto-fetch duration from video URL if not provided
+    let effectiveDuration = data.duration || '0m';
+    if ((!data.duration || data.duration === '0m') && data.video_url) {
+        try {
+            if (await isYouTubeUrl(data.video_url)) {
+                const ytResult = await fetchYouTubeMetadata(data.video_url);
+                if (ytResult.success && ytResult.metadata?.duration) {
+                    effectiveDuration = formatDurationForCourse(ytResult.metadata.duration);
+                }
+            }
+        } catch (err) {
+            console.warn('[createExpertLesson] Auto-fetch duration failed:', err);
+        }
+    }
+
     const { data: lesson, error } = await supabase
         .from('lessons')
         .insert({
@@ -569,7 +616,7 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
             order: nextOrder,
             video_url: data.type === 'video' ? data.video_url : undefined,
             content: data.content || undefined,
-            duration: data.duration || '0m',
+            duration: effectiveDuration,
             quiz_data: data.type === 'quiz' ? data.quiz_data : undefined
         })
         .select()
@@ -579,6 +626,8 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
         console.error('Error creating lesson:', error);
         return { success: false, error: error.message };
     }
+
+    await recalculateCourseDuration(courseId);
 
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true, lesson };
@@ -607,6 +656,10 @@ export async function updateExpertLesson(lessonId: string, courseId: number, dat
     if (error) {
         console.error('Error updating lesson:', error);
         return { success: false, error: error.message };
+    }
+
+    if (data.duration !== undefined) {
+        await recalculateCourseDuration(courseId);
     }
 
     revalidatePath(`/author/courses/${courseId}/builder`);
@@ -652,6 +705,8 @@ export async function deleteExpertLesson(lessonId: string, courseId: number) {
         console.error('Error deleting lesson:', error);
         return { success: false, error: error.message };
     }
+
+    await recalculateCourseDuration(courseId);
 
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
@@ -1001,6 +1056,8 @@ export async function deleteExpertCourseResource(resourceId: string, courseId: n
         console.error('Error deleting resource:', error);
         return { success: false, error: error.message };
     }
+
+    await recalculateCourseDuration(courseId);
 
     revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
