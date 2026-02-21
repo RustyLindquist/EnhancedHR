@@ -47,7 +47,8 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ lessonId, quizData, onComplete 
         });
 
         const calculatedScore = (correctCount / quizData.questions.length) * 100;
-        const isPassed = calculatedScore >= quizData.passingScore;
+        const hasPassingScore = quizData.passingScore != null && quizData.passingScore > 0;
+        const isPassed = hasPassingScore ? calculatedScore >= quizData.passingScore! : true;
 
         setScore(calculatedScore);
         setPassed(isPassed);
@@ -91,7 +92,9 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ lessonId, quizData, onComplete 
             <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold text-white mb-2">Knowledge Check</h2>
                 <p className="text-slate-400">
-                    Pass with {quizData.passingScore}% or higher to complete this lesson.
+                    {quizData.passingScore != null && quizData.passingScore > 0
+                        ? `Pass with ${quizData.passingScore}% or higher to complete this lesson.`
+                        : 'Test your knowledge on this lesson.'}
                 </p>
             </div>
 
@@ -172,11 +175,17 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ lessonId, quizData, onComplete 
                     <div className="text-center animate-fade-in">
                         <div className="mb-4">
                             <p className="text-sm text-slate-400 uppercase tracking-wider font-bold mb-1">Your Score</p>
-                            <p className={`text-4xl font-bold ${passed ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className={`text-4xl font-bold ${
+                                quizData.passingScore != null && quizData.passingScore > 0
+                                    ? (passed ? 'text-green-400' : 'text-red-400')
+                                    : 'text-brand-blue-light'
+                            }`}>
                                 {score.toFixed(0)}%
                             </p>
                             <p className="text-white mt-2">
-                                {passed ? 'Congratulations! You passed.' : 'Keep trying. You can do this!'}
+                                {quizData.passingScore != null && quizData.passingScore > 0
+                                    ? (passed ? 'Congratulations! You passed.' : 'Keep trying. You can do this!')
+                                    : `You got ${Math.round(score / 100 * quizData.questions.length)} out of ${quizData.questions.length} correct.`}
                             </p>
                         </div>
                         <button

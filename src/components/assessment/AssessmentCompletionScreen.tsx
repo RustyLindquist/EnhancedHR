@@ -6,7 +6,7 @@ import { Trophy, RefreshCw, ArrowRight, RotateCw } from 'lucide-react';
 interface AssessmentCompletionScreenProps {
     score: number;  // 0-100
     passed: boolean;
-    passingScore: number;  // e.g., 80
+    passingScore?: number | null;  // e.g., 80 — optional
     totalQuestions: number;
     correctCount: number;
     onRetake: () => void;
@@ -24,6 +24,7 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
     onContinue,
     hasNextLesson
 }) => {
+    const hasPassingScore = passingScore != null && passingScore > 0;
     const [displayScore, setDisplayScore] = useState(0);
     const [showScore, setShowScore] = useState(false);
 
@@ -75,9 +76,11 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
                     <div
                         className={`
                             absolute inset-0 rounded-full border-8
-                            ${passed
-                                ? 'border-green-500 animate-green-glow'
-                                : 'border-orange-500'
+                            ${hasPassingScore
+                                ? (passed
+                                    ? 'border-green-500 animate-green-glow'
+                                    : 'border-orange-500')
+                                : 'border-brand-blue-light'
                             }
                         `}
                     />
@@ -91,7 +94,9 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
                             <span
                                 className={`
                                     text-6xl font-bold
-                                    ${passed ? 'text-green-400' : 'text-orange-400'}
+                                    ${hasPassingScore
+                                        ? (passed ? 'text-green-400' : 'text-orange-400')
+                                        : 'text-brand-blue-light'}
                                 `}
                             >
                                 {displayScore}
@@ -99,7 +104,9 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
                             <span
                                 className={`
                                     text-2xl font-bold ml-1
-                                    ${passed ? 'text-green-400/70' : 'text-orange-400/70'}
+                                    ${hasPassingScore
+                                        ? (passed ? 'text-green-400/70' : 'text-orange-400/70')
+                                        : 'text-brand-blue-light/70'}
                                 `}
                             >
                                 %
@@ -116,15 +123,22 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
                     `}
                     style={{ animationDelay: '400ms' }}
                 >
-                    {passed ? (
+                    {hasPassingScore ? (
+                        passed ? (
+                            <Trophy
+                                size={40}
+                                className="mx-auto text-green-400"
+                            />
+                        ) : (
+                            <RotateCw
+                                size={40}
+                                className="mx-auto text-orange-400"
+                            />
+                        )
+                    ) : (
                         <Trophy
                             size={40}
-                            className="mx-auto text-green-400"
-                        />
-                    ) : (
-                        <RotateCw
-                            size={40}
-                            className="mx-auto text-orange-400"
+                            className="mx-auto text-brand-blue-light"
                         />
                     )}
                 </div>
@@ -140,19 +154,25 @@ const AssessmentCompletionScreen: React.FC<AssessmentCompletionScreenProps> = ({
                     <h2
                         className={`
                             text-3xl font-bold mb-4
-                            ${passed ? 'text-green-400' : 'text-orange-400'}
+                            ${hasPassingScore
+                                ? (passed ? 'text-green-400' : 'text-orange-400')
+                                : 'text-brand-blue-light'}
                         `}
                     >
-                        {passed ? 'Congratulations!' : 'Assessment Complete'}
+                        {hasPassingScore
+                            ? (passed ? 'Congratulations!' : 'Assessment Complete')
+                            : 'Assessment Complete'}
                     </h2>
 
                     <p className="text-slate-300 text-lg mb-2">
                         You scored {correctCount} out of {totalQuestions} questions correct
                     </p>
 
-                    <p className="text-slate-500 text-sm">
-                        Passing score: {passingScore}%
-                    </p>
+                    {hasPassingScore && (
+                        <p className="text-slate-500 text-sm">
+                            Passing score: {passingScore}%
+                        </p>
+                    )}
                 </div>
 
                 {/* Action Buttons */}

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, CheckCircle, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, CheckCircle, HelpCircle, Upload } from 'lucide-react';
 import { QuizData, QuizQuestion, QuizOption } from '@/types';
+import QuizImportPanel from '@/components/admin/QuizImportPanel';
 
 interface QuizBuilderProps {
     initialData?: QuizData;
@@ -29,8 +30,7 @@ const createDefaultQuestion = (): QuizQuestion => ({
 });
 
 const createDefaultQuizData = (): QuizData => ({
-    questions: [createDefaultQuestion()],
-    passingScore: 80
+    questions: [createDefaultQuestion()]
 });
 
 export default function QuizBuilder({ initialData, onChange, disabled = false }: QuizBuilderProps) {
@@ -45,6 +45,9 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
         setQuizData(initialData || createDefaultQuizData());
     }
 
+    // Import panel state
+    const [showImportPanel, setShowImportPanel] = useState(false);
+
     // Notify parent of changes
     const updateQuizData = useCallback((newData: QuizData) => {
         setQuizData(newData);
@@ -53,6 +56,10 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
 
     // Passing score handlers
     const handlePassingScoreChange = useCallback((value: string) => {
+        if (value === '') {
+            updateQuizData({ ...quizData, passingScore: undefined });
+            return;
+        }
         const score = Math.min(100, Math.max(0, parseInt(value) || 0));
         updateQuizData({ ...quizData, passingScore: score });
     }, [quizData, updateQuizData]);
@@ -135,6 +142,15 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
         updateQuizData({ ...quizData, questions: newQuestions });
     }, [quizData, updateQuizData]);
 
+    // Import handler — appends imported questions to existing ones
+    const handleImportQuestions = useCallback((importedQuestions: QuizQuestion[]) => {
+        updateQuizData({
+            ...quizData,
+            questions: [...quizData.questions, ...importedQuestions]
+        });
+        setShowImportPanel(false);
+    }, [quizData, updateQuizData]);
+
     return (
         <div className="space-y-6">
             {/* Passing Score */}
@@ -142,7 +158,7 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
                 <div className="flex items-center gap-3">
                     <HelpCircle size={18} className="text-purple-400" />
                     <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                        Passing Score
+                        Passing Score <span className="text-slate-600 font-normal normal-case">(optional)</span>
                     </label>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
@@ -150,16 +166,19 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
                         type="number"
                         min={0}
                         max={100}
-                        value={quizData.passingScore}
+                        value={quizData.passingScore ?? ''}
                         onChange={(e) => handlePassingScoreChange(e.target.value)}
                         disabled={disabled}
-                        className="w-24 p-3 rounded-lg bg-white/5 border border-white/10 text-white text-center font-medium outline-none focus:border-purple-500/50 disabled:opacity-50"
+                        placeholder="—"
+                        className="w-24 p-3 rounded-lg bg-white/5 border border-white/10 text-white text-center font-medium outline-none focus:border-purple-500/50 disabled:opacity-50 placeholder-slate-600"
                     />
                     <span className="text-slate-400">%</span>
                 </div>
                 <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                    The passing score helps learners assess their understanding. It does <span className="text-slate-400">not</span> prevent
-                    lesson completion—learners can retry as many times as they like and will still receive credit for completing the lesson.
+                    {quizData.passingScore
+                        ? <>The passing score helps learners assess their understanding. It does <span className="text-slate-400">not</span> prevent lesson completion—learners can retry as many times as they like.</>
+                        : <>Leave blank to show learners their score without a pass/fail threshold. Learners will still see how they performed on each question.</>
+                    }
                 </p>
             </div>
 
@@ -169,6 +188,14 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                         Questions ({quizData.questions.length})
                     </h3>
+                    <button
+                        onClick={() => setShowImportPanel(true)}
+                        disabled={disabled}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-purple-400 hover:border-purple-500/30 hover:bg-purple-500/5 text-xs font-medium transition-all disabled:opacity-50"
+                    >
+                        <Upload size={14} />
+                        Import Questions
+                    </button>
                 </div>
 
                 {quizData.questions.map((question, qIndex) => (
@@ -313,6 +340,14 @@ export default function QuizBuilder({ initialData, onChange, disabled = false }:
                     Add Question
                 </button>
             </div>
+
+            {/* Quiz Import Panel */}
+            <QuizImportPanel
+                isOpen={showImportPanel}
+                onClose={() => setShowImportPanel(false)}
+                onImport={handleImportQuestions}
+                disabled={disabled}
+            />
         </div>
     );
 }
