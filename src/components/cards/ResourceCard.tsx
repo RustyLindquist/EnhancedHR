@@ -97,7 +97,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                     }
                     onClick?.();
                 }}
-                className={`relative group w-full flex flex-col aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : draggable ? 'cursor-grab' : onClick ? 'cursor-pointer' : ''}`}
+                className={`relative group w-full flex flex-col aspect-[4/3] min-h-[310px] rounded-3xl overflow-hidden border border-red-500/30 bg-[#0B1120] shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.3)] transition-shadow duration-300 hover:shadow-[0_16px_48px_rgba(0,0,0,0.5),0_4px_16px_rgba(0,0,0,0.4)] ${draggable && isDraggable ? 'cursor-grabbing' : onClick ? 'cursor-pointer' : draggable ? 'cursor-grab' : ''}`}
             >
             <div className="flex-1 flex flex-col min-h-0">
             {/* --- Top Section (Header with title centered) --- */}
