@@ -436,8 +436,8 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
         }
     }, [viewMode, transitionToPlayer, expandedModules, isTransitioning, activeLessonId, getLessonIndex, updateLastAccessed]);
 
-    // Handle resource click (inline module resource)
-    const handleResourceClick = useCallback((resource: Resource, moduleId: string) => {
+    // Handle resource click (inline module resource or course-level resource)
+    const handleResourceClick = useCallback((resource: Resource, moduleId: string | null) => {
         if (isTransitioning) return;
 
         // Clear lesson, set resource
@@ -453,7 +453,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
             setTimeout(() => {
                 setViewMode('player');
-                if (!expandedModules.includes(moduleId)) {
+                if (moduleId && !expandedModules.includes(moduleId)) {
                     setExpandedModules(prev => [...prev, moduleId]);
                 }
                 setTransitionPhase('enter');
@@ -469,7 +469,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             setTransitionPhase('exit');
 
             setTimeout(() => {
-                if (!expandedModules.includes(moduleId)) {
+                if (moduleId && !expandedModules.includes(moduleId)) {
                     setExpandedModules(prev => [...prev, moduleId]);
                 }
                 setTransitionPhase('enter');
@@ -832,6 +832,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                         courseTitle={course.title}
                         onAddToCollection={onAddToCollection}
                         onDragStart={onDragStart}
+                        onResourceClick={(resource) => handleResourceClick(resource, null)}
                     />
                 )}
             </div>
