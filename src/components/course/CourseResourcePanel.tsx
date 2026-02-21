@@ -112,6 +112,21 @@ const CourseResourcePanel: React.FC<CourseResourcePanelProps> = ({
                         </div>
                     </div>
 
+                    {/* Resource Description */}
+                    {resource.description && (
+                        <div className="bg-black/20 border border-white/5 rounded-2xl overflow-hidden">
+                            <div className="h-1 bg-gradient-to-r from-red-500/50 to-orange-500/50" />
+                            <div className="p-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                    About This Resource
+                                </h3>
+                                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                    {resource.description}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Image Preview */}
                     {isImage && (
                         <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden">

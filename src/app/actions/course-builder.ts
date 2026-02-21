@@ -847,6 +847,7 @@ export async function addCourseResource(courseId: number, data: {
     type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
     url: string;
     size?: string;
+    description?: string;
 }) {
     const admin = await createAdminClient();
 
@@ -857,7 +858,8 @@ export async function addCourseResource(courseId: number, data: {
             title: data.title,
             type: data.type,
             url: data.url,
-            size: data.size
+            size: data.size,
+            description: data.description || null
         })
         .select()
         .single();
@@ -887,6 +889,39 @@ export async function addCourseResource(courseId: number, data: {
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
     return { success: true, resource };
+}
+
+/**
+ * Update a course-level resource (title, description)
+ */
+export async function updateCourseResource(
+    resourceId: string,
+    courseId: number,
+    data: { title?: string; description?: string }
+) {
+    const admin = await createAdminClient();
+
+    const updateData: Record<string, unknown> = {};
+    if (data.title !== undefined) updateData.title = data.title.trim();
+    if (data.description !== undefined) updateData.description = data.description || null;
+
+    if (Object.keys(updateData).length === 0) {
+        return { success: true };
+    }
+
+    const { error } = await admin
+        .from('resources')
+        .update(updateData)
+        .eq('id', resourceId);
+
+    if (error) {
+        console.error('[updateCourseResource] Error:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
+    return { success: true };
 }
 
 /**
@@ -1011,7 +1046,8 @@ export async function uploadModuleResourceFile(
     fileName: string,
     fileType: string,
     fileBuffer: ArrayBuffer,
-    estimatedDuration?: string
+    estimatedDuration?: string,
+    description?: string
 ): Promise<{ success: boolean; resource?: { id: string; title: string; type: string; url: string; size?: string; module_id: string; order: number }; error?: string }> {
     const admin = await createAdminClient();
 
@@ -1081,7 +1117,8 @@ export async function uploadModuleResourceFile(
                 parsed_text_length: textContent.length,
                 parse_error: parseResult.success ? null : parseResult.error,
                 summary,
-                estimated_duration: estimatedDuration || '0m'
+                estimated_duration: estimatedDuration || '0m',
+                description: description || null
             })
             .select()
             .single();
@@ -1143,13 +1180,14 @@ export async function uploadModuleResourceFile(
 export async function updateModuleResource(
     resourceId: string,
     courseId: number,
-    data: { title?: string; estimated_duration?: string }
+    data: { title?: string; estimated_duration?: string; description?: string }
 ) {
     const admin = await createAdminClient();
 
     const updateData: Record<string, unknown> = {};
     if (data.title !== undefined) updateData.title = data.title.trim();
     if (data.estimated_duration !== undefined) updateData.estimated_duration = data.estimated_duration;
+    if (data.description !== undefined) updateData.description = data.description || null;
 
     if (Object.keys(updateData).length === 0) {
         return { success: true };
@@ -1480,7 +1518,8 @@ export async function getCourseForBuilder(courseId: number) {
         url: r.url,
         size: r.size,
         module_id: r.module_id || null,
-        order: r.order ?? 0
+        order: r.order ?? 0,
+        description: r.description || null
     }));
 
     return {

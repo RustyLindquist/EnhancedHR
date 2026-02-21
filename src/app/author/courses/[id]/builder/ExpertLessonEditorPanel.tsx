@@ -51,6 +51,7 @@ interface ExpertLessonEditorPanelProps {
     resourceType?: string;
     resourceSize?: string;
     resourceEstimatedDuration?: string;
+    resourceDescription?: string;
 }
 
 const LESSON_TYPES = [
@@ -78,7 +79,8 @@ export default function ExpertLessonEditorPanel({
     resourceUrl,
     resourceType,
     resourceSize,
-    resourceEstimatedDuration
+    resourceEstimatedDuration,
+    resourceDescription
 }: ExpertLessonEditorPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,9 @@ export default function ExpertLessonEditorPanel({
 
     // Estimated time state (for quiz and file types)
     const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
+
+    // Resource description state
+    const [resourceDescriptionValue, setResourceDescriptionValue] = useState(resourceDescription || '');
 
     // Dual transcript state
     const [aiTranscript, setAiTranscript] = useState(lessonContent);
@@ -164,8 +169,9 @@ export default function ExpertLessonEditorPanel({
             setOriginalVideoUrl(lessonVideoUrl); // Track original video URL for change detection
             setSelectedFiles([]);
             setIsUploadingFile(false);
+            setResourceDescriptionValue(resourceDescription || '');
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration, resourceDescription]);
 
     const handleGenerateTranscript = useCallback(async () => {
         if (!videoUrl) {
@@ -332,7 +338,8 @@ export default function ExpertLessonEditorPanel({
                 }
                 const result = await updateExpertModuleResource(resourceId, courseId, {
                     title: title.trim(),
-                    estimated_duration: resourceDuration
+                    estimated_duration: resourceDuration,
+                    description: resourceDescriptionValue.trim() || undefined
                 });
                 if (result.success) {
                     setShowSuccess(true);
@@ -368,7 +375,8 @@ export default function ExpertLessonEditorPanel({
                         file.name,
                         file.type,
                         buffer,
-                        resourceDuration
+                        resourceDuration,
+                        resourceDescriptionValue.trim() || undefined
                     );
 
                     if (result.success) {
@@ -436,7 +444,7 @@ export default function ExpertLessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes, resourceDescriptionValue]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -837,6 +845,25 @@ export default function ExpertLessonEditorPanel({
                                 />
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* Resource Description - Show for file type (new or existing resource) */}
+                {(resourceId || type === 'article') && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Description
+                        </label>
+                        <textarea
+                            value={resourceDescriptionValue}
+                            onChange={(e) => setResourceDescriptionValue(e.target.value)}
+                            placeholder="Optional description for this resource..."
+                            rows={3}
+                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 resize-none"
+                        />
+                        <p className="text-xs text-slate-600 mt-1.5">
+                            Shown to learners when they view this resource.
+                        </p>
                     </div>
                 )}
 

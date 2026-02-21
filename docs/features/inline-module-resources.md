@@ -38,8 +38,8 @@ Inline Module Resources allows course creators to embed documents and files dire
 
 - **Inline resource display**: ModuleContainer merges lessons and resources by `order` and renders resource cards alongside lesson cards in both grid and list views.
 - **Resource detail view**: Clicking a resource displays content in the main player area:
-  - **Image resources** (type `IMG` or image URL extension): Inline image preview with discreet title overlay (top-left) and download button (top-right).
-  - **Non-image resources**: Centered display with file icon, title, type/size metadata, and download button.
+  - **Image resources** (type `IMG` or image URL extension): Inline image preview with discreet title overlay (top-left), download button (top-right), and description gradient overlay at bottom when description exists.
+  - **Non-image resources**: Header with file icon, title, type/size metadata, and download button; scrollable description section below when description exists.
 - **Unified navigation**: Prev/next buttons step sequentially through all lessons and resources across all modules.
 - **Course-level resources**: Resources without `module_id` continue to appear in the course resources section at the bottom.
 
@@ -79,6 +79,7 @@ export interface Resource {
   module_id?: string;  // When set, resource appears inline within this module
   order?: number;              // Display order within module (shared with lessons)
   estimated_duration?: string; // Expected completion time (e.g., "15m", "1h 30m")
+  description?: string;        // Optional free-text description (see docs/features/resource-descriptions.md)
 }
 
 export interface Lesson {
@@ -97,8 +98,8 @@ export type ModuleItem =
 
 | Operation | Server Action | Description |
 |-----------|---------------|-------------|
-| Upload file to module | `uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration?)` | Uploads file, detects type, computes shared order, inserts resource with `module_id` and optional `estimated_duration` |
-| Update resource | `updateModuleResource(resourceId, courseId, data)` | Updates resource title and/or `estimated_duration` |
+| Upload file to module | `uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration?, description?)` | Uploads file, detects type, computes shared order, inserts resource with `module_id`, optional `estimated_duration`, and optional `description` |
+| Update resource | `updateModuleResource(resourceId, courseId, data)` | Updates resource title, `estimated_duration`, and/or `description` |
 | Reset course durations | `resetCourseDurations(courseId)` | Fetches video durations, aggregates with quiz/file estimated times, updates `course.duration` |
 | Delete module resource | `deleteModuleResource(resourceId, courseId)` | Deletes resource, cleans up storage file and embeddings |
 | Reorder module items | `reorderModuleItems(moduleId, courseId, orderedItems)` | Sets `order` on both lessons and resources within a module |
@@ -129,10 +130,10 @@ Reusable drag-and-drop upload component. Features: drag feedback, click-to-brows
 
 Updated to support three modes:
 1. **Lesson mode** (default): Standard lesson editor with type selector. For Quiz type, includes QuizBuilder and estimated completion time input.
-2. **Resource editing mode** (when `resourceId` prop set): Shows file info, download link, title and estimated time editing, delete action.
-3. **File creation mode** (type "File" + new): Shows FileUploadZone and estimated completion time input.
+2. **Resource editing mode** (when `resourceId` prop set): Shows file info, download link, title and estimated time editing, description textarea, delete action.
+3. **File creation mode** (type "File" + new): Shows FileUploadZone, estimated completion time input, and description textarea.
 
-When type is Quiz or File, shows "Estimated Completion Time (minutes)" input that validates for positive numbers and saves as standard duration format.
+When type is Quiz or File, shows "Estimated Completion Time (minutes)" input that validates for positive numbers and saves as standard duration format. File type additionally shows a description textarea (see `docs/features/resource-descriptions.md`).
 
 ### Builder Resource Cards
 
@@ -194,5 +195,6 @@ Accepts `moduleResources` prop, merges with lessons by `order`, renders in grid/
 
 - `docs/features/course-player-and-progress.md`
 - `docs/features/expert-resources.md`
+- `docs/features/resource-descriptions.md` (optional description field on resources)
 - `docs/features/author-portal.md`
 - `docs/features/admin-portal.md`
