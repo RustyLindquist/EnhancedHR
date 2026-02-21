@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateTranscriptFromVideoAdmin } from '@/app/actions/course-builder';
+import { embedPlatformLessonContent } from '@/lib/context-embeddings';
 
 interface RegenerateRequest {
     courseId: number;
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
         // Fetch all modules with their lessons
         const { data: modules, error: modulesError } = await admin
             .from('modules')
-            .select('id, title, lessons(id, title, video_url, type, user_transcript, ai_transcript, transcript_source)')
+            .select('id, title, lessons(id, title, description, video_url, type, user_transcript, ai_transcript, transcript_source)')
             .eq('course_id', courseId)
             .order('order');
 
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         let lessonsGenerated = 0;
         let lessonsSkipped = 0;
         let lessonsFailed = 0;
+        let embeddingsCreated = 0;
         const failedLessons: { title: string; error: string }[] = [];
 
         // Process each module
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
             const lessons = courseModule.lessons as Array<{
                 id: string;
                 title: string;
+                description: string | null;
                 video_url: string | null;
                 type: string | null;
                 user_transcript: string | null;
@@ -110,6 +113,23 @@ export async function POST(request: Request) {
                             failedLessons.push({ title: lesson.title, error: updateError.message });
                             lessonsFailed++;
                         } else {
+                            // Generate embeddings for RAG (cleans up stale embeddings automatically)
+                            try {
+                                const embedResult = await embedPlatformLessonContent(
+                                    lesson.id,
+                                    courseId,
+                                    lesson.title,
+                                    lesson.description || undefined,
+                                    result.transcript,
+                                    courseModule.title
+                                );
+                                if (embedResult.success) {
+                                    embeddingsCreated += embedResult.embeddingCount;
+                                    console.log(`[Regenerate Transcripts API] Created ${embedResult.embeddingCount} embeddings for "${lesson.title}"`);
+                                }
+                            } catch (embedErr) {
+                                console.warn(`[Regenerate Transcripts API] Embedding error for "${lesson.title}":`, embedErr);
+                            }
                             lessonsGenerated++;
                         }
                     } else {
@@ -129,7 +149,7 @@ export async function POST(request: Request) {
             }
         }
 
-        console.log(`[Regenerate Transcripts API] Complete - Generated: ${lessonsGenerated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}`);
+        console.log(`[Regenerate Transcripts API] Complete - Generated: ${lessonsGenerated}, Skipped: ${lessonsSkipped}, Failed: ${lessonsFailed}, Embeddings: ${embeddingsCreated}`);
 
         return NextResponse.json({
             success: true,
@@ -137,6 +157,7 @@ export async function POST(request: Request) {
                 lessonsGenerated,
                 lessonsSkipped,
                 lessonsFailed,
+                embeddingsCreated,
                 failedLessons: failedLessons.length > 0 ? failedLessons : undefined
             }
         });

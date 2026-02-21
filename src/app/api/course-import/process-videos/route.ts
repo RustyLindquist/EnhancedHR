@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         // Get all modules for this course
         const { data: modules, error: modulesError } = await supabase
             .from('modules')
-            .select('id')
+            .select('id, title')
             .eq('course_id', courseId);
 
         if (modulesError) {
@@ -78,6 +78,7 @@ export async function POST(request: Request) {
         }
 
         const moduleIds = modules.map(m => m.id);
+        const moduleTitleMap = new Map(modules.map(m => [m.id, m.title]));
 
         // Get all video lessons with URLs
         const { data: lessons, error: lessonsError } = await supabase
@@ -138,10 +139,14 @@ export async function POST(request: Request) {
 
                 // If we got a transcript, save it and create embeddings
                 if (transcript) {
-                    // Update lesson with transcript in content field
+                    // Update lesson with transcript in the dual-transcript fields
                     const { error: updateError } = await supabase
                         .from('lessons')
-                        .update({ content: transcript })
+                        .update({
+                            ai_transcript: transcript,
+                            transcript_source: transcriptSource,
+                            transcript_status: 'ready'
+                        })
                         .eq('id', lesson.id);
 
                     if (updateError) {
@@ -157,7 +162,8 @@ export async function POST(request: Request) {
                         courseId,
                         lesson.title,
                         lesson.description || undefined,
-                        transcript
+                        transcript,
+                        moduleTitleMap.get(lesson.module_id) || undefined
                     );
 
                     if (embedResult.success) {

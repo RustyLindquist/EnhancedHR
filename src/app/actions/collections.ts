@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { embedConversation, deleteConversationEmbeddings } from '@/lib/context-embeddings';
 
 export async function renameCollection(collectionId: string, newName: string) {
     const supabase = await createClient();
@@ -516,6 +517,19 @@ export async function syncConversationCollectionsAction(userId: string, conversa
             .in('collection_id', toRemove);
     }
 
+    // Embed conversation for RAG if it's in any collection, clean up if removed from all
+    if (resolvedTargetIds.length > 0) {
+        // Embed with the first collection as context (async, don't block)
+        embedConversation(userId, conversationId, resolvedTargetIds[0]).catch(err =>
+            console.warn('[syncConversationCollectionsAction] Embedding error:', err)
+        );
+    } else {
+        // Removed from all collections — clean up embeddings
+        deleteConversationEmbeddings(conversationId).catch(err =>
+            console.warn('[syncConversationCollectionsAction] Embedding cleanup error:', err)
+        );
+    }
+
     revalidatePath('/dashboard');
     return { success: true };
 }
@@ -572,6 +586,11 @@ export async function addToolConversationToCollectionAction(conversationId: stri
         return { success: false, error: error.message };
     }
 
+    // Embed conversation for RAG (async, don't block)
+    embedConversation(user.id, conversationId, resolvedId).catch(err =>
+        console.warn('[addToolConversationToCollectionAction] Embedding error:', err)
+    );
+
     revalidatePath('/dashboard');
     return { success: true };
 }
@@ -624,6 +643,20 @@ export async function removeToolConversationFromCollectionAction(conversationId:
     if (error) {
         console.error('Error removing tool conversation from collection:', error);
         return { success: false, error: error.message };
+    }
+
+    // Check if conversation is still in any collection; if not, clean up embeddings
+    const { data: remaining } = await admin
+        .from('collection_items')
+        .select('id')
+        .eq('item_id', conversationId)
+        .in('item_type', ['CONVERSATION', 'TOOL_CONVERSATION'])
+        .limit(1);
+
+    if (!remaining || remaining.length === 0) {
+        deleteConversationEmbeddings(conversationId).catch(err =>
+            console.warn('[removeToolConversationFromCollectionAction] Embedding cleanup error:', err)
+        );
     }
 
     revalidatePath('/dashboard');

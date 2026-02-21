@@ -401,6 +401,18 @@ export async function embedPlatformLessonContent(
     const admin = createAdminClient();
 
     try {
+        // Clean up stale embeddings for this lesson before creating new ones
+        const { error: deleteError } = await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', lessonId)
+            .eq('source_type', 'lesson')
+            .eq('course_id', courseId);
+
+        if (deleteError) {
+            console.warn(`[embedPlatformLessonContent] Failed to clean up old embeddings for lesson ${lessonId}:`, deleteError);
+        }
+
         // Build combined context (same pattern as embedVideoContext)
         const parts: string[] = [];
         if (moduleTitle) {
@@ -702,6 +714,264 @@ export async function embedAllCourseResources(
             resourceCount: 0,
             embeddingCount: 0,
             errors: [error instanceof Error ? error.message : 'Unknown error']
+        };
+    }
+}
+
+/**
+ * Embed a user note for RAG retrieval.
+ * Combines title + content into searchable text.
+ * Cleans up stale embeddings before creating new ones.
+ */
+export async function embedNote(
+    userId: string,
+    noteId: string,
+    title: string,
+    content: string,
+    collectionId?: string | null,
+    metadata?: Record<string, any>
+): Promise<{ success: boolean; embeddingCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        const textParts: string[] = [];
+        if (title) textParts.push(`Note: ${title}`);
+        if (content) textParts.push(content);
+        const combinedText = textParts.join('\n\n');
+
+        if (!combinedText || combinedText.trim().length === 0) {
+            return { success: true, embeddingCount: 0 };
+        }
+
+        // Clean up stale embeddings for this note
+        await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', noteId)
+            .eq('source_type', 'note');
+
+        // Chunk long content
+        const chunks = combinedText.length > 1200
+            ? chunkText(combinedText, 1000, 200)
+            : [combinedText];
+
+        let embeddingCount = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = await generateEmbedding(chunk);
+
+            if (!embedding || embedding.length === 0) {
+                console.warn(`[embedNote] Failed embedding chunk ${i + 1}/${chunks.length}`);
+                continue;
+            }
+
+            const { error } = await admin
+                .from('unified_embeddings')
+                .insert({
+                    user_id: userId,
+                    collection_id: sanitizeCollectionId(collectionId),
+                    source_type: 'note',
+                    source_id: noteId,
+                    content: chunk,
+                    embedding,
+                    metadata: {
+                        ...metadata,
+                        title,
+                        chunk_index: i,
+                        total_chunks: chunks.length
+                    }
+                });
+
+            if (error) {
+                console.error('[embedNote] Insert error:', error);
+            } else {
+                embeddingCount++;
+            }
+        }
+
+        console.log(`[embedNote] Created ${embeddingCount} embeddings for note "${title}"`);
+        return { success: true, embeddingCount };
+
+    } catch (error) {
+        console.error('[embedNote] Error:', error);
+        return {
+            success: false,
+            embeddingCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
+ * Delete all embeddings for a note
+ */
+export async function deleteNoteEmbeddings(
+    noteId: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        const { data, error } = await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', noteId)
+            .eq('source_type', 'note')
+            .select('id');
+
+        if (error) {
+            console.error('[deleteNoteEmbeddings] Error:', error);
+            return { success: false, deletedCount: 0, error: error.message };
+        }
+
+        return { success: true, deletedCount: data?.length || 0 };
+    } catch (error) {
+        console.error('[deleteNoteEmbeddings] Error:', error);
+        return {
+            success: false,
+            deletedCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
+ * Embed a saved conversation for RAG retrieval.
+ * Fetches conversation messages and creates a searchable summary.
+ * Cleans up stale embeddings before creating new ones.
+ */
+export async function embedConversation(
+    userId: string,
+    conversationId: string,
+    collectionId?: string | null
+): Promise<{ success: boolean; embeddingCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        // Fetch conversation metadata
+        const { data: conv } = await admin
+            .from('conversations')
+            .select('title, metadata')
+            .eq('id', conversationId)
+            .single();
+
+        // Fetch conversation messages
+        const { data: messages } = await admin
+            .from('conversation_messages')
+            .select('role, content')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+        if (!messages || messages.length === 0) {
+            return { success: true, embeddingCount: 0 };
+        }
+
+        // Build searchable text from conversation
+        const textParts: string[] = [];
+        if (conv?.title) {
+            textParts.push(`Conversation: ${conv.title}`);
+        }
+
+        // Include message content (both user questions and AI responses)
+        for (const msg of messages) {
+            const prefix = msg.role === 'user' ? 'User' : 'Assistant';
+            textParts.push(`${prefix}: ${msg.content}`);
+        }
+
+        const combinedText = textParts.join('\n\n');
+
+        if (!combinedText || combinedText.trim().length === 0) {
+            return { success: true, embeddingCount: 0 };
+        }
+
+        // Clean up stale embeddings for this conversation
+        await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', conversationId)
+            .eq('source_type', 'conversation');
+
+        // Chunk long conversations
+        const chunks = combinedText.length > 1200
+            ? chunkText(combinedText, 1000, 200)
+            : [combinedText];
+
+        let embeddingCount = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const embedding = await generateEmbedding(chunk);
+
+            if (!embedding || embedding.length === 0) {
+                console.warn(`[embedConversation] Failed embedding chunk ${i + 1}/${chunks.length}`);
+                continue;
+            }
+
+            const { error } = await admin
+                .from('unified_embeddings')
+                .insert({
+                    user_id: userId,
+                    collection_id: sanitizeCollectionId(collectionId),
+                    source_type: 'conversation',
+                    source_id: conversationId,
+                    content: chunk,
+                    embedding,
+                    metadata: {
+                        title: conv?.title || 'Untitled Conversation',
+                        message_count: messages.length,
+                        chunk_index: i,
+                        total_chunks: chunks.length
+                    }
+                });
+
+            if (error) {
+                console.error('[embedConversation] Insert error:', error);
+            } else {
+                embeddingCount++;
+            }
+        }
+
+        console.log(`[embedConversation] Created ${embeddingCount} embeddings for conversation "${conv?.title || conversationId}"`);
+        return { success: true, embeddingCount };
+
+    } catch (error) {
+        console.error('[embedConversation] Error:', error);
+        return {
+            success: false,
+            embeddingCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+/**
+ * Delete all embeddings for a conversation
+ */
+export async function deleteConversationEmbeddings(
+    conversationId: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    const admin = createAdminClient();
+
+    try {
+        const { data, error } = await admin
+            .from('unified_embeddings')
+            .delete()
+            .eq('source_id', conversationId)
+            .eq('source_type', 'conversation')
+            .select('id');
+
+        if (error) {
+            console.error('[deleteConversationEmbeddings] Error:', error);
+            return { success: false, deletedCount: 0, error: error.message };
+        }
+
+        return { success: true, deletedCount: data?.length || 0 };
+    } catch (error) {
+        console.error('[deleteConversationEmbeddings] Error:', error);
+        return {
+            success: false,
+            deletedCount: 0,
+            error: error instanceof Error ? error.message : 'Unknown error'
         };
     }
 }

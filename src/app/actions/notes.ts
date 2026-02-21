@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { Note } from '@/types';
+import { embedNote, deleteNoteEmbeddings } from '@/lib/context-embeddings';
 
 /**
  * Fetch all PERSONAL notes for the current user.
@@ -270,6 +271,11 @@ export async function createNoteAction(data: {
         return null;
     }
 
+    // Generate embedding for RAG (async, don't block)
+    embedNote(user.id, note.id, note.title, note.content || '').catch(err =>
+        console.warn('[createNoteAction] Embedding error:', err)
+    );
+
     revalidatePath('/dashboard');
 
     return {
@@ -366,6 +372,11 @@ export async function createOrgNoteAction(data: {
         console.error('[createOrgNoteAction] Error adding note to collection:', collectionError);
         // Note created but not added to collection - still return note
     }
+
+    // Generate embedding for RAG (async, don't block)
+    embedNote(user.id, note.id, note.title, note.content || '', data.collection_id).catch(err =>
+        console.warn('[createOrgNoteAction] Embedding error:', err)
+    );
 
     revalidatePath('/dashboard');
 
@@ -489,6 +500,11 @@ export async function updateNoteAction(noteId: string, data: {
         return null;
     }
 
+    // Re-embed with updated content (async, don't block)
+    embedNote(user.id, note.id, note.title, note.content || '').catch(err =>
+        console.warn('[updateNoteAction] Embedding error:', err)
+    );
+
     return {
         type: 'NOTE',
         id: note.id,
@@ -514,7 +530,10 @@ export async function deleteNoteAction(noteId: string): Promise<{ success: boole
 
     const admin = createAdminClient();
 
-    // First, remove from any collections
+    // First, clean up embeddings
+    await deleteNoteEmbeddings(noteId);
+
+    // Remove from any collections
     await admin
         .from('collection_items')
         .delete()
