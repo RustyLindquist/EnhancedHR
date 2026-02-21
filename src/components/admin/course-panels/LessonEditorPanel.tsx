@@ -874,35 +874,24 @@ export default function LessonEditorPanel({
                                 Upload
                             </button>
                             <button
-                                onClick={() => setVideoSource('youtube')}
-                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    videoSource === 'youtube'
-                                        ? 'bg-red-500/20 text-red-400'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
-                            >
-                                <Youtube size={14} />
-                                YouTube
-                            </button>
-                            <button
                                 onClick={() => setVideoSource('url')}
                                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    videoSource === 'url'
+                                    videoSource === 'url' || videoSource === 'youtube'
                                         ? 'bg-brand-blue-light/20 text-brand-blue-light'
                                         : 'text-slate-400 hover:text-white'
                                 }`}
                             >
                                 <Link2 size={14} />
-                                Mux / URL
+                                Online Video
                             </button>
                         </div>
 
-                        {/* YouTube URL Input */}
-                        {videoSource === 'youtube' && (
+                        {/* Online Video URL Input */}
+                        {(videoSource === 'url' || videoSource === 'youtube') && (
                             <div className="space-y-4">
                                 <div className="flex gap-3">
                                     <div className="flex-1 flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-                                        <Youtube size={16} className="text-red-400" />
+                                        <Link2 size={16} className="text-slate-400" />
                                         <input
                                             type="text"
                                             value={videoUrl}
@@ -910,27 +899,34 @@ export default function LessonEditorPanel({
                                                 setVideoUrl(e.target.value);
                                                 setYoutubeMetadata(null);
                                             }}
-                                            placeholder="https://youtube.com/watch?v=..."
+                                            onBlur={(e) => handleFetchVideoDuration(e.target.value)}
+                                            placeholder="YouTube URL, Mux Playback ID, Vimeo, Wistia, or Google Drive URL"
                                             className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
                                         />
-                                    </div>
-                                    <button
-                                        onClick={handleFetchYouTubeMetadata}
-                                        disabled={!videoUrl || isFetchingMetadata}
-                                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {isFetchingMetadata ? (
-                                            <>
-                                                <Loader2 size={14} className="animate-spin" />
-                                                Fetching...
-                                            </>
-                                        ) : (
-                                            'Fetch Details'
+                                        {isFetchingDuration && (
+                                            <Loader2 size={16} className="text-slate-400 animate-spin" />
                                         )}
-                                    </button>
+                                    </div>
+                                    {/* Show Fetch Details button for YouTube URLs */}
+                                    {videoUrl && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) && (
+                                        <button
+                                            onClick={handleFetchYouTubeMetadata}
+                                            disabled={!videoUrl || isFetchingMetadata}
+                                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
+                                        >
+                                            {isFetchingMetadata ? (
+                                                <>
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                    Fetching...
+                                                </>
+                                            ) : (
+                                                'Fetch Details'
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                                 <p className="text-xs text-slate-600">
-                                    Enter a YouTube URL. Click "Fetch Details" to auto-fill duration and preview the video.
+                                    Enter a YouTube URL, Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive video URL. Duration will be auto-fetched.
                                 </p>
 
                                 {/* YouTube Preview */}
@@ -955,29 +951,6 @@ export default function LessonEditorPanel({
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        )}
-
-                        {/* URL Input */}
-                        {videoSource === 'url' && (
-                            <div>
-                                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-                                    <Link2 size={16} className="text-slate-400" />
-                                    <input
-                                        type="text"
-                                        value={videoUrl}
-                                        onChange={(e) => setVideoUrl(e.target.value)}
-                                        onBlur={(e) => handleFetchVideoDuration(e.target.value)}
-                                        placeholder="Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive URL"
-                                        className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
-                                    />
-                                    {isFetchingDuration && (
-                                        <Loader2 size={16} className="text-slate-400 animate-spin" />
-                                    )}
-                                </div>
-                                <p className="text-xs text-slate-600 mt-2">
-                                    Enter a Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive video URL. Duration will be auto-fetched.
-                                </p>
                             </div>
                         )}
 
