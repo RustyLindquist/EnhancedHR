@@ -73,7 +73,7 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                                 }`}>
                                     {isOrgCourse ? 'ORGANIZATION COURSE' : 'COURSE'}
                                 </span>
-                                <h1 className="text-2xl lg:text-3xl font-light text-white truncate tracking-tight drop-shadow-lg">
+                                <h1 className="text-lg lg:text-xl font-light text-white truncate tracking-tight drop-shadow-lg">
                                     {course.title.split(' ')[0]} <span className="font-bold">{course.title.split(' ').slice(1).join(' ')}</span>
                                 </h1>
                             </>
@@ -83,7 +83,7 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                                     <span className="text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] truncate max-w-[300px]">{course.title}</span>
                                     <ChevronRight size={12} className="flex-shrink-0 text-slate-600" />
                                 </div>
-                                <h1 className="text-2xl lg:text-3xl font-light text-white truncate tracking-tight drop-shadow-lg">
+                                <h1 className="text-lg lg:text-xl font-light text-white truncate tracking-tight drop-shadow-lg">
                                     {(currentLesson?.title || 'Lesson Title Goes Here').split(' ')[0]} <span className="font-bold">{(currentLesson?.title || 'Lesson Title Goes Here').split(' ').slice(1).join(' ')}</span>
                                 </h1>
                             </>
@@ -91,22 +91,29 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
                     </div>
                 </div>
 
-                {/* Center Section: Stats */}
-                <div className="hidden md:flex items-center gap-1 flex-shrink-0 bg-white/5 rounded-lg px-4 py-2 border border-white/10">
-                    {/* Duration */}
-                    <span className="text-sm font-semibold text-white">
-                        {stats.totalDuration}
-                    </span>
-                    <span className="text-slate-500 mx-2">|</span>
-                    {/* Progress */}
-                    <span className="text-sm font-semibold text-emerald-400">
-                        {stats.progressPercent}% Complete
-                    </span>
-                    <span className="text-slate-500 mx-2">|</span>
-                    {/* Time Remaining */}
-                    <span className="text-sm font-semibold text-slate-300">
-                        {stats.remainingMinutes} Min Remaining
-                    </span>
+                {/* Center Section: Stats (stacked) */}
+                <div className="hidden md:flex flex-col gap-1.5 flex-shrink-0 bg-white/5 rounded-lg px-4 py-2.5 border border-white/10 min-w-[160px]">
+                    {/* Duration / Remaining */}
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold text-white whitespace-nowrap">
+                            {stats.totalDuration}
+                        </span>
+                        <span className="text-xs text-slate-400 whitespace-nowrap">
+                            {stats.remainingMinutes}m left
+                        </span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                style={{ width: `${stats.progressPercent}%` }}
+                            />
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-400 whitespace-nowrap">
+                            {stats.progressPercent}%
+                        </span>
+                    </div>
                 </div>
 
                 {/* Right Section: Action Buttons */}
