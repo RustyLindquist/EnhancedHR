@@ -730,6 +730,7 @@ export async function createLesson(moduleId: string, data: {
 
     if (module) {
         revalidatePath(`/admin/courses/${module.course_id}/builder`);
+        recalculateCourseDuration(module.course_id).catch(() => {});
     }
     return { success: true, lesson };
 }
@@ -788,7 +789,11 @@ export async function updateLesson(lessonId: string, data: {
     }
 
     if (currentLesson?.modules) {
-        revalidatePath(`/admin/courses/${(currentLesson.modules as any).course_id}/builder`);
+        const courseId = (currentLesson.modules as any).course_id;
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        if (data.duration !== undefined) {
+            recalculateCourseDuration(courseId).catch(() => {});
+        }
     }
 
     // NOTE: Auto-transcript generation removed - users now control when transcripts are generated
@@ -833,7 +838,9 @@ export async function deleteLesson(lessonId: string) {
     }
 
     if (lesson?.modules) {
-        revalidatePath(`/admin/courses/${(lesson.modules as any).course_id}/builder`);
+        const courseId = (lesson.modules as any).course_id;
+        revalidatePath(`/admin/courses/${courseId}/builder`);
+        recalculateCourseDuration(courseId).catch(() => {});
     }
     return { success: true };
 }
@@ -1151,6 +1158,7 @@ export async function uploadModuleResourceFile(
 
         revalidatePath(`/admin/courses/${courseId}/builder`);
         revalidatePath(`/author/courses/${courseId}/builder`);
+        recalculateCourseDuration(courseId).catch(() => {});
 
         return {
             success: true,
@@ -1205,6 +1213,9 @@ export async function updateModuleResource(
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
     revalidatePath(`/author/courses/${courseId}/builder`);
+    if (data.estimated_duration !== undefined) {
+        recalculateCourseDuration(courseId).catch(() => {});
+    }
 
     return { success: true };
 }
@@ -1250,6 +1261,7 @@ export async function deleteModuleResource(
 
     revalidatePath(`/admin/courses/${courseId}/builder`);
     revalidatePath(`/author/courses/${courseId}/builder`);
+    recalculateCourseDuration(courseId).catch(() => {});
 
     return { success: true };
 }
@@ -2560,6 +2572,57 @@ export interface ResetDurationsResult {
         details: LessonDurationDetail[];
     };
     error?: string;
+}
+
+/**
+ * Lightweight recalculation of total course duration from existing lesson durations
+ * and resource estimated_durations. Does NOT re-fetch from external video APIs.
+ * Called automatically after mutations that affect duration.
+ */
+async function recalculateCourseDuration(courseId: number): Promise<void> {
+    const admin = await createAdminClient();
+
+    try {
+        // Get all lessons via modules
+        const { data: modules } = await admin
+            .from('modules')
+            .select('lessons(duration)')
+            .eq('course_id', courseId);
+
+        // Get all resources with estimated_duration
+        const { data: resources } = await admin
+            .from('resources')
+            .select('estimated_duration')
+            .eq('course_id', courseId);
+
+        let totalSeconds = 0;
+
+        if (modules) {
+            for (const mod of modules) {
+                const lessons = (mod.lessons as Array<{ duration: string | null }>) || [];
+                for (const lesson of lessons) {
+                    totalSeconds += parseDurationToSeconds(lesson.duration);
+                }
+            }
+        }
+
+        if (resources) {
+            for (const resource of resources) {
+                totalSeconds += parseDurationToSeconds(resource.estimated_duration);
+            }
+        }
+
+        const totalDuration = formatDurationForCourse(totalSeconds);
+
+        await admin
+            .from('courses')
+            .update({ duration: totalDuration })
+            .eq('id', courseId);
+
+        revalidatePath(`/courses/${courseId}`);
+    } catch (err) {
+        console.error('[recalculateCourseDuration] Error:', err);
+    }
 }
 
 /**

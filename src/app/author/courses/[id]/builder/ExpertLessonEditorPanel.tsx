@@ -709,11 +709,11 @@ export default function ExpertLessonEditorPanel({
                                 }`}
                             >
                                 <Link2 size={14} />
-                                URL / Mux ID
+                                Online Video
                             </button>
                         </div>
 
-                        {/* URL Input */}
+                        {/* Online Video URL Input */}
                         {videoSource === 'url' && (
                             <div>
                                 <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
@@ -723,7 +723,7 @@ export default function ExpertLessonEditorPanel({
                                         value={videoUrl}
                                         onChange={(e) => setVideoUrl(e.target.value)}
                                         onBlur={(e) => handleFetchVideoDuration(e.target.value)}
-                                        placeholder="Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive URL"
+                                        placeholder="YouTube URL, Mux Playback ID, Vimeo, Wistia, or Google Drive URL"
                                         className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
                                     />
                                     {isFetchingDuration && (
@@ -731,7 +731,7 @@ export default function ExpertLessonEditorPanel({
                                     )}
                                 </div>
                                 <p className="text-xs text-slate-600 mt-2">
-                                    Enter a Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive video URL. Duration will be auto-fetched.
+                                    Enter a YouTube URL, Mux Playback ID, Vimeo URL, Wistia URL, or Google Drive video URL. Duration will be auto-fetched.
                                 </p>
                             </div>
                         )}
