@@ -41,9 +41,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
 
     const handleDragIntentChange = React.useCallback((isDragging: boolean) => {
         setIsDraggable(isDragging);
-        if (isDragging) {
-            setShouldPreventClick(true);
-        }
+        // Don't set shouldPreventClick here - only set it when actual drag starts
     }, []);
 
     const handleDownload = () => {
@@ -78,6 +76,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
                 draggable={draggable && isDraggable}
                 onDragStart={(e) => {
                     if (isDraggable && onDragStart) {
+                        setShouldPreventClick(true);
                         // Hide native drag preview since we use CustomDragLayer
                         const emptyImg = new Image();
                         emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
