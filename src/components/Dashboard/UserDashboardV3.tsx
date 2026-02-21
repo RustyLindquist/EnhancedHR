@@ -12,7 +12,7 @@ import {
     List
 } from 'lucide-react';
 import { Course, Conversation, ToolConversation } from '@/types';
-import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
+import { fetchDashboardData, DashboardStats, DashboardData } from '@/lib/dashboard';
 import { useRouter } from 'next/navigation';
 import { getRecommendedCourses } from '@/app/actions/recommendations';
 import { fetchConversationsAction } from '@/app/actions/conversations';
@@ -21,6 +21,28 @@ import UniversalCollectionListItem from '../UniversalCollectionListItem';
 import { CollectionItemDetail } from '../UniversalCollectionCard';
 import PersonalInsightsWidget from './PersonalInsightsWidget';
 import PersonalInsightsPreview from './PersonalInsightsPreview';
+
+// ── SessionStorage caching for dashboard data ──────────────────────────
+const STATS_CACHE_KEY = 'ehr:dashboard-stats';
+const CONVOS_CACHE_KEY = 'ehr:dashboard-convos';
+const CACHE_TTL = 300_000; // 5 minutes
+
+interface CacheEntry<T> { data: T; timestamp: number; }
+
+function readCache<T>(key: string): CacheEntry<T> | null {
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
+function writeCache<T>(key: string, data: T): void {
+    try {
+        sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch {}
+}
+// ────────────────────────────────────────────────────────────────────────
 
 interface UserDashboardV3Props {
     user: any;
@@ -125,38 +147,71 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
     };
 
     useEffect(() => {
-        const loadData = async () => {
-            if (user?.id) {
-                try {
-                    const dashboardData = await fetchDashboardData(user.id);
-                    setStats(dashboardData.stats);
-                    setTrendingIds(dashboardData.trendingCourseIds);
-                    setRecertifications(dashboardData.recentCertificates || []);
-                    setUserProgress(dashboardData.userProgress);
-                    setLoading(false);
-                } catch (error) {
-                    console.error("Failed to load dashboard data", error);
-                    setLoading(false);
-                }
-            }
-        };
-        loadData();
+        if (!user?.id) return;
+
+        // Check cache first
+        const cached = readCache<DashboardData>(STATS_CACHE_KEY);
+        if (cached) {
+            setStats(cached.data.stats);
+            setTrendingIds(cached.data.trendingCourseIds);
+            setRecertifications(cached.data.recentCertificates || []);
+            setUserProgress(cached.data.userProgress);
+            setLoading(false);
+
+            // If cache is fresh, don't refetch
+            if (Date.now() - cached.timestamp < CACHE_TTL) return;
+        }
+
+        // Fetch fresh data (in background if cache was available)
+        fetchDashboardData(user.id)
+            .then(data => {
+                setStats(data.stats);
+                setTrendingIds(data.trendingCourseIds);
+                setRecertifications(data.recentCertificates || []);
+                setUserProgress(data.userProgress);
+                writeCache(STATS_CACHE_KEY, data);
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error("Failed to load dashboard data", error);
+                setLoading(false);
+            });
     }, [user?.id]);
 
 
     useEffect(() => {
-        const loadConversations = async () => {
-            if (user?.id) {
-                try {
-                    const conversations = await fetchConversationsAction();
-                    setRecentConversations(conversations.slice(0, 6));
-                } catch (error) {
-                    console.error("Failed to load conversations", error);
-                }
-            }
-        };
-        loadConversations();
+        if (!user?.id) return;
+
+        // Check cache first
+        const cached = readCache<(Conversation | ToolConversation)[]>(CONVOS_CACHE_KEY);
+        if (cached) {
+            setRecentConversations(cached.data.slice(0, 6));
+            // If fresh, don't refetch
+            if (Date.now() - cached.timestamp < CACHE_TTL) return;
+        }
+
+        // Fetch fresh (in background if cache was available)
+        fetchConversationsAction()
+            .then(conversations => {
+                setRecentConversations(conversations.slice(0, 6));
+                writeCache(CONVOS_CACHE_KEY, conversations.slice(0, 6));
+            })
+            .catch(error => {
+                console.error("Failed to load conversations", error);
+            });
     }, [user?.id]);
+
+    // Invalidation listener — allows other parts of the app to bust the dashboard cache
+    useEffect(() => {
+        const handler = () => {
+            try {
+                sessionStorage.removeItem(STATS_CACHE_KEY);
+                sessionStorage.removeItem(CONVOS_CACHE_KEY);
+            } catch {}
+        };
+        window.addEventListener('dashboard:invalidate', handler);
+        return () => window.removeEventListener('dashboard:invalidate', handler);
+    }, []);
 
     useEffect(() => {
         if (activeTab === 'recommended' && recommendedCourses.length === 0 && user?.id) {
