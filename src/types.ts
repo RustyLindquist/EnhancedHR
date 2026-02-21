@@ -407,6 +407,7 @@ export interface Resource {
   size?: string;
   module_id?: string; // When set, resource appears inline within this module. null = course-level.
   order?: number; // Display order within module (shared with lessons)
+  description?: string;
 }
 
 // Union type for items displayed within a module (lessons + inline resources)

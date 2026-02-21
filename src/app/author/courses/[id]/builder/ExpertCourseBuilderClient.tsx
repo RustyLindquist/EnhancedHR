@@ -1138,6 +1138,7 @@ export default function ExpertCourseBuilderClient({
                 resourceType={editingResource?.type}
                 resourceSize={editingResource?.size}
                 resourceEstimatedDuration={(editingResource as any)?.estimated_duration}
+                resourceDescription={editingResource?.description}
             />
 
             <ResourcesEditorPanel
@@ -1146,6 +1147,7 @@ export default function ExpertCourseBuilderClient({
                 courseId={initialCourse.id}
                 resources={initialResources}
                 onSave={handlePanelSave}
+                onRefresh={handleRefresh}
             />
 
             {/* Submit for Review Modal */}

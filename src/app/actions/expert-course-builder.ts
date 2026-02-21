@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { generateQuickAIResponse } from '@/lib/ai/quick-ai';
 import { parseFileContent } from '@/lib/file-parser';
 import { deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
-import { uploadModuleResourceFile, reorderModuleItems, updateModuleResource, deleteModuleResource } from '@/app/actions/course-builder';
+import { uploadModuleResourceFile, reorderModuleItems, updateModuleResource, updateCourseResource, deleteModuleResource } from '@/app/actions/course-builder';
 
 // ============================================
 // Permission Check Helper
@@ -244,7 +244,8 @@ export async function getExpertCourseForBuilder(courseId: number) {
             url: r.url,
             size: r.size,
             module_id: r.module_id || null,
-            order: r.order ?? 0
+            order: r.order ?? 0,
+            description: r.description || null
         })),
         canEdit: course.status === 'draft'
     };
@@ -665,6 +666,7 @@ export async function addExpertCourseResource(courseId: number, data: {
     type: 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
     url: string;
     size?: string;
+    description?: string;
 }) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
@@ -680,7 +682,8 @@ export async function addExpertCourseResource(courseId: number, data: {
             title: data.title,
             type: data.type,
             url: data.url,
-            size: data.size
+            size: data.size,
+            description: data.description || null
         })
         .select()
         .single();
@@ -711,14 +714,15 @@ export async function uploadExpertModuleResourceFile(
     fileName: string,
     fileType: string,
     fileBuffer: ArrayBuffer,
-    estimatedDuration?: string
+    estimatedDuration?: string,
+    description?: string
 ) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
         return { success: false, error: accessCheck.error };
     }
 
-    return uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration);
+    return uploadModuleResourceFile(courseId, moduleId, fileName, fileType, fileBuffer, estimatedDuration, description);
 }
 
 /**
@@ -740,7 +744,7 @@ export async function reorderExpertModuleItems(
 export async function updateExpertModuleResource(
     resourceId: string,
     courseId: number,
-    data: { title?: string; estimated_duration?: string }
+    data: { title?: string; estimated_duration?: string; description?: string }
 ) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
@@ -748,6 +752,19 @@ export async function updateExpertModuleResource(
     }
 
     return updateModuleResource(resourceId, courseId, data);
+}
+
+export async function updateExpertCourseResource(
+    resourceId: string,
+    courseId: number,
+    data: { title?: string; description?: string }
+) {
+    const accessCheck = await checkExpertCourseAccess(courseId);
+    if (!accessCheck.allowed) {
+        return { success: false, error: accessCheck.error };
+    }
+
+    return updateCourseResource(resourceId, courseId, data);
 }
 
 export async function deleteExpertModuleResource(

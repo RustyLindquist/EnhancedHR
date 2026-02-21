@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useCallback, useRef } from 'react';
 import { FileText, Trash2, Loader2, CheckCircle, Plus, Link2, File, Image as ImageIcon, Table, ExternalLink, Upload, X } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
-import { addCourseResource, deleteCourseResource, uploadCourseResourceFile } from '@/app/actions/course-builder';
+import { addCourseResource, deleteCourseResource, uploadCourseResourceFile, updateCourseResource } from '@/app/actions/course-builder';
 import { Resource } from '@/types';
 
 type ResourceType = 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
@@ -36,6 +36,7 @@ interface ResourcesEditorPanelProps {
     courseId: number;
     resources: Resource[];
     onSave: () => void;
+    onRefresh?: () => void;
 }
 
 const resourceTypeIcons: Record<ResourceType, React.ReactNode> = {
@@ -46,12 +47,125 @@ const resourceTypeIcons: Record<ResourceType, React.ReactNode> = {
     LINK: <ExternalLink size={16} className="text-brand-blue-light" />
 };
 
+// Individual resource item with inline description editing
+function ResourceListItem({
+    resource,
+    resourceTypeIcons,
+    isPending,
+    courseId,
+    onSave,
+    onDelete
+}: {
+    resource: Resource;
+    resourceTypeIcons: Record<ResourceType, React.ReactNode>;
+    isPending: boolean;
+    courseId: number;
+    onSave: () => void;
+    onDelete: (id: string) => void;
+}) {
+    const [description, setDescription] = useState(resource.description || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync with prop changes (e.g. after parent refresh)
+    React.useEffect(() => {
+        setDescription(resource.description || '');
+    }, [resource.description]);
+
+    const handleSaveDescription = useCallback(async (newDescription: string) => {
+        const trimmed = newDescription.trim();
+        // Skip if unchanged
+        if (trimmed === (resource.description || '')) return;
+
+        setIsSaving(true);
+        const result = await updateCourseResource(resource.id, courseId, {
+            description: trimmed || undefined
+        });
+        setIsSaving(false);
+
+        if (result.success) {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 1500);
+            onSave();
+        }
+    }, [resource.id, resource.description, courseId, onSave]);
+
+    // Auto-save on blur (clear pending debounce to avoid duplicate save)
+    const handleBlur = useCallback(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        handleSaveDescription(description);
+    }, [description, handleSaveDescription]);
+
+    // Debounced auto-save while typing (2s delay)
+    const handleChange = useCallback((value: string) => {
+        setDescription(value);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+            handleSaveDescription(value);
+        }, 2000);
+    }, [handleSaveDescription]);
+
+    // Cleanup timeout on unmount
+    React.useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        };
+    }, []);
+
+    return (
+        <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+            {/* Resource header row */}
+            <div className="flex items-center gap-4 p-4 group">
+                <div className="p-2 rounded-lg bg-white/5">
+                    {resourceTypeIcons[resource.type as ResourceType]}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-white truncate">{resource.title}</h4>
+                    <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-slate-500 hover:text-brand-blue-light truncate block"
+                    >
+                        {resource.url}
+                    </a>
+                </div>
+                {resource.size && (
+                    <span className="text-xs text-slate-500 flex-shrink-0">{resource.size}</span>
+                )}
+                {isSaving && <Loader2 size={14} className="text-brand-blue-light animate-spin flex-shrink-0" />}
+                {saved && <CheckCircle size={14} className="text-green-400 flex-shrink-0" />}
+                <button
+                    onClick={() => onDelete(resource.id)}
+                    disabled={isPending}
+                    className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 flex-shrink-0"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+            {/* Description textarea — always visible */}
+            <div className="px-4 pb-4">
+                <textarea
+                    value={description}
+                    onChange={(e) => handleChange(e.target.value)}
+                    onBlur={handleBlur}
+                    placeholder="Add a description for this resource..."
+                    rows={2}
+                    className="w-full p-3 rounded-lg bg-white/[0.03] border border-white/5 text-sm text-slate-300 placeholder-slate-600 outline-none focus:border-brand-blue-light/30 resize-none transition-colors"
+                />
+            </div>
+        </div>
+    );
+}
+
 export default function ResourcesEditorPanel({
     isOpen,
     onClose,
     courseId,
     resources,
-    onSave
+    onSave,
+    onRefresh
 }: ResourcesEditorPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -70,11 +184,13 @@ export default function ResourcesEditorPanel({
     const [newTitle, setNewTitle] = useState('');
     const [newUrl, setNewUrl] = useState('');
     const [newType, setNewType] = useState<ResourceType>('LINK');
+    const [newDescription, setNewDescription] = useState('');
 
     const resetForm = () => {
         setNewTitle('');
         setNewUrl('');
         setNewType('LINK');
+        setNewDescription('');
         setSelectedFiles([]);
         setUploadingIndex(-1);
         setIsAdding(false);
@@ -222,9 +338,12 @@ export default function ResourcesEditorPanel({
             if (successCount > 0) {
                 setShowSuccess(true);
                 setSelectedFiles([]);
+                setIsAdding(false);
+                // Refresh data but keep panel open
+                const refresh = onRefresh || onSave;
+                refresh();
                 setTimeout(() => {
                     setShowSuccess(false);
-                    onSave();
                 }, 1500);
             }
 
@@ -234,7 +353,7 @@ export default function ResourcesEditorPanel({
                 // All successful - will show success message
             }
         });
-    }, [courseId, selectedFiles, onSave]);
+    }, [courseId, selectedFiles, onSave, onRefresh]);
 
     // Handle link addition (existing functionality)
     const handleAddLink = useCallback(() => {
@@ -248,21 +367,24 @@ export default function ResourcesEditorPanel({
             const result = await addCourseResource(courseId, {
                 title: newTitle.trim(),
                 url: newUrl.trim(),
-                type: newType
+                type: newType,
+                description: newDescription.trim() || undefined
             });
 
             if (result.success) {
                 setShowSuccess(true);
                 resetForm();
+                // Refresh data but keep panel open
+                const refresh = onRefresh || onSave;
+                refresh();
                 setTimeout(() => {
                     setShowSuccess(false);
-                    onSave();
                 }, 1000);
             } else {
                 setError(result.error || 'Failed to add resource');
             }
         });
-    }, [courseId, newTitle, newUrl, newType, onSave]);
+    }, [courseId, newTitle, newUrl, newType, newDescription, onSave, onRefresh]);
 
     const handleDeleteResource = useCallback((resourceId: string) => {
         setError(null);
@@ -300,6 +422,11 @@ export default function ResourcesEditorPanel({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
+    const handleDone = useCallback(() => {
+        // Refresh data and close panel
+        onSave();
+    }, [onSave]);
+
     const headerActions = (
         <div className="flex items-center gap-4">
             {showSuccess && (
@@ -308,15 +435,12 @@ export default function ResourcesEditorPanel({
                     <span>Saved!</span>
                 </div>
             )}
-            {!isAdding && (
-                <button
-                    onClick={() => setIsAdding(true)}
-                    className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg text-sm font-bold hover:bg-brand-orange/80 transition-colors"
-                >
-                    <Plus size={16} />
-                    Add Resource
-                </button>
-            )}
+            <button
+                onClick={handleDone}
+                className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg text-sm font-bold hover:bg-brand-orange/80 transition-colors"
+            >
+                Done
+            </button>
         </div>
     );
 
@@ -339,6 +463,17 @@ export default function ResourcesEditorPanel({
                 <p className="text-sm text-slate-400">
                     Upload files or add links to resources that learners can download alongside the course. Uploaded files are automatically indexed for AI search.
                 </p>
+
+                {/* Add Resource Button */}
+                {!isAdding && (
+                    <button
+                        onClick={() => setIsAdding(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white rounded-xl text-sm font-medium hover:bg-white/[0.08] transition-all"
+                    >
+                        <Plus size={16} />
+                        Add Resource
+                    </button>
+                )}
 
                 {/* Add Resource Form */}
                 {isAdding && (
@@ -556,6 +691,19 @@ export default function ResourcesEditorPanel({
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={newDescription}
+                                        onChange={(e) => setNewDescription(e.target.value)}
+                                        placeholder="Optional description for this resource..."
+                                        rows={3}
+                                        className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 resize-none"
+                                    />
+                                </div>
+
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         onClick={handleAddLink}
@@ -594,35 +742,15 @@ export default function ResourcesEditorPanel({
                     <div className="space-y-2">
                         {resources.length > 0 ? (
                             resources.map((resource) => (
-                                <div
+                                <ResourceListItem
                                     key={resource.id}
-                                    className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 group"
-                                >
-                                    <div className="p-2 rounded-lg bg-white/5">
-                                        {resourceTypeIcons[resource.type as ResourceType]}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-medium text-white truncate">{resource.title}</h4>
-                                        <a
-                                            href={resource.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-slate-500 hover:text-brand-blue-light truncate block"
-                                        >
-                                            {resource.url}
-                                        </a>
-                                    </div>
-                                    {resource.size && (
-                                        <span className="text-xs text-slate-500">{resource.size}</span>
-                                    )}
-                                    <button
-                                        onClick={() => handleDeleteResource(resource.id)}
-                                        disabled={isPending}
-                                        className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
+                                    resource={resource}
+                                    resourceTypeIcons={resourceTypeIcons}
+                                    isPending={isPending}
+                                    courseId={courseId}
+                                    onSave={onSave}
+                                    onDelete={handleDeleteResource}
+                                />
                             ))
                         ) : (
                             <div className="p-8 text-center text-slate-500 border border-dashed border-white/10 rounded-xl">

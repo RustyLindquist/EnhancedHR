@@ -52,6 +52,7 @@ interface LessonEditorPanelProps {
     resourceType?: string;
     resourceSize?: string;
     resourceEstimatedDuration?: string;
+    resourceDescription?: string;
     // New dual transcript props
     lessonAiTranscript?: string;
     lessonUserTranscript?: string;
@@ -137,6 +138,7 @@ export default function LessonEditorPanel({
     resourceType,
     resourceSize,
     resourceEstimatedDuration,
+    resourceDescription,
     // New dual transcript props with fallback
     lessonAiTranscript,
     lessonUserTranscript = '',
@@ -197,6 +199,9 @@ export default function LessonEditorPanel({
     // Estimated time state (for quiz and file types)
     const [estimatedMinutes, setEstimatedMinutes] = useState<string>('');
 
+    // Resource description state
+    const [resourceDescriptionValue, setResourceDescriptionValue] = useState(resourceDescription || '');
+
     // Transcript generation
     const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
 
@@ -234,8 +239,9 @@ export default function LessonEditorPanel({
             setTranscriptTab(lessonUserTranscript ? 'user' : 'ai');
             setTranscriptStatus(lessonTranscriptStatus);
             setTranscriptSource(lessonTranscriptSource);
+            setResourceDescriptionValue(resourceDescription || '');
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, lessonAiTranscript, lessonUserTranscript, lessonTranscriptStatus, lessonTranscriptSource, resourceEstimatedDuration]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, lessonAiTranscript, lessonUserTranscript, lessonTranscriptStatus, lessonTranscriptSource, resourceEstimatedDuration, resourceDescription]);
 
     // Helper function to format duration
     const formatDuration = (seconds: number): string => {
@@ -450,7 +456,8 @@ export default function LessonEditorPanel({
                 }
                 const result = await updateModuleResource(resourceId, courseId, {
                     title: title.trim(),
-                    estimated_duration: resourceDuration
+                    estimated_duration: resourceDuration,
+                    description: resourceDescriptionValue.trim() || undefined
                 });
                 if (result.success) {
                     setShowSuccess(true);
@@ -486,7 +493,8 @@ export default function LessonEditorPanel({
                         file.name,
                         file.type,
                         buffer,
-                        resourceDuration
+                        resourceDuration,
+                        resourceDescriptionValue.trim() || undefined
                     );
 
                     if (result.success) {
@@ -558,7 +566,7 @@ export default function LessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, aiTranscript, userTranscript, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, aiTranscript, userTranscript, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes, resourceDescriptionValue]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -1086,6 +1094,25 @@ export default function LessonEditorPanel({
                                 />
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* Resource Description - Show for file type (new or existing resource) */}
+                {(resourceId || type === 'article') && (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Description
+                        </label>
+                        <textarea
+                            value={resourceDescriptionValue}
+                            onChange={(e) => setResourceDescriptionValue(e.target.value)}
+                            placeholder="Optional description for this resource..."
+                            rows={3}
+                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 outline-none focus:border-brand-blue-light/50 resize-none"
+                        />
+                        <p className="text-xs text-slate-600 mt-1.5">
+                            Shown to learners when they view this resource.
+                        </p>
                     </div>
                 )}
 

@@ -660,20 +660,29 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                             Download
                                         </a>
                                     </div>
+                                    {/* Description overlay — bottom */}
+                                    {activeResource.description && (
+                                        <div className="absolute bottom-0 left-0 right-0 max-h-[40%] overflow-y-auto bg-gradient-to-t from-black/90 via-black/70 to-transparent p-5 pt-8 dropdown-scrollbar">
+                                            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                                                {activeResource.description}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                /* Non-image Resource — title + download */
-                                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5 flex flex-col items-center justify-center">
-                                    <div className="flex flex-col items-center gap-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-red-700/20 border border-red-700/30 flex items-center justify-center">
-                                            <FileText size={32} className="text-red-400" />
+                                /* Non-image Resource — header + scrollable description */
+                                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/5 flex flex-col">
+                                    {/* Header area */}
+                                    <div className="flex items-center gap-4 p-5 border-b border-white/5 flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-xl bg-red-700/20 border border-red-700/30 flex items-center justify-center flex-shrink-0">
+                                            <FileText size={24} className="text-red-400" />
                                         </div>
-                                        <div className="text-center">
-                                            <span className="px-2.5 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30 mb-3 inline-block">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="px-2 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30 mb-1 inline-block">
                                                 RESOURCE
                                             </span>
-                                            <h2 className="text-xl font-bold text-white mb-1">{activeResource.title}</h2>
-                                            <p className="text-sm text-slate-400">
+                                            <h2 className="text-lg font-bold text-white truncate">{activeResource.title}</h2>
+                                            <p className="text-xs text-slate-400">
                                                 {activeResource.type} file{activeResource.size ? ` · ${activeResource.size}` : ''}
                                             </p>
                                         </div>
@@ -682,12 +691,25 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             download
-                                            className="flex items-center gap-2 px-6 py-3 bg-red-700/20 hover:bg-red-700/30 border border-red-700/30 hover:border-red-700/50 text-red-400 hover:text-red-300 rounded-xl font-bold text-sm uppercase tracking-wider transition-all hover:shadow-[0_0_20px_rgba(185,28,28,0.2)]"
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-red-700/20 hover:bg-red-700/30 border border-red-700/30 hover:border-red-700/50 text-red-400 hover:text-red-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex-shrink-0"
                                         >
-                                            <Download size={16} />
+                                            <Download size={14} />
                                             Download
                                         </a>
                                     </div>
+
+                                    {/* Description area — scrollable */}
+                                    {activeResource.description ? (
+                                        <div className="flex-1 overflow-y-auto p-5 dropdown-scrollbar">
+                                            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                                {activeResource.description}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex-1 flex items-center justify-center">
+                                            <p className="text-sm text-slate-600 italic">No description provided</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             {/* Resource Info Bar with Navigation */}

@@ -575,6 +575,7 @@ export default function AdminCourseBuilderClient({
                 resourceType={editingResource?.type}
                 resourceSize={editingResource?.size}
                 resourceEstimatedDuration={(editingResource as any)?.estimated_duration}
+                resourceDescription={editingResource?.description}
             />
 
             {/* ============================================ */}
@@ -587,6 +588,7 @@ export default function AdminCourseBuilderClient({
                 courseId={initialCourse.id}
                 resources={initialResources}
                 onSave={handlePanelSave}
+                onRefresh={handleRefresh}
             />
 
             {/* ============================================ */}
