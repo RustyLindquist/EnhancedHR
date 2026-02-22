@@ -2745,57 +2745,65 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
                     let durationSeconds: number | undefined;
                     let fetchError: string | undefined;
 
-                    switch (platform) {
-                        case 'mux': {
-                            // Extract playback ID from URL if needed
-                            const playbackId = await extractMuxPlaybackId(lesson.video_url);
-                            if (!playbackId) {
-                                fetchError = 'Could not extract Mux playback ID from URL';
+                    // For Mux videos: if the lesson already has a stored duration > 0,
+                    // trust it (set during upload) and skip the expensive API lookup.
+                    // The Mux reverse-lookup (playbackId → assetId) iterates all assets
+                    // and can take 10-30+ seconds per lesson, causing serverless timeouts.
+                    const existingDuration = parseDurationToSeconds(lesson.duration);
+                    if (platform === 'mux' && existingDuration > 0) {
+                        durationSeconds = existingDuration;
+                        console.log(`[resetCourseDurations] Mux lesson "${lesson.title}" - using stored duration: ${lesson.duration} (${existingDuration}s)`);
+                    } else {
+                        switch (platform) {
+                            case 'mux': {
+                                // Only call Mux API if no stored duration
+                                const playbackId = await extractMuxPlaybackId(lesson.video_url);
+                                if (!playbackId) {
+                                    fetchError = 'Could not extract Mux playback ID from URL';
+                                    break;
+                                }
+                                const muxResult = await getDurationFromPlaybackId(playbackId);
+                                if (muxResult.success && muxResult.duration !== undefined) {
+                                    durationSeconds = muxResult.duration;
+                                } else {
+                                    fetchError = muxResult.error || 'Failed to get Mux duration';
+                                }
                                 break;
                             }
-                            const muxResult = await getDurationFromPlaybackId(playbackId);
-                            if (muxResult.success && muxResult.duration !== undefined) {
-                                durationSeconds = muxResult.duration;
-                            } else {
-                                fetchError = muxResult.error || 'Failed to get Mux duration';
+                            case 'youtube': {
+                                const ytResult = await fetchYouTubeMetadata(lesson.video_url);
+                                if (ytResult.success && ytResult.metadata?.duration !== undefined) {
+                                    durationSeconds = ytResult.metadata.duration;
+                                } else {
+                                    fetchError = ytResult.error || 'Failed to get YouTube duration';
+                                }
+                                break;
                             }
-                            break;
-                        }
-                        case 'youtube': {
-                            const ytResult = await fetchYouTubeMetadata(lesson.video_url);
-                            if (ytResult.success && ytResult.metadata?.duration !== undefined) {
-                                durationSeconds = ytResult.metadata.duration;
-                            } else {
-                                fetchError = ytResult.error || 'Failed to get YouTube duration';
+                            case 'vimeo': {
+                                const vimeoResult = await fetchVimeoMetadata(lesson.video_url);
+                                if (vimeoResult.success && vimeoResult.duration !== undefined) {
+                                    durationSeconds = vimeoResult.duration;
+                                } else {
+                                    fetchError = vimeoResult.error || 'Failed to get Vimeo duration';
+                                }
+                                break;
                             }
-                            break;
-                        }
-                        case 'vimeo': {
-                            const vimeoResult = await fetchVimeoMetadata(lesson.video_url);
-                            if (vimeoResult.success && vimeoResult.duration !== undefined) {
-                                durationSeconds = vimeoResult.duration;
-                            } else {
-                                fetchError = vimeoResult.error || 'Failed to get Vimeo duration';
+                            case 'wistia': {
+                                const wistiaResult = await fetchWistiaMetadata(lesson.video_url);
+                                if (wistiaResult.success && wistiaResult.duration !== undefined) {
+                                    durationSeconds = wistiaResult.duration;
+                                } else {
+                                    fetchError = wistiaResult.error || 'Failed to get Wistia duration';
+                                }
+                                break;
                             }
-                            break;
-                        }
-                        case 'wistia': {
-                            const wistiaResult = await fetchWistiaMetadata(lesson.video_url);
-                            if (wistiaResult.success && wistiaResult.duration !== undefined) {
-                                durationSeconds = wistiaResult.duration;
-                            } else {
-                                fetchError = wistiaResult.error || 'Failed to get Wistia duration';
+                            case 'google_drive': {
+                                fetchError = 'Google Drive videos must be re-uploaded via Mux to get duration';
+                                break;
                             }
-                            break;
-                        }
-                        case 'google_drive': {
-                            // Google Drive videos don't have a duration API
-                            // They need to be re-uploaded via Mux or have duration set manually
-                            fetchError = 'Google Drive videos must be re-uploaded via Mux to get duration';
-                            break;
-                        }
-                        default: {
-                            fetchError = `Unsupported video platform: ${platform}`;
+                            default: {
+                                fetchError = `Unsupported video platform: ${platform}`;
+                            }
                         }
                     }
 
