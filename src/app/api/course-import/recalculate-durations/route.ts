@@ -19,6 +19,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resetCourseDurations } from '@/app/actions/course-builder';
 
+export const maxDuration = 300; // 5 minutes — Mux API lookups can be slow
+
 interface RecalculateRequest {
     secretKey: string;
     courseId?: number;
