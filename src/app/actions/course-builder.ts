@@ -2604,6 +2604,8 @@ export interface LessonDurationDetail {
     status: 'updated' | 'skipped' | 'failed';
     oldDuration?: string;
     newDuration?: string;
+    videoUrl?: string;
+    platform?: string;
     error?: string;
 }
 
@@ -2832,6 +2834,8 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
                             lessonTitle: lesson.title,
                             status: 'failed',
                             oldDuration: lesson.duration || undefined,
+                            videoUrl: lesson.video_url || undefined,
+                            platform,
                             error: fetchError || 'Could not determine duration'
                         });
                         lessonsFailed++;
@@ -2846,6 +2850,7 @@ export async function resetCourseDurations(courseId: number): Promise<ResetDurat
                         lessonTitle: lesson.title,
                         status: 'failed',
                         oldDuration: lesson.duration || undefined,
+                        videoUrl: lesson.video_url || undefined,
                         error: err.message || 'Unknown error'
                     });
                     lessonsFailed++;
