@@ -49,8 +49,8 @@ const CourseHeader: React.FC<CourseHeaderProps> = ({
     const isComplete = stats.progressPercent === 100;
 
     return (
-        <header className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] px-10">
-            <div className="flex items-center justify-between gap-6 h-full">
+        <header className="h-24 flex-shrink-0 border-b border-white/10 bg-white/5 backdrop-blur-xl z-30 shadow-[0_4px_30px_rgba(0,0,0,0.1)] px-10 overflow-hidden">
+            <div className="flex items-center justify-between gap-6 h-full min-w-0">
                 {/* Left Section: Back + Title/Breadcrumb */}
                 <div className="flex items-center gap-6 min-w-0 flex-1">
                     {/* Back Button */}
