@@ -2806,7 +2806,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         // Use the new unified CoursePageV2 which handles both description and player views internally
         return (
             <div
-                className="flex-1 w-full h-full relative z-10"
+                className="flex-1 w-full h-full relative z-10 min-w-0 overflow-hidden"
                 onDragOver={(e) => e.preventDefault()}
                 onDragEnd={handleDragEnd}
                 onDrop={() => setIsDragging(false)}
