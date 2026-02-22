@@ -3588,7 +3588,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     {drawerMode === 'help' ? (
                         <PrometheusHelpContent />
                     ) : drawerMode === 'prompts' ? (
-                        <div className="max-w-6xl mx-auto px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="max-w-6xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {panelPrompts.map(p => (
                                 <button
                                     key={p.id}
@@ -3611,7 +3611,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                     ) : (
                         <>
                             {/* Search Input */}
-                            <div className="relative mb-4 mt-10 group">
+                            <div className="relative mb-4 group">
                                 <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-blue to-brand-orange opacity-30 group-focus-within:opacity-100 blur transition-opacity duration-500 rounded-lg"></div>
                                 <div className="relative bg-black rounded-lg flex items-center px-4 py-4 border border-white/10">
                                     <Search size={20} className="text-slate-500 mr-4" />

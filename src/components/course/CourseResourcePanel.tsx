@@ -71,7 +71,7 @@ const CourseResourcePanel: React.FC<CourseResourcePanelProps> = ({
             title={renderTitle()}
             headerActions={renderHeaderActions()}
         >
-            <div className="max-w-4xl mx-auto pb-32 pt-[30px]">
+            <div className="max-w-4xl mx-auto">
                 <div className="space-y-6">
                     {/* Header Card */}
                     <div className="relative overflow-hidden bg-gradient-to-br from-red-500/20 via-orange-500/10 to-transparent border border-red-500/20 rounded-2xl p-8">

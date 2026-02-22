@@ -135,7 +135,7 @@ const AddNotePanel: React.FC<AddNotePanelProps> = ({
             title={renderTitle()}
             headerActions={renderHeaderActions()}
         >
-            <div className="max-w-4xl mx-auto space-y-6 pb-32 pt-[30px]">
+            <div className="max-w-4xl mx-auto space-y-6">
                 {/* Title Input */}
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">

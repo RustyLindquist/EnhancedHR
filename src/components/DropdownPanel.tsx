@@ -14,7 +14,7 @@ interface DropdownPanelProps {
 
 /**
  * Standardized Dropdown Panel Component.
- * Enforces consistent layout, header height (h-24), and content padding (px-50 py-75).
+ * Enforces consistent layout, header height (h-24), and content padding (px-50).
  * Wraps GlobalTopPanel.
  */
 const DropdownPanel: React.FC<DropdownPanelProps> = ({
@@ -47,7 +47,7 @@ const DropdownPanel: React.FC<DropdownPanelProps> = ({
             headerActions={headerActions}
         >
             {/* Standardized Content Container */}
-            <div className="w-full px-[50px] py-[75px]">
+            <div className="w-full px-[50px]">
                 {children}
             </div>
         </GlobalTopPanel>
