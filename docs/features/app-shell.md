@@ -3,7 +3,7 @@ id: app-shell
 owner: platform-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-27
+last_updated: 2026-02-22
 surfaces:
   routes:
     - /dashboard (layout)
@@ -30,6 +30,7 @@ invariants:
   - MainCanvas is the hub rendering collection views; activeCollectionId must be propagated from nav/query.
   - NavigationPanel expects system/custom collections with stable labels; counts map alias keys.
   - collection:refresh event must be listened to for count updates; ensure listeners cleaned on unmount.
+  - GlobalTopPanel owns ALL vertical padding (py-[60px]); consumers must NOT add their own top/bottom padding.
 ---
 
 ## Overview
@@ -54,6 +55,12 @@ Several components use React Portals (`createPortal`) to render at document body
   - `mounted`: Tracks if component is client-side mounted (for SSR safety)
   - `internalIsOpen`: Controls actual panel position, allows animation on mount
   - `shouldRender`: Controls portal lifecycle, stays true during close animation
+- **Height & Padding** (updated 2026-02-22):
+  - Panel height is **content-sized up to `max-h-[95vh]`** (not fixed). The inner wrapper does NOT use `h-full`, so the panel shrinks to fit its content.
+  - **ALL vertical padding is centralized** in GlobalTopPanel's inner content wrapper: `py-[60px]` (60px top and bottom).
+  - The header row is `h-24` (96px) with `flex-shrink-0`.
+  - **Consumers must NOT add their own top/bottom padding** (`pt-*`, `pb-*`, `py-*`) — GlobalTopPanel handles it. Adding consumer padding creates double-spacing.
+  - DropdownPanel only adds **horizontal** padding (`px-[50px]`), not vertical.
 - **Why This Matters**: When a panel mounts already open (e.g., auto-opening Assessment Panel when selecting a quiz lesson), the component must first render in the closed state, then transition to open. The double rAF ensures the browser paints the closed state before animating to open.
 
 ### DeleteConfirmationModal
@@ -66,6 +73,7 @@ Several components use React Portals (`createPortal`) to render at document body
 - **Location**: `/src/components/DropdownPanel.tsx`
 - **Purpose**: Wrapper for slide-down dropdown panels (wraps GlobalTopPanel)
 - **Uses Portal**: Indirectly via GlobalTopPanel
+- **Padding**: Only horizontal (`px-[50px]`). Vertical padding is handled by GlobalTopPanel.
 
 ### When to Use Portal Pattern
 Use portals when:
@@ -114,6 +122,7 @@ See `docs/features/browser-back-navigation.md` for full documentation including:
 - Global panels (GlobalTopPanel, modals) must use React Portals to render at document body level for proper z-index stacking.
 - Slide-down panels that may mount with `isOpen=true` must use double `requestAnimationFrame` delay to ensure animation works (see GlobalTopPanel pattern).
 - NavigationProvider must wrap all app content for browser back button interception to work.
+- **GlobalTopPanel owns all vertical padding** (`py-[60px]`). Consumer components rendered inside dropdown panels must NOT add their own `pt-*`, `pb-*`, or `py-*`. DropdownPanel only adds horizontal padding (`px-[50px]`).
 
 ## Failure Modes & Recovery
 - Nav counts stale: ensure collection:refresh dispatched; verify getCollectionCountsAction runs.
@@ -121,6 +130,7 @@ See `docs/features/browser-back-navigation.md` for full documentation including:
 - Drag/drop no-op: ensure onDrop handlers call addToCollection with correct ids.
 - Panel animation not working (appears instantly instead of sliding): Ensure panel uses the double `requestAnimationFrame` pattern in GlobalTopPanel; check that `internalIsOpen` state is being used for the CSS transition, not the `isOpen` prop directly.
 - Modal backdrop not covering full viewport: Ensure component uses `createPortal(content, document.body)` to escape parent stacking contexts.
+- **Excessive vertical spacing in dropdown panels**: Consumer is adding its own top/bottom padding. Remove it — GlobalTopPanel's `py-[60px]` handles all vertical spacing.
 
 ## Testing Checklist
 - Switch between Academy, Favorites, Conversations, Tools, Help; views render correctly and AI panel context changes.
@@ -131,6 +141,7 @@ See `docs/features/browser-back-navigation.md` for full documentation including:
 - Adding new nav items: update MAIN_NAV_ITEMS in constants.ts, add rendering branch in MainCanvas, and add nav visibility filter in NavigationPanel.tsx if role-gated (see my-org pattern in docs/features/my-organization-hub.md).
 - Modifying drag/drop: keep onDrop handlers consistent with collection action signatures.
 - If refactoring layout, preserve event wiring for collection refresh and active collection state.
+- **Adding a new dropdown panel consumer**: Do NOT add vertical padding to your content component. GlobalTopPanel provides `py-[60px]`. Only add horizontal padding if DropdownPanel's `px-[50px]` is insufficient.
 
 ## Implementation Guidance
 

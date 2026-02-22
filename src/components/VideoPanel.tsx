@@ -742,7 +742,7 @@ export default function VideoPanel({
             : null;
 
         return (
-            <div className="max-w-4xl mx-auto space-y-6 pb-32 pt-[30px]">
+            <div className="max-w-4xl mx-auto space-y-6">
                 {/* Title */}
                 <div>
                     <h1 className="text-2xl font-bold text-white mb-2">{displayVideo.title}</h1>
@@ -883,7 +883,7 @@ export default function VideoPanel({
     // Render EDIT mode content
     const renderEditMode = () => {
         return (
-            <div className="max-w-2xl mx-auto space-y-6 pb-32 pt-[30px]">
+            <div className="max-w-2xl mx-auto space-y-6">
                 {/* Title Input */}
                 <div>
                     <label className="block text-sm font-medium text-slate-400 mb-2">Title *</label>

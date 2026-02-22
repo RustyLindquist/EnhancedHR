@@ -281,7 +281,7 @@ const ResourceViewPanel: React.FC<ResourceViewPanelProps> = ({
             title={renderTitle()}
             headerActions={renderHeaderActions()}
         >
-            <div className="max-w-4xl mx-auto pb-32 pt-[30px]">
+            <div className="max-w-4xl mx-auto">
                 {isNote && renderNoteView()}
                 {isFile && renderFileView()}
                 {!isNote && !isFile && renderContextView()}

@@ -68,7 +68,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                 className={`
                fixed left-0 w-full z-[210]
                bg-[#0f172a]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl
-               transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[75vh]
+               transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col max-h-[95vh]
             `}
                 style={{
                     top: internalIsOpen ? '0' : '-100%'
@@ -98,7 +98,7 @@ const GlobalTopPanel: React.FC<GlobalTopPanelProps> = ({
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => e.preventDefault()}
                 >
-                    <div className="w-full h-full px-10 md:pl-[300px] md:pr-[400px] pb-[50px]">
+                    <div className="w-full px-10 md:pl-[300px] md:pr-[400px] py-[60px]">
                         {children}
                     </div>
                 </div>

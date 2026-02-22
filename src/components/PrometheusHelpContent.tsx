@@ -40,7 +40,7 @@ const PrometheusGraphic = () => (
 
 const PrometheusHelpContent: React.FC = () => {
     return (
-        <div className="max-w-4xl mx-auto px-6 py-12 animate-fade-in text-white/90">
+        <div className="max-w-4xl mx-auto px-6 animate-fade-in text-white/90">
 
             <PrometheusGraphic />
 
