@@ -52,8 +52,8 @@ export async function detectVideoPlatform(url: string): Promise<VideoPlatform> {
     }
 
     // Mux playback IDs are alphanumeric strings without dots or slashes
-    // Typically 12-30 characters like "abc123XYZ789"
-    if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10 && url.length <= 40) {
+    // Can be 10-100+ characters (older IDs are ~44-47 chars)
+    if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10) {
         return 'mux';
     }
 
@@ -66,8 +66,8 @@ export async function detectVideoPlatform(url: string): Promise<VideoPlatform> {
 export async function extractMuxPlaybackId(url: string): Promise<string | null> {
     if (!url) return null;
 
-    // If it's already just a playback ID (alphanumeric only)
-    if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10 && url.length <= 40) {
+    // If it's already just a playback ID (alphanumeric only, 10+ chars)
+    if (/^[a-zA-Z0-9]+$/.test(url) && url.length >= 10) {
         return url;
     }
 
