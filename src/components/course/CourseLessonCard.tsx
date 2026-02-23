@@ -84,9 +84,6 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
         onDragStart(dragItem);
     };
 
-    // Description placeholder text
-    const descriptionText = 'Lesson title goes here, and will wrap as necessary';
-
     return (
         <div
             className={`
@@ -111,7 +108,7 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
             )}
 
             {/* Card Content */}
-            <div className="px-4 py-[26px]">
+            <div className="p-4">
                 {/* Top Row: Lesson Number/Quiz/Activity Badge + Duration */}
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -138,17 +135,12 @@ const CourseLessonCard: React.FC<CourseLessonCardProps> = ({
 
                 {/* Lesson Title */}
                 <h4 className={`
-                    text-sm font-semibold leading-tight mb-2
+                    text-sm font-semibold leading-tight
                     ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'}
                     transition-colors
                 `}>
                     {lesson.title || 'Lesson Title Goes Here'}
                 </h4>
-
-                {/* Description Text */}
-                <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
-                    {descriptionText}
-                </p>
 
                 {/* Completed Checkmark - positioned in bottom right */}
                 {isCompleted && !isActive && (

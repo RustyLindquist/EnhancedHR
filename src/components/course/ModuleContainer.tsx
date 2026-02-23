@@ -211,7 +211,7 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                                                             VIEWING
                                                         </div>
                                                     )}
-                                                    <div className="px-4 py-[26px]">
+                                                    <div className="p-4">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="px-2 py-0.5 bg-red-700/20 text-red-400 text-[9px] font-bold uppercase rounded border border-red-700/30">
                                                                 RESOURCE
@@ -222,14 +222,10 @@ const ModuleContainer: React.FC<ModuleContainerProps> = ({
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <h4 className={`text-sm font-semibold leading-tight mb-2 transition-colors
+                                                        <h4 className={`text-sm font-semibold leading-tight transition-colors
                                                             ${isActiveResource ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
                                                             {resource.title}
                                                         </h4>
-                                                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                            <Paperclip size={12} className="text-red-400" />
-                                                            <span>{resource.type} file</span>
-                                                        </div>
                                                     </div>
                                                 </div>
                                             );
