@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import DropdownPanel from '../DropdownPanel';
 import { Users, Search, Check, Loader2, Trash2 } from 'lucide-react';
-import { createGroup, updateGroup, deleteGroup } from '@/app/actions/groups';
+import { createGroup, updateGroup, deleteGroup, getGroupDetails } from '@/app/actions/groups';
 import { getOrgMembers } from '@/app/actions/org';
 import DeleteConfirmationModal from '../DeleteConfirmationModal';
 
@@ -28,13 +28,25 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, edit
 
     useEffect(() => {
         if (isOpen) {
-            loadMembers();
             if (editGroup) {
                 setName(editGroup.name);
-                setSelectedIds(new Set(editGroup.members?.map((m: any) => m.user_id) || []));
+                // Fetch org members and fresh group details in parallel
+                // to guarantee correct pre-selection of existing group members
+                setLoading(true);
+                Promise.all([
+                    getOrgMembers(),
+                    getGroupDetails(editGroup.id)
+                ]).then(([{ members: userList }, groupDetails]) => {
+                    setMembers(userList || []);
+                    if (groupDetails?.members) {
+                        setSelectedIds(new Set(groupDetails.members.map((m: any) => m.user_id)));
+                    }
+                    setLoading(false);
+                });
             } else {
                 setName('');
                 setSelectedIds(new Set());
+                loadMembers();
             }
         } else {
             setShowDeleteConfirm(false);
@@ -153,7 +165,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, edit
                                     <div
                                         key={member.id}
                                         onClick={() => toggleMember(member.id)}
-                                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors ${selectedIds.has(member.id) ? 'bg-brand-blue/10' : ''}`}
+                                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition-colors ${selectedIds.has(member.id) ? 'bg-brand-blue/20 border-l-2 border-brand-blue' : ''}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selectedIds.has(member.id) ? 'bg-brand-blue text-white' : 'bg-white/10 text-slate-400'
