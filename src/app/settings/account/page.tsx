@@ -105,7 +105,7 @@ export default async function AccountPage() {
                                     <ManageSubscriptionButton />
                                 </div>
                             );
-                        } else if (mStatus === 'org_admin') {
+                        } else if (mStatus === 'org_admin' || role === 'org_admin') {
                             membershipTitle = 'Organizational Administrator';
                             BillingComponent = (
                                 <div>
