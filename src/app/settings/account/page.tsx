@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton } from '@/components/settings/BillingButtons';
 import ChangePasswordPanel from '@/components/settings/ChangePasswordPanel';
 import AvatarSection from '@/components/settings/AvatarSection';
+import EditFullNameField from '@/components/settings/EditFullNameField';
+import EditEmailField from '@/components/settings/EditEmailField';
 import BecomeExpertSection from '@/components/settings/BecomeExpertSection';
-import { Shield, Clock, User, CreditCard, Mail } from 'lucide-react';
+import { Shield, Clock, User, CreditCard } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 
 export default async function AccountPage() {
@@ -65,20 +67,11 @@ export default async function AccountPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-white">
-                                        <span>{profile?.full_name || user.user_metadata?.full_name || 'Not set'}</span>
-                                        <button className="text-xs font-bold text-brand-blue-light hover:text-white transition-colors">EDIT</button>
-                                    </div>
+                                    <EditFullNameField currentName={profile?.full_name || user.user_metadata?.full_name || 'Not set'} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-white">
-                                        <div className="flex items-center gap-3">
-                                            <Mail size={16} className="text-slate-400" />
-                                            <span>{user.email}</span>
-                                        </div>
-                                        <button className="text-xs font-bold text-brand-blue-light hover:text-white transition-colors">CHANGE</button>
-                                    </div>
+                                    <EditEmailField currentEmail={user.email || ''} />
                                 </div>
                             </div>
 
