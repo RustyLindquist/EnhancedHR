@@ -231,7 +231,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     const adminClient = createAdminClient();
     const { data: members, error: membersError } = await adminClient
         .from('profiles')
-        .select('id, email, full_name, avatar_url, role, data, membership_status, created_at')
+        .select('*')
         .eq('org_id', effectiveOrgId)
         .order('created_at', { ascending: false });
 
