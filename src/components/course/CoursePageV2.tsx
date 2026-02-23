@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { BookOpen, LayoutGrid, List, FileText, Download, Paperclip, ChevronLeft, ChevronRight, Sparkles, Bookmark } from 'lucide-react';
 import { Course, Module, Resource, DragItem, Lesson } from '../../types';
 import { useCourseProgress } from '../../hooks/useCourseProgress';
@@ -77,6 +77,9 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
     // Auto-play state - triggers video to auto-play when navigating to a lesson
     const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+
+    // Ref for the scrollable content area - used to scroll to top on lesson changes
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Load lesson view preference from localStorage on mount
     useEffect(() => {
@@ -262,6 +265,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setExpandedModules(prev => [...prev, nextItem.moduleId]);
             }
             setTransitionPhase('enter');
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
             setTimeout(() => {
                 setTransitionPhase('stable');
@@ -299,6 +303,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                 setExpandedModules(prev => [...prev, prevItem.moduleId]);
             }
             setTransitionPhase('enter');
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
             setTimeout(() => {
                 setTransitionPhase('stable');
@@ -356,6 +361,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             setActiveLessonId(targetLessonId || null);
             setActiveModuleId(targetModuleId || null);
             setTransitionPhase('enter');
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
             // Expand the module containing the active lesson
             if (targetModuleId && !expandedModules.includes(targetModuleId)) {
@@ -437,6 +443,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
                     setExpandedModules(prev => [...prev, moduleId]);
                 }
                 setTransitionPhase('enter');
+                scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
                 setTimeout(() => {
                     setTransitionPhase('stable');
@@ -622,7 +629,7 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
             />
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 pt-6 pb-36">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar px-6 lg:px-10 pt-6 pb-36">
                 <div className={`${getTransitionClass()}`}>
                     {/* Course Description or Player */}
                     {viewMode === 'description' ? (
