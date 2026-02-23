@@ -46,6 +46,8 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
             author_bio,
             avatar_url,
             linkedin_url,
+            twitter_url,
+            website_url,
             role,
             author_status
         `)
@@ -79,7 +81,7 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
     return (
         <div className="min-h-screen bg-brand-black">
             {/* Header */}
-            <ExpertDetailsHeader linkedinUrl={expert.linkedin_url} />
+            <ExpertDetailsHeader linkedinUrl={expert.linkedin_url} twitterUrl={expert.twitter_url} websiteUrl={expert.website_url} />
 
             {/* Hero Section */}
             <section className="relative py-20">
