@@ -124,6 +124,7 @@ export async function fetchCoursesAction(): Promise<{ courses: Course[], debug?:
             duration: course.duration,
             rating: Number(course.rating),
             badges: course.badges || [],
+            skills: course.skills || [],
             // Credit certification fields
             shrm_pdcs: course.shrm_pdcs,
             hrci_credits: course.hrci_credits,
