@@ -23,48 +23,40 @@ interface ExpertWithCourses {
 export default async function ExpertsPage() {
     const supabase = await createClient();
 
-    // Fetch experts/admins with their published courses
-    const { data: expertsData } = await supabase
-        .from('profiles')
-        .select(`
-            id,
-            full_name,
-            expert_title,
-            avatar_url,
-            author_bio,
-            role,
-            author_status
-        `)
-        .or('author_status.eq.approved,role.eq.admin');
+    // Run all three queries in parallel instead of sequentially
+    const [
+        { data: expertsData },
+        { data: standaloneExpertsData },
+        { data: authorCounts },
+        { data: standaloneCounts }
+    ] = await Promise.all([
+        // Fetch experts/admins
+        supabase
+            .from('profiles')
+            .select('id, full_name, expert_title, avatar_url, author_bio, role, author_status')
+            .or('author_status.eq.approved,role.eq.admin'),
 
-    // Fetch standalone experts
-    const { data: standaloneExpertsData } = await supabase
-        .from('standalone_experts')
-        .select(`
-            id,
-            full_name,
-            expert_title,
-            avatar_url,
-            author_bio
-        `)
-        .eq('is_active', true);
+        // Fetch standalone experts
+        supabase
+            .from('standalone_experts')
+            .select('id, full_name, expert_title, avatar_url, author_bio')
+            .eq('is_active', true),
 
-    // Fetch published courses grouped by author
-    const { data: coursesData } = await supabase
-        .from('courses')
-        .select('author_id, standalone_expert_id')
-        .eq('status', 'published');
+        // Count published courses per author (database-side aggregation)
+        supabase.rpc('get_published_course_counts_by_author'),
 
-    // Count published courses per author (regular and standalone)
+        // Count published courses per standalone expert (database-side aggregation)
+        supabase.rpc('get_published_course_counts_by_standalone_expert'),
+    ]);
+
+    // Build lookup maps from the aggregated counts
     const courseCountByAuthor: Record<string, number> = {};
     const courseCountByStandaloneExpert: Record<string, number> = {};
-    coursesData?.forEach(course => {
-        if (course.author_id) {
-            courseCountByAuthor[course.author_id] = (courseCountByAuthor[course.author_id] || 0) + 1;
-        }
-        if (course.standalone_expert_id) {
-            courseCountByStandaloneExpert[course.standalone_expert_id] = (courseCountByStandaloneExpert[course.standalone_expert_id] || 0) + 1;
-        }
+    authorCounts?.forEach((row: { author_id: string; course_count: number }) => {
+        courseCountByAuthor[row.author_id] = row.course_count;
+    });
+    standaloneCounts?.forEach((row: { standalone_expert_id: string; course_count: number }) => {
+        courseCountByStandaloneExpert[row.standalone_expert_id] = row.course_count;
     });
 
     // Filter to only experts with published courses (regular experts)
