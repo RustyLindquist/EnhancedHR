@@ -86,7 +86,7 @@ export default function GettingStartedBanner() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {/* Path 1: Expert Profile */}
                     <Link
-                        href="/settings/account"
+                        href="/author/profile"
                         className="group p-6 rounded-xl bg-white/5 border border-white/10 hover:border-brand-blue-light/50 hover:bg-white/10 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-blue-light/10"
                     >
                         <div className="flex items-start gap-4">
@@ -111,7 +111,10 @@ export default function GettingStartedBanner() {
                     </Link>
 
                     {/* Path 2: Course Proposal */}
-                    <div className="group p-6 rounded-xl bg-white/5 border border-white/10 hover:border-brand-orange/50 hover:bg-white/10 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-orange/10 cursor-default">
+                    <Link
+                        href="/author/proposals"
+                        className="group p-6 rounded-xl bg-white/5 border border-white/10 hover:border-brand-orange/50 hover:bg-white/10 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-orange/10"
+                    >
                         <div className="flex items-start gap-4">
                             <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-brand-orange/20 to-brand-orange/5 flex items-center justify-center text-brand-orange group-hover:scale-110 transition-transform">
                                 <FileText size={24} />
@@ -124,14 +127,14 @@ export default function GettingStartedBanner() {
                                     Submit a Course Proposal
                                 </h3>
                                 <p className="text-sm text-slate-400">
-                                    Pitch your course idea below. Once approved, you can start building.
+                                    Pitch your course idea and get approved to start building.
                                 </p>
                             </div>
                         </div>
                         <div className="mt-4 flex items-center gap-1 text-xs font-bold text-brand-orange opacity-0 group-hover:opacity-100 transition-opacity">
-                            See form below <ArrowRight size={14} />
+                            Go to Proposals <ArrowRight size={14} />
                         </div>
-                    </div>
+                    </Link>
 
                     {/* Path 3: Build Course */}
                     <Link

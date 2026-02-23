@@ -197,6 +197,7 @@ export async function createProposal(data: {
     }
 
     revalidatePath('/author');
+    revalidatePath('/author/proposals');
     return { success: true, proposal };
 }
 
@@ -337,5 +338,6 @@ export async function updateProposal(
     }
 
     revalidatePath('/author');
+    revalidatePath('/author/proposals');
     return { success: true };
 }

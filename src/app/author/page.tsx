@@ -6,8 +6,6 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { getMyProposals } from '@/app/actions/proposals';
-import NewProposalForm from '@/components/author/NewProposalForm';
 import GettingStartedBanner from '@/components/author/GettingStartedBanner';
 
 export const dynamic = 'force-dynamic';
@@ -32,9 +30,6 @@ export default async function AuthorDashboardPage() {
     if (!hasExpertAccess) {
         redirect('/teach');
     }
-
-    // Get expert's course proposals
-    const { proposals: existingProposals } = await getMyProposals();
 
     // Get current and previous month date ranges
     const now = new Date();
@@ -265,9 +260,6 @@ export default async function AuthorDashboardPage() {
 
             {/* ========== GETTING STARTED GUIDE ========== */}
             <GettingStartedBanner />
-
-            {/* ========== COURSE PROPOSALS ========== */}
-            <NewProposalForm existingProposals={existingProposals} />
 
             {/* ========== PROFIT SHARE HIGHLIGHT ========== */}
             <div className="bg-gradient-to-r from-brand-blue-light/10 via-green-500/10 to-purple-500/10 border border-white/20 rounded-2xl p-6">

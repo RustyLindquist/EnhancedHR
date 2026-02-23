@@ -31,6 +31,7 @@ export default function ExpertPageLayout({ children, activeNavId, title = 'Exper
     const ROUTE_TITLES: Record<string, string> = {
         'author': 'Expert Dashboard',
         'author/courses': 'My Courses',
+        'author/proposals': 'Course Proposals',
         'author/resources': 'Expert Resources',
         'author/analytics': 'AI Analytics',
         'author/earnings': 'Earnings',
