@@ -36,6 +36,9 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
     const { id } = await params;
     const supabase = await createClient();
 
+    // Get current user (may be null for unauthenticated visitors)
+    const { data: { user } } = await supabase.auth.getUser();
+
     // Fetch expert profile (must be admin OR approved expert)
     const { data: expert } = await supabase
         .from('profiles')
@@ -156,6 +159,7 @@ export default async function ExpertPage({ params }: ExpertPageProps) {
             <ExpertCoursesContent
                 courses={courses}
                 expertFirstName={expert.full_name?.split(' ')[0] || 'this Expert'}
+                userId={user?.id || null}
             />
 
             {/* CTA Section */}
