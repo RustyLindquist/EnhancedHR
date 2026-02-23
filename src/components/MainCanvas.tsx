@@ -106,6 +106,7 @@ interface FilterState {
     category: string; // Changed from categories[] to single category for now as per UI
     credits: string[]; // 'SHRM', 'HRCI'
     designations: string[]; // 'REQUIRED', 'RECOMMENDED'
+    experts: string[]; // Expert/author names
     status: string[]; // 'NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'
     ratingFilter: RatingFilterType;
     dateFilterType: DateFilterType;
@@ -118,6 +119,7 @@ const INITIAL_FILTERS: FilterState = {
     category: 'All', // Default to 'All'
     credits: [],
     designations: [],
+    experts: [],
     status: [],
     ratingFilter: 'ALL',
     dateFilterType: 'ALL',
@@ -873,6 +875,13 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
             .map(c => c.category)
             .filter((cat): cat is string => Boolean(cat));
         return [...new Set(categories)].sort();
+    }, [courses]);
+
+    const dynamicExperts = useMemo(() => {
+        const experts = courses
+            .map(c => c.author)
+            .filter((name): name is string => Boolean(name));
+        return [...new Set(experts)].sort();
     }, [courses]);
 
     const { savedItemIds, addToCollection, removeFromCollection, fetchCollectionItems } = useCollections(initialCourses);
@@ -1702,6 +1711,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 return false;
             }
 
+            // 2. Expert Filter
+            if (filters.experts.length > 0) {
+                if (!filters.experts.includes(course.author)) return false;
+            }
+
             // 3. Credits
             if (filters.credits.length > 0) {
                 const hasCredit = filters.credits.some(credit => course.badges.includes(credit as any));
@@ -2177,6 +2191,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         if (activeFilters.category !== 'All') count++;
         if (activeFilters.credits.length > 0) count++;
         if (activeFilters.designations.length > 0) count++;
+        if (activeFilters.experts.length > 0) count++;
         if (activeFilters.status.length > 0) count++;
         if (activeFilters.ratingFilter !== 'ALL') count++;
         if (activeFilters.dateFilterType !== 'ALL') count++;
@@ -3654,7 +3669,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                             {!pendingFilters.searchQuery && <div className="mb-4" />}
 
                             {/* Filter Grid */}
-                            <div className="grid grid-cols-5 gap-8 mb-8">
+                            <div className="grid grid-cols-6 gap-8 mb-8">
 
                                 {/* Col 1: Credits & Designations */}
                                 <div className="space-y-6">
@@ -3716,7 +3731,23 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Col 3: Status */}
+                                {/* Col 3: Experts */}
+                                <div className="col-span-1">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Experts</h3>
+                                    <div className="space-y-2 h-40 overflow-y-auto custom-scrollbar pr-2">
+                                        {dynamicExperts.map(expert => (
+                                            <label key={expert} className="flex items-center gap-3 cursor-pointer group">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${pendingFilters.experts.includes(expert) ? 'bg-brand-blue-light border-brand-blue-light' : 'border-slate-600 group-hover:border-slate-400'} `}>
+                                                    {pendingFilters.experts.includes(expert) && <Check size={12} className="text-black" />}
+                                                </div>
+                                                <span className={`text-sm truncate transition-colors ${pendingFilters.experts.includes(expert) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'} `}>{expert}</span>
+                                                <input type="checkbox" className="hidden" checked={pendingFilters.experts.includes(expert)} onChange={() => toggleArrayFilter('experts', expert)} />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Col 4: Status */}
                                 <div>
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status</h3>
                                     <div className="space-y-2">
