@@ -653,20 +653,22 @@ export default function VideoPanel({
         }
 
         if (currentMode === 'edit') {
-            // For URL mode or editing existing (including savedVideo), show Save button
+            // Always show Save button in edit mode for user reassurance
             const hasExistingVideo = !isNewVideo || savedVideo;
-            if (videoSource === 'url' || (hasExistingVideo && uploadStatus === 'ready')) {
-                return (
-                    <button
-                        onClick={handleSave}
-                        disabled={!title.trim() || isSaving || (videoSource === 'url' && !isValidVideoUrl(externalUrl))}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all"
-                    >
-                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                        Save
-                    </button>
-                );
-            }
+            const isUploadReady = hasExistingVideo && uploadStatus === 'ready';
+            const isUrlReady = videoSource === 'url' && isValidVideoUrl(externalUrl);
+            const canSave = isUploadReady || isUrlReady;
+
+            return (
+                <button
+                    onClick={handleSave}
+                    disabled={!title.trim() || isSaving || !canSave}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-400 hover:to-violet-400 transition-all"
+                >
+                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    Save
+                </button>
+            );
         }
 
         return null;
