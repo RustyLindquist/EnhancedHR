@@ -1303,7 +1303,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
                 mod.getCollectionCountsAction(user.id).then(setCollectionCounts);
             });
         }
-    }, [savedItemIds, onCollectionUpdate, refreshTrigger, user?.id]);
+    }, [savedItemIds, refreshTrigger, user?.id]);
 
     // Listen for global collection refresh events (from insight saves, etc.)
     useEffect(() => {
@@ -2674,7 +2674,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
         };
 
         loadMixedItems();
-    }, [resolvedCollectionId, activeCollectionId, onCollectionUpdate, savedItemIds, customCollections, fetchCollectionItems, refreshTrigger]);
+    }, [resolvedCollectionId, activeCollectionId, savedItemIds, customCollections, fetchCollectionItems, refreshTrigger]);
 
     // --- Critical State Sync ---
     // Ensure visibleCourses is populated when we have courses (fixes empty Academy view regression)
