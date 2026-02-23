@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StickyNote, Trash2, BookOpen, Check, Loader2, Pencil, Calendar } from 'lucide-react';
+import { StickyNote, Trash2, BookOpen, Check, Loader2, Pencil, Calendar, Save } from 'lucide-react';
 import MarkdownEditor from './MarkdownEditor';
 import MarkdownRenderer from './MarkdownRenderer';
 import { Note } from '../types';
@@ -154,6 +154,17 @@ const NoteEditorPanel: React.FC<NoteEditorPanelProps> = ({
         }
     };
 
+    const handleSaveAndClose = async () => {
+        // Cancel any pending debounced save
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+            saveTimeoutRef.current = null;
+        }
+        // Flush save immediately, then close
+        await debouncedSave(title, content);
+        onClose();
+    };
+
     // Format save status display
     const renderSaveStatus = () => {
         switch (saveStatus) {
@@ -229,10 +240,19 @@ const NoteEditorPanel: React.FC<NoteEditorPanelProps> = ({
             ) : null;
         }
 
-        // Edit mode: Save status + Delete button
+        // Edit mode: Save status + Save button + Delete button
         return (
             <div className="flex items-center gap-4">
                 {renderSaveStatus()}
+
+                <button
+                    onClick={handleSaveAndClose}
+                    disabled={saveStatus === 'saving'}
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500 text-black font-bold text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <Save size={16} />
+                    Save
+                </button>
 
                 {showDeleteConfirm ? (
                     <div className="flex items-center gap-2 bg-red-500/20 border border-red-500/50 rounded-full px-4 py-2">
