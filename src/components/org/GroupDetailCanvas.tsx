@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getGroupDetails, getGroupStats, getGroupMembersWithStats, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
+import { getGroupFullData, GroupStats, GroupMemberWithStats } from '@/app/actions/groups';
 import { ContentAssignment, getDirectAssignments, removeAssignment } from '@/app/actions/assignments';
 import { Users, BookOpen, BarChart3, Plus, Sparkles, LayoutGrid, List } from 'lucide-react';
 import ContentPickerModal from './ContentPickerModal';
@@ -89,17 +89,17 @@ const GroupDetailCanvas: React.FC<GroupDetailCanvasProps> = ({
     // The manageTrigger prop can be used for other management actions if needed in the future
 
     const loadData = async () => {
-        const [details, assigns, groupStats, memberStats] = await Promise.all([
-            getGroupDetails(group.id),
-            getDirectAssignments('group', group.id),
-            getGroupStats(group.id),
-            getGroupMembersWithStats(group.id)
+        const [fullData, assigns] = await Promise.all([
+            getGroupFullData(group.id),
+            getDirectAssignments('group', group.id)
         ]);
 
-        if (details) setFullGroup(details);
+        if (fullData) {
+            setFullGroup(fullData.group);
+            setStats(fullData.stats);
+            setMembers(fullData.memberStats);
+        }
         setAssignments(assigns);
-        setStats(groupStats);
-        setMembers(memberStats);
     };
 
     // Separate required and recommended assignments

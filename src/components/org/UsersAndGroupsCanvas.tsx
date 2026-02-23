@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Layers, Sparkles, Loader2, LayoutGrid, List } from 'lucide-react';
 import { getOrgGroups, getUserGroupMemberships, EmployeeGroup } from '@/app/actions/groups';
-import { getOrgMembers, InviteInfo } from '@/app/actions/org';
+import { getOrgSummary, InviteInfo } from '@/app/actions/org';
 import GroupCard from './GroupCard';
 import GroupListItem from './GroupListItem';
 import AllUsersListItem from './AllUsersListItem';
@@ -102,8 +102,8 @@ export default function UsersAndGroupsCanvas({ onSelectAllUsers, onSelectGroup, 
     // Fetch member count and invite info from org action (only for admins)
     const fetchMemberData = async () => {
         try {
-            const { members, inviteInfo } = await getOrgMembers();
-            setTotalMembers(members.length);
+            const { memberCount, inviteInfo } = await getOrgSummary();
+            setTotalMembers(memberCount);
             setInviteInfo(inviteInfo);
         } catch (e) {
             console.error('Failed to fetch member data', e);

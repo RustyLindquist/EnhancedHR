@@ -3,24 +3,28 @@
 // Same pattern as InviteMemberPanel (Dropdown)
 import React, { useState, useEffect } from 'react';
 import DropdownPanel from '../DropdownPanel';
-import { Users, Search, Check, Loader2 } from 'lucide-react';
-import { createGroup, updateGroup } from '@/app/actions/groups';
+import { Users, Search, Check, Loader2, Trash2 } from 'lucide-react';
+import { createGroup, updateGroup, deleteGroup } from '@/app/actions/groups';
 import { getOrgMembers } from '@/app/actions/org';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
 
 interface GroupManagementProps {
     isOpen: boolean;
     onClose: () => void;
     editGroup?: any; // If editing
     onSuccess?: () => void;
+    onDelete?: () => void; // callback after successful deletion
 }
 
-const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, editGroup, onSuccess }) => {
+const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, editGroup, onSuccess, onDelete }) => {
     const [name, setName] = useState('');
     const [members, setMembers] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -32,6 +36,8 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, edit
                 setName('');
                 setSelectedIds(new Set());
             }
+        } else {
+            setShowDeleteConfirm(false);
         }
     }, [isOpen, editGroup]);
 
@@ -70,14 +76,41 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, edit
         }
     };
 
+    const handleDelete = async () => {
+        if (!editGroup?.id) return;
+        setDeleting(true);
+        const res = await deleteGroup(editGroup.id);
+        setDeleting(false);
+        if (res.success) {
+            setShowDeleteConfirm(false);
+            window.dispatchEvent(new CustomEvent('groupsUpdated'));
+            if (onDelete) onDelete();
+            onClose();
+        } else {
+            alert('Failed to delete group');
+        }
+    };
+
     const filteredMembers = members.filter(m =>
         m.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
+        <>
         <DropdownPanel isOpen={isOpen} onClose={onClose} title={editGroup ? "Manage Group" : "Create Group"} icon={Users}>
             <div className="space-y-6">
+
+                {/* Delete Group - only for custom (non-dynamic) groups in edit mode */}
+                {editGroup && !editGroup.is_dynamic && (
+                    <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all text-sm font-semibold"
+                    >
+                        <Trash2 size={15} />
+                        Delete Group
+                    </button>
+                )}
 
                 {/* Name Input */}
                 <div>
@@ -156,6 +189,21 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ isOpen, onClose, edit
 
             </div>
         </DropdownPanel>
+
+        <DeleteConfirmationModal
+            isOpen={showDeleteConfirm}
+            title="Delete Group?"
+            onConfirm={handleDelete}
+            onCancel={() => setShowDeleteConfirm(false)}
+            itemTitle={editGroup?.name || ''}
+            description={
+                <>
+                    This will permanently delete this group. <strong>No users will be removed</strong> — only the group itself will be deleted. This action cannot be undone.
+                </>
+            }
+            confirmText={deleting ? "Deleting..." : "Delete Group"}
+        />
+        </>
     );
 };
 

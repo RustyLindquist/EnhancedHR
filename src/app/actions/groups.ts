@@ -608,6 +608,150 @@ export async function getGroupMembersWithStats(
     });
 }
 
+export interface GroupFullData {
+    group: EmployeeGroup & { members: GroupMember[], member_count: number };
+    stats: GroupStats;
+    memberStats: GroupMemberWithStats[];
+}
+
+/**
+ * Consolidated function that loads all group data in a single pass.
+ * Replaces calling getGroupDetails + getGroupStats + getGroupMembersWithStats separately,
+ * which caused 3x auth checks, 3x member ID lookups, and duplicate metric queries.
+ */
+export async function getGroupFullData(groupId: string): Promise<GroupFullData | null> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id, role, membership_status')
+        .eq('id', user.id)
+        .single();
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
+    if (!profile || !isAdmin) return null;
+
+    const supabaseAdmin = await createAdminClient();
+
+    // Fetch group
+    const { data: group, error } = await supabaseAdmin
+        .from('employee_groups')
+        .select('id, org_id, name, created_at, is_dynamic, dynamic_type, criteria')
+        .eq('id', groupId)
+        .single();
+
+    if (error || !group) return null;
+    if (group.org_id !== profile.org_id) return null;
+
+    // Get member IDs ONCE
+    let memberIds: string[] = [];
+    if (group.is_dynamic) {
+        memberIds = await computeDynamicGroupMembers(groupId);
+    } else {
+        const { data: members } = await supabaseAdmin
+            .from('employee_group_members')
+            .select('user_id')
+            .eq('group_id', groupId);
+        memberIds = members?.map(m => m.user_id) || [];
+    }
+
+    // Empty group - return early
+    if (memberIds.length === 0) {
+        return {
+            group: { ...group, members: [], member_count: 0 },
+            stats: { totalLearningMinutes: 0, avgLearningMinutes: 0, coursesCompleted: 0, totalConversations: 0, activeMembers: 0, totalMembers: 0 },
+            memberStats: []
+        };
+    }
+
+    // Fetch ALL data in parallel
+    const [
+        { data: profiles },
+        { data: progressData },
+        { data: conversationData },
+        { data: creditsData }
+    ] = await Promise.all([
+        supabaseAdmin.from('profiles').select('id, full_name, avatar_url, headline, role, membership_status').in('id', memberIds),
+        supabaseAdmin.from('user_progress').select('user_id, view_time_seconds, is_completed, last_accessed').in('user_id', memberIds),
+        supabaseAdmin.from('conversations').select('user_id').in('user_id', memberIds),
+        supabaseAdmin.from('user_credits_ledger').select('user_id, amount').in('user_id', memberIds)
+    ]);
+
+    // Build per-user metrics
+    const metricsMap = new Map<string, { timeSeconds: number; completed: number; conversations: number; credits: number; lastAccess: string | null }>();
+    memberIds.forEach(id => metricsMap.set(id, { timeSeconds: 0, completed: 0, conversations: 0, credits: 0, lastAccess: null }));
+
+    progressData?.forEach(p => {
+        const m = metricsMap.get(p.user_id);
+        if (m) {
+            m.timeSeconds += (p.view_time_seconds || 0);
+            if (p.is_completed) m.completed += 1;
+            if (p.last_accessed && (!m.lastAccess || new Date(p.last_accessed) > new Date(m.lastAccess))) {
+                m.lastAccess = p.last_accessed;
+            }
+        }
+    });
+    conversationData?.forEach(c => { const m = metricsMap.get(c.user_id); if (m) m.conversations += 1; });
+    creditsData?.forEach(c => { const m = metricsMap.get(c.user_id); if (m) m.credits += (c.amount || 0); });
+
+    // Group members (for detail view)
+    const formattedMembers: GroupMember[] = (profiles || []).map(p => ({
+        user_id: p.id,
+        full_name: p.full_name || 'Unknown',
+        profile_image_url: p.avatar_url,
+        headline: p.headline,
+        role: p.role
+    }));
+
+    // Aggregate stats
+    let totalViewTimeSeconds = 0;
+    let coursesCompleted = 0;
+    const activeUserIds = new Set<string>();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    progressData?.forEach(p => {
+        totalViewTimeSeconds += p.view_time_seconds || 0;
+        if (p.is_completed) coursesCompleted += 1;
+        if (p.last_accessed && new Date(p.last_accessed) >= thirtyDaysAgo) {
+            activeUserIds.add(p.user_id);
+        }
+    });
+
+    const totalLearningMinutes = Math.round(totalViewTimeSeconds / 60);
+    const totalMembers = memberIds.length;
+
+    const stats: GroupStats = {
+        totalLearningMinutes,
+        avgLearningMinutes: totalMembers > 0 ? Math.round(totalLearningMinutes / totalMembers) : 0,
+        coursesCompleted,
+        totalConversations: conversationData?.length || 0,
+        activeMembers: activeUserIds.size,
+        totalMembers
+    };
+
+    // Per-member stats
+    const memberStats: GroupMemberWithStats[] = (profiles || []).map(p => {
+        const metrics = metricsMap.get(p.id) || { timeSeconds: 0, completed: 0, conversations: 0, credits: 0 };
+        return {
+            id: p.id,
+            email: '',
+            full_name: p.full_name || 'Unknown',
+            avatar_url: p.avatar_url || '',
+            role: p.role || 'user',
+            membership_status: p.membership_status || 'employee',
+            courses_completed: metrics.completed,
+            total_time_spent_minutes: Math.round(metrics.timeSeconds / 60),
+            credits_earned: metrics.credits,
+            conversations_count: metrics.conversations
+        };
+    });
+
+    return { group: { ...group, members: formattedMembers, member_count: formattedMembers.length }, stats, memberStats };
+}
+
 export interface UserGroupMemberships {
     customGroups: EmployeeGroup[];
     dynamicGroups: EmployeeGroup[];
@@ -681,14 +825,12 @@ export async function getUserGroupMemberships(): Promise<UserGroupMemberships> {
         .eq('is_dynamic', true);
 
     // Check which dynamic groups the user belongs to
-    const dynamicGroups: EmployeeGroup[] = [];
-    if (allDynamicGroups) {
-        for (const group of allDynamicGroups) {
-            const isInGroup = await checkUserInDynamicGroup(group.id, user.id);
-            if (isInGroup) {
-                dynamicGroups.push(group);
-            }
-        }
+    let dynamicGroups: EmployeeGroup[] = [];
+    if (allDynamicGroups && allDynamicGroups.length > 0) {
+        const checks = await Promise.all(
+            allDynamicGroups.map(group => checkUserInDynamicGroup(group.id, user.id))
+        );
+        dynamicGroups = allDynamicGroups.filter((_, i) => checks[i]);
     }
 
     return { customGroups, dynamicGroups };
