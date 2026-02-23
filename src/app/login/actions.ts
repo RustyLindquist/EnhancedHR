@@ -6,6 +6,36 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { trackLoginEvent } from '@/app/actions/org-dashboard'
 
+// Patterns that indicate a Supabase/infrastructure outage rather than a user error
+const INFRA_ERROR_PATTERNS = [
+    'fetch failed',
+    'failed to fetch',
+    'networkerror',
+    'authretryablefetcherror',
+    'econnrefused',
+    'etimedout',
+    'enotfound',
+    'socket hang up',
+    'network request failed',
+    'service_unavailable',
+    'bad gateway',
+    '502',
+    '503',
+    '504',
+];
+
+function classifyAuthError(error: { message: string; status?: number }): string {
+    const msg = error.message.toLowerCase();
+    const isInfraError = INFRA_ERROR_PATTERNS.some(p => msg.includes(p))
+        || (error.status && error.status >= 500);
+
+    if (isInfraError) {
+        return 'Our authentication provider is currently experiencing issues. This is not a problem with your account — please try again in a few minutes.';
+    }
+
+    return error.message;
+}
+
 /**
  * Generate a URL-friendly slug from an organization name
  * Example: "Acme Corp" → "acme-corp"
@@ -77,7 +107,7 @@ export async function signInWithOAuth(provider: 'google' | 'apple', next?: strin
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     if (data.url) {
@@ -100,7 +130,7 @@ export async function login(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     // Track login event for analytics
@@ -150,7 +180,7 @@ export async function signup(formData: FormData) {
             if (adminError.message.includes('already been registered') || adminError.message.includes('already exists')) {
                 return { error: 'An account with this email already exists. Please sign in instead.' }
             }
-            return { error: adminError.message }
+            return { error: classifyAuthError(adminError) }
         }
 
         // Sign in the newly created user
@@ -230,7 +260,7 @@ export async function signup(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     // Check if user needs email confirmation (no session means confirmation required)
@@ -299,7 +329,7 @@ export async function verifyEmail(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     // After successful verification, check if this is an org account that needs setup
@@ -358,7 +388,7 @@ export async function resendVerification(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     return { success: true, message: 'Verification code resent.' }
@@ -374,7 +404,7 @@ export async function resetPassword(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     return { success: true, message: 'Check your email for the password reset link.' }
@@ -405,7 +435,7 @@ export async function changePassword(formData: FormData) {
     })
 
     if (error) {
-        return { error: error.message }
+        return { error: classifyAuthError(error) }
     }
 
     return { success: true, message: 'Password changed successfully.' }
