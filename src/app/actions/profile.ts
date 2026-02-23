@@ -233,6 +233,88 @@ export async function getCollectionSurfacePreferenceAction(): Promise<{
     return { success: true, isOpen: profile?.collection_surface_open ?? false };
 }
 
+// Update full name on profile and auth metadata
+export async function updateFullNameAction(fullName: string): Promise<{
+    success: boolean;
+    error?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    const trimmed = fullName.trim();
+    if (!trimmed) {
+        return { success: false, error: 'Full name cannot be empty' };
+    }
+
+    const admin = await createAdminClient();
+
+    // Update profiles table
+    const { error: profileError } = await admin
+        .from('profiles')
+        .update({ full_name: trimmed })
+        .eq('id', user.id);
+
+    if (profileError) {
+        console.error('Update full name profile error:', profileError);
+        return { success: false, error: profileError.message };
+    }
+
+    // Keep auth metadata in sync
+    const { error: authError } = await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: { full_name: trimmed }
+    });
+
+    if (authError) {
+        console.error('Update full name auth metadata error:', authError);
+        return { success: false, error: authError.message };
+    }
+
+    revalidatePath('/settings/account');
+    revalidatePath('/dashboard');
+
+    return { success: true };
+}
+
+// Update email address (sends confirmation email to new address)
+export async function updateEmailAction(newEmail: string): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+}> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Not authenticated' };
+    }
+
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed) {
+        return { success: false, error: 'Email address cannot be empty' };
+    }
+
+    if (trimmed === user.email) {
+        return { success: false, error: 'New email is the same as your current email' };
+    }
+
+    // Use standard user client — Supabase sends a confirmation email to the new address
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+
+    if (error) {
+        console.error('Update email error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return {
+        success: true,
+        message: 'A confirmation email has been sent to your new email address.'
+    };
+}
+
 // Update Collection Surface preference
 export async function updateCollectionSurfacePreferenceAction(isOpen: boolean): Promise<{
     success: boolean;

@@ -275,6 +275,11 @@ const CoursePageV2: React.FC<CoursePageV2Props> = ({
 
         const prevItem = navigationItems[currentItemIndex - 1];
 
+        // Enable auto-play only when navigating to a lesson
+        if (prevItem.kind === 'lesson') {
+            setShouldAutoPlay(true);
+        }
+
         // Animate transition: slide right (backward)
         setIsTransitioning(true);
         setSlideDirection('right');
