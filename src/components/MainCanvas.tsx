@@ -5090,6 +5090,8 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                     itemToEdit={editingContextItem}
                     initialType={contextTypeToAdd}
                     userId={savedItemIds ? 'current-user-implied-by-server-action' : ''}
+                    mode={editingContextItem?.id ? 'view' : 'edit'}
+                    canEdit={viewingOrgCollection ? viewingOrgCollection.isOrgAdmin : true}
                     onSaveSuccess={() => {
                         setRefreshTrigger(prev => prev + 1);
                         if (onCollectionUpdate) onCollectionUpdate();
@@ -5101,6 +5103,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                     isOpen={isNoteEditorOpen}
                     onClose={handleCloseNoteEditor}
                     noteId={editingNoteId}
+                    canEdit={viewingOrgCollection ? viewingOrgCollection.isOrgAdmin : true}
                     onSaveSuccess={handleNoteSaved}
                     onDeleteSuccess={handleNoteDeleted}
                 />
@@ -5111,7 +5114,7 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                     onClose={handleCloseVideoPanel}
                     mode={videoPanelMode}
                     video={selectedVideo}
-                    canEdit={true}
+                    canEdit={viewingOrgCollection ? viewingOrgCollection.isOrgAdmin : true}
                     collectionId={activeCollectionId}
                     onSaveSuccess={() => {
                         setRefreshTrigger(prev => prev + 1);

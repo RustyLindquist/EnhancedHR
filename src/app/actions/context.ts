@@ -123,7 +123,8 @@ export async function createFileContextItem(
     collectionId: string | null,
     fileName: string,
     fileType: string,
-    fileBuffer: ArrayBuffer
+    fileBuffer: ArrayBuffer,
+    customTitle?: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -169,7 +170,7 @@ export async function createFileContextItem(
                 user_id: user.id,
                 collection_id: resolvedCollectionId,
                 type: 'FILE',
-                title: fileName,
+                title: customTitle || fileName,
                 content: {
                     fileName,
                     fileType,
@@ -213,6 +214,113 @@ export async function createFileContextItem(
             success: false,
             error: error instanceof Error ? error.message : 'File processing failed'
         };
+    }
+}
+
+/**
+ * Replace the file on an existing file context item with a new file
+ */
+export async function replaceFileContextItem(
+    itemId: string,
+    fileName: string,
+    fileType: string,
+    fileBuffer: ArrayBuffer,
+    customTitle?: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, error: 'Unauthorized' };
+    }
+
+    // 1. Fetch existing item to get old storagePath
+    const { data: existing, error: fetchError } = await supabase
+        .from('user_context_items')
+        .select('id, content, collection_id')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (fetchError || !existing) {
+        return { success: false, error: 'Item not found or not owned by user' };
+    }
+
+    const oldStoragePath = (existing.content as any)?.storagePath;
+    const resolvedCollectionId = existing.collection_id;
+
+    try {
+        // 2. Parse new file content
+        const parseResult = await parseFileContent(fileBuffer, fileType, fileName);
+        const textContent = parseResult.success ? parseResult.text : '';
+
+        // 3. Generate AI summary
+        let summary: string | null = null;
+        if (textContent && textContent.length > 50) {
+            try {
+                const truncatedText = textContent.substring(0, 2500);
+                const summaryPrompt = `Summarize the following document in 2-3 concise sentences for a preview card. Focus on the main topic and key points:\n\n${truncatedText}`;
+                const generatedSummary = await generateQuickAIResponse(summaryPrompt, 150);
+                if (generatedSummary && generatedSummary.length > 0) {
+                    summary = generatedSummary;
+                }
+            } catch (summaryError) {
+                console.warn('[replaceFileContextItem] Summary generation failed (non-blocking):', summaryError);
+            }
+        }
+
+        // 4. Upload new file to storage
+        const file = new File([fileBuffer], fileName, { type: fileType });
+        const upload = await uploadFileToStorage(file, user.id, resolvedCollectionId || undefined);
+
+        // 5. Update the context item record
+        const { error: updateError } = await supabase
+            .from('user_context_items')
+            .update({
+                title: customTitle || fileName,
+                content: {
+                    fileName,
+                    fileType,
+                    fileSize: fileBuffer.byteLength,
+                    url: upload.success ? upload.url : null,
+                    storagePath: upload.success ? upload.path : null,
+                    parsedTextLength: textContent.length,
+                    parseError: parseResult.success ? null : parseResult.error,
+                    summary
+                }
+            })
+            .eq('id', itemId)
+            .eq('user_id', user.id);
+
+        if (updateError) {
+            console.error('[replaceFileContextItem] DB update error:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        // 6. Delete old file from storage (cleanup, non-blocking)
+        if (oldStoragePath) {
+            try {
+                const admin = createAdminClient();
+                await admin.storage.from('user-files').remove([oldStoragePath]);
+            } catch (cleanupError) {
+                console.warn('[replaceFileContextItem] Old file cleanup failed (non-blocking):', cleanupError);
+            }
+        }
+
+        // 7. Re-generate embeddings
+        await deleteContextEmbeddings(itemId);
+        if (textContent && textContent.length > 0) {
+            const chunks = chunkText(textContent, 1000, 200);
+            await embedFileChunks(user.id, itemId, chunks, resolvedCollectionId, { fileName, fileType });
+        }
+
+        revalidatePath('/dashboard');
+        revalidatePath('/academy');
+
+        return { success: true };
+    } catch (error) {
+        console.error('[replaceFileContextItem] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'File replacement failed' };
     }
 }
 

@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
         // Get the storage path and file info from the request body
         const body = await request.json();
-        const { storagePath, fileName, fileType, fileSize } = body;
+        const { storagePath, fileName, fileType, fileSize, title: customTitle } = body;
 
         if (!storagePath || !fileName || !fileType) {
             return NextResponse.json(
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
                 user_id: user.id,
                 collection_id: EXPERT_RESOURCES_COLLECTION_ID,
                 type: 'FILE',
-                title: fileName,
+                title: customTitle || fileName,
                 content: {
                     fileName,
                     fileType,

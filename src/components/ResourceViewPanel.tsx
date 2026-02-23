@@ -10,46 +10,18 @@ import {
     FileType,
     HardDrive,
     ExternalLink,
-    Lightbulb,
-    FileImage,
-    FileSpreadsheet,
-    FileCode,
-    File
+    Lightbulb
 } from 'lucide-react';
 import { UserContextItem } from '../types';
 import GlobalTopPanel from './GlobalTopPanel';
 import MarkdownRenderer from './MarkdownRenderer';
+import { getFileIcon, formatFileSize, getFileExtension } from '../lib/file-display-utils';
 
 interface ResourceViewPanelProps {
     isOpen: boolean;
     onClose: () => void;
     resource: UserContextItem | null;
 }
-
-// Helper: Get appropriate icon based on file MIME type
-const getFileIcon = (fileType: string | undefined) => {
-    if (!fileType) return File;
-    if (fileType.startsWith('image/')) return FileImage;
-    if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return FileSpreadsheet;
-    if (fileType.includes('pdf')) return FileText;
-    if (fileType.includes('code') || fileType.includes('javascript') || fileType.includes('json') || fileType.includes('text/plain')) return FileCode;
-    return File;
-};
-
-// Helper: Format file size to human-readable format
-const formatFileSize = (bytes: number | undefined): string => {
-    if (!bytes) return 'Unknown size';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-// Helper: Extract file extension from filename
-const getFileExtension = (fileName: string | undefined): string => {
-    if (!fileName) return '';
-    const parts = fileName.split('.');
-    return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : '';
-};
 
 const ResourceViewPanel: React.FC<ResourceViewPanelProps> = ({
     isOpen,

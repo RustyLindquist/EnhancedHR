@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen, Video, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Paperclip, Star, Award, User, HelpCircle, StickyNote, Wrench, TrendingUp, Drama, LucideIcon, Building, Layers, BookOpen, Video, RefreshCw, FileSpreadsheet, FileImage, Presentation, FileArchive, FileCode, File } from 'lucide-react';
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 import { CARD_TYPE_CONFIGS, CardType } from './cardTypeConfigs';
@@ -36,6 +36,55 @@ function getVideoThumbnailUrl(url: string): string | null {
     }
     // Vimeo doesn't have a simple thumbnail API, would need API call
     return null;
+}
+
+// Get file extension from filename
+function getFileExtension(filename: string): string {
+    return (filename.split('.').pop() || '').toLowerCase();
+}
+
+// Get file type category and display info from filename
+function getFileTypeInfo(filename: string): { icon: LucideIcon; label: string; color: string; previewable: boolean } {
+    const ext = getFileExtension(filename);
+    switch (ext) {
+        case 'pdf':
+            return { icon: FileText, label: 'PDF', color: 'text-red-400', previewable: true };
+        case 'doc':
+        case 'docx':
+            return { icon: FileText, label: 'WORD', color: 'text-blue-400', previewable: false };
+        case 'xls':
+        case 'xlsx':
+        case 'csv':
+            return { icon: FileSpreadsheet, label: ext.toUpperCase(), color: 'text-emerald-400', previewable: false };
+        case 'ppt':
+        case 'pptx':
+            return { icon: Presentation, label: 'PPT', color: 'text-orange-400', previewable: false };
+        case 'png':
+        case 'jpg':
+        case 'jpeg':
+        case 'gif':
+        case 'webp':
+        case 'svg':
+            return { icon: FileImage, label: ext.toUpperCase(), color: 'text-purple-400', previewable: true };
+        case 'zip':
+        case 'rar':
+        case '7z':
+        case 'tar':
+        case 'gz':
+            return { icon: FileArchive, label: ext.toUpperCase(), color: 'text-yellow-400', previewable: false };
+        case 'js':
+        case 'ts':
+        case 'jsx':
+        case 'tsx':
+        case 'py':
+        case 'json':
+        case 'html':
+        case 'css':
+        case 'xml':
+            return { icon: FileCode, label: ext.toUpperCase(), color: 'text-cyan-400', previewable: false };
+        default:
+            return { icon: File, label: ext ? ext.toUpperCase() : 'FILE', color: 'text-white/60', previewable: false };
+    }
 }
 
 // Icon mapping for dynamic icon names
@@ -128,6 +177,8 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
     const isNewLayoutCard = ['COURSE', 'MODULE', 'LESSON', 'ACTIVITY'].includes(type);
     // Video card has its own layout: header -> title -> thumbnail
     const isVideoCard = type === 'VIDEO';
+    // File card has its own layout: header -> title -> date -> file preview
+    const isFileCard = type === 'CONTEXT' && contextSubtype === 'FILE';
     // Legacy media cards with background image
     const isMediaCard = false;
     // Text-heavy cards with colored header sections
@@ -395,6 +446,112 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                             <span className="text-xs uppercase tracking-wider">VIDEO COVER IMAGE</span>
                                         </>
                                     )}
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
+            </div>
+            ) : isFileCard ? (
+            /* ========== FILE CARD LAYOUT ========== */
+            <div className="flex flex-col h-full p-3">
+                {/* Header Bar */}
+                <div data-header-actions className="flex items-center justify-between bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/5 shadow-sm">
+                    <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/70">
+                        CONTEXT (FILE)
+                    </span>
+                    <div className="flex items-center gap-2">
+                        {onRemove && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                        {fileUrl && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(fileUrl, '_blank');
+                                }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                                title="Download file"
+                            >
+                                <Download size={14} />
+                            </button>
+                        )}
+                        {onAdd && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                                className="text-white/40 hover:text-white transition-colors p-1"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-[17px] font-bold text-white leading-tight mt-3 px-1 line-clamp-2">
+                    {title}
+                </h3>
+
+                {/* Date - above preview */}
+                {meta && (
+                    <div className="flex items-center gap-1.5 text-white/50 mt-1.5 px-1">
+                        <Clock size={11} />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{meta}</span>
+                    </div>
+                )}
+
+                {/* File Preview Area */}
+                <div className="flex-1 mt-3 rounded-xl overflow-hidden bg-black/30 relative min-h-[120px]">
+                    {(() => {
+                        const fileInfo = fileName ? getFileTypeInfo(fileName) : { icon: File, label: 'FILE', color: 'text-white/60', previewable: false };
+                        const ext = fileName ? getFileExtension(fileName) : '';
+                        const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
+
+                        // Image files: show the actual image as preview
+                        if (isImage && fileUrl) {
+                            return (
+                                <>
+                                    <img
+                                        src={fileUrl}
+                                        alt={title}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                </>
+                            );
+                        }
+
+                        // PDF files: show embedded preview if URL available
+                        if (ext === 'pdf' && fileUrl) {
+                            return (
+                                <>
+                                    <iframe
+                                        src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                                        className="absolute inset-0 w-full h-full pointer-events-none"
+                                        title={title}
+                                        style={{ border: 'none' }}
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                </>
+                            );
+                        }
+
+                        // All other file types: show a styled file type graphic
+                        const FileIcon = fileInfo.icon;
+                        return (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className={`${fileInfo.color} opacity-70`}>
+                                        <FileIcon size={48} strokeWidth={1.5} />
+                                    </div>
+                                    <span className={`text-xs font-bold tracking-[0.15em] uppercase ${fileInfo.color} opacity-60`}>
+                                        {fileInfo.label}
+                                    </span>
                                 </div>
                             </div>
                         );
