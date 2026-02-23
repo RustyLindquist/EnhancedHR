@@ -1,7 +1,7 @@
 # Expert/Author Workflows
 
 > **Status**: Active
-> **Last Updated**: 2026-01-22
+> **Last Updated**: 2026-02-23
 
 ## Role Overview
 
@@ -45,6 +45,35 @@ Experts/Authors create and manage course content on EnhancedHR.ai. They build co
 #### Related Workflows
 - Course Creation
 - Auto-Approval on First Publish
+
+---
+
+### Course Proposal Submission
+
+**Goal**: Pitch a course idea for review before building
+**Frequency**: As needed
+**Features Involved**: `author-portal`, `experts`
+
+#### Steps
+1. Navigate to Expert Console → Course Proposals (`/author/proposals`)
+2. Click "New Proposal" to open the form
+3. Enter course title and optional description
+4. Submit proposal (status = 'pending')
+5. Wait for admin review
+6. Admin approves, rejects, or converts proposal
+7. If approved, proceed to course creation
+
+#### Variations
+- Edit pending proposal (title/description only)
+- Admin adds notes on rejection
+
+#### Success Criteria
+- Proposal visible in expert's proposal list
+- Admin can review in admin panel
+
+#### Related Workflows
+- Course Creation
+- Expert Onboarding
 
 ---
 
@@ -278,6 +307,7 @@ The following workflows have been identified but not yet documented:
 - [x] Expert Onboarding / Registration (documented above)
 - [x] Course Publishing with Membership Upgrade (documented above)
 - [x] Course Unpublishing with Membership Downgrade (documented above)
+- [x] Course Proposal Submission (documented above)
 - [ ] Course Pricing Strategy
 - [ ] Learner Engagement Response
 - [ ] Co-authoring (if available)
@@ -298,6 +328,7 @@ When working on features that affect Experts/Authors:
 8. **Membership changes on publish/unpublish** — billing_disabled changes, author_status stays 'approved'
 9. **Org members are exempt** — isOrgMember() check prevents membership changes for org members
 10. Update this doc and `docs/workflows/Expert_Workflow.md` if workflow changes
+11. When adding new Expert Console pages, ALWAYS update both EXPERT_NAV_ITEMS in `src/constants.ts` and ROUTE_TITLES in `src/components/ExpertPageLayout.tsx`
 
 ### Key Files for Expert Flow
 - `src/app/actions/expert-application.ts` — becomeExpert() sets 'pending'
@@ -311,3 +342,7 @@ When working on features that affect Experts/Authors:
 - `src/lib/expert-membership.ts` — **NEW** Expert membership upgrade/downgrade utilities
 - `src/components/NavigationPanel.tsx` — Expert Console link visibility
 - `src/app/settings/account/page.tsx` — Expert status messaging + membership display
+- `src/app/author/proposals/page.tsx` — Proposals server page
+- `src/app/author/proposals/CourseProposalsPage.tsx` — Proposals client page
+- `src/constants.ts` — EXPERT_NAV_ITEMS (Expert Console navigation)
+- `src/components/ExpertPageLayout.tsx` — ROUTE_TITLES (Expert Console page titles)

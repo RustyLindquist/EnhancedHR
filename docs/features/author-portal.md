@@ -3,10 +3,12 @@ id: author-portal
 owner: learning-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-27
+last_updated: 2026-02-23
 surfaces:
   routes:
     - /author/*
+    - /author/proposals
+    - /author/profile
     - /author/resources (Expert Resources - see expert-resources.md)
     - /teach
   collections:
@@ -42,6 +44,7 @@ invariants:
   - Auto-approval triggers when first course is published (pending → approved).
   - course_proposals/expert_credentials tied to profile id; authors can manage only their own data.
   - Courses authored by any expert (regardless of status) should reference author_id = profiles.id.
+  - When adding new Expert Console pages, BOTH src/constants.ts EXPERT_NAV_ITEMS AND src/components/ExpertPageLayout.tsx ROUTE_TITLES must be updated in sync.
 ---
 
 ## Overview
@@ -88,6 +91,54 @@ Experts can reorder lessons within and between modules using drag-and-drop:
   - Custom collision detection prioritizes add-lesson buttons, then module zones, then closest-center for lesson-to-lesson
   - Unique drop zone IDs: `add-lesson-drop-${moduleId}` vs `module-drop-${moduleId}` to avoid conflicts
   - Components: `SortableLessonCard`, `LessonDragOverlay`, `DroppableModuleZone`, `DroppableAddLessonButton`
+
+## Expert Console Navigation System (CRITICAL Pattern)
+
+When adding a new page to the Expert Console, TWO files must ALWAYS be updated in sync:
+
+1. **`src/constants.ts`** — `EXPERT_NAV_ITEMS` array: Add a `NavItemConfig` entry with `id` (route path without leading slash), `label`, and `icon`.
+2. **`src/components/ExpertPageLayout.tsx`** — `ROUTE_TITLES` map: Add the same route key so the CanvasHeader displays the correct title.
+
+Current nav items (as of 2026-02-23):
+
+| id | label | icon |
+|---|---|---|
+| `author` | Dashboard | LayoutDashboard |
+| `author/courses` | My Courses | BookOpen |
+| `author/proposals` | Course Proposals | FileText |
+| `author/resources` | Expert Resources | Layers |
+| `author/analytics` | AI Analytics | BarChart2 |
+| `author/earnings` | Earnings | DollarSign |
+| `author/profile` | Expert Profile | UserCircle |
+
+Files for each new Expert Console page:
+- Server component: `src/app/author/<page-name>/page.tsx`
+- Client component: `src/app/author/<page-name>/<PageName>Page.tsx` (convention)
+- Nav entry: `src/constants.ts` EXPERT_NAV_ITEMS
+- Title entry: `src/components/ExpertPageLayout.tsx` ROUTE_TITLES
+
+## Course Proposals
+
+- **Route**: `/author/proposals`
+- **Server component**: `src/app/author/proposals/page.tsx` — authenticates user, fetches proposals via `getMyProposals()`
+- **Client component**: `src/app/author/proposals/CourseProposalsPage.tsx` — renders proposal list with create/edit/expand UI
+- **Server actions** (`src/app/actions/proposals.ts`):
+  - `getMyProposals()` — Expert fetches own proposals (RLS-scoped)
+  - `createProposal({ title, description })` — Expert submits new proposal
+  - `updateProposal(proposalId, { title, description })` — Expert edits own pending proposals only
+  - `getAllProposals(filters?)` — Admin fetches all proposals with expert info
+  - `updateProposalStatus(proposalId, status, adminNotes?)` — Admin changes proposal status
+  - `deleteProposal(proposalId)` — Admin deletes proposal
+- **DB table**: `course_proposals` — columns: id, expert_id, title, description, status (pending/approved/rejected/converted), admin_notes, created_at, updated_at, reviewed_at, reviewed_by
+
+### GettingStartedBanner Links
+
+The onboarding banner (`src/components/author/GettingStartedBanner.tsx`) links the 3-step flow:
+- Step 1 → `/author/profile` (Expert Profile)
+- Step 2 → `/author/proposals` (Course Proposals)
+- Step 3 → `/author/courses` (My Courses)
+
+Banner is dismissible via localStorage key `expert_getting_started_dismissed`.
 
 ## Core Concepts & Objects
 - **Expert Console**: The /author/* routes where experts build and manage courses.
@@ -172,6 +223,7 @@ Read paths:
 - **Changing proposal permissions**: Update src/app/actions/proposals.ts.
 - **Changing auto-approval logic**: Update src/app/actions/course-builder.ts publish action.
 - **Adding approval workflow**: Modify auto-approval or add manual approval step.
+- **Adding a new Expert Console page**: Create server+client components under `src/app/author/<name>/`, add entry to EXPERT_NAV_ITEMS in `src/constants.ts`, add route title to ROUTE_TITLES in `src/components/ExpertPageLayout.tsx`. Both MUST be updated or the nav item or page title will be missing.
 
 ## Related Docs
 - docs/features/academy.md
