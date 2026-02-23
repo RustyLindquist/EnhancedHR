@@ -20,7 +20,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Notes | notes | Medium | Frontend + Backend | doc-discovery | Coupled to course player, collections organization, and export/share behaviors | Exists |
 | Tools (AI Workflows) | tools | High | Backend | doc-discovery, plan-lint | Coupled to conversations, AI context engine, collections, and permissions | Exists |
 | Certifications, Credits & Certificates | certifications-and-credits | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to progress tracking and ledger/certificate generation; business-critical | Exists |
-| Experts (Instructor Profiles) | experts | Medium | Frontend + Backend | doc-discovery, plan-lint | Coupled to author-portal, course-builder (auto-approval + membership), membership-billing, org-courses, navigation, account settings | Exists |
+| Experts (Instructor Profiles) | experts | Medium | Frontend + Backend | doc-discovery, plan-lint | Coupled to author-portal, course-builder (auto-approval + membership), membership-billing, org-courses, navigation, account settings, collections-and-context (add-to-collection on expert detail page) | Exists |
 | Expert Resources | expert-resources | Low | Backend + Frontend | doc-discovery | Coupled to author-portal, collections-and-context; platform admin only for writes; uses admin client pattern | Exists |
 | Video AI Context | video-ai-context | Medium | Backend | doc-discovery, plan-lint | Coupled to ai-context-engine, collections-and-context, video-mux; transcript generation enables video RAG | Exists |
 | Help System (Help Collection) | help-collection | Medium | Frontend + Backend | doc-discovery | Coupled to AI context engine and global panel behavior; important for onboarding | Exists |
@@ -28,7 +28,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | My Organization Hub | my-organization-hub | Medium | Frontend | doc-discovery, style-validation | Coupled to app-shell (virtual collection), organization-membership (roles/visibility), org-courses (hasOrgCourses), collections-and-context (org-collections), dynamic-groups (users-groups); hub is read-only aggregator | Exists |
 | Organization Courses | org-courses | High | Backend + Frontend | doc-discovery, plan-lint, test-from-docs | Coupled to AI context engine (RAG scope 8), org-membership, course player; org-scoped content | Exists |
 | Dynamic Groups | dynamic-groups | Medium | Backend | doc-discovery | Coupled to organization-membership; depends on user_progress, conversations, user_streaks for queries | Exists |
-| Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, and admin review/approval flows | Exists |
+| Author Portal (Course Creation) | author-portal | Medium | Frontend + Backend | doc-discovery | Coupled to courses schema, assets, admin review/approval flows, course_proposals table | Exists |
 | Platform Admin Portal | admin-portal | High | Backend | doc-discovery, plan-lint | Privileged surfaces; tightly coupled to roles/RLS and core data schema | Exists |
 | Course Promotion (Temporary) | course-promotion | Medium | Backend | doc-discovery | Coupled to courses schema, video-ai-context (transcript pipeline); temporary feature for content migration | Exists |
 | Membership & Billing | membership-billing | High | Backend | doc-discovery, plan-lint, test-from-docs | Coupled to org membership, roles, and access across the app | Exists |

@@ -3,7 +3,7 @@ id: experts
 owner: product-engineering
 status: active
 stability: evolving
-last_updated: 2026-01-28
+last_updated: 2026-02-23
 surfaces:
   routes:
     - /experts
@@ -12,7 +12,7 @@ surfaces:
   collections: []
 data:
   tables:
-    - public.profiles (author_status, author_bio, linkedin_url, membership_status, billing_disabled)
+    - public.profiles (author_status, author_bio, linkedin_url, twitter_url, website_url, membership_status, billing_disabled)
     - public.courses (author_id, status)
     - public.expert_credentials
   storage: []
@@ -47,6 +47,7 @@ invariants:
   - Org members (org_id set) are exempt from membership changes on publish/unpublish.
   - courses.author_id must match profiles.id; profile must exist.
   - expert_credentials tied to user_id for additional detail.
+  - Expert detail page server component MUST select linkedin_url, twitter_url, AND website_url from profiles for social links to render.
 ---
 
 ## Overview
@@ -54,7 +55,7 @@ Experts feature manages the expert registration flow and public expert directory
 
 ## User Surfaces
 - **Public expert directory** (`/experts`): Cards for approved experts with published courses.
-- **Expert detail page** (`/experts/[id]}` and Academy view): Bio/credentials and course list.
+- **Expert detail page** (`/experts/[id]` and Academy view): Bio/credentials, social links, and course list with Add to Collection support.
 - **Expert Console** (`/author/*`): Course building and management (accessible to pending/approved/rejected experts).
 - **Admin Console > Experts > Add Expert**: Standalone expert profile creation with CredentialsEditor (skills management). Save/cancel buttons in page header. Uses `standaloneExpertId` prop to support admin-side credential operations via standalone expert actions.
 - **Account settings**: Shows expert status messaging (pending/approved/rejected).
@@ -90,7 +91,7 @@ The Academy expert details page (`InstructorPage.tsx`) uses a two-column layout:
 - **Authored courses**: Courses where author_id matches expert profile.
 
 ## Data Model
-- `profiles`: author_status enum ('none' | 'pending' | 'approved' | 'rejected'), author_bio, linkedin_url, expert_title, credentials fields.
+- `profiles`: author_status enum ('none' | 'pending' | 'approved' | 'rejected'), author_bio, linkedin_url, twitter_url, website_url, expert_title, credentials fields.
 - `courses`: author_id FK profiles, status ('draft' | 'published' | etc).
 - `expert_credentials`: id uuid PK, expert_id FK profiles, title, type, display_order.
 
@@ -112,6 +113,7 @@ Write paths:
 
 Read paths:
 - /experts page queries profiles WHERE author_status='approved' AND has published courses.
+- /experts/[id] page queries profile with `.or('role.eq.admin,author_status.eq.approved')` filter.
 - Expert Console access checks author_status IN ('pending', 'approved', 'rejected').
 
 ## Permissions & Security
@@ -126,6 +128,46 @@ Read paths:
 - **Course builder**: Contains auto-approval logic triggered on first course publish.
 - **Navigation panel**: Shows Expert Console link for all expert statuses.
 - **Account settings**: Displays expert status with appropriate messaging.
+- **Collections**: Expert detail page course cards support Add to Collection for authenticated users.
+
+### Expert Detail Page (/experts/[id]) — Marketing Route
+
+**Architecture:**
+- Server component: `src/app/(marketing)/experts/[id]/page.tsx`
+- Client component: `src/app/(marketing)/experts/[id]/ExpertCoursesContent.tsx`
+- Header component: `src/components/ExpertDetailsHeader.tsx`
+
+**Social Links:** The server component MUST select `linkedin_url`, `twitter_url`, AND `website_url` from profiles. These are passed to `ExpertDetailsHeader`. Missing any field from the select means the button silently won't render.
+
+`ExpertDetailsHeader` renders:
+- LinkedIn: `Linkedin` icon from lucide-react, brand color `#0077B5`
+- X/Twitter: Custom `XIcon` SVG component (not a lucide icon)
+- Website: `Globe` icon from lucide-react
+
+**Add to Collection:** Courses section uses `ExpertCoursesContent` with `userId={user?.id || null}` prop. Plus button only shows for authenticated users.
+
+### Add to Collection on Non-Dashboard Pages (Reusable Pattern)
+
+The expert detail page demonstrates a reusable pattern for adding courses to collections from pages **outside the main dashboard** that use custom card rendering (not `UniversalCard`).
+
+**When to use:** Any marketing or non-dashboard page showing course cards that needs "Add to Collection" functionality.
+
+**Required imports:**
+- `AddCollectionModal` from `@/components/AddCollectionModal`
+- `Collection` from `@/types`
+- `fetchUserCollections`, `createCollection` from `@/lib/collections`
+- `syncCourseCollectionsAction` from `@/app/actions/collections`
+
+**Steps:**
+1. Server component passes `userId={user?.id || null}` to client component
+2. Client component fetches collections via `fetchUserCollections(userId)` on mount
+3. Auth gating: plus button only renders when `userId` is present
+4. Save handler: optionally creates new collection, syncs via `syncCourseCollectionsAction`, dispatches `collection:refresh` and `dashboard:invalidate` events
+5. Conditionally render `AddCollectionModal` when open
+
+**Key difference from dashboard:** Dashboard uses `UniversalCard` with built-in collection support; non-dashboard pages with custom cards must wire `AddCollectionModal` directly.
+
+**Reference implementation:** `src/app/(marketing)/experts/[id]/ExpertCoursesContent.tsx`
 
 ## Expert Registration Flow
 
@@ -236,6 +278,8 @@ The account settings page (`/settings/account`) shows three expert membership st
 - **Expert still being billed after publish**: Check billing_disabled=true; if false, run upgradeExpertMembership().
 - **Expert not reverting to trial on unpublish**: Check Stripe subscription status; if active sub exists, they keep paid status.
 - **Org member's membership changed**: Bug — isOrgMember() check should prevent this. Verify org_id is set.
+- **Social links not showing on expert detail page**: Verify the server component's Supabase select includes `linkedin_url`, `twitter_url`, AND `website_url`. All three must be in the query even if some experts don't have values for all.
+- **Add to Collection button not showing on expert page**: Verify user is authenticated. The server component must pass `userId={user?.id || null}` to ExpertCoursesContent.
 
 ## Testing Checklist
 - [ ] Click "Become an Expert" → verify author_status='pending' (not 'approved').
@@ -246,6 +290,20 @@ The account settings page (`/settings/account`) shows three expert membership st
 - [ ] Approved expert with published course → appears on /experts page.
 - [ ] Unpublish the expert's only course → expert should remain 'approved'.
 - [ ] As rejected expert, access /author → should succeed (can try again).
+
+### Social Links Tests
+- [ ] Expert with linkedin_url set → LinkedIn button renders in header.
+- [ ] Expert with twitter_url set → X button renders in header with custom XIcon SVG.
+- [ ] Expert with website_url set → Website button renders in header with Globe icon.
+- [ ] Expert with no social URLs → No social buttons section renders.
+- [ ] Social link buttons open in new tab (`target="_blank"`).
+
+### Add to Collection Tests (Expert Detail Page)
+- [ ] Unauthenticated user visits /experts/[id] → no plus buttons on course cards.
+- [ ] Authenticated user visits /experts/[id] → plus buttons appear on course card hover.
+- [ ] Click plus button → AddCollectionModal opens with user's collections.
+- [ ] Save to collection → `collection:refresh` and `dashboard:invalidate` events dispatched.
+- [ ] Create new collection from modal → collection created and course added.
 
 ### Membership Upgrade/Downgrade Tests
 - [ ] Trial user publishes first course → membership_status='active', billing_disabled=true.
@@ -264,6 +322,8 @@ The account settings page (`/settings/account`) shows three expert membership st
 - **Changing membership upgrade logic**: Update src/lib/expert-membership.ts upgradeExpertMembership().
 - **Changing membership downgrade logic**: Update src/lib/expert-membership.ts downgradeExpertMembership() and callers in course-builder.ts, org-courses.ts.
 - **Adding new membership states**: Update getExpertMembershipContext(), account settings display, and this doc.
+- **Adding social link types**: Update the server component Supabase select in `src/app/(marketing)/experts/[id]/page.tsx`, add props to `ExpertDetailsHeader`, and add the corresponding render block.
+- **Adding Add to Collection to another non-dashboard page**: Follow the "Add to Collection on Non-Dashboard Pages" pattern documented above. Reference `ExpertCoursesContent.tsx` as the canonical implementation.
 
 ## Related Docs
 - docs/features/author-portal.md
@@ -271,3 +331,4 @@ The account settings page (`/settings/account`) shows three expert membership st
 - docs/features/academy.md
 - docs/workflows/Expert_Workflow.md
 - docs/workflows/expert-author-workflows.md
+- docs/features/collections-and-context.md
