@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Layers, Upload, StickyNote, Lightbulb, Video, LayoutGrid, List } from 'lucide-react';
+import { Layers, Upload, StickyNote, Lightbulb, Video, LayoutGrid, List, ShieldAlert } from 'lucide-react';
 import { UserContextItem, ContextItemType } from '@/types';
 import TopContextPanel from '@/components/TopContextPanel';
 import AddNotePanel from '@/components/AddNotePanel';
@@ -593,15 +593,34 @@ export default function ExpertResourcesCanvas({
                 </div>
             )}
 
-            {/* About Section */}
-            <div className="max-w-3xl mx-auto pt-12 pb-8">
-                <div className="flex flex-col items-center justify-center text-center">
-                    <p className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-2">
-                        Expert Resource Library
-                    </p>
-                    <p className="text-slate-500 text-sm max-w-md leading-relaxed">
-                        A curated collection of resources to help you succeed as a course creator on EnhancedHR.
-                    </p>
+            {/* Confidentiality Alert */}
+            <div className="max-w-2xl mx-auto pt-12 pb-8">
+                <div className="relative rounded-2xl">
+                    {/* Animated border — always visible, subtle */}
+                    <div
+                        className="absolute inset-0 rounded-2xl pointer-events-none"
+                        style={{
+                            padding: '1px',
+                            background: `conic-gradient(from var(--gradient-angle), transparent 0%, rgba(239, 68, 68, 0.5) 8%, rgba(245, 158, 11, 0.4) 16%, transparent 28%, transparent 100%)`,
+                            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                            WebkitMaskComposite: 'xor',
+                            maskComposite: 'exclude',
+                            animation: 'gradient-rotate 6s linear infinite',
+                            zIndex: 10,
+                        }}
+                    />
+                    {/* Alert content */}
+                    <div className="relative bg-red-500/5 rounded-2xl px-6 py-5 flex items-start gap-4">
+                        <div className="p-2 rounded-lg bg-red-500/10 shrink-0 mt-0.5">
+                            <ShieldAlert size={18} className="text-red-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1.5">Important</p>
+                            <p className="text-sm text-slate-400 leading-relaxed">
+                                These resources are for Experts only, to help you succeed as a course creator on EnhancedHR. All resources are confidential. Sharing these resources could lead to the loss of publishing privileges and the removal of your Expert account.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
