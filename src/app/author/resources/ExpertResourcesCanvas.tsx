@@ -9,7 +9,6 @@ import VideoPanel from '@/components/VideoPanel';
 import UniversalCard, { CardType } from '@/components/cards/UniversalCard';
 import UniversalCollectionListItem from '@/components/UniversalCollectionListItem';
 import { CollectionItemDetail } from '@/components/UniversalCollectionCard';
-import ResourceViewPanel from '@/components/ResourceViewPanel';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { useRouter } from 'next/navigation';
 import { createExpertResource, updateExpertResource, deleteExpertResource } from '@/app/actions/expertResources';
@@ -85,7 +84,6 @@ export default function ExpertResourcesCanvas({
 
     const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
     const [isNotePanelOpen, setIsNotePanelOpen] = useState(false);
-    const [isViewPanelOpen, setIsViewPanelOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState<UserContextItem | null>(null);
     const [addType, setAddType] = useState<'CUSTOM_CONTEXT' | 'FILE'>('CUSTOM_CONTEXT');
     // Video panel state - unified for view and edit
@@ -119,20 +117,24 @@ export default function ExpertResourcesCanvas({
             return;
         }
 
-        if (isPlatformAdmin) {
-            // Admins can edit - check if it's a note or context
-            const isNote = (resource.content as any)?.isNote === true;
-            if (isNote) {
-                setIsNotePanelOpen(true);
-            } else {
-                setAddType(resource.type as 'CUSTOM_CONTEXT' | 'FILE');
-                setIsAddPanelOpen(true);
-            }
-        } else {
-            // Experts view only - open read-only view panel
-            setIsViewPanelOpen(true);
+        // Handle FILE type — open in TopContextPanel view mode for everyone
+        if (resource.type === 'FILE') {
+            setAddType('FILE');
+            setIsAddPanelOpen(true);
+            return;
         }
-    }, [isPlatformAdmin]);
+
+        // Handle NOTE type — open in AddNotePanel view mode for everyone
+        const isNote = (resource.content as any)?.isNote === true;
+        if (isNote) {
+            setIsNotePanelOpen(true);
+            return;
+        }
+
+        // Handle CUSTOM_CONTEXT — open in TopContextPanel view mode for everyone
+        setAddType(resource.type as 'CUSTOM_CONTEXT' | 'FILE');
+        setIsAddPanelOpen(true);
+    }, []);
 
     const handleSaveSuccess = useCallback(() => {
         setIsAddPanelOpen(false);
@@ -186,7 +188,7 @@ export default function ExpertResourcesCanvas({
         setResourceToDelete(null);
     }, []);
 
-    const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer) => {
+    const handleCreateExpertFile = useCallback(async (fileName: string, fileType: string, fileBuffer: ArrayBuffer, title?: string) => {
         // Three-phase upload to bypass Vercel's payload limits:
         // 1. Get signed URL from our API
         // 2. Upload directly to Supabase Storage (bypasses Vercel)
@@ -347,7 +349,8 @@ export default function ExpertResourcesCanvas({
                     storagePath,
                     fileName,
                     fileType,
-                    fileSize: fileBuffer.byteLength
+                    fileSize: fileBuffer.byteLength,
+                    title: title || undefined
                 })
             });
 
@@ -613,6 +616,8 @@ export default function ExpertResourcesCanvas({
                 itemToEdit={selectedResource}
                 initialType={addType}
                 userId={userId}
+                mode={selectedResource?.id ? 'view' : 'edit'}
+                canEdit={isPlatformAdmin}
                 onSaveSuccess={handleSaveSuccess}
                 customCreateHandler={isPlatformAdmin ? handleCreateExpertResource : undefined}
                 customUpdateHandler={isPlatformAdmin ? handleUpdateExpertResource : undefined}
@@ -628,19 +633,11 @@ export default function ExpertResourcesCanvas({
                 }}
                 collectionId={collectionId}
                 itemToEdit={selectedResource}
+                mode={selectedResource?.id ? 'view' : 'edit'}
+                canEdit={isPlatformAdmin}
                 onSaveSuccess={handleSaveSuccess}
                 customCreateHandler={isPlatformAdmin ? handleCreateExpertResource : undefined}
                 customUpdateHandler={isPlatformAdmin ? handleUpdateExpertResource : undefined}
-            />
-
-            {/* Read-Only View Panel (for non-admin experts) */}
-            <ResourceViewPanel
-                isOpen={isViewPanelOpen}
-                onClose={() => {
-                    setIsViewPanelOpen(false);
-                    setSelectedResource(null);
-                }}
-                resource={selectedResource}
             />
 
             {/* Unified Video Panel (view/edit) */}
