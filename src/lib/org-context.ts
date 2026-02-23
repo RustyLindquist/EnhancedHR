@@ -110,9 +110,41 @@ export async function getOrgContext(): Promise<OrgContext | null> {
 
   const isPlatformAdmin = profile.role === 'admin';
 
+  const isOrgAdminByStatus = profile.membership_status === 'org_admin' || profile.role === 'org_admin' || profile.role === 'org_owner';
+
   // For regular users, use their org_id
   if (!isPlatformAdmin) {
     if (!profile.org_id) {
+      // Edge case: user is marked as org admin but missing org_id — try to recover by checking if they own an org
+      if (isOrgAdminByStatus) {
+        console.warn('[getOrgContext] Org admin missing org_id, attempting recovery via organizations.owner_id');
+        const adminClient = createAdminClient();
+        const { data: ownedOrg } = await adminClient
+          .from('organizations')
+          .select('id, name')
+          .eq('owner_id', user.id)
+          .limit(1)
+          .single();
+
+        if (ownedOrg) {
+          // Fix the data integrity issue: set org_id on the profile
+          await adminClient
+            .from('profiles')
+            .update({ org_id: ownedOrg.id })
+            .eq('id', user.id);
+          console.log('[getOrgContext] Recovered org_id from owned org:', ownedOrg.id);
+
+          return {
+            orgId: ownedOrg.id,
+            orgName: ownedOrg.name,
+            isPlatformAdmin: false,
+            isOrgAdmin: true,
+            isOrgOwner: true,
+            userRole: profile.role || 'user',
+            membershipStatus: profile.membership_status || 'active',
+          };
+        }
+      }
       return null;
     }
 
@@ -122,8 +154,8 @@ export async function getOrgContext(): Promise<OrgContext | null> {
       orgId: profile.org_id,
       orgName: orgData?.name || 'Organization',
       isPlatformAdmin: false,
-      isOrgAdmin: profile.membership_status === 'org_admin' || profile.role === 'org_admin',
-      isOrgOwner: false, // Would need separate lookup if needed
+      isOrgAdmin: isOrgAdminByStatus,
+      isOrgOwner: profile.role === 'org_owner',
       userRole: profile.role || 'user',
       membershipStatus: profile.membership_status || 'active',
     };
