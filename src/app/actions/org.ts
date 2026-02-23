@@ -220,7 +220,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     // Get organization details
     const { data: orgData } = await supabase
         .from('organizations')
-        .select('*')
+        .select('id, owner_id, slug, invite_hash')
         .eq('id', effectiveOrgId)
         .single();
 
@@ -231,7 +231,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     const adminClient = createAdminClient();
     const { data: members, error: membersError } = await adminClient
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, avatar_url, role, data, membership_status, created_at')
         .eq('org_id', effectiveOrgId)
         .order('created_at', { ascending: false });
 
@@ -243,25 +243,25 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
     // 3. Fetch Metrics for these members (use admin client to bypass RLS for org-wide analytics)
     const memberIds = members.map(m => m.id);
 
-    // 3a. User Progress (Time Spent & Completed)
-    // Note: This is an approximation. Ideally we'd group by user_id in SQL, but for now we fetch raw or use RPC.
-    // Fetching raw for small orgs is fine.
-    const { data: progressData } = await adminClient
-        .from('user_progress')
-        .select('user_id, view_time_seconds, is_completed, last_accessed')
-        .in('user_id', memberIds);
-
-    // 3b. Conversations Count
-    const { data: conversationData } = await adminClient
-        .from('conversations')
-        .select('user_id')
-        .in('user_id', memberIds);
-
-    // 3c. Credits Ledger
-    const { data: creditsData } = await adminClient
-        .from('user_credits_ledger')
-        .select('user_id, amount')
-        .in('user_id', memberIds);
+    // 3. Fetch all metrics in parallel
+    const [
+        { data: progressData },
+        { data: conversationData },
+        { data: creditsData }
+    ] = await Promise.all([
+        adminClient
+            .from('user_progress')
+            .select('user_id, view_time_seconds, is_completed, last_accessed')
+            .in('user_id', memberIds),
+        adminClient
+            .from('conversations')
+            .select('user_id')
+            .in('user_id', memberIds),
+        adminClient
+            .from('user_credits_ledger')
+            .select('user_id, amount')
+            .in('user_id', memberIds)
+    ]);
 
 
     // 4. Aggregate Metrics
@@ -344,6 +344,53 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
   } catch (error: any) {
       console.error('getOrgMembers Exception:', error);
       return { members: [], inviteInfo: null, error: error.message };
+  }
+}
+
+/**
+ * Lightweight function to get org summary (member count + invite info) without fetching full member data/metrics.
+ * Used by UsersAndGroupsCanvas which only needs the count and invite link.
+ */
+export async function getOrgSummary(): Promise<{ memberCount: number, inviteInfo: InviteInfo | null, error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { memberCount: 0, inviteInfo: null, error: 'Unauthorized' };
+
+    const orgContext = await getOrgContext();
+    if (!orgContext) return { memberCount: 0, inviteInfo: null, error: 'No Organization Found' };
+
+    const effectiveOrgId = orgContext.orgId;
+    const adminClient = createAdminClient();
+
+    // Run count and org details in parallel
+    const [countResult, orgResult] = await Promise.all([
+      adminClient
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', effectiveOrgId),
+      supabase
+        .from('organizations')
+        .select('slug, invite_hash')
+        .eq('id', effectiveOrgId)
+        .single()
+    ]);
+
+    const memberCount = countResult.count || 0;
+
+    let inviteInfo: InviteInfo | null = null;
+    if (orgResult.data?.slug && orgResult.data?.invite_hash) {
+      const baseUrl = await getBaseUrl();
+      inviteInfo = {
+        inviteUrl: `${baseUrl}/${orgResult.data.slug}/${orgResult.data.invite_hash}`,
+        orgSlug: orgResult.data.slug
+      };
+    }
+
+    return { memberCount, inviteInfo };
+  } catch (e) {
+    console.error('[getOrgSummary] Error:', e);
+    return { memberCount: 0, inviteInfo: null, error: 'Failed to fetch org summary' };
   }
 }
 
