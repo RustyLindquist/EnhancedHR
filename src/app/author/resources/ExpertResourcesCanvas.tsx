@@ -594,7 +594,7 @@ export default function ExpertResourcesCanvas({
             )}
 
             {/* Confidentiality Alert */}
-            <div className="max-w-2xl mx-auto pt-12 pb-8">
+            <div className="pt-12 pb-8">
                 <div className="relative rounded-2xl">
                     {/* Animated border — always visible, subtle */}
                     <div
