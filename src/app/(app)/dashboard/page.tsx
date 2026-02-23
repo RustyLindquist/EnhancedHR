@@ -136,7 +136,7 @@ function HomeContent() {
     setCollectionCounts(mappedCounts);
   };
 
-  const refreshCollectionsAndCounts = async (userId: string) => {
+  const refreshCollectionsAndCounts = useCallback(async (userId: string) => {
     // Refresh Collections List
     const { fetchUserCollections } = await import('@/lib/collections');
     const dbCollections = await fetchUserCollections(userId);
@@ -152,11 +152,21 @@ function HomeContent() {
 
     // Refresh Counts
     await refreshCountsForUser(userId);
-  };
+  }, []);
 
 
 
 
+
+  const handleCollectionUpdate = useCallback(() => {
+    if (user) refreshCollectionsAndCounts(user.id);
+  }, [user, refreshCollectionsAndCounts]);
+
+  const handleOrgCollectionsUpdate = useCallback(async () => {
+    const { getOrgCollections } = await import('@/app/actions/org');
+    const updated = await getOrgCollections();
+    setOrgCollections(updated);
+  }, []);
 
   const handleUpdateCourse = (updatedCourses: Course[]) => {
     setCourses(updatedCourses);
@@ -679,9 +689,7 @@ function HomeContent() {
           activeConversationId={activeConversationId}
           onClearConversation={() => setActiveConversationId(null)}
           useDashboardV3={true}
-          onCollectionUpdate={() => {
-            if (user) refreshCollectionsAndCounts(user.id);
-          }}
+          onCollectionUpdate={handleCollectionUpdate}
           academyResetKey={academyResetKey}
           initialStatusFilter={initialStatusFilter}
           onNavigateWithFilter={handleNavigateWithFilter}
@@ -690,11 +698,7 @@ function HomeContent() {
           onExposeDragStart={handleExposeDragStart}
           orgCollections={orgCollections}
           isOrgAdmin={isOrgAdmin}
-          onOrgCollectionsUpdate={async () => {
-            const { getOrgCollections } = await import('@/app/actions/org');
-            const updated = await getOrgCollections();
-            setOrgCollections(updated);
-          }}
+          onOrgCollectionsUpdate={handleOrgCollectionsUpdate}
           onViewingGroupChange={setViewingGroupName}
           hasOrgCourses={hasOrgCourses}
           orgMemberCount={orgMemberCount}
