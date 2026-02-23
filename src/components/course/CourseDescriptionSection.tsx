@@ -24,13 +24,6 @@ interface CourseDescriptionSectionProps {
     isOrgCourse?: boolean;
 }
 
-// Default skills if not provided by course
-const DEFAULT_SKILLS = [
-    'This is one of the skills you\'ll learn in this course',
-    'This is one of the skills you\'ll learn in this course',
-    'This is one of the skills you\'ll learn in this course',
-    'This is one of the skills you\'ll learn in this course',
-];
 
 const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     course,
@@ -40,8 +33,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
     onViewExpert,
     isOrgCourse = false
 }) => {
-    // Parse skills from course or use defaults
-    const skills = (course as any).skills || DEFAULT_SKILLS;
+    const skills = course.skills || [];
 
     // Check for credit badges
     const hasSHRM = course.badges?.includes('SHRM');
@@ -140,51 +132,55 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                     </div>
 
                     {/* Skills and Credits - 60/40 Split */}
-                    <div className="flex flex-col lg:flex-row gap-8">
-                        {/* Skills You'll Learn (60%) */}
-                        <div className="lg:w-[60%]">
-                            <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
-                                SKILLS YOU'LL LEARN
-                            </h3>
-                            <ul className="space-y-2">
-                                {skills.map((skill: string, index: number) => (
-                                    <li key={index} className="flex items-start gap-2 text-sm text-slate-300">
-                                        <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                                        <span>{skill}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                    {(skills.length > 0 || (!isOrgCourse && (hasSHRM || hasHRCI))) && (
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            {/* Skills You'll Learn (60%) */}
+                            {skills.length > 0 && (
+                                <div className="lg:w-[60%]">
+                                    <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
+                                        SKILLS YOU'LL LEARN
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {skills.map((skill: string, index: number) => (
+                                            <li key={index} className="flex items-start gap-2 text-sm text-slate-300">
+                                                <CheckCircle size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                                                <span>{skill}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
-                        {/* Credits You'll Earn (40%) - Hidden for org courses */}
-                        {!isOrgCourse && (hasSHRM || hasHRCI) && (
-                            <div className="lg:w-[40%]">
-                                <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
-                                    CREDITS YOU'LL EARN
-                                </h3>
-                                <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        {/* SHRM Column */}
-                                        {hasSHRM && (
-                                            <div className="flex flex-col items-center text-center">
-                                                <span className="text-4xl font-bold text-brand-blue-light">{(course as any).shrm_pdcs?.toFixed(1) ?? '0.0'}</span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM PDCs</span>
-                                                <span className="text-[10px] text-slate-500">Recertification</span>
-                                            </div>
-                                        )}
-                                        {/* HRCI Column */}
-                                        {hasHRCI && (
-                                            <div className="flex flex-col items-center text-center">
-                                                <span className="text-4xl font-bold text-[#c084fc]">{(course as any).hrci_credits?.toFixed(1) ?? '0.0'}</span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI Credits</span>
-                                                <span className="text-[10px] text-slate-500">Credit Hours</span>
-                                            </div>
-                                        )}
+                            {/* Credits You'll Earn (40%) - Hidden for org courses */}
+                            {!isOrgCourse && (hasSHRM || hasHRCI) && (
+                                <div className="lg:w-[40%]">
+                                    <h3 className="text-[10px] font-bold tracking-[0.2em] uppercase text-brand-blue-light drop-shadow-[0_0_5px_rgba(120,192,240,0.5)] mb-3">
+                                        CREDITS YOU'LL EARN
+                                    </h3>
+                                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {/* SHRM Column */}
+                                            {hasSHRM && (
+                                                <div className="flex flex-col items-center text-center">
+                                                    <span className="text-4xl font-bold text-brand-blue-light">{(course as any).shrm_pdcs?.toFixed(1) ?? '0.0'}</span>
+                                                    <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM PDCs</span>
+                                                    <span className="text-[10px] text-slate-500">Recertification</span>
+                                                </div>
+                                            )}
+                                            {/* HRCI Column */}
+                                            {hasHRCI && (
+                                                <div className="flex flex-col items-center text-center">
+                                                    <span className="text-4xl font-bold text-[#c084fc]">{(course as any).hrci_credits?.toFixed(1) ?? '0.0'}</span>
+                                                    <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI Credits</span>
+                                                    <span className="text-[10px] text-slate-500">Credit Hours</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Vertical Divider */}
