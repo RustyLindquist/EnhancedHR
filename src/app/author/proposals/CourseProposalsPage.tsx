@@ -409,7 +409,10 @@ export default function CourseProposalsPage({ proposals }: CourseProposalsPagePr
 
             {/* Info Card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">How It Works</h3>
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">How It Works</h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                    There are two ways you can submit content. You can go straight to building a course, then submit it for approval when you're done, or, if you prefer, you can begin by submitting a course proposal. This can be a good way to ensure alignment before you begin building. Submitting a proposal is easy, just follow the steps below.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-full bg-brand-orange/20 flex items-center justify-center text-brand-orange font-bold text-sm shrink-0">1</div>
