@@ -240,14 +240,13 @@ export async function getGroupDetails(groupId: string) {
     if (memberIds.length > 0) {
         const { data: profiles } = await supabaseAdmin
             .from('profiles')
-            .select('id, full_name, avatar_url, headline, role')
+            .select('*')
             .in('id', memberIds);
 
         formattedMembers = profiles?.map(p => ({
             user_id: p.id,
             full_name: p.full_name || 'Unknown',
             profile_image_url: p.avatar_url,
-            headline: p.headline,
             role: p.role
         })) || [];
     }
@@ -673,7 +672,7 @@ export async function getGroupFullData(groupId: string): Promise<GroupFullData |
         { data: conversationData },
         { data: creditsData }
     ] = await Promise.all([
-        supabaseAdmin.from('profiles').select('id, full_name, avatar_url, headline, role, membership_status').in('id', memberIds),
+        supabaseAdmin.from('profiles').select('*').in('id', memberIds),
         supabaseAdmin.from('user_progress').select('user_id, view_time_seconds, is_completed, last_accessed').in('user_id', memberIds),
         supabaseAdmin.from('conversations').select('user_id').in('user_id', memberIds),
         supabaseAdmin.from('user_credits_ledger').select('user_id, amount').in('user_id', memberIds)
@@ -701,7 +700,6 @@ export async function getGroupFullData(groupId: string): Promise<GroupFullData |
         user_id: p.id,
         full_name: p.full_name || 'Unknown',
         profile_image_url: p.avatar_url,
-        headline: p.headline,
         role: p.role
     }));
 

@@ -15,7 +15,7 @@ export async function createCheckoutSession(priceId: string) {
     // 1. Get or Create Stripe Customer
     const { data: profile } = await supabase
         .from('profiles')
-        .select('stripe_customer_id, full_name, email') // Assuming email is in auth.users, but we can get it from user object
+        .select('stripe_customer_id, full_name')
         .eq('id', user.id)
         .single();
 
