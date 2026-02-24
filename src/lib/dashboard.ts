@@ -146,16 +146,64 @@ export async function fetchDashboardData(userId: string): Promise<DashboardData>
 
     const trendingCourseIds = trendingData?.map(c => c.id) || [];
 
-    // Map progress data for easy lookup
-    const userProgress: Record<number, { progress: number, lastAccessed: string }> = {};
+    // Group progress by course
+    const courseProgressGroups: Record<number, { completed: number; total: number; lastAccessed: string }> = {};
     progressData?.forEach(p => {
-        if (!p.is_completed) {
-             userProgress[p.course_id] = {
-                 progress: 0, // Placeholder, will be calculated in component if needed or if we add column
-                 lastAccessed: p.last_accessed
-             };
+        if (!courseProgressGroups[p.course_id]) {
+            courseProgressGroups[p.course_id] = { completed: 0, total: 0, lastAccessed: p.last_accessed };
+        }
+        courseProgressGroups[p.course_id].total++;
+        if (p.is_completed) {
+            courseProgressGroups[p.course_id].completed++;
+        }
+        // Keep most recent last_accessed
+        if (new Date(p.last_accessed) > new Date(courseProgressGroups[p.course_id].lastAccessed)) {
+            courseProgressGroups[p.course_id].lastAccessed = p.last_accessed;
         }
     });
+
+    // Fetch total lesson counts for these courses to calculate real percentages
+    const startedCourseIds = Object.keys(courseProgressGroups).map(Number);
+    let lessonCountMap: Record<number, number> = {};
+    if (startedCourseIds.length > 0) {
+        // Use two simple queries instead of a joined query for reliability
+        const { data: modulesData } = await supabase
+            .from('modules')
+            .select('id, course_id')
+            .in('course_id', startedCourseIds);
+
+        if (modulesData && modulesData.length > 0) {
+            const moduleIds = modulesData.map((m: any) => m.id);
+            const moduleToCourse: Record<string, number> = {};
+            modulesData.forEach((m: any) => { moduleToCourse[m.id] = m.course_id; });
+
+            const { data: lessonsData } = await supabase
+                .from('lessons')
+                .select('id, module_id')
+                .in('module_id', moduleIds);
+
+            lessonsData?.forEach((l: any) => {
+                const courseId = moduleToCourse[l.module_id];
+                if (courseId) {
+                    lessonCountMap[courseId] = (lessonCountMap[courseId] || 0) + 1;
+                }
+            });
+        }
+    }
+
+    const userProgress: Record<number, { progress: number, lastAccessed: string }> = {};
+    for (const [courseIdStr, info] of Object.entries(courseProgressGroups)) {
+        const courseId = Number(courseIdStr);
+        const totalLessons = lessonCountMap[courseId] || info.total;
+        const percentage = Math.round((info.completed / totalLessons) * 100);
+        // Only include courses that are NOT 100% complete (in-progress)
+        if (percentage < 100) {
+            userProgress[courseId] = {
+                progress: percentage === 0 ? 1 : percentage, // Min 1% for started courses
+                lastAccessed: info.lastAccessed
+            };
+        }
+    }
 
     return {
         stats: {

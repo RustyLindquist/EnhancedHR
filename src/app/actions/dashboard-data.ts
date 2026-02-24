@@ -193,11 +193,28 @@ async function fetchCoursesInternal(
   let collectionMap: Record<string, string[]> = {};
   let uuidToSystemMap: Record<string, string> = {};
 
-  // Fetch user collections for label-to-key mapping
-  const { data: userCollections } = await supabase
-    .from('user_collections')
-    .select('id, label')
-    .eq('user_id', userId);
+  // Fetch user collections, collection items, and user progress in parallel
+  const [collectionsResult, itemsResult, progressResult] = await Promise.all([
+    // Fetch user collections for label-to-key mapping
+    supabase
+      .from('user_collections')
+      .select('id, label')
+      .eq('user_id', userId),
+    // Fetch collection items with user ownership join
+    supabase
+      .from('collection_items')
+      .select('collection_id, course_id, user_collections!inner(user_id)')
+      .eq('user_collections.user_id', userId),
+    // Fetch user progress records for all courses
+    supabase
+      .from('user_progress')
+      .select('course_id, is_completed')
+      .eq('user_id', userId),
+  ]);
+
+  const { data: userCollections } = collectionsResult;
+  const { data: items } = itemsResult;
+  const { data: progressData } = progressResult;
 
   const labelToKeyMap: Record<string, string> = {
     'Favorites': 'favorites',
@@ -212,11 +229,57 @@ async function fetchCoursesInternal(
     }
   });
 
-  // Fetch collection items with user ownership join
-  const { data: items } = await supabase
-    .from('collection_items')
-    .select('collection_id, course_id, user_collections!inner(user_id)')
-    .eq('user_collections.user_id', userId);
+  // Build progress map: count completed lessons per course
+  const userProgressMap: Record<number, { completed: number; started: boolean }> = {};
+  progressData?.forEach(p => {
+    if (!userProgressMap[p.course_id]) {
+      userProgressMap[p.course_id] = { completed: 0, started: false };
+    }
+    userProgressMap[p.course_id].started = true;
+    if (p.is_completed) {
+      userProgressMap[p.course_id].completed++;
+    }
+  });
+
+  // Get total lesson counts for started courses
+  const startedCourseIds = Object.keys(userProgressMap).map(Number);
+  const lessonCountMap: Record<number, number> = {};
+
+  if (startedCourseIds.length > 0) {
+    // Use two simple queries instead of a joined query for reliability
+    const { data: modulesData } = await supabase
+      .from('modules')
+      .select('id, course_id')
+      .in('course_id', startedCourseIds);
+
+    if (modulesData && modulesData.length > 0) {
+      const moduleIds = modulesData.map((m: any) => m.id);
+      const moduleToCourse: Record<string, number> = {};
+      modulesData.forEach((m: any) => { moduleToCourse[m.id] = m.course_id; });
+
+      const { data: lessonsData } = await supabase
+        .from('lessons')
+        .select('id, module_id')
+        .in('module_id', moduleIds);
+
+      lessonsData?.forEach((l: any) => {
+        const courseId = moduleToCourse[l.module_id];
+        if (courseId) {
+          lessonCountMap[courseId] = (lessonCountMap[courseId] || 0) + 1;
+        }
+      });
+    }
+  }
+
+  // Calculate progress percentages
+  const courseProgressMap: Record<number, number> = {};
+  for (const [courseIdStr, info] of Object.entries(userProgressMap)) {
+    const courseId = Number(courseIdStr);
+    const totalLessons = lessonCountMap[courseId] || 1;
+    const percentage = Math.round((info.completed / totalLessons) * 100);
+    // If started but 0% completed, use 1 to indicate "started" so IN_PROGRESS filter works
+    courseProgressMap[courseId] = info.started && percentage === 0 ? 1 : percentage;
+  }
 
   items?.forEach((item: any) => {
     const colId = item.collection_id;
@@ -257,7 +320,7 @@ async function fetchCoursesInternal(
             credentials: authorProfile.credentials,
           }
         : undefined,
-      progress: 0,
+      progress: courseProgressMap[course.id] || 0,
       category: course.category,
       categories: course.categories || (course.category ? [course.category] : ['General']),
       image: course.image_url,
