@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OrgAdminHeader from '@/components/admin/OrgAdminHeader';
+import TransferOwnershipModal from '@/components/admin/TransferOwnershipModal';
 import { OrgDetail, updateOrgAccountType, deleteOrganization } from '@/app/actions/admin-orgs';
 
 export default function OrgDetailPage({ org }: { org: OrgDetail }) {
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const handleAccountTypeChange = async (newType: string) => {
     await updateOrgAccountType(org.id, newType);
@@ -26,7 +28,7 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
       <OrgAdminHeader
         org={org}
         onAccountTypeChange={handleAccountTypeChange}
-        onTransferOwnership={() => {/* Task 7 */}}
+        onTransferOwnership={() => setShowTransfer(true)}
         onDeleteOrg={() => setShowDeleteConfirm(true)}
       />
 
@@ -69,6 +71,16 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showTransfer && (
+        <TransferOwnershipModal
+          orgId={org.id}
+          orgName={org.name}
+          currentOwnerId={org.owner_id}
+          onClose={() => setShowTransfer(false)}
+          onTransferred={() => { setShowTransfer(false); router.refresh(); }}
+        />
       )}
     </div>
   );
