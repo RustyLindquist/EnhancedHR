@@ -90,7 +90,8 @@ export async function getMuxAssetId(uploadId: string) {
 }
 
 // Poll for the asset ID with retries - the asset may not be created immediately after upload
-export async function waitForMuxAssetId(uploadId: string, maxAttempts: number = 30): Promise<string | null> {
+// 90 attempts x 2s = 3 min max (generous buffer for large uploads)
+export async function waitForMuxAssetId(uploadId: string, maxAttempts: number = 90): Promise<string | null> {
     for (let i = 0; i < maxAttempts; i++) {
         const assetId = await getMuxAssetId(uploadId);
         if (assetId) {
@@ -133,7 +134,9 @@ export async function getMuxAssetDetails(assetId: string) {
     }
 }
 
-export async function waitForMuxAssetReady(assetId: string, maxAttempts: number = 60): Promise<{ ready: boolean; playbackId?: string; duration?: number }> {
+// Poll for asset encoding completion
+// 450 attempts x 4s = 30 min max — large videos (60+ min) can take 10-30 min to encode
+export async function waitForMuxAssetReady(assetId: string, maxAttempts: number = 450): Promise<{ ready: boolean; playbackId?: string; duration?: number }> {
     for (let i = 0; i < maxAttempts; i++) {
         const details = await getMuxAssetDetails(assetId);
         if (details?.status === 'ready' && details.playbackId) {
@@ -146,8 +149,8 @@ export async function waitForMuxAssetReady(assetId: string, maxAttempts: number 
         if (details?.status === 'errored') {
             return { ready: false };
         }
-        // Wait 2 seconds between checks
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait 4 seconds between checks
+        await new Promise(resolve => setTimeout(resolve, 4000));
     }
     return { ready: false };
 }
