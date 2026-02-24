@@ -128,12 +128,21 @@ export async function fetchOrgById(orgId: string): Promise<OrgDetail | null> {
 
 export async function updateOrgAccountType(orgId: string, accountType: string): Promise<void> {
   await requirePlatformAdmin();
+
+  if (!['trial', 'paid'].includes(accountType)) {
+    throw new Error('Invalid account type');
+  }
+
   const admin = createAdminClient();
 
-  await admin
+  const { error } = await admin
     .from('organizations')
     .update({ account_type: accountType })
     .eq('id', orgId);
+
+  if (error) {
+    throw new Error(`Failed to update account type: ${error.message}`);
+  }
 }
 
 export async function deleteOrganization(orgId: string): Promise<void> {
@@ -141,16 +150,24 @@ export async function deleteOrganization(orgId: string): Promise<void> {
   const admin = createAdminClient();
 
   // Reset all member profiles
-  await admin
+  const { error: profileError } = await admin
     .from('profiles')
     .update({ org_id: null, membership_status: 'trial' })
     .eq('org_id', orgId);
 
+  if (profileError) {
+    throw new Error(`Failed to reset member profiles: ${profileError.message}`);
+  }
+
   // Delete the organization
-  await admin
+  const { error: deleteError } = await admin
     .from('organizations')
     .delete()
     .eq('id', orgId);
+
+  if (deleteError) {
+    throw new Error(`Failed to delete organization: ${deleteError.message}`);
+  }
 }
 
 export async function fetchUsersWithoutOrg(): Promise<{ id: string; full_name: string | null; email: string }[]> {
@@ -187,6 +204,17 @@ export async function createOrganization(input: {
 }): Promise<{ success: boolean; orgId?: string; error?: string }> {
   await requirePlatformAdmin();
   const admin = createAdminClient();
+
+  // Validate owner has no existing org
+  const { data: ownerProfile } = await admin
+    .from('profiles')
+    .select('org_id')
+    .eq('id', input.owner_id)
+    .single();
+
+  if (ownerProfile?.org_id) {
+    return { success: false, error: 'Selected user already belongs to an organization' };
+  }
 
   // Generate slug and invite hash
   const slug = input.name
@@ -236,11 +264,26 @@ export async function transferOrgOwnership(orgId: string, newOwnerId: string): P
     .eq('id', orgId)
     .single();
 
+  // Validate new owner is a member of this org
+  const { data: newOwnerProfile } = await admin
+    .from('profiles')
+    .select('org_id')
+    .eq('id', newOwnerId)
+    .single();
+
+  if (newOwnerProfile?.org_id !== orgId) {
+    throw new Error('New owner must be a member of the organization');
+  }
+
   // Update org owner
-  await admin
+  const { error: ownerError } = await admin
     .from('organizations')
     .update({ owner_id: newOwnerId })
     .eq('id', orgId);
+
+  if (ownerError) {
+    throw new Error(`Failed to transfer ownership: ${ownerError.message}`);
+  }
 
   // Set new owner as org_admin
   await admin

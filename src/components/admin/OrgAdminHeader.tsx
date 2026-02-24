@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { ArrowLeft, Crown, Trash2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { OrgDetail } from '@/app/actions/admin-orgs';
@@ -14,11 +13,9 @@ interface OrgAdminHeaderProps {
 
 export default function OrgAdminHeader({ org, onAccountTypeChange, onTransferOwnership, onDeleteOrg }: OrgAdminHeaderProps) {
   const router = useRouter();
-  const [accountType, setAccountType] = useState(org.account_type);
 
   const handleTypeToggle = () => {
-    const newType = accountType === 'trial' ? 'paid' : 'trial';
-    setAccountType(newType);
+    const newType = org.account_type === 'trial' ? 'paid' : 'trial';
     onAccountTypeChange(newType);
   };
 
@@ -38,11 +35,11 @@ export default function OrgAdminHeader({ org, onAccountTypeChange, onTransferOwn
           <div>
             <h1 className="text-xl font-bold text-white">{org.name}</h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide mt-1 ${
-              accountType === 'paid'
+              org.account_type === 'paid'
                 ? 'bg-emerald-500/20 text-emerald-400'
                 : 'bg-amber-500/20 text-amber-400'
             }`}>
-              {accountType}
+              {org.account_type}
             </span>
           </div>
         </div>
@@ -53,7 +50,7 @@ export default function OrgAdminHeader({ org, onAccountTypeChange, onTransferOwn
             className="flex items-center gap-2 px-4 py-2 bg-white/10 text-slate-300 rounded-lg text-sm hover:bg-white/20 hover:text-white transition-colors"
           >
             <RefreshCw size={14} />
-            Switch to {accountType === 'trial' ? 'Paid' : 'Trial'}
+            Switch to {org.account_type === 'trial' ? 'Paid' : 'Trial'}
           </button>
           <button
             onClick={onTransferOwnership}
