@@ -101,3 +101,54 @@ export async function fetchAllOrgs(): Promise<OrgListItem[]> {
     created_at: org.created_at,
   }));
 }
+
+export interface OrgDetail {
+  id: string;
+  name: string;
+  slug: string;
+  invite_hash: string;
+  account_type: string;
+  owner_id: string | null;
+  created_at: string;
+}
+
+export async function fetchOrgById(orgId: string): Promise<OrgDetail | null> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from('organizations')
+    .select('id, name, slug, invite_hash, account_type, owner_id, created_at')
+    .eq('id', orgId)
+    .single();
+
+  if (error || !data) return null;
+  return data;
+}
+
+export async function updateOrgAccountType(orgId: string, accountType: string): Promise<void> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  await admin
+    .from('organizations')
+    .update({ account_type: accountType })
+    .eq('id', orgId);
+}
+
+export async function deleteOrganization(orgId: string): Promise<void> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  // Reset all member profiles
+  await admin
+    .from('profiles')
+    .update({ org_id: null, membership_status: 'trial' })
+    .eq('org_id', orgId);
+
+  // Delete the organization
+  await admin
+    .from('organizations')
+    .delete()
+    .eq('id', orgId);
+}
