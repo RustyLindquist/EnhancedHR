@@ -37,6 +37,7 @@ This file is the **primary discovery and routing index** for the EnhancedHR.ai a
 | Inline Module Resources | inline-module-resources | Medium | Backend + Frontend | doc-discovery, plan-lint | Coupled to course-player-and-progress (navigation), author-portal (builder), admin-portal (builder), expert-resources (upload pattern); shared order column between lessons and resources | Exists |
 | Resource Descriptions | resource-descriptions | Low | Backend + Frontend | doc-discovery | Coupled to inline-module-resources (Resource type, server actions), course-player-and-progress (viewer display), author-portal (expert builder), admin-portal (admin builder); optional description field on resources table | Exists |
 | Quiz Import from Excel | quiz-import | Low | Frontend | doc-discovery | Coupled to course-player-and-progress (QuizData type), author-portal (QuizBuilder), admin-portal (QuizBuilder); client-side Excel parsing with xlsx library | Exists |
+| Admin Organizations | admin-organizations | High | Backend + Frontend | doc-discovery, plan-lint | Coupled to admin-portal (layout/nav), organization-membership (profiles.org_id, membership_status), org-courses (FK cascade on delete); uses createAdminClient for RLS bypass | Exists |
 
 ## Meta / Development Infrastructure
 
