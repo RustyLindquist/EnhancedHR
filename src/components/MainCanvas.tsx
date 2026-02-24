@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, SlidersHorizontal, X, Check, ChevronDown, ChevronUp, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video, LayoutGrid, List, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Check, ChevronDown, ChevronUp, RefreshCw, Plus, ChevronRight, GraduationCap, Layers, Flame, MessageSquare, Sparkles, Building, Users, Lightbulb, Trophy, Info, FileText, Monitor, HelpCircle, Folder, BookOpen, Award, Clock, Zap, Trash, Edit, MoreHorizontal, Settings, TrendingUp, Download, StickyNote, ArrowLeft, Star, Target, Bookmark, Video, LayoutGrid, List, Loader2, Mail } from 'lucide-react';
 import { exportConversationAsMarkdown } from '@/lib/export-conversation';
 import CardStack from './CardStack';
 import UniversalCard from './cards/UniversalCard';
@@ -44,6 +44,7 @@ import VideoPanel from './VideoPanel';
 import PrometheusDashboardWidget from './PrometheusDashboardWidget';
 import PrometheusHelpContent from './PrometheusHelpContent';
 import HelpPanel from './help/HelpPanel';
+import ContactFormPanel from './help/ContactFormPanel';
 import { HelpTopicId } from './help/HelpContent';
 import ToolsCollectionView from './tools/ToolsCollectionView';
 import OrgCollectionsView from './org/OrgCollectionsView';
@@ -1374,6 +1375,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
     const [activeHelpTopicId, setActiveHelpTopicId] = useState<HelpTopicId | string>('ai-insights');
     const [activeHelpTopicFallback, setActiveHelpTopicFallback] = useState<{ title: string; contentText?: string } | null>(null);
+    const [isContactFormOpen, setIsContactFormOpen] = useState(false);
 
     const openHelpTopic = useCallback((topic: HelpTopic) => {
         const nextTopicId = topic.slug || 'help-collection';
@@ -3987,6 +3989,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     <Plus size={14} /> New Collection
                                 </button>
                             )}
+                            {activeCollectionId === 'help' && (
+                                <button
+                                    onClick={() => setIsContactFormOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-brand-blue-light/10 border border-brand-blue-light/30 rounded-full text-xs font-bold uppercase tracking-wider text-brand-blue-light hover:bg-brand-blue-light/20 transition-all hover:scale-105"
+                                >
+                                    <Mail size={14} /> Reach Out To Our Team
+                                </button>
+                            )}
                             {viewingGroup && !viewingGroupMember ? (
                                 <div className="flex items-center gap-3">
                                     {/* Full Analysis Button with Animated Border */}
@@ -4452,6 +4462,14 @@ w-full flex items-center justify-between px-3 py-2 rounded border text-sm transi
                                     topicId={activeHelpTopicId}
                                     fallbackTitle={activeHelpTopicFallback?.title}
                                     fallbackContentText={activeHelpTopicFallback?.contentText}
+                                />
+
+                                {/* Contact Form Panel */}
+                                <ContactFormPanel
+                                    isOpen={isContactFormOpen}
+                                    onClose={() => setIsContactFormOpen(false)}
+                                    userEmail={user?.email}
+                                    userName={user?.user_metadata?.full_name}
                                 />
                             </div>
                         ) : activeCollectionId === 'tools' ? (
