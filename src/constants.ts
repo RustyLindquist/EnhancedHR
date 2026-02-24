@@ -11,6 +11,7 @@ import {
   Flame,
   Award,
   Building,
+  Building2,
   MessageSquare,
   Settings,
   Users,
@@ -664,6 +665,7 @@ export const ADMIN_NAV_ITEMS: NavItemConfig[] = [
     { id: 'admin/prompt-suggestions', label: 'Prompt Suggestions', icon: MessageSquare },
     { id: 'admin/ai-logs', label: 'AI Logs', icon: Bot },
     { id: 'admin/users', label: 'Users', icon: Users },
+    { id: 'admin/organizations', label: 'Organizations', icon: Building2 },
     { id: 'admin/leads', label: 'Leads', icon: ClipboardList },
     { id: 'admin/system', label: 'System Tools', icon: Layers },
 ];
