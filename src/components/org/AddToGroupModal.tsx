@@ -35,7 +35,7 @@ const AddToGroupModal: React.FC<AddToGroupModalProps> = ({
             getOrgGroups(),
             getMemberGroups(memberId)
         ]);
-        setGroups(allGroups);
+        setGroups(allGroups.filter(g => !g.is_dynamic));
         setSelectedIds(new Set(memberGroupIds));
         setOriginalIds(new Set(memberGroupIds));
         setLoading(false);
