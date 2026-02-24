@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MuxUploader from '@mux/mux-uploader-react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import { getMuxUploadUrl, waitForMuxAssetId, waitForMuxAssetReady } from '@/app/actions/mux';
 
 interface MuxUploaderWrapperProps {
@@ -11,11 +11,38 @@ interface MuxUploaderWrapperProps {
     onError?: (error: any) => void;
 }
 
+function formatElapsed(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m === 0) return `${s}s`;
+    return `${m}m ${s.toString().padStart(2, '0')}s`;
+}
+
 export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }: MuxUploaderWrapperProps) {
     const [uploadUrl, setUploadUrl] = useState<string | null>(null);
     const [uploadId, setUploadId] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStatus, setProcessingStatus] = useState<string>('');
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Elapsed time counter during processing
+    useEffect(() => {
+        if (isProcessing) {
+            setElapsedSeconds(0);
+            timerRef.current = setInterval(() => {
+                setElapsedSeconds(prev => prev + 1);
+            }, 1000);
+        } else {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        }
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [isProcessing]);
 
     useEffect(() => {
         const prepareUpload = async () => {
@@ -51,7 +78,7 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
             console.log('Got asset ID:', assetId);
 
             // Step 2: Wait for the asset to be ready and get the playback ID
-            setProcessingStatus('Processing video...');
+            setProcessingStatus('Encoding video...');
             const result = await waitForMuxAssetReady(assetId);
 
             if (!result.ready || !result.playbackId) {
@@ -82,7 +109,20 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
                 <div className="text-center">
                     <p className="text-sm font-medium text-white">Processing video...</p>
                     <p className="text-xs text-slate-400 mt-1">{processingStatus}</p>
-                    <p className="text-xs text-slate-500 mt-2">This may take a minute</p>
+                    <p className="text-xs text-slate-500 mt-2">
+                        {elapsedSeconds < 30
+                            ? 'This may take a few minutes'
+                            : elapsedSeconds < 120
+                                ? 'Still encoding — longer videos take more time'
+                                : 'Your video uploaded successfully and is still encoding. Please don\u2019t close this page.'}
+                    </p>
+                    {elapsedSeconds >= 10 && (
+                        <div className="flex items-center justify-center gap-1.5 mt-3 text-xs text-slate-500">
+                            {elapsedSeconds >= 30 && <CheckCircle size={12} className="text-green-500" />}
+                            {elapsedSeconds >= 30 && <span className="text-green-400/70 mr-2">Upload complete</span>}
+                            <span>Elapsed: {formatElapsed(elapsedSeconds)}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         );
