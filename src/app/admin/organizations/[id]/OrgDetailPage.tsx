@@ -11,16 +11,29 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAccountTypeChange = async (newType: string) => {
-    await updateOrgAccountType(org.id, newType);
-    router.refresh();
+    try {
+      await updateOrgAccountType(org.id, newType);
+      router.refresh();
+    } catch (e: any) {
+      setError(e.message || 'Failed to update account type');
+    }
   };
 
   const handleDelete = async () => {
     if (deleteInput !== org.name) return;
-    await deleteOrganization(org.id);
-    router.push('/admin/organizations');
+    setIsDeleting(true);
+    setError('');
+    try {
+      await deleteOrganization(org.id);
+      router.push('/admin/organizations');
+    } catch (e: any) {
+      setError(e.message || 'Failed to delete organization');
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -31,6 +44,12 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
         onTransferOwnership={() => setShowTransfer(true)}
         onDeleteOrg={() => setShowDeleteConfirm(true)}
       />
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Embedded org portal - iframe approach for clean isolation */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden" style={{ minHeight: '70vh' }}>
@@ -63,10 +82,10 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleteInput !== org.name}
+                disabled={deleteInput !== org.name || isDeleting}
                 className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                Delete Organization
+                {isDeleting ? 'Deleting...' : 'Delete Organization'}
               </button>
             </div>
           </div>

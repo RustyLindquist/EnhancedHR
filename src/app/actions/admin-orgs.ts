@@ -13,7 +13,6 @@ export interface OrgListItem {
   account_type: string;
   owner_id: string | null;
   owner_name: string | null;
-  owner_email: string | null;
   admin_count: number;
   employee_count: number;
   created_at: string;
@@ -95,7 +94,6 @@ export async function fetchAllOrgs(): Promise<OrgListItem[]> {
     account_type: org.account_type,
     owner_id: org.owner_id,
     owner_name: org.owner_id ? (ownerMap[org.owner_id]?.name || null) : null,
-    owner_email: null,
     admin_count: adminCounts[org.id] || 0,
     employee_count: employeeCounts[org.id] || 0,
     created_at: org.created_at,
@@ -203,6 +201,11 @@ export async function createOrganization(input: {
   owner_id: string;
 }): Promise<{ success: boolean; orgId?: string; error?: string }> {
   await requirePlatformAdmin();
+
+  if (!['trial', 'paid'].includes(input.account_type)) {
+    return { success: false, error: 'Invalid account type' };
+  }
+
   const admin = createAdminClient();
 
   // Validate owner has no existing org

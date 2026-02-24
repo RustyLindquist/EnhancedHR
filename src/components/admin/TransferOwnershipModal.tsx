@@ -17,6 +17,7 @@ export default function TransferOwnershipModal({ orgId, orgName, currentOwnerId,
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchOrgMembers(orgId).then(result => {
@@ -32,8 +33,14 @@ export default function TransferOwnershipModal({ orgId, orgName, currentOwnerId,
   const handleTransfer = async () => {
     if (!selectedId) return;
     setLoading(true);
-    await transferOrgOwnership(orgId, selectedId);
-    onTransferred();
+    setError('');
+    try {
+      await transferOrgOwnership(orgId, selectedId);
+      onTransferred();
+    } catch (e: any) {
+      setError(e.message || 'Failed to transfer ownership');
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,6 +84,8 @@ export default function TransferOwnershipModal({ orgId, orgName, currentOwnerId,
             <div className="px-4 py-3 text-sm text-slate-500 text-center">No members found</div>
           )}
         </div>
+
+        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
         <div className="flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 bg-white/10 text-slate-300 rounded-lg text-sm hover:bg-white/20 transition-colors">Cancel</button>
