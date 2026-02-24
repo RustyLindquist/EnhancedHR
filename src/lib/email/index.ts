@@ -27,3 +27,44 @@ export async function sendTemporaryPasswordEmail(
     return { success: false, error: String(error) };
   }
 }
+
+export async function sendContactEmail({
+  subject,
+  message,
+  email,
+  phone,
+  userName,
+}: {
+  subject: string;
+  message: string;
+  email: string;
+  phone?: string;
+  userName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const contactDetails = [
+      `<p><strong>From:</strong> ${userName || 'Unknown user'} (${email})</p>`,
+      phone ? `<p><strong>Phone:</strong> ${phone}</p>` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await resend.emails.send({
+      from: 'EnhancedHR <noreply@enhancedhr.ai>',
+      to: 'support@enhancedhr.ai',
+      replyTo: email,
+      subject: `[Contact Form] ${subject}`,
+      html: `
+        <h2>New Contact Form Submission</h2>
+        ${contactDetails}
+        <hr />
+        <h3>Subject: ${subject}</h3>
+        <p>${message}</p>
+      `,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send contact email:', error);
+    return { success: false, error: String(error) };
+  }
+}
