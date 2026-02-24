@@ -152,3 +152,133 @@ export async function deleteOrganization(orgId: string): Promise<void> {
     .delete()
     .eq('id', orgId);
 }
+
+export async function fetchUsersWithoutOrg(): Promise<{ id: string; full_name: string | null; email: string }[]> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from('profiles')
+    .select('id, full_name')
+    .is('org_id', null)
+    .neq('role', 'admin')
+    .order('full_name', { ascending: true });
+
+  if (error || !data) return [];
+
+  // Get emails from auth.users
+  const { data: authData } = await admin.auth.admin.listUsers();
+  const emailMap: Record<string, string> = {};
+  authData?.users?.forEach((u: any) => {
+    emailMap[u.id] = u.email || '';
+  });
+
+  return data.map(p => ({
+    id: p.id,
+    full_name: p.full_name,
+    email: emailMap[p.id] || '',
+  }));
+}
+
+export async function createOrganization(input: {
+  name: string;
+  account_type: string;
+  owner_id: string;
+}): Promise<{ success: boolean; orgId?: string; error?: string }> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  // Generate slug and invite hash
+  const slug = input.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+  const inviteHash = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+
+  // Create org
+  const { data: org, error: orgError } = await admin
+    .from('organizations')
+    .insert({
+      name: input.name,
+      slug,
+      invite_hash: inviteHash,
+      account_type: input.account_type,
+      owner_id: input.owner_id,
+    })
+    .select('id')
+    .single();
+
+  if (orgError || !org) {
+    return { success: false, error: orgError?.message || 'Failed to create organization' };
+  }
+
+  // Update owner profile
+  const { error: profileError } = await admin
+    .from('profiles')
+    .update({ org_id: org.id, membership_status: 'org_admin' })
+    .eq('id', input.owner_id);
+
+  if (profileError) {
+    return { success: false, error: profileError.message };
+  }
+
+  return { success: true, orgId: org.id };
+}
+
+export async function transferOrgOwnership(orgId: string, newOwnerId: string): Promise<void> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  // Get current owner
+  const { data: org } = await admin
+    .from('organizations')
+    .select('owner_id')
+    .eq('id', orgId)
+    .single();
+
+  // Update org owner
+  await admin
+    .from('organizations')
+    .update({ owner_id: newOwnerId })
+    .eq('id', orgId);
+
+  // Set new owner as org_admin
+  await admin
+    .from('profiles')
+    .update({ membership_status: 'org_admin' })
+    .eq('id', newOwnerId);
+
+  // Demote old owner to org_admin (they keep access but lose ownership)
+  if (org?.owner_id && org.owner_id !== newOwnerId) {
+    await admin
+      .from('profiles')
+      .update({ membership_status: 'org_admin' })
+      .eq('id', org.owner_id);
+  }
+}
+
+export async function fetchOrgMembers(orgId: string): Promise<{ id: string; full_name: string | null; email: string }[]> {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from('profiles')
+    .select('id, full_name')
+    .eq('org_id', orgId)
+    .order('full_name', { ascending: true });
+
+  if (error || !data) return [];
+
+  // Get emails from auth.users
+  const { data: authData } = await admin.auth.admin.listUsers();
+  const emailMap: Record<string, string> = {};
+  authData?.users?.forEach((u: any) => {
+    emailMap[u.id] = u.email || '';
+  });
+
+  return data.map(p => ({
+    id: p.id,
+    full_name: p.full_name,
+    email: emailMap[p.id] || '',
+  }));
+}
