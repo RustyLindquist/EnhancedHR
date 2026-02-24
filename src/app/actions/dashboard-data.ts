@@ -101,7 +101,7 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     fetchOrgMemberCountInternal(admin, orgContext),
     fetchOrgCollectionsInternal(admin, orgContext),
     fetchHasPublishedOrgCoursesInternal(supabase, orgContext),
-    fetchOnboardingProfileInternal(supabase, userId),
+    fetchOnboardingProfileInternal(admin, userId),
   ]);
 
   return {
@@ -569,9 +569,11 @@ async function fetchHasPublishedOrgCoursesInternal(
 
 /**
  * Fetch onboarding profile fields.
+ * Uses admin client to bypass RLS — ensures the profile is always returned
+ * regardless of session state (fixes onboarding popup not showing for org-join users).
  */
 async function fetchOnboardingProfileInternal(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  admin: ReturnType<typeof createAdminClient>,
   userId: string
 ): Promise<{
   id: string;
@@ -580,11 +582,15 @@ async function fetchOnboardingProfileInternal(
   onboarding_completed_at: string | null;
   onboarding_skipped_at: string | null;
 } | null> {
-  const { data: profile } = await supabase
+  const { data: profile, error } = await admin
     .from('profiles')
     .select('id, full_name, avatar_url, onboarding_completed_at, onboarding_skipped_at')
     .eq('id', userId)
     .single();
+
+  if (error) {
+    console.error('[getDashboardData] Error fetching onboarding profile:', error);
+  }
 
   return profile;
 }

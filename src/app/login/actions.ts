@@ -205,7 +205,9 @@ export async function signup(formData: FormData) {
 
         if (!orgError && org && org.invite_hash === hash && adminData.user) {
             // Auto-join the user to the organization
-            await supabase
+            // Use admin client to bypass RLS — the regular client may not have
+            // the session cookies available yet after signInWithPassword()
+            const { error: profileUpdateError } = await adminClient
                 .from('profiles')
                 .update({
                     org_id: org.id,
@@ -213,6 +215,10 @@ export async function signup(formData: FormData) {
                     role: 'user'
                 })
                 .eq('id', adminData.user.id)
+
+            if (profileUpdateError) {
+                console.error('[Signup] Failed to update profile with org info:', profileUpdateError)
+            }
 
             // Create "My Profile" Context Card for the new user
             try {
