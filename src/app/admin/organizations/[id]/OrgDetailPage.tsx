@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OrgAdminHeader from '@/components/admin/OrgAdminHeader';
 import TransferOwnershipModal from '@/components/admin/TransferOwnershipModal';
-import { OrgDetail, updateOrgAccountType, deleteOrganization } from '@/app/actions/admin-orgs';
+import { OrgDetail, updateOrgAccountType, deleteOrganization, setPlatformAdminOrgCookie } from '@/app/actions/admin-orgs';
 
 export default function OrgDetailPage({ org }: { org: OrgDetail }) {
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Set the platform admin org selection cookie so getOrgContext() returns this org
+  useEffect(() => {
+    setPlatformAdminOrgCookie(org.id);
+  }, [org.id]);
   const [deleteInput, setDeleteInput] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

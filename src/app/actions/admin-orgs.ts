@@ -1,5 +1,6 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
@@ -327,4 +328,10 @@ export async function fetchOrgMembers(orgId: string): Promise<{ id: string; full
     full_name: p.full_name,
     email: emailMap[p.id] || '',
   }));
+}
+
+export async function setPlatformAdminOrgCookie(orgId: string): Promise<void> {
+  await requirePlatformAdmin();
+  const cookieStore = await cookies();
+  cookieStore.set('platform_admin_selected_org', orgId, { path: '/' });
 }
