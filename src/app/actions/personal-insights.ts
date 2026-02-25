@@ -35,6 +35,7 @@ export interface PersonalInsight {
 const EXCLUDED_AGENT_TYPES = [
   'generate_recommendations',  // System-triggered course recommendation engine
   'personal_insights_agent',   // Circular — the agent's own previous calls
+  'insight_analysis_agent',    // Interactive insight discussion — not personal learning behavior
   'backend_ai',                // Backend processing (summarization, extraction)
   'org_engagement_analyst',    // Org admin analytics
   'learning_roi_advisor',      // Org admin analytics

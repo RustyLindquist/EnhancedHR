@@ -122,6 +122,15 @@ export class ContextResolver {
             };
         }
 
+        // 5.1 Personal Insights Collection
+        // When viewing personal insights, include ALL user context for insight analysis
+        if (context.collectionId === 'personal-insights' || context.id === 'personal-insights') {
+            return {
+                ...baseScope,
+                includeAllUserContext: true
+            };
+        }
+
         // 5.5 User/Group Scope (Team Analytics)
         // For viewing team member data in Users/Groups collections
         if (context.type === 'USER' && context.id) {
