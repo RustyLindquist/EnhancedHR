@@ -520,6 +520,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
       case 'platform_assistant': return { name: 'Prometheus AI', icon: Sparkles, color: 'text-brand-orange', themeColor: 'bg-brand-orange' };
       case 'team_analytics_assistant': return { name: 'Team Assistant', icon: Users, color: 'text-purple-400', bgColor: 'bg-purple-500/10', themeColor: 'bg-purple-400' };
       case 'personal_insights_agent': return { name: 'Personal Insights Agent', icon: Sparkles, color: 'text-purple-400', themeColor: 'bg-purple-400' };
+      case 'insight_analysis_agent': return { name: 'Insight Analyst', icon: Sparkles, color: 'text-purple-400', themeColor: 'bg-purple-400' };
       default: return { name: 'AI Assistant', icon: Bot, color: 'text-white', themeColor: 'bg-white' };
     }
   };
@@ -784,6 +785,13 @@ const AIPanel: React.FC<AIPanelProps> = ({
                           <p className="mt-2 text-slate-400 text-xs">Ask me anything.</p>
                         </>
                       )}
+                      {effectiveAgentType === 'insight_analysis_agent' && (
+                        <>
+                          <p><em>I'm Your Insight Analyst</em></p>
+                          <p className="mt-2 text-slate-400 text-xs">I can help you explore and understand your personal insights. Ask me about what an insight means, patterns across your insights, or how to turn them into actionable next steps.</p>
+                          <p className="mt-2 text-slate-400 text-xs">Click an insight to explore it, or ask me anything.</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -806,6 +814,19 @@ const AIPanel: React.FC<AIPanelProps> = ({
                         </button>
                         <button onClick={() => handleSendMessage("Roleplay a scenario")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-brand-blue-light/30 text-slate-400 hover:text-brand-blue-light px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
                           Roleplay
+                        </button>
+                      </>
+                    )}
+                    {effectiveAgentType === 'insight_analysis_agent' && (
+                      <>
+                        <button onClick={() => handleSendMessage("What patterns do you see across my insights?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30 text-slate-400 hover:text-purple-400 px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          Find patterns
+                        </button>
+                        <button onClick={() => handleSendMessage("What should I focus on next based on my insights?")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30 text-slate-400 hover:text-purple-400 px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          What to focus on
+                        </button>
+                        <button onClick={() => handleSendMessage("Explain my strengths based on my insights")} className="text-[10px] bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/30 text-slate-400 hover:text-purple-400 px-3 py-1.5 rounded-full transition-all whitespace-nowrap">
+                          My strengths
                         </button>
                       </>
                     )}

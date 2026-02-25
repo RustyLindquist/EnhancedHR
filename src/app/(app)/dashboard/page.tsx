@@ -715,10 +715,10 @@ function HomeContent() {
             agentType={
               activeCourseId
                 ? 'course_assistant'
-                : (activeCollectionId === 'dashboard' || activeCollectionId === 'my-org')
-                  ? 'platform_assistant'
-                  : activeCollectionId === 'personal-insights'
-                    ? 'personal_insights_agent'
+                : activeCollectionId === 'personal-insights'
+                  ? 'insight_analysis_agent'
+                  : (activeCollectionId === 'dashboard' || activeCollectionId === 'my-org')
+                    ? 'platform_assistant'
                     : ['users-and-groups', 'org-team'].includes(activeCollectionId)
                       ? 'team_analytics_assistant'
                       : 'collection_assistant'
