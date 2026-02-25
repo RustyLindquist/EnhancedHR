@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import OrgAdminHeader from '@/components/admin/OrgAdminHeader';
 import TransferOwnershipModal from '@/components/admin/TransferOwnershipModal';
+import MyOrganizationHub from '@/components/org/MyOrganizationHub';
+import UsersAndGroupsCanvas from '@/components/org/UsersAndGroupsCanvas';
+import TeamManagement from '@/components/org/TeamManagement';
+import OrgAnalyticsCanvas from '@/components/org/OrgAnalyticsCanvas';
+import OrgCollectionsView from '@/components/org/OrgCollectionsView';
+import GroupDetailCanvas from '@/components/org/GroupDetailCanvas';
 import { OrgDetail, updateOrgAccountType, deleteOrganization, setPlatformAdminOrgCookie } from '@/app/actions/admin-orgs';
+import { getOrgSummary, getOrgCollections, deleteOrgCollection } from '@/app/actions/org';
+import { getGroupDetails } from '@/app/actions/groups';
 
 export default function OrgDetailPage({ org }: { org: OrgDetail }) {
   const router = useRouter();
@@ -18,6 +26,67 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
   const [showTransfer, setShowTransfer] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+
+  // Org portal navigation
+  const [activeView, setActiveView] = useState<string>('hub');
+  const [viewingGroup, setViewingGroup] = useState<any | null>(null);
+  const [orgMemberCount, setOrgMemberCount] = useState(0);
+  const [orgCollections, setOrgCollections] = useState<{ id: string; label: string; color: string; item_count: number }[]>([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(true);
+
+  // Reset view when org changes
+  useEffect(() => {
+    setActiveView('hub');
+    setViewingGroup(null);
+  }, [org.id]);
+
+  // Fetch org summary data (member count)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const summary = await getOrgSummary();
+        setOrgMemberCount(summary.memberCount);
+      } catch (e) {
+        console.error('Failed to fetch org summary:', e);
+      }
+    };
+    // Small delay to ensure cookie is set first
+    const timer = setTimeout(fetchData, 150);
+    return () => clearTimeout(timer);
+  }, [org.id]);
+
+  // Fetch org collections
+  useEffect(() => {
+    const fetchCollections = async () => {
+      setCollectionsLoading(true);
+      try {
+        const collections = await getOrgCollections();
+        setOrgCollections(collections.map(c => ({
+          id: c.id,
+          label: c.label,
+          color: c.color,
+          item_count: c.item_count,
+        })));
+      } catch (e) {
+        console.error('Failed to fetch org collections:', e);
+      }
+      setCollectionsLoading(false);
+    };
+    const timer = setTimeout(fetchCollections, 150);
+    return () => clearTimeout(timer);
+  }, [org.id]);
+
+  // Fetch group details when navigating to a group
+  useEffect(() => {
+    if (activeView.startsWith('group-')) {
+      const groupId = activeView.replace('group-', '');
+      getGroupDetails(groupId).then(details => {
+        setViewingGroup(details);
+      });
+    } else {
+      setViewingGroup(null);
+    }
+  }, [activeView]);
 
   const handleAccountTypeChange = async (newType: string) => {
     try {
@@ -41,6 +110,27 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
     }
   };
 
+  const handleSelectModule = useCallback((moduleId: string) => {
+    setActiveView(moduleId);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    if (activeView === 'org-team') {
+      setActiveView('users-groups');
+    } else if (activeView.startsWith('group-')) {
+      setActiveView('users-groups');
+    } else {
+      setActiveView('hub');
+    }
+  }, [activeView]);
+
+  const handleDeleteCollection = useCallback(async (collectionId: string) => {
+    const result = await deleteOrgCollection(collectionId);
+    if (result.success) {
+      setOrgCollections(prev => prev.filter(c => c.id !== collectionId));
+    }
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto px-8 py-8">
       <OrgAdminHeader
@@ -56,14 +146,67 @@ export default function OrgDetailPage({ org }: { org: OrgDetail }) {
         </div>
       )}
 
-      {/* Embedded org portal - iframe approach for clean isolation */}
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden" style={{ minHeight: '70vh' }}>
-        <iframe
-          src={`/org?embedded=true`}
-          className="w-full border-0"
-          style={{ minHeight: '70vh' }}
-          title={`${org.name} Organization Portal`}
-        />
+      {/* Organization Portal Content */}
+      <div>
+          {activeView === 'hub' && (
+            <MyOrganizationHub
+              orgMemberCount={orgMemberCount}
+              orgCollectionsCount={orgCollections.length}
+              isOrgAdmin={true}
+              hasOrgCourses={true}
+              viewMode="grid"
+              onSelectCollection={handleSelectModule}
+              onNavigateToOrgCourses={() => { window.location.href = '/org-courses'; }}
+              hideAssignedLearning={true}
+              className="w-full pt-6 pb-48"
+            />
+          )}
+
+          {activeView === 'users-groups' && (
+            <UsersAndGroupsCanvas
+              onSelectAllUsers={() => setActiveView('org-team')}
+              onSelectGroup={(groupId) => setActiveView(`group-${groupId}`)}
+              onBack={() => setActiveView('hub')}
+              isAdmin={true}
+            />
+          )}
+
+          {activeView === 'org-team' && (
+            <TeamManagement
+              onBack={() => setActiveView('users-groups')}
+              isAdmin={true}
+            />
+          )}
+
+          {activeView === 'org-analytics' && (
+            <OrgAnalyticsCanvas
+              onBack={() => setActiveView('hub')}
+            />
+          )}
+
+          {activeView === 'org-collections' && (
+            <OrgCollectionsView
+              collections={orgCollections}
+              isLoading={collectionsLoading}
+              onCollectionSelect={() => {}}
+              isOrgAdmin={true}
+              onDelete={handleDeleteCollection}
+            />
+          )}
+
+          {activeView.startsWith('group-') && viewingGroup && (
+            <GroupDetailCanvas
+              group={viewingGroup}
+              onBack={() => setActiveView('users-groups')}
+              isAdmin={true}
+            />
+          )}
+
+          {activeView.startsWith('group-') && !viewingGroup && (
+            <div className="flex items-center justify-center py-20 text-slate-400">
+              Loading group...
+            </div>
+          )}
       </div>
 
       {/* Delete Confirmation Modal */}
