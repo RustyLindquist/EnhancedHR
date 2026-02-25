@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useRef } from 'react';
-import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Plus, Link2, Upload, Play, Sparkles, Youtube, Bot, User, Clock, RefreshCw, X, Timer, Paperclip } from 'lucide-react';
+import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangle, Link2, Upload, Play, Sparkles, Youtube, Bot, User, Clock, RefreshCw, X, Timer, Paperclip } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateLesson, deleteLesson, createLesson, generateTranscriptFromVideo, fetchYouTubeMetadataAction, uploadModuleResourceFile, updateModuleResource, deleteModuleResource } from '@/app/actions/course-builder';
-import { getDurationFromPlaybackId } from '@/app/actions/mux';
+import { getDurationFromPlaybackId, deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
 import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from '@/app/actions/video-metadata';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
@@ -149,6 +149,7 @@ export default function LessonEditorPanel({
     const [error, setError] = useState<string | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
     // Transcript modal state
     const [showTranscriptModal, setShowTranscriptModal] = useState(false);
@@ -240,8 +241,42 @@ export default function LessonEditorPanel({
             setTranscriptStatus(lessonTranscriptStatus);
             setTranscriptSource(lessonTranscriptSource);
             setResourceDescriptionValue(resourceDescription || '');
+            setShowCloseConfirm(false);
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, lessonAiTranscript, lessonUserTranscript, lessonTranscriptStatus, lessonTranscriptSource, resourceEstimatedDuration, resourceDescription]);
+
+    // Detect if the user has made any changes
+    const hasChanges = useCallback(() => {
+        if (title !== lessonTitle) return true;
+        if (type !== lessonType) return true;
+        if (videoUrl !== lessonVideoUrl) return true;
+        if (aiTranscript !== (lessonAiTranscript ?? lessonContent)) return true;
+        if (userTranscript !== lessonUserTranscript) return true;
+        if (selectedFiles.length > 0) return true;
+        if (resourceDescriptionValue !== (resourceDescription || '')) return true;
+        return false;
+    }, [title, lessonTitle, type, lessonType, videoUrl, lessonVideoUrl, aiTranscript, lessonAiTranscript, lessonContent, userTranscript, lessonUserTranscript, selectedFiles, resourceDescriptionValue, resourceDescription]);
+
+    // Handle close with confirmation if changes exist
+    const handleCloseAttempt = useCallback(() => {
+        if (hasChanges()) {
+            setShowCloseConfirm(true);
+        } else {
+            onClose();
+        }
+    }, [hasChanges, onClose]);
+
+    // Confirm cancellation: delete any newly uploaded Mux video, then close
+    const handleConfirmClose = useCallback(async () => {
+        if (videoUrl && videoUrl !== lessonVideoUrl) {
+            const isMuxId = /^[a-zA-Z0-9]{10,}$/.test(videoUrl) && !videoUrl.includes('.');
+            if (isMuxId) {
+                await deleteMuxAssetByPlaybackId(videoUrl);
+            }
+        }
+        setShowCloseConfirm(false);
+        onClose();
+    }, [videoUrl, lessonVideoUrl, onClose]);
 
     // Helper function to format duration
     const formatDuration = (seconds: number): string => {
@@ -771,13 +806,8 @@ export default function LessonEditorPanel({
                         <Loader2 size={16} className="animate-spin" />
                         {isUploadingFile ? 'Uploading...' : 'Saving...'}
                     </>
-                ) : isNewLesson && !resourceId ? (
-                    <>
-                        <Plus size={16} />
-                        Create Element
-                    </>
                 ) : (
-                    'Save Changes'
+                    'Save and Close'
                 )}
             </button>
         </div>
@@ -798,7 +828,7 @@ export default function LessonEditorPanel({
     return (
         <DropdownPanel
             isOpen={isOpen}
-            onClose={onClose}
+            onClose={handleCloseAttempt}
             title={resourceId ? 'Edit Resource' : isNewLesson ? 'Add Learning Element' : 'Edit Learning Element'}
             icon={Video}
             iconColor="text-brand-blue-light"
@@ -811,47 +841,50 @@ export default function LessonEditorPanel({
                     </div>
                 )}
 
-                {/* Lesson Title */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Element Title *
-                    </label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g., Understanding HR Metrics"
-                        className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white text-lg font-medium placeholder-slate-600 outline-none focus:border-brand-blue-light/50"
-                        autoFocus
-                    />
-                </div>
-
-                {/* Lesson Type - hidden when editing an existing resource */}
-                {!resourceId && (
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                        Element Type
-                    </label>
-                    <div className="flex gap-3">
-                        {(['video', 'article', 'quiz'] as LessonType[]).map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => setType(t)}
-                                className={`
-                                    flex items-center gap-2 px-4 py-3 rounded-xl border transition-all
-                                    ${type === t
-                                        ? 'bg-brand-blue-light/10 border-brand-blue-light/50 text-brand-blue-light'
-                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
-                                    }
-                                `}
-                            >
-                                {lessonTypeIcons[t]}
-                                <span className="font-medium">{lessonTypeLabels[t]}</span>
-                            </button>
-                        ))}
+                {/* Title & Type Row */}
+                <div className={`flex gap-4 ${!resourceId ? 'items-end' : ''}`}>
+                    {/* Lesson Title */}
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Element Title *
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g., Understanding HR Metrics"
+                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white text-lg font-medium placeholder-slate-600 outline-none focus:border-brand-blue-light/50"
+                            autoFocus
+                        />
                     </div>
+
+                    {/* Lesson Type - hidden when editing an existing resource */}
+                    {!resourceId && (
+                    <div className="flex-shrink-0">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Element Type
+                        </label>
+                        <div className="flex gap-2">
+                            {(['video', 'article', 'quiz'] as LessonType[]).map((t) => (
+                                <button
+                                    key={t}
+                                    onClick={() => setType(t)}
+                                    className={`
+                                        flex items-center gap-2 px-4 py-3 rounded-xl border transition-all
+                                        ${type === t
+                                            ? 'bg-brand-blue-light/10 border-brand-blue-light/50 text-brand-blue-light'
+                                            : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                                        }
+                                    `}
+                                >
+                                    {lessonTypeIcons[t]}
+                                    <span className="font-medium">{lessonTypeLabels[t]}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    )}
                 </div>
-                )}
 
                 {/* Video Settings - Only show for video type */}
                 {type === 'video' && (
@@ -1089,22 +1122,30 @@ export default function LessonEditorPanel({
                     </div>
                 )}
 
-                {/* Transcript / Content - Only show for video type */}
-                {type === 'video' && (
+                {/* Transcript / Content - Only show for video type once a video has been added */}
+                {type === 'video' && videoUrl && (
                     <div>
                         {/* Header with status indicators */}
-                        <div className="flex items-center justify-between mb-3">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                Transcript / Script
-                            </label>
+                        <div className="mb-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    Transcript / Script
+                                </label>
 
-                            {/* Status and Source badges - only for video type */}
-                            {type === 'video' && (
-                                <div className="flex items-center gap-2">
-                                    <StatusBadge status={transcriptStatus} />
-                                    <SourceBadge source={transcriptSource} />
-                                </div>
-                            )}
+                                {/* Status and Source badges - only for video type */}
+                                {type === 'video' && (
+                                    <div className="flex items-center gap-2">
+                                        <StatusBadge status={transcriptStatus} />
+                                        <SourceBadge source={transcriptSource} />
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                <span className="text-amber-400 font-semibold">IMPORTANT:</span> An accurate transcript is how Prometheus knows what&apos;s in your lesson so that it can answer questions about your lesson and use contents from your lesson as it answers users questions within the platform, even directing users to this lesson for more information. A great way to increase watch-time.
+                            </p>
+                            <p className="text-xs text-slate-400 leading-relaxed mt-2">
+                                You can enter one manually, or have AI generate it automatically from your video. AI generated transcripts can sometimes have errors, so manual transcripts are preferred, if available.
+                            </p>
                         </div>
 
                         {/* Transcript Tabs - only for video type */}
@@ -1208,10 +1249,9 @@ export default function LessonEditorPanel({
                                 transcriptTab === 'ai' && type === 'video' ? 'cursor-not-allowed' : ''
                             }`}
                         />
-                        {type === 'video' && (
+                        {type === 'video' && transcriptTab === 'ai' && (
                             <p className="text-xs text-slate-600 mt-2">
-                                Transcripts enable AI-powered search and help learners get answers about lesson content.
-                                {transcriptTab === 'ai' && ' Switch to "Manual Entry" to edit directly.'}
+                                Switch to &quot;Manual Entry&quot; to edit directly.
                             </p>
                         )}
                     </div>
@@ -1331,6 +1371,41 @@ export default function LessonEditorPanel({
                 transcriptSource={transcriptSource}
                 onRegenerateAI={handleRegenerateAI}
             />
+
+            {/* Unsaved Changes Confirmation Dialog */}
+            {showCloseConfirm && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 animate-fade-in">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-scale-in">
+                        <div className="flex items-center justify-between p-6 border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-orange-500/10 rounded-lg">
+                                    <AlertTriangle size={24} className="text-orange-500" />
+                                </div>
+                                <h2 className="text-xl font-bold text-white">Unsaved Changes</h2>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-slate-300 leading-relaxed">
+                                If you cancel now, all changes will be lost. Are you sure you want to close?
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-white/10 bg-white/5">
+                            <button
+                                onClick={() => setShowCloseConfirm(false)}
+                                className="px-6 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all duration-200 font-medium"
+                            >
+                                Go Back
+                            </button>
+                            <button
+                                onClick={handleConfirmClose}
+                                className="px-6 py-2.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-all duration-200 font-medium"
+                            >
+                                Discard Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </DropdownPanel>
     );
 }
