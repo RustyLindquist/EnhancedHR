@@ -526,7 +526,7 @@ function DroppableAddLessonButton({ moduleId, onClick }: DroppableAddLessonButto
                 <Plus size={16} />
             </div>
             <span className="text-xs font-medium">
-                {isOver ? 'Drop here' : 'Add Item'}
+                {isOver ? 'Drop here' : 'Add Element'}
             </span>
         </button>
     );
