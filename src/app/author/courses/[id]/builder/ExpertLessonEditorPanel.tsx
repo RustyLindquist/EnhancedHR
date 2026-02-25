@@ -129,16 +129,15 @@ export default function ExpertLessonEditorPanel({
     // Duration fetching state
     const [isFetchingDuration, setIsFetchingDuration] = useState(false);
 
-    // Helper function to format duration
+    // Helper function to format duration (whole minutes only)
     const formatDuration = (seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        if (mins >= 60) {
-            const hrs = Math.floor(mins / 60);
-            const remainingMins = mins % 60;
-            return `${hrs}h ${remainingMins}m`;
+        const totalMins = Math.round(seconds / 60);
+        if (totalMins >= 60) {
+            const hrs = Math.floor(totalMins / 60);
+            const remainingMins = totalMins % 60;
+            return remainingMins > 0 ? `${hrs}h ${remainingMins}m` : `${hrs}h`;
         }
-        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+        return `${totalMins}m`;
     };
 
     // Reset form when panel opens
