@@ -21,6 +21,8 @@ interface MyOrganizationHubProps {
     viewMode: 'grid' | 'list';
     onSelectCollection: (id: string) => void;
     onNavigateToOrgCourses: () => void;
+    hideAssignedLearning?: boolean;
+    className?: string;
 }
 
 export default function MyOrganizationHub({
@@ -30,7 +32,9 @@ export default function MyOrganizationHub({
     hasOrgCourses,
     viewMode,
     onSelectCollection,
-    onNavigateToOrgCourses
+    onNavigateToOrgCourses,
+    hideAssignedLearning,
+    className,
 }: MyOrganizationHubProps) {
     const allItems: (OrgHubItem & { visible: boolean; onClick: () => void })[] = [
         {
@@ -72,7 +76,7 @@ export default function MyOrganizationHub({
             cardType: 'ASSIGNED_LEARNING',
             title: 'My Assigned Learning',
             description: 'Required and recommended courses assigned to you.',
-            visible: true,
+            visible: !hideAssignedLearning,
             onClick: () => onSelectCollection('assigned-learning'),
         },
     ];
@@ -81,7 +85,7 @@ export default function MyOrganizationHub({
 
     if (visibleItems.length === 0) {
         return (
-            <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
+            <div className={className || "w-full pl-10 pr-4 pt-[50px] pb-48"}>
                 <div className="text-slate-500 p-10 flex flex-col items-center">
                     <p className="text-lg mb-2">No organization features available.</p>
                     <p className="text-sm">Organization features will appear here when configured.</p>
@@ -91,7 +95,7 @@ export default function MyOrganizationHub({
     }
 
     return (
-        <div className="w-full pl-10 pr-4 pt-[50px] pb-48">
+        <div className={className || "w-full pl-10 pr-4 pt-[50px] pb-48"}>
             {viewMode === 'grid' ? (
                 <div className="grid gap-8 pb-20" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                     {visibleItems.map((item, index) => (

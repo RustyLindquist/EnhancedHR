@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { computeDynamicGroupMembers, checkUserInDynamicGroup } from './dynamic-groups';
+import { getOrgContext } from '@/lib/org-context';
 
 export interface EmployeeGroup {
   id: string;
@@ -159,7 +160,14 @@ export async function getOrgGroups() {
     if (!user) return [];
 
     const { data: profile } = await supabase.from('profiles').select('org_id, role, membership_status').eq('id', user.id).single();
-    if (!profile?.org_id) return [];
+
+    // For platform admins, use the effective org from cookie context
+    let effectiveOrgId = profile?.org_id;
+    if (profile?.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile?.org_id;
+    }
+    if (!effectiveOrgId) return [];
 
     // Check if user is admin
     const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
@@ -174,7 +182,7 @@ export async function getOrgGroups() {
             *,
             members:employee_group_members(user_id)
         `)
-        .eq('org_id', profile.org_id)
+        .eq('org_id', effectiveOrgId)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -218,8 +226,14 @@ export async function getGroupDetails(groupId: string) {
 
     if (error || !group) return null;
 
-    // Verify the group belongs to the user's org
-    if (group.org_id !== profile.org_id) return null;
+    // For platform admins, use the effective org from cookie context
+    let effectiveOrgId = profile.org_id;
+    if (profile.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile.org_id;
+    }
+    // Verify the group belongs to the effective org
+    if (group.org_id !== effectiveOrgId) return null;
 
     let memberIds: string[] = [];
 
