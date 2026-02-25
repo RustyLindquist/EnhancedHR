@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Video, Users, Clock, Plus, Edit3, LayoutGrid, List, ChevronRight } from 'lucide-react';
+import { BookOpen, Video, Users, Clock, Plus, LayoutGrid, List, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface CourseData {
@@ -112,72 +112,59 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {courses.map((course) => {
                             const stats = courseStats[course.id] || { totalMinutes: 0, studentCount: 0 };
-                            const isDraft = course.status === 'draft';
+                            const isPublished = course.status === 'published';
                             const statusBadge = getStatusBadge(course.status);
 
                             return (
-                                <div
+                                <Link
                                     key={course.id}
-                                    className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-colors group relative"
+                                    href={isPublished ? `/dashboard?courseId=${course.id}` : `/author/courses/${course.id}/builder`}
+                                    className={`rounded-2xl overflow-hidden transition-colors group relative block ${
+                                        isPublished
+                                            ? 'bg-white/5 border border-white/10 hover:bg-white/10'
+                                            : 'bg-red-950/40 border border-red-500/20 hover:bg-red-950/60'
+                                    }`}
                                 >
-                                    {/* Thumbnail - Link to course view */}
-                                    <Link href={`/dashboard?courseId=${course.id}`} className="block">
-                                        <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
-                                            {course.image_url ? (
-                                                <img
-                                                    src={course.image_url}
-                                                    alt={course.title}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <Video size={48} className="text-slate-600" />
-                                                </div>
-                                            )}
-                                            {/* Status Badge */}
-                                            <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${statusBadge.className}`}>
-                                                {statusBadge.label}
+                                    {/* Thumbnail */}
+                                    <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
+                                        {course.image_url ? (
+                                            <img
+                                                src={course.image_url}
+                                                alt={course.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Video size={48} className="text-slate-600" />
                                             </div>
+                                        )}
+                                        {/* Status Badge */}
+                                        <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-bold ${statusBadge.className}`}>
+                                            {statusBadge.label}
                                         </div>
-                                    </Link>
+                                    </div>
 
                                     {/* Content */}
                                     <div className="p-5">
-                                        <Link href={`/dashboard?courseId=${course.id}`}>
-                                            <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">
-                                                {course.title}
-                                            </h3>
-                                        </Link>
+                                        <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">
+                                            {course.title}
+                                        </h3>
                                         <p className="text-sm text-slate-400 mb-4 line-clamp-2">
                                             {course.description || 'No description'}
                                         </p>
 
-                                        {/* Stats & Edit Button Row */}
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4 text-xs text-slate-500">
-                                                <div className="flex items-center gap-1">
-                                                    <Clock size={12} />
-                                                    <span>{formatMinutes(stats.totalMinutes)} watched</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Users size={12} />
-                                                    <span>{stats.studentCount} students</span>
-                                                </div>
+                                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                                            <div className="flex items-center gap-1">
+                                                <Clock size={12} />
+                                                <span>{formatMinutes(stats.totalMinutes)} watched</span>
                                             </div>
-
-                                            {/* Edit Button - Only for draft courses */}
-                                            {isDraft && (
-                                                <Link
-                                                    href={`/author/courses/${course.id}/builder`}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light/20 transition-colors"
-                                                >
-                                                    <Edit3 size={12} />
-                                                    Edit
-                                                </Link>
-                                            )}
+                                            <div className="flex items-center gap-1">
+                                                <Users size={12} />
+                                                <span>{stats.studentCount} students</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>
@@ -186,20 +173,22 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
                     <div className="flex flex-col gap-2">
                         {courses.map((course) => {
                             const stats = courseStats[course.id] || { totalMinutes: 0, studentCount: 0 };
-                            const isDraft = course.status === 'draft';
+                            const isPublished = course.status === 'published';
                             const statusBadge = getStatusBadge(course.status);
 
                             return (
                                 <Link
                                     key={course.id}
-                                    href={`/dashboard?courseId=${course.id}`}
-                                    className="group relative flex items-center gap-4 px-4 py-3
-                                               bg-white/[0.03] hover:bg-white/[0.08]
-                                               border border-white/[0.06] hover:border-white/20
-                                               rounded-xl transition-all duration-300 cursor-pointer"
+                                    href={isPublished ? `/dashboard?courseId=${course.id}` : `/author/courses/${course.id}/builder`}
+                                    className={`group relative flex items-center gap-4 px-4 py-3
+                                               rounded-xl transition-all duration-300 cursor-pointer ${
+                                        isPublished
+                                            ? 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/20'
+                                            : 'bg-red-950/30 hover:bg-red-950/50 border border-red-500/20 hover:border-red-500/30'
+                                    }`}
                                     style={{
                                         borderLeftWidth: '3px',
-                                        borderLeftColor: '#3b82f6',
+                                        borderLeftColor: isPublished ? '#3b82f6' : '#ef4444',
                                     }}
                                 >
                                     {/* Thumbnail */}
@@ -250,16 +239,6 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
 
                                     {/* Right Actions */}
                                     <div className="flex items-center gap-3 flex-shrink-0">
-                                        {isDraft && (
-                                            <Link
-                                                href={`/author/courses/${course.id}/builder`}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-blue-light/10 border border-brand-blue-light/30 text-brand-blue-light text-xs font-bold hover:bg-brand-blue-light/20 transition-colors"
-                                            >
-                                                <Edit3 size={12} />
-                                                Edit
-                                            </Link>
-                                        )}
                                         <ChevronRight size={16} className="text-slate-600" />
                                     </div>
                                 </Link>
