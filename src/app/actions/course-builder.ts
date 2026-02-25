@@ -1796,7 +1796,7 @@ async function generateMuxCaptionTranscript(playbackId: string): Promise<{
         console.log('[Mux Caption] Caption requested, track IDs:', captionResult.trackIds);
 
         // Step 3: Poll for caption completion
-        console.log('[Mux Caption] Polling for caption completion (this may take 30-120 seconds)');
+        console.log('[Mux Caption] Polling for caption completion (this may take several minutes for large videos)');
         const readyResult = await waitForMuxCaptionReady(assetId, captionResult.trackIds);
 
         if (!readyResult.ready || !readyResult.vttUrl) {
