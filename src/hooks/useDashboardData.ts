@@ -46,6 +46,14 @@ function clearCache(): void {
   }
 }
 
+export function clearDashboardCache(): void {
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    // silently ignore
+  }
+}
+
 export function useDashboardData(): UseDashboardDataReturn {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

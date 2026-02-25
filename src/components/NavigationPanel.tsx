@@ -33,6 +33,7 @@ import { MAIN_NAV_ITEMS, COLLECTION_NAV_ITEMS, CONVERSATION_NAV_ITEMS } from '..
 import { NavItemConfig, BackgroundTheme, Course, Collection } from '../types';
 import { hasPublishedOrgCourses } from '@/app/actions/org-courses';
 import { switchPlatformAdminOrg, getOrgSelectorData } from '@/app/actions/org';
+import { clearDashboardCache } from '@/hooks/useDashboardData';
 
 // Animated Count Badge with warm glow effect on count change
 const AnimatedCountBadge: React.FC<{
@@ -377,6 +378,7 @@ const NavigationPanel: React.FC<NavigationPanelProps> = ({
     try {
       const result = await switchPlatformAdminOrg(orgId);
       if (result.success) {
+        clearDashboardCache();
         setIsOrgDropdownOpen(false);
         window.location.reload();
       } else {

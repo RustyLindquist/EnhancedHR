@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, BookOpen, Clock, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import ROIChart from '@/components/ROIChart';
 import { getOrgContext } from '@/lib/org-context';
 
@@ -12,8 +13,9 @@ export default async function OrgDashboardPage() {
 
     if (!orgContext) return <div>Access Denied</div>;
 
-    // Fetch Stats using the effective org ID
-    const { count: memberCount } = await supabase
+    // Fetch Stats using the effective org ID (admin client bypasses RLS on profiles)
+    const adminClient = createAdminClient();
+    const { count: memberCount } = await adminClient
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('org_id', orgContext.orgId);

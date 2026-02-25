@@ -41,8 +41,18 @@ export async function createGroup(name: string, memberIds: string[]) {
     .single();
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
-  if (!profile || !profile.org_id || !isAdmin) {
+  if (!profile || !isAdmin) {
       return { success: false, error: 'Permission denied' };
+  }
+
+  // For platform admins, use the effective org from cookie context
+  let effectiveOrgId = profile.org_id;
+  if (profile.role === 'admin') {
+      const orgContext = await getOrgContext();
+      effectiveOrgId = orgContext?.orgId || profile.org_id;
+  }
+  if (!effectiveOrgId) {
+      return { success: false, error: 'No organization found' };
   }
 
   const supabaseAdmin = await createAdminClient();
@@ -51,7 +61,7 @@ export async function createGroup(name: string, memberIds: string[]) {
   const { data: group, error: groupError } = await supabaseAdmin
     .from('employee_groups')
     .insert({
-        org_id: profile.org_id,
+        org_id: effectiveOrgId,
         name
     })
     .select()

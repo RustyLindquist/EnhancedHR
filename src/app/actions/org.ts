@@ -530,10 +530,11 @@ export async function getOrgSelectorData(): Promise<{
       };
     }
 
-    // Get member counts for each org
+    // Get member counts for each org (admin client bypasses RLS on profiles)
+    const adminClient = createAdminClient();
     const orgsWithCounts = await Promise.all(
       orgs.map(async (org) => {
-        const { count } = await supabase
+        const { count } = await adminClient
           .from('profiles')
           .select('*', { count: 'exact', head: true })
           .eq('org_id', org.id);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Shield } from 'lucide-react';
 import RemoveUserButton from '@/components/org/RemoveUserButton';
 import { getOrgContext } from '@/lib/org-context';
@@ -25,8 +26,9 @@ export default async function OrgTeamPage() {
         ? `${baseUrl}/${org.slug}/${org.invite_hash}`
         : '';
 
-    // Fetch Members using the effective org ID
-    const { data: members } = await supabase
+    // Fetch Members using the effective org ID (admin client bypasses RLS on profiles)
+    const adminClient = createAdminClient();
+    const { data: members } = await adminClient
         .from('profiles')
         .select('*')
         .eq('org_id', orgContext.orgId)
