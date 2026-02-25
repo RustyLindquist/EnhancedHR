@@ -430,7 +430,7 @@ export async function requestMuxAutoCaption(assetId: string): Promise<{
 export async function waitForMuxCaptionReady(
     assetId: string,
     trackIdOrIds: string | string[],
-    maxAttempts: number = 40  // ~2 minutes at 3 second intervals
+    maxAttempts: number = 200  // ~10 minutes with adaptive polling to handle large videos
 ): Promise<{
     ready: boolean;
     vttUrl?: string;
@@ -439,7 +439,7 @@ export async function waitForMuxCaptionReady(
     error?: string;
 }> {
     const trackIds = Array.isArray(trackIdOrIds) ? trackIdOrIds : [trackIdOrIds];
-    console.log(`[Mux] Waiting for caption track(s) ${trackIds.join(', ')} on asset ${assetId} to be ready...`);
+    console.log(`[Mux] Waiting for caption track(s) ${trackIds.join(', ')} on asset ${assetId} to be ready (max ${maxAttempts} attempts)...`);
 
     for (let i = 0; i < maxAttempts; i++) {
         try {
@@ -472,8 +472,9 @@ export async function waitForMuxCaptionReady(
             const firstTrack = asset.tracks?.find(t => trackIds.includes(t.id || ''));
             console.log(`[Mux] Caption track status: ${firstTrack?.status || 'unknown'}, attempt ${i + 1}/${maxAttempts}`);
 
-            // Wait 3 seconds between checks
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Adaptive polling: 3s for the first 2 min, then 5s after that
+            const pollInterval = i < 40 ? 3000 : 5000;
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
         } catch (error: any) {
             console.error('[Mux] Error checking caption status:', error);
         }
