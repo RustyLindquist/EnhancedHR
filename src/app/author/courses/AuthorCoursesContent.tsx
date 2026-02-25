@@ -121,7 +121,7 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
                                     className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition-colors group relative"
                                 >
                                     {/* Thumbnail - Link to course view */}
-                                    <Link href={`/courses/${course.id}`} className="block">
+                                    <Link href={`/dashboard?courseId=${course.id}`} className="block">
                                         <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 relative">
                                             {course.image_url ? (
                                                 <img
@@ -143,7 +143,7 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
 
                                     {/* Content */}
                                     <div className="p-5">
-                                        <Link href={`/courses/${course.id}`}>
+                                        <Link href={`/dashboard?courseId=${course.id}`}>
                                             <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-brand-blue-light transition-colors">
                                                 {course.title}
                                             </h3>
@@ -192,7 +192,7 @@ export default function AuthorCoursesContent({ courses, courseStats }: AuthorCou
                             return (
                                 <Link
                                     key={course.id}
-                                    href={`/courses/${course.id}`}
+                                    href={`/dashboard?courseId=${course.id}`}
                                     className="group relative flex items-center gap-4 px-4 py-3
                                                bg-white/[0.03] hover:bg-white/[0.08]
                                                border border-white/[0.06] hover:border-white/20
