@@ -477,7 +477,7 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                             <p className="text-slate-400 mb-6 max-w-md text-center">
                                 You've used your 60 minutes of free trial access. Upgrade to a full membership to continue learning.
                             </p>
-                            <button className="bg-brand-orange text-white px-8 py-3 rounded-full font-bold uppercase tracking-wider hover:bg-brand-orange/90 transition-all shadow-lg hover:scale-105">
+                            <button onClick={() => window.location.href = '/settings/billing'} className="bg-brand-orange text-white px-8 py-3 rounded-full font-bold uppercase tracking-wider hover:bg-brand-orange/90 transition-all shadow-lg hover:scale-105">
                                 Upgrade Now
                             </button>
                         </div>

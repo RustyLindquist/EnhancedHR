@@ -83,7 +83,7 @@ export async function proxy(request: NextRequest) {
     if (user && (isProtectedRoute || isExpertApplicationPage) && !isBillingPage && !request.nextUrl.pathname.startsWith('/api')) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('membership_status, trial_minutes_used, role, billing_disabled')
+            .select('membership_status, trial_minutes_used, role, billing_disabled, billing_period_end')
             .eq('id', user.id)
             .single();
 
@@ -106,9 +106,14 @@ export async function proxy(request: NextRequest) {
             const isInactive = profile.membership_status === 'inactive';
             const isTrialExpired = profile.membership_status === 'trial' && (profile.trial_minutes_used || 0) >= 60;
 
-            if (isInactive || isTrialExpired) {
-                // Redirect to billing, but include a query param to show a message if needed
-                return NextResponse.redirect(new URL('/settings/billing?require_upgrade=true', request.url));
+            // past_due: allow access during grace period, block after
+            const isPastDueExpired = profile.membership_status === 'past_due'
+                && profile.billing_period_end
+                && new Date(profile.billing_period_end) < new Date();
+
+            if (isInactive || isTrialExpired || isPastDueExpired) {
+                const reason = isPastDueExpired ? 'payment_failed' : 'require_upgrade';
+                return NextResponse.redirect(new URL(`/settings/billing?${reason}=true`, request.url));
             }
         }
     }

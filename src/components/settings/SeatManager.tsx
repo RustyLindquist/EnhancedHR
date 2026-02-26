@@ -17,9 +17,6 @@ export default function SeatManager({ orgId, currentSeats, activeMembers }: Seat
     const handleAddSeat = async () => {
         setIsLoading(true)
         try {
-            // We can just redirect to a stripe checkout that updates subscription quantity?
-            // Or call an API that does it directly if we have card on file.
-            // For simplicity in Phase 1, we'll try to update directly via API assuming payment method exists.
             const res = await fetch('/api/stripe/update-seats', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -33,6 +30,30 @@ export default function SeatManager({ orgId, currentSeats, activeMembers }: Seat
         } catch (error: any) {
             console.error(error)
             alert(`Failed to add seat: ${error.message}`)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const canRemoveSeat = currentSeats > 1 && activeMembers < currentSeats
+
+    const handleRemoveSeat = async () => {
+        if (!canRemoveSeat) return
+        setIsLoading(true)
+        try {
+            const res = await fetch('/api/stripe/update-seats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orgId, action: 'decrement' })
+            })
+
+            if (!res.ok) throw new Error(await res.text())
+
+            router.refresh()
+            alert('Seat removed. Credit will be applied to your next billing cycle.')
+        } catch (error: any) {
+            console.error(error)
+            alert(`Failed to remove seat: ${error.message}`)
         } finally {
             setIsLoading(false)
         }
@@ -74,15 +95,19 @@ export default function SeatManager({ orgId, currentSeats, activeMembers }: Seat
                     <Plus size={18} />
                     {isLoading ? 'Updating...' : 'Add Seat ($30/mo)'}
                 </button>
-                {/* 
                 <button
-                    disabled
-                    className="flex-1 py-3 bg-white/5 border border-white/10 text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2 cursor-not-allowed"
+                    onClick={handleRemoveSeat}
+                    disabled={isLoading || !canRemoveSeat}
+                    title={!canRemoveSeat ? (activeMembers >= currentSeats ? 'Remove members before reducing seats' : 'Minimum 1 seat required') : 'Remove a seat'}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                        canRemoveSeat
+                            ? 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20'
+                            : 'bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed'
+                    }`}
                 >
                     <UserMinus size={18} />
-                   Remove Seat
-                </button> 
-                */}
+                    {isLoading ? 'Updating...' : 'Remove Seat'}
+                </button>
             </div>
             <p className="text-xs text-slate-500 mt-4 text-center">
                 * Added seats are billed immediately (prorated). Removed seats apply at end of billing cycle.

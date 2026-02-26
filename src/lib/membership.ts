@@ -14,7 +14,15 @@ export async function linkStripeCustomer(userId: string, stripeCustomerId: strin
     }
 }
 
-export async function updateSubscriptionStatus(stripeCustomerId: string, status: string) {
+export async function updateSubscriptionStatus(
+    stripeCustomerId: string,
+    status: string,
+    subscriptionDetails?: {
+        subscriptionId?: string;
+        priceId?: string;
+        periodEnd?: number; // Unix timestamp
+    }
+) {
     const supabase = createAdminClient();
 
     // Check if billing is admin-disabled for this user
@@ -38,11 +46,25 @@ export async function updateSubscriptionStatus(stripeCustomerId: string, status:
     let membershipStatus: MembershipStatus = 'inactive';
     if (status === 'active' || status === 'trialing') {
         membershipStatus = 'active';
+    } else if (status === 'past_due') {
+        membershipStatus = 'past_due';
+    }
+
+    const updateData: Record<string, any> = { membership_status: membershipStatus };
+
+    if (subscriptionDetails?.subscriptionId) {
+        updateData.stripe_subscription_id = subscriptionDetails.subscriptionId;
+    }
+    if (subscriptionDetails?.priceId) {
+        updateData.stripe_price_id = subscriptionDetails.priceId;
+    }
+    if (subscriptionDetails?.periodEnd) {
+        updateData.billing_period_end = new Date(subscriptionDetails.periodEnd * 1000).toISOString();
     }
 
     const { error } = await supabase
         .from('profiles')
-        .update({ membership_status: membershipStatus })
+        .update(updateData)
         .eq('stripe_customer_id', stripeCustomerId);
 
     if (error) {
@@ -51,7 +73,7 @@ export async function updateSubscriptionStatus(stripeCustomerId: string, status:
     }
 }
 
-export type MembershipStatus = 'trial' | 'active' | 'inactive' | 'employee' | 'org_admin';
+export type MembershipStatus = 'trial' | 'active' | 'inactive' | 'past_due' | 'employee' | 'org_admin';
 
 export interface UserMembership {
     userId: string;

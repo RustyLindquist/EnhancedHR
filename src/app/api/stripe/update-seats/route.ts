@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         // 4. Update Subscription
         await stripe.subscriptionItems.update(subscriptionItemId, {
             quantity: newQuantity,
-            proration_behavior: 'always_invoice' // Charge immediately for add, credit for remove
+            proration_behavior: action === 'increment' ? 'always_invoice' : 'create_prorations'
         })
 
         return NextResponse.json({ success: true, newQuantity })
