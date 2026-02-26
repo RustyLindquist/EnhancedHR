@@ -161,7 +161,7 @@ export default function AdminCoursesPage() {
                     <p className="text-slate-400">Manage your learning content and catalog.</p>
                 </div>
                 <Link
-                    href="/admin/courses/new"
+                    href="/admin/courses/new/builder"
                     className="flex items-center gap-2 px-5 py-3 rounded-full bg-brand-blue-light text-brand-black font-bold uppercase tracking-wider hover:bg-white transition-all shadow-lg hover:scale-105"
                 >
                     <Plus size={18} /> New Course

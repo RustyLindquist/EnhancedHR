@@ -22,6 +22,8 @@ export const SUPPORTED_FILE_TYPES = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
     'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+    'text/tab-separated-values': 'tsv',
     'text/plain': 'txt',
     'text/markdown': 'md',
     'text/csv': 'csv',
@@ -144,6 +146,7 @@ export async function parseFileContent(
             case 'text/plain':
             case 'text/markdown':
             case 'text/csv':
+            case 'text/tab-separated-values':
             case 'application/json':
                 text = parseTextFile(buffer, mimeType);
                 break;
