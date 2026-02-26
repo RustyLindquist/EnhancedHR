@@ -148,6 +148,24 @@ export async function deleteOrganization(orgId: string): Promise<void> {
   await requirePlatformAdmin();
   const admin = createAdminClient();
 
+  // Cancel Stripe subscription if exists
+  const { data: org } = await admin
+    .from('organizations')
+    .select('stripe_customer_id, stripe_subscription_id')
+    .eq('id', orgId)
+    .single();
+
+  if (org?.stripe_subscription_id) {
+    try {
+      const { stripe } = await import('@/lib/stripe');
+      await stripe.subscriptions.cancel(org.stripe_subscription_id);
+      console.log(`[deleteOrganization] Canceled Stripe subscription ${org.stripe_subscription_id} for org ${orgId}`);
+    } catch (stripeError: any) {
+      console.error(`[deleteOrganization] Failed to cancel Stripe subscription:`, stripeError);
+      // Continue with deletion — subscription will be orphaned but won't charge
+    }
+  }
+
   // Reset all member profiles
   const { error: profileError } = await admin
     .from('profiles')

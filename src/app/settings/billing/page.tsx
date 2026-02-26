@@ -4,11 +4,18 @@ import { createClient } from '@/lib/supabase/server';
 import { UpgradeButton, ManageSubscriptionButton, OrgSubscriptionButton } from '@/components/settings/BillingButtons';
 import SeatManager from '@/components/settings/SeatManager';
 import { stripe } from '@/lib/stripe';
-import { CheckCircle, Shield, Clock } from 'lucide-react';
+import { CheckCircle, Shield, Clock, AlertTriangle } from 'lucide-react';
 import StandardPageLayout from '@/components/StandardPageLayout';
 import BillingHeader from '@/components/settings/BillingHeader';
 
-export default async function BillingPage() {
+export default async function BillingPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ payment_failed?: string; require_upgrade?: string }>;
+}) {
+    const params = await searchParams;
+    const showRequireUpgrade = params.require_upgrade === 'true';
+    const showPaymentFailedAlert = params.payment_failed === 'true';
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -57,6 +64,7 @@ export default async function BillingPage() {
 
     const isPro = profile?.membership_status === 'active' || profile?.membership_status === 'org_admin' || profile?.membership_status === 'employee';
     const isTrial = profile?.membership_status === 'trial';
+    const isPastDue = profile?.membership_status === 'past_due';
 
     return (
         <StandardPageLayout activeNavId="settings">
@@ -66,6 +74,51 @@ export default async function BillingPage() {
             <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto pl-10 pr-6 pb-48 mt-[60px] relative z-10 custom-scrollbar">
 
                 <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+
+                    {/* Require Upgrade Alert (from trial expiry redirect) */}
+                    {showRequireUpgrade && (
+                        <div className="bg-brand-orange/10 border border-brand-orange/30 rounded-2xl p-4 flex items-center gap-3">
+                            <AlertTriangle size={20} className="text-brand-orange shrink-0" />
+                            <p className="text-brand-orange text-sm">
+                                Your free trial has ended. Upgrade to Pro to continue accessing courses.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Payment Failed Alert (from redirect) */}
+                    {showPaymentFailedAlert && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
+                            <AlertTriangle size={20} className="text-red-400 shrink-0" />
+                            <p className="text-red-300 text-sm">
+                                Your recent payment could not be processed. Please update your payment method below.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Past Due Warning Banner */}
+                    {isPastDue && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
+                            <div className="flex items-start gap-4">
+                                <div className="p-2 rounded-xl bg-red-500/20">
+                                    <AlertTriangle size={24} className="text-red-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-red-400 mb-1">Payment Issue</h3>
+                                    <p className="text-slate-300">
+                                        Your last payment failed. Please update your payment method to continue accessing EnhancedHR.
+                                    </p>
+                                    {profile?.billing_period_end && (
+                                        <p className="text-slate-400 mt-2 text-sm">
+                                            Access expires on {new Date(profile.billing_period_end).toLocaleDateString()}.
+                                        </p>
+                                    )}
+                                    <div className="mt-4">
+                                        <ManageSubscriptionButton />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Current Plan Card */}
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
@@ -78,7 +131,7 @@ export default async function BillingPage() {
                                 {isTrial && (
                                     <p className="text-slate-400 flex items-center gap-2">
                                         <Clock size={16} className="text-brand-orange" />
-                                        {60 - (profile?.trial_minutes_used || 0)} minutes remaining
+                                        {Math.max(0, 60 - (profile?.trial_minutes_used || 0))} minutes remaining
                                     </p>
                                 )}
                                 {isPro && profile?.billing_period_end && (

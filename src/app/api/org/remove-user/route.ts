@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
             .from('profiles')
             .update({
                 org_id: null,
-                membership_status: 'free' // Revert to free/trial
+                membership_status: 'trial' // Revert to trial
             })
             .eq('id', userId);
 
@@ -61,36 +61,49 @@ export async function POST(req: NextRequest) {
         if (orgIdToQuery) {
             const { data: org } = await supabase
                 .from('organizations')
-                .select('stripe_subscription_id')
+                .select('stripe_customer_id, stripe_subscription_id')
                 .eq('id', orgIdToQuery)
                 .single();
 
-            if (org?.stripe_subscription_id) {
+            // Resolve subscription ID: use stored value or fall back to listing by customer
+            let subscriptionId = org?.stripe_subscription_id;
+            if (!subscriptionId && org?.stripe_customer_id) {
                 try {
-                    const subscription = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
-                    const subscriptionItem = subscription.items.data[0]; // Assuming single item subscription
+                    const subs = await stripe.subscriptions.list({
+                        customer: org.stripe_customer_id,
+                        status: 'active',
+                        limit: 1,
+                    });
+                    subscriptionId = subs.data[0]?.id ?? null;
+                } catch (listError) {
+                    console.error('Failed to list subscriptions by customer:', listError);
+                }
+            }
+
+            if (subscriptionId) {
+                try {
+                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                    const subscriptionItem = subscription.items.data[0];
 
                     if (subscriptionItem) {
                         const currentQuantity = subscriptionItem.quantity || 1;
-                        const newQuantity = Math.max(1, currentQuantity - 1); // Don't go below 1 (Admin seat)
+                        const newQuantity = Math.max(1, currentQuantity - 1);
 
                         if (currentQuantity > 1) {
-                            await stripe.subscriptions.update(org.stripe_subscription_id, {
+                            await stripe.subscriptions.update(subscriptionId, {
                                 items: [{
                                     id: subscriptionItem.id,
                                     quantity: newQuantity,
                                 }],
-                                proration_behavior: 'always_invoice', // or 'create_prorations'
+                                proration_behavior: 'always_invoice',
                             });
-                            console.log(`Decremented subscription ${org.stripe_subscription_id} to ${newQuantity}`);
+                            console.log(`Decremented subscription ${subscriptionId} to ${newQuantity}`);
                         } else {
                             console.log('Subscription quantity is 1, not decrementing further (Admin seat).');
                         }
                     }
                 } catch (stripeError) {
                     console.error('Stripe update failed:', stripeError);
-                    // We don't fail the request if Stripe fails, but we log it.
-                    // In a production app, we might want to queue this or alert admin.
                 }
             }
         }

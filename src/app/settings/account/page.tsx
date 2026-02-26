@@ -204,7 +204,7 @@ export default async function AccountPage() {
                                                 {mStatus === 'trial' && role !== 'admin' && aStatus !== 'approved' && aStatus !== 'pending' && (
                                                     <p className="text-slate-400 flex items-center gap-2">
                                                         <Clock size={16} className="text-brand-orange" />
-                                                        {60 - (profile?.trial_minutes_used || 0)} minutes remaining
+                                                        {Math.max(0, 60 - (profile?.trial_minutes_used || 0))} minutes remaining
                                                     </p>
                                                 )}
 
