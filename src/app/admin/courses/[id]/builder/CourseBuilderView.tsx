@@ -6,7 +6,7 @@ import { Course, Module, Resource, Lesson } from '@/types';
 import { ExpertCredential } from '@/app/actions/credentials';
 import CourseDescriptionSectionAdmin from './CourseDescriptionSectionAdmin';
 import { useAdminCourse } from '@/components/admin/AdminCoursePageWrapper';
-import { reorderLessons, moveLessonToModule } from '@/app/actions/course-builder';
+import { reorderLessons, moveLessonToModule, reorderModuleItems } from '@/app/actions/course-builder';
 
 // Drag and drop imports
 import {
@@ -170,9 +170,42 @@ export default function CourseBuilderView({
         // Handle resource reordering within module
         const activeId = active.id as string;
         if (activeId.startsWith('resource-')) {
-            // Resource was dragged - just do visual reorder within the merged items
-            // Resources don't persist reorder separately, they use the order field
-            // For now, silently succeed - the visual reorder is handled by SortableContext
+            const resourceId = activeId.replace('resource-', '');
+            const resource = resources.find(r => r.id === resourceId);
+            if (!resource || !resource.module_id) return;
+
+            const moduleId = resource.module_id;
+            const module = syllabus.find(m => m.id === moduleId);
+            if (!module) return;
+
+            // Build merged items list sorted by current order
+            const moduleResources = resources.filter(r => r.module_id === moduleId);
+            const mergedItems: Array<{ id: string; type: 'lesson' | 'resource'; order: number }> = [
+                ...(module.lessons || []).map((l: Lesson, i: number) => ({ id: l.id, type: 'lesson' as const, order: l.order ?? i })),
+                ...moduleResources.map((r, i) => ({ id: r.id, type: 'resource' as const, order: r.order ?? (1000 + i) }))
+            ];
+            mergedItems.sort((a, b) => a.order - b.order);
+
+            // Find indices using the correct ID format (resources use resource- prefix in SortableContext)
+            const overId = over.id as string;
+            const activeIndex = mergedItems.findIndex(item =>
+                item.type === 'resource' ? `resource-${item.id}` === activeId : item.id === activeId
+            );
+            const overIndex = mergedItems.findIndex(item =>
+                item.type === 'resource' ? `resource-${item.id}` === overId : item.id === overId
+            );
+
+            if (activeIndex === -1 || overIndex === -1) return;
+
+            const reordered = arrayMove(mergedItems, activeIndex, overIndex);
+            const orderedItems = reordered.map(item => ({ id: item.id, type: item.type }));
+
+            // Persist to database
+            const result = await reorderModuleItems(moduleId, course.id, orderedItems);
+
+            if (!result.success) {
+                console.error('Failed to reorder module items:', result.error);
+            }
             return;
         }
 
