@@ -370,6 +370,9 @@ export interface Lesson {
   user_transcript?: string; // User-provided transcript override
   transcript_status?: 'pending' | 'generating' | 'ready' | 'failed';
   transcript_source?: 'ai' | 'user' | 'mux-caption' | 'whisper' | 'youtube' | 'legacy' | 'none';
+  // Video processing fields
+  video_status?: 'waiting' | 'processing' | 'ready' | 'errored';
+  mux_asset_id?: string; // Mux asset ID for background processing
 }
 
 export interface Module {

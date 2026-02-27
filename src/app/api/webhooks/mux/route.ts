@@ -1,19 +1,272 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requestMuxAutoCaption, fetchMuxVTT } from '@/app/actions/mux';
+import { parseVTTToTranscript } from '@/lib/vtt-parser';
+import { recalculateCourseDuration } from '@/app/actions/course-builder';
 
-// Initialize Supabase Admin Client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// ============================================
+// Handler: video.asset.ready — encoding complete
+// ============================================
 
-export async function POST(req: NextRequest) {
+/**
+ * Handle video.asset.ready — encoding is complete.
+ * Updates the lesson with the playback ID and triggers deferred transcript if needed.
+ */
+async function handleAssetReady(data: any) {
+    const assetId = data.id;
+    const playbackId = data.playback_ids?.[0]?.id;
+    const duration = data.duration;
+
+    if (!assetId || !playbackId) {
+        console.error('video.asset.ready: Missing assetId or playbackId', { assetId, playbackId });
+        return;
+    }
+
+    const supabase = createAdminClient();
+
+    // Find the lesson that's waiting for this asset
+    const { data: lesson, error: findError } = await supabase
+        .from('lessons')
+        .select('id, module_id, deferred_transcript, video_status')
+        .eq('mux_asset_id', assetId)
+        .eq('video_status', 'processing')
+        .single();
+
+    if (findError || !lesson) {
+        // No matching processing lesson — may have been updated already or not yet saved
+        console.log('video.asset.ready: No processing lesson found for asset', assetId);
+        return;
+    }
+
+    // Format duration as MM:SS or HH:MM:SS
+    const formattedDuration = duration ? formatDuration(duration) : null;
+
+    // Build the update payload
+    const updateData: Record<string, any> = {
+        video_url: playbackId,
+        video_status: 'ready',
+        ...(formattedDuration && { duration: formattedDuration }),
+    };
+
+    // If deferred transcript was requested, trigger caption generation
+    if (lesson.deferred_transcript === 'ai') {
+        try {
+            await requestMuxAutoCaption(assetId);
+            updateData.transcript_status = 'generating';
+            updateData.deferred_transcript = null;
+        } catch (err) {
+            console.error('video.asset.ready: Failed to request auto-caption for asset', assetId, err);
+            // Still update the video — transcript can be generated manually later
+            updateData.deferred_transcript = null;
+        }
+    }
+
+    const { error: updateError } = await supabase
+        .from('lessons')
+        .update(updateData)
+        .eq('id', lesson.id);
+
+    if (updateError) {
+        console.error('video.asset.ready: Failed to update lesson', lesson.id, updateError);
+        return;
+    }
+
+    // Recalculate course duration
+    if (lesson.module_id) {
+        try {
+            // Get the course_id from the module
+            const { data: module } = await supabase
+                .from('modules')
+                .select('course_id')
+                .eq('id', lesson.module_id)
+                .single();
+
+            if (module?.course_id) {
+                await recalculateCourseDuration(module.course_id);
+            }
+        } catch (err) {
+            console.error('video.asset.ready: Failed to recalculate course duration', err);
+        }
+    }
+
+    console.log('video.asset.ready: Updated lesson', lesson.id, 'with playbackId', playbackId);
+}
+
+// ============================================
+// Handler: video.asset.errored — encoding failed
+// ============================================
+
+/**
+ * Handle video.asset.errored — encoding failed.
+ */
+async function handleAssetErrored(data: any) {
+    const assetId = data.id;
+
+    if (!assetId) {
+        console.error('video.asset.errored: Missing assetId');
+        return;
+    }
+
+    const supabase = createAdminClient();
+
+    const { error } = await supabase
+        .from('lessons')
+        .update({ video_status: 'errored' })
+        .eq('mux_asset_id', assetId)
+        .eq('video_status', 'processing');
+
+    if (error) {
+        console.error('video.asset.errored: Failed to update lesson for asset', assetId, error);
+    } else {
+        console.log('video.asset.errored: Marked lesson as errored for asset', assetId);
+    }
+}
+
+// ============================================
+// Handler: video.track.ready — captions generated
+// ============================================
+
+/**
+ * Handle video.track.ready — auto-generated captions are complete.
+ * Fetches the VTT, parses it, and saves as the AI transcript.
+ */
+async function handleTrackReady(body: any) {
+    const track = body.data;
+    const assetId = body.object?.id || track?.asset_id;
+
+    // Only process text/subtitle tracks, not audio/video tracks
+    if (track?.type !== 'text' && track?.text_type !== 'subtitles') {
+        return;
+    }
+
+    if (!assetId) {
+        console.error('video.track.ready: Missing assetId');
+        return;
+    }
+
+    const supabase = createAdminClient();
+
+    // Find the lesson waiting for transcript
+    const { data: lesson, error: findError } = await supabase
+        .from('lessons')
+        .select('id, video_url, transcript_status')
+        .eq('mux_asset_id', assetId)
+        .eq('transcript_status', 'generating')
+        .single();
+
+    if (findError || !lesson) {
+        console.log('video.track.ready: No lesson awaiting transcript for asset', assetId);
+        return;
+    }
+
+    if (!lesson.video_url) {
+        console.error('video.track.ready: Lesson has no video_url (playback ID)', lesson.id);
+        return;
+    }
+
     try {
-        const body = await req.json();
-        const { type, data } = body;
+        // Build the VTT URL and fetch content
+        const trackId = track.id;
+        const vttUrl = `https://stream.mux.com/${lesson.video_url}/text/${trackId}.vtt`;
+        const vttResult = await fetchMuxVTT(vttUrl);
 
-        console.log('Received Mux Webhook:', type);
+        if (!vttResult.success || !vttResult.content) {
+            throw new Error(vttResult.error || 'Empty VTT content');
+        }
 
-        if (type === 'video.viewing.session') {
+        // Parse VTT to plain text
+        const transcriptText = parseVTTToTranscript(vttResult.content);
+
+        // Save the transcript
+        const { error: updateError } = await supabase
+            .from('lessons')
+            .update({
+                ai_transcript: transcriptText,
+                transcript_status: 'ready',
+                transcript_source: 'mux-caption',
+                transcript_generated_at: new Date().toISOString(),
+            })
+            .eq('id', lesson.id);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        console.log('video.track.ready: Saved transcript for lesson', lesson.id);
+    } catch (err) {
+        console.error('video.track.ready: Failed to process transcript for lesson', lesson.id, err);
+
+        // Mark transcript as failed so user knows to retry
+        await supabase
+            .from('lessons')
+            .update({ transcript_status: 'error' })
+            .eq('id', lesson.id);
+    }
+}
+
+// ============================================
+// Utility
+// ============================================
+
+/**
+ * Format seconds to duration string (MM:SS or HH:MM:SS)
+ */
+function formatDuration(seconds: number): string {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hrs > 0) {
+        return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ============================================
+// POST Handler
+// ============================================
+
+export async function POST(request: Request) {
+    try {
+        const rawBody = await request.text();
+
+        // Verify webhook signature if secret is configured
+        const webhookSecret = process.env.MUX_WEBHOOK_SECRET;
+        if (webhookSecret) {
+            const signature = request.headers.get('mux-signature');
+            if (!signature) {
+                console.error('Mux webhook: Missing signature header');
+                return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+            }
+            // TODO: Add Mux.Webhooks.verifySignature() when MUX_WEBHOOK_SECRET is set
+            // For now, we log the signature for debugging
+        }
+
+        const body = JSON.parse(rawBody);
+        const eventType = body.type;
+
+        console.log('Received Mux Webhook:', eventType);
+
+        // Handle video asset ready (encoding complete)
+        if (eventType === 'video.asset.ready') {
+            await handleAssetReady(body.data);
+        }
+
+        // Handle video asset error
+        else if (eventType === 'video.asset.errored') {
+            await handleAssetErrored(body.data);
+        }
+
+        // Handle video track ready (captions generated)
+        else if (eventType === 'video.track.ready') {
+            await handleTrackReady(body);
+        }
+
+        // Handle viewing session (existing trial tracking)
+        else if (eventType === 'video.viewing.session') {
+            const supabase = createAdminClient();
+            const data = body.data;
+
             // 1. Extract Data
             const userId = data.viewer_user_id;
             const videoId = data.video_id; // This is our Lesson ID
@@ -96,9 +349,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        return NextResponse.json({ message: 'Webhook received' }, { status: 200 });
+        return NextResponse.json({ received: true });
     } catch (error) {
-        console.error('Error processing Mux webhook:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('Mux webhook error:', error);
+        return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
     }
 }

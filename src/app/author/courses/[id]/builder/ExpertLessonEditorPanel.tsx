@@ -5,7 +5,7 @@ import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangl
 import DropdownPanel from '@/components/DropdownPanel';
 import { createExpertLesson, updateExpertLesson, deleteExpertLesson, uploadExpertModuleResourceFile, updateExpertModuleResource, deleteExpertModuleResource } from '@/app/actions/expert-course-builder';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
-import { getDurationFromPlaybackId, deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
+import { getDurationFromPlaybackId, deleteMuxAssetByPlaybackId, checkMuxAssetStatus } from '@/app/actions/mux';
 import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from '@/app/actions/video-metadata';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
@@ -52,6 +52,9 @@ interface ExpertLessonEditorPanelProps {
     resourceSize?: string;
     resourceEstimatedDuration?: string;
     resourceDescription?: string;
+    // Large file background processing props
+    lessonVideoStatus?: string;
+    lessonMuxAssetId?: string;
 }
 
 const LESSON_TYPES = [
@@ -80,7 +83,10 @@ export default function ExpertLessonEditorPanel({
     resourceType,
     resourceSize,
     resourceEstimatedDuration,
-    resourceDescription
+    resourceDescription,
+    // Large file background processing props
+    lessonVideoStatus = 'ready',
+    lessonMuxAssetId,
 }: ExpertLessonEditorPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -125,6 +131,11 @@ export default function ExpertLessonEditorPanel({
 
     // Transcript generation
     const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
+
+    // Video processing state (for large file background processing)
+    const [videoProcessing, setVideoProcessing] = useState(lessonVideoStatus === 'processing');
+    const [muxAssetId, setMuxAssetId] = useState<string | null>(lessonMuxAssetId || null);
+    const [muxUploadId, setMuxUploadId] = useState<string | null>(null);
 
     // Duration fetching state
     const [isFetchingDuration, setIsFetchingDuration] = useState(false);
@@ -171,8 +182,34 @@ export default function ExpertLessonEditorPanel({
             setIsUploadingFile(false);
             setResourceDescriptionValue(resourceDescription || '');
             setShowCloseConfirm(false);
+            // Reset video processing state
+            setVideoProcessing(lessonVideoStatus === 'processing');
+            setMuxAssetId(lessonMuxAssetId || null);
+            setMuxUploadId(null);
         }
-    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration, resourceDescription]);
+    }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration, resourceDescription, lessonVideoStatus, lessonMuxAssetId]);
+
+    // Check if a processing video is now ready (when re-opening a lesson)
+    useEffect(() => {
+        if (!isOpen || !videoProcessing || !muxAssetId) return;
+
+        const checkStatus = async () => {
+            try {
+                const result = await checkMuxAssetStatus(muxAssetId);
+                if (result.ready && result.playbackId) {
+                    setVideoUrl(result.playbackId);
+                    setVideoProcessing(false);
+                    if (result.duration) {
+                        setDuration(formatDuration(result.duration));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check video processing status:', err);
+            }
+        };
+
+        checkStatus();
+    }, [isOpen, videoProcessing, muxAssetId]);
 
     // Detect if the user has made any changes
     const hasChanges = useCallback(() => {
@@ -453,7 +490,14 @@ export default function ExpertLessonEditorPanel({
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: finalContent || undefined,
                     duration: effectiveDuration || undefined,
-                    quiz_data: type === 'quiz' ? quizData : undefined
+                    quiz_data: type === 'quiz' ? quizData : undefined,
+                    // Large file processing fields
+                    ...(videoProcessing && {
+                        muxAssetId: muxAssetId || undefined,
+                        muxUploadId: muxUploadId || undefined,
+                        videoStatus: 'processing',
+                        deferredTranscript: transcriptTab === 'ai' ? 'ai' : undefined,
+                    }),
                 });
             } else if (lessonId) {
                 result = await updateExpertLesson(lessonId, courseId, {
@@ -461,7 +505,14 @@ export default function ExpertLessonEditorPanel({
                     video_url: type === 'video' ? videoUrl : undefined,
                     content: finalContent || undefined,
                     duration: effectiveDuration || undefined,
-                    quiz_data: type === 'quiz' ? quizData : undefined
+                    quiz_data: type === 'quiz' ? quizData : undefined,
+                    // Large file processing fields
+                    ...(videoProcessing && {
+                        muxAssetId: muxAssetId || undefined,
+                        muxUploadId: muxUploadId || undefined,
+                        videoStatus: 'processing',
+                        deferredTranscript: transcriptTab === 'ai' ? 'ai' : undefined,
+                    }),
                 });
             } else {
                 setError('Lesson ID is missing');
@@ -479,7 +530,7 @@ export default function ExpertLessonEditorPanel({
                 setError(result.error || 'Failed to save lesson');
             }
         });
-    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes, resourceDescriptionValue]);
+    }, [moduleId, courseId, lessonId, title, type, videoUrl, content, duration, quizData, isNewLesson, onSave, selectedFiles, resourceId, estimatedMinutes, resourceDescriptionValue, videoProcessing, muxAssetId, muxUploadId, transcriptTab]);
 
     const handleSave = useCallback(() => {
         if (!title.trim()) {
@@ -500,7 +551,7 @@ export default function ExpertLessonEditorPanel({
 
             // Case 1: No valid transcript and NOT generating - prompt to add one
             // If generating, allow save since transcript is being auto-generated
-            if (!transcriptExists && videoUrl && !isGeneratingTranscript) {
+            if (!transcriptExists && videoUrl && !isGeneratingTranscript && !videoProcessing) {
                 setTranscriptModalMode('required');
                 setShowTranscriptModal(true);
                 return;
@@ -772,7 +823,21 @@ export default function ExpertLessonEditorPanel({
                         {/* Upload Section */}
                         {videoSource === 'upload' && (
                             <div>
-                                {videoUrl ? (
+                                {videoProcessing ? (
+                                    <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-2 rounded-lg bg-amber-500/20">
+                                                <Loader2 size={24} className="text-amber-400 animate-spin" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-bold text-amber-400 mb-1">Video Encoding in Progress</h4>
+                                                <p className="text-xs text-slate-400">
+                                                    Your video uploaded successfully and is being encoded by Mux. You can save this lesson and come back later — the video will appear automatically when processing completes.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : videoUrl ? (
                                     <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 rounded-lg bg-green-500/20">
@@ -795,6 +860,12 @@ export default function ExpertLessonEditorPanel({
                                     <MuxUploaderWrapper
                                         onUploadStart={() => setIsUploading(true)}
                                         onSuccess={handleUploadSuccess}
+                                        onLargeFileProcessing={(uploadId, assetId) => {
+                                            setIsUploading(false);
+                                            setMuxAssetId(assetId);
+                                            setMuxUploadId(uploadId);
+                                            setVideoProcessing(true);
+                                        }}
                                         onError={(err) => {
                                             setError('Upload failed: ' + err.message);
                                             setIsUploading(false);

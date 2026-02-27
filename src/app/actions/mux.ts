@@ -155,6 +155,30 @@ export async function waitForMuxAssetReady(assetId: string, maxAttempts: number 
     return { ready: false };
 }
 
+/**
+ * Single-check function for asset status (no polling).
+ * Used when re-opening a lesson that was saved while processing.
+ */
+export async function checkMuxAssetStatus(assetId: string): Promise<{
+    ready: boolean;
+    playbackId?: string;
+    duration?: number;
+}> {
+    'use server';
+    try {
+        const asset = await mux.video.assets.retrieve(assetId);
+        if (asset.status === 'ready') {
+            const playbackId = asset.playback_ids?.[0]?.id;
+            const duration = asset.duration;
+            return { ready: true, playbackId: playbackId || undefined, duration };
+        }
+        return { ready: false };
+    } catch (error) {
+        console.error('Error checking Mux asset status:', error);
+        return { ready: false };
+    }
+}
+
 export async function deleteMuxAsset(assetId: string): Promise<boolean> {
     try {
         await mux.video.assets.delete(assetId);

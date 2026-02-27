@@ -9,6 +9,7 @@ interface MuxUploaderWrapperProps {
     onUploadStart?: () => void;
     onSuccess?: (playbackId: string, duration?: number) => void;
     onError?: (error: any) => void;
+    onLargeFileProcessing?: (uploadId: string, assetId: string) => void;
 }
 
 function formatElapsed(seconds: number): string {
@@ -18,13 +19,17 @@ function formatElapsed(seconds: number): string {
     return `${m}m ${s.toString().padStart(2, '0')}s`;
 }
 
-export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }: MuxUploaderWrapperProps) {
+const LARGE_FILE_THRESHOLD = 500 * 1024 * 1024; // 500MB
+
+export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, onLargeFileProcessing }: MuxUploaderWrapperProps) {
     const [uploadUrl, setUploadUrl] = useState<string | null>(null);
     const [uploadId, setUploadId] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStatus, setProcessingStatus] = useState<string>('');
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const fileSizeRef = useRef<number>(0);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Elapsed time counter during processing
     useEffect(() => {
@@ -58,6 +63,26 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
         prepareUpload();
     }, []);
 
+    // Capture file size from mux-uploader's file-ready event
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const uploader = container.querySelector('mux-uploader');
+        if (!uploader) return;
+
+        const handleFileReady = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const file = customEvent.detail as File;
+            if (file && file.size) {
+                fileSizeRef.current = file.size;
+            }
+        };
+
+        uploader.addEventListener('file-ready', handleFileReady);
+        return () => uploader.removeEventListener('file-ready', handleFileReady);
+    }, []);
+
     const handleUploadSuccess = async () => {
         if (!uploadId) {
             console.error('No upload ID available');
@@ -77,7 +102,16 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
             }
             console.log('Got asset ID:', assetId);
 
-            // Step 2: Wait for the asset to be ready and get the playback ID
+            // Branch based on file size
+            if (fileSizeRef.current >= LARGE_FILE_THRESHOLD && onLargeFileProcessing) {
+                // Large file: skip encoding wait, delegate to background processing
+                console.log('Large file detected (' + fileSizeRef.current + ' bytes), delegating to background processing');
+                setIsProcessing(false);
+                onLargeFileProcessing(uploadId, assetId);
+                return;
+            }
+
+            // Small file: existing synchronous wait
             setProcessingStatus('Encoding video...');
             const result = await waitForMuxAssetReady(assetId);
 
@@ -129,7 +163,7 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError }
     }
 
     return (
-        <div className="w-full">
+        <div ref={containerRef} className="w-full">
             <MuxUploader
                 endpoint={uploadUrl}
                 onUploadStart={onUploadStart}
