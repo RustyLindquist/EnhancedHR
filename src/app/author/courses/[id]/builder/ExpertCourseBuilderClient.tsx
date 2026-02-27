@@ -674,7 +674,7 @@ export default function ExpertCourseBuilderClient({
                 setSyllabus(initialSyllabus);
             }
         }
-    }, [syllabus, initialCourse.id, initialSyllabus]);
+    }, [syllabus, initialCourse.id, initialSyllabus, initialResources]);
 
     const handleRefresh = useCallback(() => {
         router.refresh();

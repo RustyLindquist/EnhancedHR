@@ -20,8 +20,11 @@ const DEFAULT_CHUNK_OVERLAP = 200; // Overlap between chunks for context continu
 export const SUPPORTED_FILE_TYPES = {
     'application/pdf': 'pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/msword': 'doc',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
     'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.ms-excel': 'xls',
     'application/vnd.oasis.opendocument.spreadsheet': 'ods',
     'text/tab-separated-values': 'tsv',
     'text/plain': 'txt',
@@ -151,7 +154,27 @@ export async function parseFileContent(
                 text = parseTextFile(buffer, mimeType);
                 break;
 
-            default:
+            // Binary formats without parsers — return gracefully instead of garbled UTF-8
+            case 'application/msword':
+            case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+            case 'application/vnd.ms-excel':
+            case 'application/vnd.oasis.opendocument.spreadsheet':
+                return {
+                    text: '',
+                    success: false,
+                    error: 'Text extraction not yet supported for this file format'
+                };
+
+            default: {
+                // Check for binary file extensions before attempting text decode
+                const lowerName = (fileName || '').toLowerCase();
+                if (/\.(xls|xlsx|ods|numbers|doc|ppt)$/i.test(lowerName)) {
+                    return {
+                        text: '',
+                        success: false,
+                        error: 'Text extraction not yet supported for this file format'
+                    };
+                }
                 // Try as plain text for unknown types
                 try {
                     text = new TextDecoder('utf-8').decode(buffer);
@@ -162,6 +185,7 @@ export async function parseFileContent(
                         error: `Unsupported file type: ${mimeType}`
                     };
                 }
+            }
         }
 
         // Clean up the extracted text

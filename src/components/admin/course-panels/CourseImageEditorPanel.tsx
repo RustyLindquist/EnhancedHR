@@ -23,6 +23,11 @@ export default function CourseImageEditorPanel({
     const [isPending, startTransition] = useTransition();
     const [imageUrl, setImageUrl] = useState(currentImage || '');
     const [error, setError] = useState<string | null>(null);
+
+    // Sync with prop changes (e.g., after another admin updates the image)
+    React.useEffect(() => {
+        setImageUrl(currentImage || '');
+    }, [currentImage]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -180,9 +185,10 @@ export default function CourseImageEditorPanel({
                                 />
                                 <button
                                     onClick={handleRemove}
-                                    className="absolute top-3 right-3 p-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+                                    disabled={isPending || isUploading}
+                                    className="absolute top-3 right-3 p-2 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-colors disabled:opacity-50"
                                 >
-                                    <Trash2 size={16} />
+                                    {isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                 </button>
                             </>
                         ) : (
