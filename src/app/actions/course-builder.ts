@@ -1346,19 +1346,22 @@ export async function reorderModuleItems(
         return admin
             .from(table)
             .update({ order: index })
-            .eq('id', item.id);
+            .eq('id', item.id)
+            .eq('module_id', moduleId);
     });
 
     const results = await Promise.all(updates);
     const failed = results.find(r => r.error);
+
+    // Always revalidate so UI reflects actual DB state, even on partial failure
+    revalidatePath(`/admin/courses/${courseId}/builder`);
+    revalidatePath(`/author/courses/${courseId}/builder`);
 
     if (failed?.error) {
         console.error('[reorderModuleItems] Error:', failed.error);
         return { success: false, error: failed.error.message };
     }
 
-    revalidatePath(`/admin/courses/${courseId}/builder`);
-    revalidatePath(`/author/courses/${courseId}/builder`);
     return { success: true };
 }
 
@@ -1371,7 +1374,8 @@ function detectResourceType(fileName: string, mimeType: string): 'PDF' | 'DOC' |
     if (lower.endsWith('.doc') || lower.endsWith('.docx') || mimeType.includes('word')) return 'DOC';
     if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.ods') || lower.endsWith('.numbers') || lower.endsWith('.csv') || lower.endsWith('.tsv') || mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'XLS';
     if (mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(lower)) return 'IMG';
-    return 'LINK'; // Default for unknown types
+    if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.json') || lower.endsWith('.ppt') || lower.endsWith('.pptx') || mimeType.includes('presentation') || mimeType.includes('powerpoint') || mimeType.startsWith('text/')) return 'DOC';
+    return 'LINK'; // Default for link-type resources
 }
 
 /**
