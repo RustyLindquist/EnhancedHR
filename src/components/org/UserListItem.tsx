@@ -3,6 +3,7 @@
 import React from 'react';
 import { OrgMember } from '@/app/actions/org';
 import { Shield, Plus, BookOpen, Award, Clock, MessageSquare, ChevronRight } from 'lucide-react';
+import { formatCredits } from '@/lib/format-credits';
 
 interface UserListItemProps {
     member: OrgMember;
@@ -108,7 +109,7 @@ export default function UserListItem({ member, onClick, onAddToGroup, showAddBut
                     </span>
                     <span className="flex items-center gap-1">
                         <Award size={12} className="text-amber-400/60" />
-                        {member.credits_earned || 0} Credits
+                        {formatCredits(member.credits_earned)} Credits
                     </span>
                     <span className="flex items-center gap-1 hidden md:flex">
                         <Clock size={12} className="text-emerald-400/60" />

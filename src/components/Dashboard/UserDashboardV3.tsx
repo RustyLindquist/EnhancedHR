@@ -21,6 +21,7 @@ import UniversalCollectionListItem from '../UniversalCollectionListItem';
 import { CollectionItemDetail } from '../UniversalCollectionCard';
 import PersonalInsightsWidget from './PersonalInsightsWidget';
 import PersonalInsightsPreview from './PersonalInsightsPreview';
+import { formatCredits } from '@/lib/format-credits';
 
 // ── SessionStorage caching for dashboard data ──────────────────────────
 const STATS_CACHE_KEY = 'ehr:dashboard-stats';
@@ -610,7 +611,7 @@ const UserDashboardV3: React.FC<UserDashboardV3Props> = ({
                                         <tr key={cert.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                                             <td className="py-3 px-4 text-slate-300">{cert.course_title || 'Course Completion'}</td>
                                             <td className="py-3 px-4 text-slate-500">{new Date(cert.issued_at).toLocaleDateString()}</td>
-                                            <td className="py-3 px-4 text-brand-orange font-medium">{cert.credits || 0} PDCs</td>
+                                            <td className="py-3 px-4 text-brand-orange font-medium">{formatCredits(cert.credits)} PDCs</td>
                                             <td className="py-3 px-4 text-right">
                                                 <button className="text-xs text-brand-blue-light hover:text-white transition-colors">Download</button>
                                             </td>

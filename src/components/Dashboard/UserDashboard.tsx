@@ -19,6 +19,7 @@ import { Course } from '@/types';
 import CardStack from '../CardStack'; // Reusing the card component
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { PromptSuggestion, fetchPromptSuggestions } from '@/lib/prompts';
+import { formatCredits } from '@/lib/format-credits';
 
 interface UserDashboardProps {
     user: any; // Contains profile data now
@@ -226,7 +227,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, onNavigate
                             </div>
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Credits</span>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">{loading ? '...' : stats.creditsEarned}</div>
+                        <div className="text-3xl font-bold text-white mb-1">{loading ? '...' : formatCredits(stats.creditsEarned)}</div>
                         <div className="text-xs text-slate-400">SHRM / HRCI PDCs</div>
                     </div>
 
@@ -370,7 +371,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, courses, onNavigate
                                         <tr key={cert.id} className="group border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                                             <td className="py-4 text-white font-medium">{cert.course_title || 'Course Completion'}</td>
                                             <td className="py-4 text-slate-400">{new Date(cert.issued_at).toLocaleDateString()}</td>
-                                            <td className="py-4 text-brand-orange font-bold">{cert.credits || 0} PDCs</td>
+                                            <td className="py-4 text-brand-orange font-bold">{formatCredits(cert.credits)} PDCs</td>
                                             <td className="py-4 text-right">
                                                 <button className="text-xs text-brand-blue-light hover:text-white underline">Download</button>
                                             </td>
