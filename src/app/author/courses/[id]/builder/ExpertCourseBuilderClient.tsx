@@ -1172,8 +1172,8 @@ export default function ExpertCourseBuilderClient({
                 resourceSize={editingResource?.size}
                 resourceEstimatedDuration={(editingResource as any)?.estimated_duration}
                 resourceDescription={editingResource?.description}
-                lessonVideoStatus={(editingLesson as any)?.video_status || 'ready'}
-                lessonMuxAssetId={(editingLesson as any)?.mux_asset_id || undefined}
+                lessonVideoStatus={editingLesson?.video_status || 'ready'}
+                lessonMuxAssetId={editingLesson?.mux_asset_id || undefined}
             />
 
             <ResourcesEditorPanel

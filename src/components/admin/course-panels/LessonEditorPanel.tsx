@@ -1040,7 +1040,21 @@ export default function LessonEditorPanel({
                         {/* Upload Section */}
                         {videoSource === 'upload' && (
                             <div>
-                                {videoProcessing ? (
+                                {lessonVideoStatus === 'errored' && !videoUrl ? (
+                                    <div className="p-6 rounded-xl bg-red-500/10 border border-red-500/30">
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-2 rounded-lg bg-red-500/20">
+                                                <AlertTriangle size={24} className="text-red-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-bold text-red-400 mb-1">Video Encoding Failed</h4>
+                                                <p className="text-xs text-slate-400">
+                                                    The video failed to process. Please re-upload your video to try again.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : videoProcessing ? (
                                     <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30">
                                         <div className="flex items-start gap-4">
                                             <div className="p-2 rounded-lg bg-amber-500/20">
