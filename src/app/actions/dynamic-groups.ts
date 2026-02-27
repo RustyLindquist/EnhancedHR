@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { getOrgContext } from '@/lib/org-context';
 import type {
   RecentLoginsCriteria,
   NoLoginsCriteria,
@@ -513,8 +514,15 @@ export async function computeDynamicGroupMembers(groupId: string): Promise<strin
     return [];
   }
 
+  // Resolve effective org for platform admins who ghost-join
+  let effectiveOrgId = profile.org_id;
+  if (profile.role === 'admin') {
+    const orgContext = await getOrgContext();
+    effectiveOrgId = orgContext?.orgId || profile.org_id;
+  }
+
   // Verify group belongs to user's org
-  if (group.org_id !== profile.org_id) return [];
+  if (group.org_id !== effectiveOrgId) return [];
 
   const criteria = group.criteria as DynamicGroupCriteria;
 
@@ -597,6 +605,12 @@ export async function updateDynamicGroupCriteria(
     return { success: false, error: 'Permission denied' };
   }
 
+  let effectiveOrgId = profile.org_id;
+  if (profile.role === 'admin') {
+    const orgContext = await getOrgContext();
+    effectiveOrgId = orgContext?.orgId || profile.org_id;
+  }
+
   const supabaseAdmin = await createAdminClient();
 
   // Update criteria
@@ -604,7 +618,7 @@ export async function updateDynamicGroupCriteria(
     .from('employee_groups')
     .update({ criteria })
     .eq('id', groupId)
-    .eq('org_id', profile.org_id);
+    .eq('org_id', effectiveOrgId);
 
   if (error) {
     console.error('Error updating dynamic group criteria:', error);
@@ -635,7 +649,9 @@ export async function getDynamicGroupsForOrg(
     profile?.role === 'admin' ||
     profile?.role === 'org_admin' ||
     profile?.membership_status === 'org_admin';
-  if (!profile || !isAdmin || profile.org_id !== orgId) return [];
+  const isPlatformAdmin = profile?.role === 'admin';
+  if (!profile || !isAdmin) return [];
+  if (!isPlatformAdmin && profile.org_id !== orgId) return [];
 
   const supabaseAdmin = await createAdminClient();
 

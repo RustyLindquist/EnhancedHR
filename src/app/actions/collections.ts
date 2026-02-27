@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { embedConversation, deleteConversationEmbeddings } from '@/lib/context-embeddings';
+import { getOrgContext } from '@/lib/org-context';
 
 export async function renameCollection(collectionId: string, newName: string) {
     const supabase = await createClient();
@@ -400,15 +401,21 @@ export async function syncCourseCollectionsAction(userId: string, courseId: stri
     // Also get org collection IDs if user belongs to an org
     const { data: profile } = await admin
         .from('profiles')
-        .select('org_id')
+        .select('org_id, role')
         .eq('id', userId)
         .single();
 
-    if (profile?.org_id) {
+    let effectiveOrgId = profile?.org_id;
+    if (profile?.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile?.org_id;
+    }
+
+    if (effectiveOrgId) {
         const { data: orgCollections } = await admin
             .from('user_collections')
             .select('id')
-            .eq('org_id', profile.org_id)
+            .eq('org_id', effectiveOrgId)
             .eq('is_org_collection', true);
 
         orgCollections?.forEach(c => userCollectionIds.push(c.id));
@@ -692,15 +699,21 @@ export async function getCollectionsForItemAction(itemId: string, itemType: stri
     // Get user's org collections (if they belong to an org)
     const { data: profile } = await admin
         .from('profiles')
-        .select('org_id')
+        .select('org_id, role')
         .eq('id', user.id)
         .single();
 
-    if (profile?.org_id) {
+    let effectiveOrgId = profile?.org_id;
+    if (profile?.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile?.org_id;
+    }
+
+    if (effectiveOrgId) {
         const { data: orgCollections } = await admin
             .from('user_collections')
             .select('id')
-            .eq('org_id', profile.org_id)
+            .eq('org_id', effectiveOrgId)
             .eq('is_org_collection', true);
 
         orgCollections?.forEach(c => userCollectionIds.add(c.id));

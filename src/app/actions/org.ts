@@ -217,8 +217,11 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
     const effectiveOrgId = orgContext.orgId;
 
+    // Use admin client for org lookup and member fetch (avoids RLS edge cases for ghost-joined admins)
+    const adminClient = createAdminClient();
+
     // Get organization details
-    const { data: orgData } = await supabase
+    const { data: orgData } = await adminClient
         .from('organizations')
         .select('id, owner_id, slug, invite_hash')
         .eq('id', effectiveOrgId)
@@ -226,9 +229,7 @@ export async function getOrgMembers(): Promise<{ members: OrgMember[], inviteInf
 
     const ownerId = orgData?.owner_id;
 
-    // 2. Fetch Members (use admin client to bypass RLS - profiles table only allows users to see their own profile)
-    // Auth is already verified above via getOrgContext which checks isPlatformAdmin or isOrgAdmin
-    const adminClient = createAdminClient();
+    // 2. Fetch Members (admin client bypasses RLS)
     const { data: members, error: membersError } = await adminClient
         .from('profiles')
         .select('*')

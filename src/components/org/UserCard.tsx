@@ -2,6 +2,7 @@
 import React from 'react';
 import { OrgMember } from '@/app/actions/org';
 import { Shield, Plus } from 'lucide-react';
+import { formatCredits } from '@/lib/format-credits';
 
 interface UserCardProps {
     member: OrgMember;
@@ -87,7 +88,7 @@ export default function UserCard({ member, onClick, onAddToGroup, showAddButton 
                     <div className="border-t border-white/10 pt-4">
                         <div className="grid grid-cols-2 gap-3">
                             <span className="text-xs font-medium text-slate-300">{member.courses_completed || 0} Courses</span>
-                            <span className="text-xs font-medium text-slate-300">{member.credits_earned || 0} Credits</span>
+                            <span className="text-xs font-medium text-slate-300">{formatCredits(member.credits_earned)} Credits</span>
                             <span className="text-xs font-medium text-slate-300">{member.total_time_spent_minutes || 0}m Learning</span>
                             <span className="text-xs font-medium text-slate-300">{member.conversations_count || 0} AI Chats</span>
                         </div>

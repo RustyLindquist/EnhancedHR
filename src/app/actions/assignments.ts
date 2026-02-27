@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { getOrgContext } from '@/lib/org-context';
 
 export interface ContentAssignment {
   id: string;
@@ -43,8 +44,16 @@ export async function assignContent(
 
     // Get Org ID
     const { data: profile } = await supabase.from('profiles').select('org_id, role').eq('id', user.id).single();
-    if (!profile?.org_id) return { success: false, error: 'No Organization found' };
+    if (!profile) return { success: false, error: 'No profile found' };
     if (profile.role !== 'admin' && profile.role !== 'org_admin') return { success: false, error: 'Permission denied' };
+
+    // Resolve effective org for platform admins who ghost-join organizations
+    let effectiveOrgId = profile.org_id;
+    if (profile.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile.org_id;
+    }
+    if (!effectiveOrgId) return { success: false, error: 'No Organization found' };
 
     const supabaseAdmin = await createAdminClient();
 
@@ -52,7 +61,7 @@ export async function assignContent(
     const { data, error } = await supabaseAdmin
         .from('content_assignments')
         .insert({
-            org_id: profile.org_id,
+            org_id: effectiveOrgId,
             assignee_type: assigneeType,
             assignee_id: assigneeId,
             content_type: contentType,

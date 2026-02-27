@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { Note } from '@/types';
 import { embedNote, deleteNoteEmbeddings } from '@/lib/context-embeddings';
+import { getOrgContext } from '@/lib/org-context';
 
 /**
  * Fetch all PERSONAL notes for the current user.
@@ -318,16 +319,23 @@ export async function createOrgNoteAction(data: {
     // Verify user is org admin for this org
     const { data: profile } = await admin
         .from('profiles')
-        .select('org_id, membership_status')
+        .select('org_id, membership_status, role')
         .eq('id', user.id)
         .single();
 
-    if (!profile || profile.org_id !== data.org_id) {
+    // Resolve effective org for platform admins who ghost-join organizations
+    let effectiveOrgId = profile?.org_id;
+    if (profile?.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile?.org_id;
+    }
+
+    if (!profile || effectiveOrgId !== data.org_id) {
         console.error('[createOrgNoteAction] User not in this org');
         return null;
     }
 
-    if (profile.membership_status !== 'org_admin' && profile.membership_status !== 'platform_admin') {
+    if (profile.membership_status !== 'org_admin' && profile.membership_status !== 'platform_admin' && profile.role !== 'admin') {
         console.error('[createOrgNoteAction] User is not an org admin');
         return null;
     }

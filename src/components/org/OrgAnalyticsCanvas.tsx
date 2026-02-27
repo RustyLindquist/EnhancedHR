@@ -7,6 +7,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { getOrgDashboardMetrics, getGroupsForFilter, DashboardMetrics, GroupFilterOption } from '@/app/actions/org-dashboard';
+import { formatCredits } from '@/lib/format-credits';
 import DateRangePicker from '@/components/org/DateRangePicker';
 import DashboardFilterDropdown from '@/components/org/DashboardFilterDropdown';
 import LearningTrendChart from '@/components/org/charts/LearningTrendChart';
@@ -387,13 +388,13 @@ export default function OrgAnalyticsCanvas({ initialGroupId, onBack }: OrgAnalyt
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
               label="SHRM Credits"
-              value={metrics?.shrmiCredits.toFixed(1) || '0'}
+              value={formatCredits(metrics?.shrmiCredits)}
               icon={<Award size={16} className="text-amber-400" />}
               color="text-amber-400"
             />
             <StatCard
               label="HRCI Credits"
-              value={metrics?.hrciCredits.toFixed(1) || '0'}
+              value={formatCredits(metrics?.hrciCredits)}
               icon={<Award size={16} className="text-emerald-400" />}
               color="text-emerald-400"
             />
