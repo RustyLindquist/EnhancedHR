@@ -343,7 +343,7 @@ export default function CourseBuilderView({
                 setSyllabus(initialSyllabus);
             }
         }
-    }, [syllabus, initialSyllabus]);
+    }, [syllabus, initialSyllabus, resources, course.id]);
 
     const handleToggleModule = (moduleId: string) => {
         setExpandedModules(prev =>
