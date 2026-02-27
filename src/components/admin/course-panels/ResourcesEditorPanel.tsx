@@ -5,32 +5,10 @@ import { FileText, Trash2, Loader2, CheckCircle, Plus, Link2, File, Image as Ima
 import DropdownPanel from '@/components/DropdownPanel';
 import { addCourseResource, deleteCourseResource, uploadCourseResourceFile, updateCourseResource } from '@/app/actions/course-builder';
 import { Resource } from '@/types';
+import { validateFile, formatFileSize, ACCEPTED_EXTENSIONS } from '@/components/admin/FileUploadZone';
 
 type ResourceType = 'PDF' | 'DOC' | 'XLS' | 'IMG' | 'LINK';
 type AddMode = 'upload' | 'link';
-
-// Supported file types for upload
-const SUPPORTED_FILE_TYPES = [
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel',
-    'application/vnd.oasis.opendocument.spreadsheet',
-    'text/tab-separated-values',
-    'text/plain',
-    'text/markdown',
-    'text/csv',
-    'application/json',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp'
-];
-
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
 interface ResourcesEditorPanelProps {
     isOpen: boolean;
@@ -198,18 +176,6 @@ export default function ResourcesEditorPanel({
         setIsAdding(false);
         setUploadProgress(null);
         setError(null);
-    };
-
-    // File validation
-    const validateFile = (file: File): string | null => {
-        if (!SUPPORTED_FILE_TYPES.includes(file.type) &&
-            !file.name.match(/\.(pdf|docx?|pptx?|xlsx?|ods|numbers|txt|md|csv|tsv|json|jpe?g|png|gif|webp)$/i)) {
-            return 'Unsupported file type. Please upload PDF, Word, PowerPoint, spreadsheet, image, or text files.';
-        }
-        if (file.size > MAX_FILE_SIZE) {
-            return 'File too large. Maximum size is 25MB.';
-        }
-        return null;
     };
 
     // Handle file selection - adds to the list
@@ -417,13 +383,6 @@ export default function ResourcesEditorPanel({
         }
     };
 
-    // Format file size for display
-    const formatFileSize = (bytes: number): string => {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    };
-
     const handleDone = useCallback(() => {
         // Refresh data and close panel
         onSave();
@@ -525,7 +484,7 @@ export default function ResourcesEditorPanel({
                                     type="file"
                                     multiple
                                     onChange={handleFileInputChange}
-                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.ods,.numbers,.txt,.md,.csv,.tsv,.json,.jpg,.jpeg,.png,.gif,.webp"
+                                    accept={ACCEPTED_EXTENSIONS}
                                     className="hidden"
                                 />
 
