@@ -318,8 +318,18 @@ export async function updateMemberGroups(
         .single();
 
     const isAdmin = profile?.role === 'admin' || profile?.role === 'org_admin' || profile?.membership_status === 'org_admin';
-    if (!profile || !profile.org_id || !isAdmin) {
+    if (!profile || !isAdmin) {
         return { success: false, error: 'Permission denied' };
+    }
+
+    // For platform admins, use the effective org from cookie context
+    let effectiveOrgId = profile.org_id;
+    if (profile?.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile.org_id;
+    }
+    if (!effectiveOrgId) {
+        return { success: false, error: 'No organization found' };
     }
 
     const supabaseAdmin = await createAdminClient();
@@ -329,7 +339,7 @@ export async function updateMemberGroups(
     if (newGroup?.name) {
         const { data: createdGroup, error: createError } = await supabaseAdmin
             .from('employee_groups')
-            .insert({ org_id: profile.org_id, name: newGroup.name })
+            .insert({ org_id: effectiveOrgId, name: newGroup.name })
             .select()
             .single();
 
@@ -666,7 +676,14 @@ export async function getGroupFullData(groupId: string): Promise<GroupFullData |
         .single();
 
     if (error || !group) return null;
-    if (group.org_id !== profile.org_id) return null;
+
+    // For platform admins, use the effective org from cookie context
+    let effectiveOrgId = profile.org_id;
+    if (profile.role === 'admin') {
+        const orgContext = await getOrgContext();
+        effectiveOrgId = orgContext?.orgId || profile.org_id;
+    }
+    if (group.org_id !== effectiveOrgId) return null;
 
     // Get member IDs ONCE
     let memberIds: string[] = [];

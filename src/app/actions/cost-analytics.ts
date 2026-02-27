@@ -9,6 +9,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrgContext } from '@/lib/org-context';
 
 // ============================================================================
 // Types
@@ -541,9 +542,11 @@ export async function getAnalyticsScope(): Promise<AnalyticsScope | null> {
 
   if (!profile) return null;
 
-  // Platform Admin - full access (also gets org access if they have an org_id)
+  // Platform Admin - full access (resolve effective org for ghost-join)
   if (profile.role === 'admin') {
-    return { accessLevel: 'platform_admin', orgId: profile.org_id || undefined };
+    const orgContext = await getOrgContext();
+    const effectiveOrgId = orgContext?.orgId || profile.org_id;
+    return { accessLevel: 'platform_admin', orgId: effectiveOrgId || undefined };
   }
 
   // Org Admin - org-scoped access
