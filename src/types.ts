@@ -371,8 +371,10 @@ export interface Lesson {
   transcript_status?: 'pending' | 'generating' | 'ready' | 'failed';
   transcript_source?: 'ai' | 'user' | 'mux-caption' | 'whisper' | 'youtube' | 'legacy' | 'none';
   // Video processing fields
-  video_status?: 'waiting' | 'processing' | 'ready' | 'errored';
+  video_status?: 'uploading' | 'processing' | 'ready' | 'errored';
   mux_asset_id?: string; // Mux asset ID for background processing
+  mux_upload_id?: string; // Mux upload ID for background processing
+  deferred_transcript?: string; // Deferred transcript type ('ai' or null)
 }
 
 export interface Module {

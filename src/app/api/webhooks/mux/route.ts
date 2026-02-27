@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
+import Mux from '@mux/mux-node';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requestMuxAutoCaption, fetchMuxVTT } from '@/app/actions/mux';
 import { parseVTTToTranscript } from '@/lib/vtt-parser';
 import { recalculateCourseDuration } from '@/app/actions/course-builder';
+
+const mux = new Mux({
+    tokenId: process.env.MUX_TOKEN_ID,
+    tokenSecret: process.env.MUX_TOKEN_SECRET,
+});
 
 // ============================================
 // Handler: video.asset.ready — encoding complete
@@ -33,11 +39,41 @@ async function handleAssetReady(data: any) {
         .single();
 
     if (findError || !lesson) {
-        // No matching processing lesson — may have been updated already or not yet saved
-        console.log('video.asset.ready: No processing lesson found for asset', assetId);
-        return;
+        // No matching lesson yet — may not have been saved by the editor.
+        // Retry once after 10 seconds to handle the race condition where
+        // Mux finishes encoding before the user clicks "Save".
+        console.log('video.asset.ready: No processing lesson found for asset', assetId, '— retrying in 10s');
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        const { data: retryLesson, error: retryError } = await supabase
+            .from('lessons')
+            .select('id, module_id, deferred_transcript, video_status')
+            .eq('mux_asset_id', assetId)
+            .eq('video_status', 'processing')
+            .single();
+
+        if (retryError || !retryLesson) {
+            console.log('video.asset.ready: Still no processing lesson after retry for asset', assetId);
+            return;
+        }
+
+        // Use the retry result for the rest of the handler
+        return handleAssetReadyForLesson(supabase, retryLesson, playbackId, duration, assetId);
     }
 
+    await handleAssetReadyForLesson(supabase, lesson, playbackId, duration, assetId);
+}
+
+/**
+ * Shared logic: update a lesson once its Mux asset is ready.
+ */
+async function handleAssetReadyForLesson(
+    supabase: ReturnType<typeof createAdminClient>,
+    lesson: { id: string; module_id: string | null; deferred_transcript: string | null; video_status: string },
+    playbackId: string,
+    duration: number | undefined,
+    assetId: string,
+) {
     // Format duration as MM:SS or HH:MM:SS
     const formattedDuration = duration ? formatDuration(duration) : null;
 
@@ -74,7 +110,6 @@ async function handleAssetReady(data: any) {
     // Recalculate course duration
     if (lesson.module_id) {
         try {
-            // Get the course_id from the module
             const { data: module } = await supabase
                 .from('modules')
                 .select('course_id')
@@ -135,7 +170,8 @@ async function handleTrackReady(body: any) {
     const assetId = body.object?.id || track?.asset_id;
 
     // Only process text/subtitle tracks, not audio/video tracks
-    if (track?.type !== 'text' && track?.text_type !== 'subtitles') {
+    const isSubtitleTrack = track?.type === 'text' && track?.text_type === 'subtitles';
+    if (!isSubtitleTrack) {
         return;
     }
 
@@ -199,7 +235,7 @@ async function handleTrackReady(body: any) {
         // Mark transcript as failed so user knows to retry
         await supabase
             .from('lessons')
-            .update({ transcript_status: 'error' })
+            .update({ transcript_status: 'failed' })
             .eq('id', lesson.id);
     }
 }
@@ -238,8 +274,12 @@ export async function POST(request: Request) {
                 console.error('Mux webhook: Missing signature header');
                 return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
             }
-            // TODO: Add Mux.Webhooks.verifySignature() when MUX_WEBHOOK_SECRET is set
-            // For now, we log the signature for debugging
+            try {
+                mux.webhooks.verifySignature(rawBody, { 'mux-signature': signature }, webhookSecret);
+            } catch (err) {
+                console.error('Mux webhook signature verification failed:', err);
+                return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+            }
         }
 
         const body = JSON.parse(rawBody);
