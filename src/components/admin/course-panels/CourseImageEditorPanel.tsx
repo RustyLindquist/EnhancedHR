@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useCallback, useRef } from 'react';
-import { Image, Upload, Link2, Trash2, Loader2, CheckCircle } from 'lucide-react';
+import { Image, Upload, Trash2, Loader2, CheckCircle } from 'lucide-react';
 import DropdownPanel from '@/components/DropdownPanel';
 import { updateCourseImage, uploadCourseImageAction } from '@/app/actions/course-builder';
 
@@ -28,25 +28,22 @@ export default function CourseImageEditorPanel({
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleSave = useCallback(() => {
+    const handleRemove = useCallback(() => {
         setError(null);
         startTransition(async () => {
-            const result = await updateCourseImage(courseId, imageUrl || null);
+            const result = await updateCourseImage(courseId, null);
             if (result.success) {
+                setImageUrl('');
                 setShowSuccess(true);
                 setTimeout(() => {
                     setShowSuccess(false);
                     onSave();
                 }, 1000);
             } else {
-                setError(result.error || 'Failed to save image');
+                setError(result.error || 'Failed to remove image');
             }
         });
-    }, [courseId, imageUrl, onSave]);
-
-    const handleRemove = useCallback(() => {
-        setImageUrl('');
-    }, []);
+    }, [courseId, onSave]);
 
     const handleFileSelect = useCallback(async (file: File) => {
         // Validate file type
@@ -131,30 +128,12 @@ export default function CourseImageEditorPanel({
         fileInputRef.current?.click();
     };
 
-    const headerActions = (
-        <div className="flex items-center gap-4">
-            {showSuccess && (
-                <div className="flex items-center gap-2 text-green-400 text-sm">
-                    <CheckCircle size={16} />
-                    <span>Saved!</span>
-                </div>
-            )}
-            <button
-                onClick={handleSave}
-                disabled={isPending || isUploading}
-                className="flex items-center gap-2 px-5 py-2 bg-brand-orange text-white rounded-lg text-sm font-bold hover:bg-brand-orange/80 transition-colors disabled:opacity-50"
-            >
-                {isPending ? (
-                    <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Saving...
-                    </>
-                ) : (
-                    'Save Changes'
-                )}
-            </button>
+    const headerActions = showSuccess ? (
+        <div className="flex items-center gap-2 text-green-400 text-sm">
+            <CheckCircle size={16} />
+            <span>Saved!</span>
         </div>
-    );
+    ) : null;
 
     return (
         <DropdownPanel
@@ -249,26 +228,6 @@ export default function CourseImageEditorPanel({
                             </p>
                         </>
                     )}
-                </div>
-
-                {/* URL Input */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                        Or Enter Image URL
-                    </label>
-                    <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-                        <Link2 size={16} className="text-slate-400" />
-                        <input
-                            type="url"
-                            value={imageUrl}
-                            onChange={(e) => setImageUrl(e.target.value)}
-                            placeholder="https://example.com/image.jpg"
-                            className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none"
-                        />
-                    </div>
-                    <p className="text-xs text-slate-600 mt-2">
-                        Enter a direct URL to an image file (PNG, JPG, or WebP).
-                    </p>
                 </div>
 
                 {/* Recommended Dimensions Info */}

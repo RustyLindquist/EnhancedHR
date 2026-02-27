@@ -18,6 +18,8 @@ const SUPPORTED_FILE_TYPES = [
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
+    'application/vnd.oasis.opendocument.spreadsheet',
+    'text/tab-separated-values',
     'text/plain',
     'text/markdown',
     'text/csv',
@@ -201,8 +203,8 @@ export default function ResourcesEditorPanel({
     // File validation
     const validateFile = (file: File): string | null => {
         if (!SUPPORTED_FILE_TYPES.includes(file.type) &&
-            !file.name.match(/\.(pdf|docx?|pptx?|xlsx?|txt|md|csv|json|jpe?g|png|gif|webp)$/i)) {
-            return 'Unsupported file type. Please upload PDF, Word, PowerPoint, Excel, images, or text files.';
+            !file.name.match(/\.(pdf|docx?|pptx?|xlsx?|ods|numbers|txt|md|csv|tsv|json|jpe?g|png|gif|webp)$/i)) {
+            return 'Unsupported file type. Please upload PDF, Word, PowerPoint, spreadsheet, image, or text files.';
         }
         if (file.size > MAX_FILE_SIZE) {
             return 'File too large. Maximum size is 25MB.';
@@ -523,7 +525,7 @@ export default function ResourcesEditorPanel({
                                     type="file"
                                     multiple
                                     onChange={handleFileInputChange}
-                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp"
+                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.ods,.numbers,.txt,.md,.csv,.tsv,.json,.jpg,.jpeg,.png,.gif,.webp"
                                     className="hidden"
                                 />
 
@@ -549,7 +551,7 @@ export default function ResourcesEditorPanel({
                                             {isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            PDF, Word, PowerPoint, Excel, images, or text files up to 25MB each
+                                            PDF, Word, PowerPoint, spreadsheet, image, or text files up to 25MB each
                                         </p>
                                     </div>
                                 </div>

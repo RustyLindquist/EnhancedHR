@@ -1369,7 +1369,7 @@ function detectResourceType(fileName: string, mimeType: string): 'PDF' | 'DOC' |
     const lower = fileName.toLowerCase();
     if (lower.endsWith('.pdf') || mimeType === 'application/pdf') return 'PDF';
     if (lower.endsWith('.doc') || lower.endsWith('.docx') || mimeType.includes('word')) return 'DOC';
-    if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'XLS';
+    if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.ods') || lower.endsWith('.numbers') || lower.endsWith('.csv') || lower.endsWith('.tsv') || mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'XLS';
     if (mimeType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(lower)) return 'IMG';
     return 'LINK'; // Default for unknown types
 }
