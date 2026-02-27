@@ -5,6 +5,7 @@ import { Trash2, Plus, Play, FileText, MessageSquare, Clock, Download, Edit, Pap
 import ConversationGraphic from '../graphics/ConversationGraphic';
 import InteractiveCardWrapper from './InteractiveCardWrapper';
 import { CARD_TYPE_CONFIGS, CardType } from './cardTypeConfigs';
+import { formatCredits } from '@/lib/format-credits';
 
 export type { CardType } from './cardTypeConfigs';
 
@@ -333,12 +334,12 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                                         <div className="flex items-center gap-1.5 ml-1">
                                             {credits.shrm && (
                                                 <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#4f46e5]/30 text-[#a5b4fc] border border-[#4f46e5]/40">
-                                                    SHRM{credits.shrmCredits ? ` ${credits.shrmCredits.toFixed(1)}` : ''}
+                                                    SHRM{credits.shrmCredits ? ` ${formatCredits(credits.shrmCredits)}` : ''}
                                                 </span>
                                             )}
                                             {credits.hrci && (
                                                 <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#9333ea]/30 text-[#d8b4fe] border border-[#9333ea]/40">
-                                                    HRCI{credits.hrciCredits ? ` ${credits.hrciCredits.toFixed(1)}` : ''}
+                                                    HRCI{credits.hrciCredits ? ` ${formatCredits(credits.hrciCredits)}` : ''}
                                                 </span>
                                             )}
                                         </div>
@@ -738,10 +739,10 @@ const UniversalCard: React.FC<UniversalCardProps> = ({
                         {(type === 'COURSE' || type === 'ORG_COURSE') && credits && (
                             <div className="flex items-center gap-1 flex-shrink-0">
                                 {credits.shrm && (
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30" title="SHRM Credits">SHRM{credits.shrmCredits ? ` ${credits.shrmCredits.toFixed(1)}` : ''}</span>
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30" title="SHRM Credits">SHRM{credits.shrmCredits ? ` ${formatCredits(credits.shrmCredits)}` : ''}</span>
                                 )}
                                 {credits.hrci && (
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#9333ea]/20 text-[#c084fc] border border-[#9333ea]/30" title="HRCI Credits">HRCI{credits.hrciCredits ? ` ${credits.hrciCredits.toFixed(1)}` : ''}</span>
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#9333ea]/20 text-[#c084fc] border border-[#9333ea]/30" title="HRCI Credits">HRCI{credits.hrciCredits ? ` ${formatCredits(credits.hrciCredits)}` : ''}</span>
                                 )}
                             </div>
                         )}

@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from 'react';
 import { OrgMember, toggleOrgMemberStatus, updateUserRole } from '@/app/actions/org';
 import { User, Clock, Award, MessageSquare, ArrowLeft, Trash2, Ban, Shield, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { formatCredits } from '@/lib/format-credits';
 import DeleteConfirmationModal from '../DeleteConfirmationModal';
 import CanvasHeader from '../CanvasHeader';
 import { useBackHandler } from '@/hooks/useBackHandler';
@@ -189,7 +190,7 @@ export default function UserDetailDashboard({ member, onBack }: UserDetailDashbo
                             </div>
                             <div className="bg-[#131b2c] p-6 rounded-2xl border border-white/5 shadow-lg">
                                 <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Credits Earned</h4>
-                                <div className="text-3xl font-bold text-brand-orange">{member.credits_earned}</div>
+                                <div className="text-3xl font-bold text-brand-orange">{formatCredits(member.credits_earned)}</div>
                             </div>
                             <div className="bg-[#131b2c] p-6 rounded-2xl border border-white/5 shadow-lg">
                                 <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Hours Learning</h4>

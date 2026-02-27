@@ -20,6 +20,7 @@ import { Course } from '@/types';
 import UniversalCard from '../cards/UniversalCard';
 import { fetchDashboardData, DashboardStats } from '@/lib/dashboard';
 import { fetchPromptSuggestions } from '@/lib/prompts';
+import { formatCredits } from '@/lib/format-credits';
 
 interface EmployeeDashboardProps {
     user: any;
@@ -214,7 +215,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, courses, on
                             </div>
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Credits</span>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">{loading ? '...' : stats.creditsEarned}</div>
+                        <div className="text-3xl font-bold text-white mb-1">{loading ? '...' : formatCredits(stats.creditsEarned)}</div>
                         <div className="text-xs text-slate-400">SHRM / HRCI PDCs</div>
                     </div>
 

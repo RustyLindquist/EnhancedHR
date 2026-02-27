@@ -4,6 +4,7 @@ import React from 'react';
 import { Star, CheckCircle, ExternalLink, Award, GraduationCap, Briefcase, BookOpen, Trophy } from 'lucide-react';
 import { Course } from '../../types';
 import { ExpertCredential, CredentialType } from '@/app/actions/credentials';
+import { formatCredits } from '@/lib/format-credits';
 
 // Icon mapping for credential types
 const credentialIconMap: Record<CredentialType, React.ReactNode> = {
@@ -162,7 +163,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                                             {/* SHRM Column */}
                                             {hasSHRM && (
                                                 <div className="flex flex-col items-center text-center">
-                                                    <span className="text-4xl font-bold text-brand-blue-light">{(course as any).shrm_pdcs?.toFixed(1) ?? '0.0'}</span>
+                                                    <span className="text-4xl font-bold text-brand-blue-light">{formatCredits((course as any).shrm_pdcs)}</span>
                                                     <span className="text-xs font-bold text-slate-400 uppercase mt-1">SHRM PDCs</span>
                                                     <span className="text-[10px] text-slate-500">Recertification</span>
                                                 </div>
@@ -170,7 +171,7 @@ const CourseDescriptionSection: React.FC<CourseDescriptionSectionProps> = ({
                                             {/* HRCI Column */}
                                             {hasHRCI && (
                                                 <div className="flex flex-col items-center text-center">
-                                                    <span className="text-4xl font-bold text-[#c084fc]">{(course as any).hrci_credits?.toFixed(1) ?? '0.0'}</span>
+                                                    <span className="text-4xl font-bold text-[#c084fc]">{formatCredits((course as any).hrci_credits)}</span>
                                                     <span className="text-xs font-bold text-slate-400 uppercase mt-1">HRCI Credits</span>
                                                     <span className="text-[10px] text-slate-500">Credit Hours</span>
                                                 </div>

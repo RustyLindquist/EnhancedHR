@@ -3,6 +3,7 @@
 import React from 'react';
 import { Award } from 'lucide-react';
 import { CourseBadge } from '../../types';
+import { formatCredits } from '@/lib/format-credits';
 
 interface CourseCreditsProps {
     badges: CourseBadge[];
@@ -36,7 +37,7 @@ const CourseCredits: React.FC<CourseCreditsProps> = ({
                             <Award size={16} className="text-[#818cf8]" />
                         </div>
                         <div>
-                            <span className="text-2xl font-bold text-[#818cf8]">{shrmCredits?.toFixed(1) ?? '0.0'}</span>
+                            <span className="text-2xl font-bold text-[#818cf8]">{formatCredits(shrmCredits)}</span>
                             <span className="text-[10px] font-bold tracking-wider text-[#818cf8]/70 ml-1.5 uppercase">SHRM PDCs</span>
                         </div>
                     </div>
@@ -48,7 +49,7 @@ const CourseCredits: React.FC<CourseCreditsProps> = ({
                             <Award size={16} className="text-[#c084fc]" />
                         </div>
                         <div>
-                            <span className="text-2xl font-bold text-[#c084fc]">{hrciCredits?.toFixed(1) ?? '0.0'}</span>
+                            <span className="text-2xl font-bold text-[#c084fc]">{formatCredits(hrciCredits)}</span>
                             <span className="text-[10px] font-bold tracking-wider text-[#c084fc]/70 ml-1.5 uppercase">HRCI Credits</span>
                         </div>
                     </div>
