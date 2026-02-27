@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import MuxUploader from '@mux/mux-uploader-react';
 import { Loader2, CheckCircle } from 'lucide-react';
-import { getMuxUploadUrl, waitForMuxAssetId, waitForMuxAssetReady } from '@/app/actions/mux';
+import { getMuxUploadUrl, waitForMuxAssetId, waitForMuxAssetReady, checkMuxAssetStatus } from '@/app/actions/mux';
 
 interface MuxUploaderWrapperProps {
     onUploadStart?: () => void;
@@ -78,29 +78,29 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
             }
             console.log('Got asset ID:', assetId);
 
-            // Step 2: Quick check (~12s) — if not ready, delegate to background immediately
+            // Step 2: Single instant check — if already ready (tiny files), complete now
             setProcessingStatus('Checking encoding status...');
-            const result = await waitForMuxAssetReady(assetId, 3); // 3 attempts × 4s = ~12s
+            const quickCheck = await checkMuxAssetStatus(assetId);
 
-            if (result.ready && result.playbackId) {
-                // Video processed quickly — small/medium file
-                console.log('Asset ready, playback ID:', result.playbackId, 'duration:', result.duration);
+            if (quickCheck.ready && quickCheck.playbackId) {
+                // Already encoded (very small file) — complete immediately
+                console.log('Asset already ready, playback ID:', quickCheck.playbackId);
                 setIsProcessing(false);
-                if (onSuccess) onSuccess(result.playbackId, result.duration);
-            } else if (result.errored) {
-                // Asset failed to encode — report error immediately
-                throw new Error('Video encoding failed. Please try uploading again.');
+                if (onSuccess) onSuccess(quickCheck.playbackId, quickCheck.duration);
             } else if (onLargeFileProcessing) {
-                // Still processing after 2 min — large file, switch to background
-                console.log('Asset still processing after 2 min, delegating to background');
+                // Still encoding — delegate to background so user can save and close
+                console.log('Asset still encoding, delegating to background');
                 setIsProcessing(false);
                 onLargeFileProcessing(uploadId, assetId);
             } else {
-                // No background handler — continue long wait (legacy fallback)
+                // No background handler — poll until ready (legacy fallback)
+                setProcessingStatus('Encoding video...');
                 const longResult = await waitForMuxAssetReady(assetId);
                 setIsProcessing(false);
                 if (longResult.ready && longResult.playbackId) {
                     if (onSuccess) onSuccess(longResult.playbackId, longResult.duration);
+                } else if (longResult.errored) {
+                    throw new Error('Video encoding failed. Please try uploading again.');
                 } else {
                     throw new Error('Asset processing failed or timed out');
                 }
