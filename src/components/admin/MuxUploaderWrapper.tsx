@@ -78,9 +78,9 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
             }
             console.log('Got asset ID:', assetId);
 
-            // Step 2: Try a short wait (2 min) — enough for small/medium files
-            setProcessingStatus('Encoding video...');
-            const result = await waitForMuxAssetReady(assetId, 30); // 30 attempts × 4s = 2 min
+            // Step 2: Quick check (~12s) — if not ready, delegate to background immediately
+            setProcessingStatus('Checking encoding status...');
+            const result = await waitForMuxAssetReady(assetId, 3); // 3 attempts × 4s = ~12s
 
             if (result.ready && result.playbackId) {
                 // Video processed quickly — small/medium file
