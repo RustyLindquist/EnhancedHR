@@ -204,7 +204,10 @@ export async function getExpertCourseForBuilder(courseId: number) {
                 video_url: lesson.video_url,
                 content: lesson.content,
                 quiz_data: lesson.quiz_data,
-                isCompleted: false // Default for builder view
+                isCompleted: false, // Default for builder view
+                // Video processing fields
+                video_status: lesson.video_status,
+                mux_asset_id: lesson.mux_asset_id,
             }))
     }));
 
@@ -559,6 +562,10 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
     content?: string;
     duration?: string;
     quiz_data?: any;
+    muxAssetId?: string;
+    muxUploadId?: string;
+    videoStatus?: string;
+    deferredTranscript?: string;
 }) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
@@ -617,7 +624,11 @@ export async function createExpertLesson(moduleId: string, courseId: number, dat
             video_url: data.type === 'video' ? data.video_url : undefined,
             content: data.content || undefined,
             duration: effectiveDuration,
-            quiz_data: data.type === 'quiz' ? data.quiz_data : undefined
+            quiz_data: data.type === 'quiz' ? data.quiz_data : undefined,
+            mux_asset_id: data.muxAssetId || null,
+            mux_upload_id: data.muxUploadId || null,
+            video_status: data.videoStatus || 'ready',
+            deferred_transcript: data.deferredTranscript || null,
         })
         .select()
         .single();
@@ -640,6 +651,10 @@ export async function updateExpertLesson(lessonId: string, courseId: number, dat
     duration?: string;
     order?: number;
     quiz_data?: any;
+    muxAssetId?: string;
+    muxUploadId?: string;
+    videoStatus?: string;
+    deferredTranscript?: string;
 }) {
     const accessCheck = await checkExpertCourseAccess(courseId);
     if (!accessCheck.allowed) {
@@ -648,9 +663,17 @@ export async function updateExpertLesson(lessonId: string, courseId: number, dat
 
     const supabase = await createClient();
 
+    const { muxAssetId, muxUploadId, videoStatus, deferredTranscript, ...updateData } = data;
+
     const { error } = await supabase
         .from('lessons')
-        .update(data)
+        .update({
+            ...updateData,
+            ...(muxAssetId !== undefined && { mux_asset_id: muxAssetId }),
+            ...(muxUploadId !== undefined && { mux_upload_id: muxUploadId }),
+            ...(videoStatus !== undefined && { video_status: videoStatus }),
+            ...(deferredTranscript !== undefined && { deferred_transcript: deferredTranscript }),
+        })
         .eq('id', lessonId);
 
     if (error) {

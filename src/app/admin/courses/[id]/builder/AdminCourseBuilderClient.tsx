@@ -576,6 +576,8 @@ export default function AdminCourseBuilderClient({
                 resourceSize={editingResource?.size}
                 resourceEstimatedDuration={(editingResource as any)?.estimated_duration}
                 resourceDescription={editingResource?.description}
+                lessonVideoStatus={editingLesson?.video_status || 'ready'}
+                lessonMuxAssetId={editingLesson?.mux_asset_id || undefined}
             />
 
             {/* ============================================ */}

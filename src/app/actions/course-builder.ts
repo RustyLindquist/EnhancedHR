@@ -693,6 +693,10 @@ export async function createLesson(moduleId: string, data: {
     content?: string;
     duration?: string;
     quiz_data?: any;
+    muxAssetId?: string;
+    muxUploadId?: string;
+    videoStatus?: string;
+    deferredTranscript?: string;
 }) {
     const admin = await createAdminClient();
 
@@ -753,7 +757,11 @@ export async function createLesson(moduleId: string, data: {
             duration: effectiveDuration,
             video_url: data.video_url,
             content: data.content,
-            quiz_data: data.quiz_data
+            quiz_data: data.quiz_data,
+            mux_asset_id: data.muxAssetId || null,
+            mux_upload_id: data.muxUploadId || null,
+            video_status: data.videoStatus || 'ready',
+            deferred_transcript: data.deferredTranscript || null,
         })
         .select()
         .single();
@@ -802,6 +810,10 @@ export async function updateLesson(lessonId: string, data: {
     duration?: string;
     order?: number;
     quiz_data?: any;
+    muxAssetId?: string;
+    muxUploadId?: string;
+    videoStatus?: string;
+    deferredTranscript?: string;
 }) {
     const admin = await createAdminClient();
 
@@ -813,7 +825,7 @@ export async function updateLesson(lessonId: string, data: {
         .single();
 
     // Auto-fetch duration from YouTube if video_url changed and no duration provided
-    const updateData = { ...data };
+    const { muxAssetId, muxUploadId, videoStatus, deferredTranscript, ...updateData } = data;
     if (data.video_url && (!data.duration || data.duration === '0m') && data.video_url !== currentLesson?.video_url) {
         try {
             if (await isYouTubeUrl(data.video_url)) {
@@ -829,7 +841,13 @@ export async function updateLesson(lessonId: string, data: {
 
     const { error } = await admin
         .from('lessons')
-        .update(updateData)
+        .update({
+            ...updateData,
+            ...(data.muxAssetId !== undefined && { mux_asset_id: data.muxAssetId }),
+            ...(data.muxUploadId !== undefined && { mux_upload_id: data.muxUploadId }),
+            ...(data.videoStatus !== undefined && { video_status: data.videoStatus }),
+            ...(data.deferredTranscript !== undefined && { deferred_transcript: data.deferredTranscript }),
+        })
         .eq('id', lessonId);
 
     if (error) {
@@ -1564,7 +1582,10 @@ export async function getCourseForBuilder(courseId: number) {
                 ai_transcript: l.ai_transcript,
                 user_transcript: l.user_transcript,
                 transcript_status: l.transcript_status,
-                transcript_source: l.transcript_source
+                transcript_source: l.transcript_source,
+                // Video processing fields
+                video_status: l.video_status,
+                mux_asset_id: l.mux_asset_id,
             }))
     }));
 
@@ -1766,7 +1787,7 @@ export async function generateTranscriptFromVideoAdmin(videoUrl: string): Promis
 /**
  * Generate transcript from Mux using auto-generated captions
  */
-async function generateMuxCaptionTranscript(playbackId: string): Promise<{
+export async function generateMuxCaptionTranscript(playbackId: string): Promise<{
     success: boolean;
     transcript?: string;
     error?: string;

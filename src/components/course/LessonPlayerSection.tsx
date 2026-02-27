@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Bookmark, Monitor, Lock, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Bookmark, Monitor, Lock, Play, Loader2 } from 'lucide-react';
 import MuxPlayer from '@mux/mux-player-react';
 import { Lesson, Course, DragItem } from '../../types';
 import { useTrialTracker } from '../../hooks/useTrialTracker';
@@ -389,6 +389,16 @@ const LessonPlayerSection: React.FC<LessonPlayerSectionProps> = ({
                             hasProgress={hasAssessmentProgress}
                             onStartAssessment={onStartAssessment || (() => {})}
                         />
+                    ) : lesson.video_status === 'processing' ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                            <div className="animate-spin mb-4">
+                                <Loader2 size={48} className="text-brand-blue-light" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Video Processing</h3>
+                            <p className="text-slate-400 text-center max-w-md px-4">
+                                This video is being processed and will be available shortly. You can continue browsing other lessons.
+                            </p>
+                        </div>
                     ) : lesson.video_url && !isLocked ? (
                         <>
                             {/* Play button overlay - show for both YouTube and Mux */}
