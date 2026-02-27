@@ -136,7 +136,7 @@ export async function getMuxAssetDetails(assetId: string) {
 
 // Poll for asset encoding completion
 // 450 attempts x 4s = 30 min max — large videos (60+ min) can take 10-30 min to encode
-export async function waitForMuxAssetReady(assetId: string, maxAttempts: number = 450): Promise<{ ready: boolean; playbackId?: string; duration?: number }> {
+export async function waitForMuxAssetReady(assetId: string, maxAttempts: number = 450): Promise<{ ready: boolean; errored?: boolean; playbackId?: string; duration?: number }> {
     for (let i = 0; i < maxAttempts; i++) {
         const details = await getMuxAssetDetails(assetId);
         if (details?.status === 'ready' && details.playbackId) {
@@ -147,7 +147,7 @@ export async function waitForMuxAssetReady(assetId: string, maxAttempts: number 
             };
         }
         if (details?.status === 'errored') {
-            return { ready: false };
+            return { ready: false, errored: true };
         }
         // Wait 4 seconds between checks
         await new Promise(resolve => setTimeout(resolve, 4000));

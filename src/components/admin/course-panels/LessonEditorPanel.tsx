@@ -59,7 +59,7 @@ interface LessonEditorPanelProps {
     lessonTranscriptStatus?: TranscriptStatus;
     lessonTranscriptSource?: TranscriptSource;
     // Large file background processing props
-    lessonVideoStatus?: string;
+    lessonVideoStatus?: 'uploading' | 'processing' | 'ready' | 'errored';
     lessonMuxAssetId?: string;
 }
 
@@ -214,6 +214,7 @@ export default function LessonEditorPanel({
 
     // Video processing state (for large file background processing)
     const [videoProcessing, setVideoProcessing] = useState(lessonVideoStatus === 'processing');
+    const [videoErrored, setVideoErrored] = useState(lessonVideoStatus === 'errored');
     const [muxAssetId, setMuxAssetId] = useState<string | null>(lessonMuxAssetId || null);
     const [muxUploadId, setMuxUploadId] = useState<string | null>(null);
 
@@ -255,6 +256,7 @@ export default function LessonEditorPanel({
             setShowCloseConfirm(false);
             // Reset video processing state
             setVideoProcessing(lessonVideoStatus === 'processing');
+            setVideoErrored(lessonVideoStatus === 'errored');
             setMuxAssetId(lessonMuxAssetId || null);
             setMuxUploadId(null);
         }
@@ -1040,19 +1042,36 @@ export default function LessonEditorPanel({
                         {/* Upload Section */}
                         {videoSource === 'upload' && (
                             <div>
-                                {lessonVideoStatus === 'errored' && !videoUrl ? (
-                                    <div className="p-6 rounded-xl bg-red-500/10 border border-red-500/30">
-                                        <div className="flex items-start gap-4">
-                                            <div className="p-2 rounded-lg bg-red-500/20">
-                                                <AlertTriangle size={24} className="text-red-400" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="text-sm font-bold text-red-400 mb-1">Video Encoding Failed</h4>
-                                                <p className="text-xs text-slate-400">
-                                                    The video failed to process. Please re-upload your video to try again.
-                                                </p>
+                                {videoErrored && !videoUrl ? (
+                                    <div className="space-y-3">
+                                        <div className="p-6 rounded-xl bg-red-500/10 border border-red-500/30">
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2 rounded-lg bg-red-500/20">
+                                                    <AlertTriangle size={24} className="text-red-400" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-sm font-bold text-red-400 mb-1">Video Encoding Failed</h4>
+                                                    <p className="text-xs text-slate-400">
+                                                        The video failed to process. Click below to upload a new video.
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
+                                        <MuxUploaderWrapper
+                                            onUploadStart={() => { setIsUploading(true); setVideoErrored(false); }}
+                                            onSuccess={handleUploadSuccess}
+                                            onLargeFileProcessing={(uploadId, assetId) => {
+                                                setIsUploading(false);
+                                                setVideoErrored(false);
+                                                setMuxAssetId(assetId);
+                                                setMuxUploadId(uploadId);
+                                                setVideoProcessing(true);
+                                            }}
+                                            onError={(err) => {
+                                                setError('Upload failed: ' + err.message);
+                                                setIsUploading(false);
+                                            }}
+                                        />
                                     </div>
                                 ) : videoProcessing ? (
                                     <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30">

@@ -87,6 +87,9 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
                 console.log('Asset ready, playback ID:', result.playbackId, 'duration:', result.duration);
                 setIsProcessing(false);
                 if (onSuccess) onSuccess(result.playbackId, result.duration);
+            } else if (result.errored) {
+                // Asset failed to encode — report error immediately
+                throw new Error('Video encoding failed. Please try uploading again.');
             } else if (onLargeFileProcessing) {
                 // Still processing after 2 min — large file, switch to background
                 console.log('Asset still processing after 2 min, delegating to background');
