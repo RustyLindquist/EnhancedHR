@@ -164,7 +164,6 @@ export async function checkMuxAssetStatus(assetId: string): Promise<{
     playbackId?: string;
     duration?: number;
 }> {
-    'use server';
     try {
         const asset = await mux.video.assets.retrieve(assetId);
         if (asset.status === 'ready') {
