@@ -1534,7 +1534,8 @@ export async function getCourseForBuilder(courseId: number) {
     const { data: resources } = await supabase
         .from('resources')
         .select('*')
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .order('order', { ascending: true });
 
     // Map to typed structures
     const authorProfile = course.author_profile as any;

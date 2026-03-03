@@ -12,7 +12,8 @@ const STATUS_STYLES: Record<string, string> = {
     contacted: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     qualified: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     converted: 'bg-green-500/10 text-green-400 border-green-500/20',
-    closed: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    closed_won: 'bg-green-500/10 text-green-400 border-green-500/20',
+    closed_lost: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
 const TIMELINE_LABELS: Record<string, string> = {
@@ -219,7 +220,7 @@ export default function LeadsTable({ initialLeads, owners }: LeadsTableProps) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[lead.status] || STATUS_STYLES.new}`}>
-                                                {lead.status}
+                                                {lead.status === 'closed_won' ? 'Closed - Won' : lead.status === 'closed_lost' ? 'Closed - Lost' : lead.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-400 hidden md:table-cell">
@@ -339,7 +340,8 @@ export default function LeadsTable({ initialLeads, owners }: LeadsTableProps) {
                                                                         <option value="contacted" className="bg-[#0A0D12]">Contacted</option>
                                                                         <option value="qualified" className="bg-[#0A0D12]">Qualified</option>
                                                                         <option value="converted" className="bg-[#0A0D12]">Converted</option>
-                                                                        <option value="closed" className="bg-[#0A0D12]">Closed</option>
+                                                                        <option value="closed_won" className="bg-[#0A0D12]">Closed - Won</option>
+                                                                        <option value="closed_lost" className="bg-[#0A0D12]">Closed - Lost</option>
                                                                     </select>
                                                                 </div>
                                                                 {lead.claimed_by_name && (

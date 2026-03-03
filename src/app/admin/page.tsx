@@ -54,7 +54,8 @@ const CATEGORIES: {
             { key: 'contacted', label: 'Contacted', color: 'text-amber-400' },
             { key: 'qualified', label: 'Qualified', color: 'text-purple-400' },
             { key: 'converted', label: 'Converted', color: 'text-emerald-400' },
-            { key: 'closed', label: 'Closed', color: 'text-slate-500' },
+            { key: 'closed_won', label: 'Closed - Won', color: 'text-green-400' },
+            { key: 'closed_lost', label: 'Closed - Lost', color: 'text-red-400' },
         ],
     },
     {
