@@ -32,7 +32,8 @@ export interface AdminDashboardStats {
     contacted: number;
     qualified: number;
     converted: number;
-    closed: number;
+    closed_won: number;
+    closed_lost: number;
   };
   accounts: {
     active: number;
@@ -144,7 +145,7 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
   approvedCount += adminAuthors.length;
 
   // --- LEADS ---
-  const leadsByStatus: Record<string, number> = { new: 0, contacted: 0, qualified: 0, converted: 0, closed: 0 };
+  const leadsByStatus: Record<string, number> = { new: 0, contacted: 0, qualified: 0, converted: 0, closed_won: 0, closed_lost: 0 };
   (leadsResult.data || []).forEach(lead => {
     if (lead.status in leadsByStatus) leadsByStatus[lead.status]++;
   });
@@ -188,7 +189,8 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
       contacted: leadsByStatus.contacted,
       qualified: leadsByStatus.qualified,
       converted: leadsByStatus.converted,
-      closed: leadsByStatus.closed,
+      closed_won: leadsByStatus.closed_won,
+      closed_lost: leadsByStatus.closed_lost,
     },
     accounts: {
       active: activeCount,

@@ -184,7 +184,7 @@ export async function getExpertCourseForBuilder(courseId: number) {
         .from('resources')
         .select('*')
         .eq('course_id', courseId)
-        .order('created_at', { ascending: true });
+        .order('order', { ascending: true });
 
     // Build syllabus structure
     const syllabus = (modules || []).map(module => ({

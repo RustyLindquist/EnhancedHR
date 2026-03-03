@@ -15,7 +15,7 @@ export interface DemoLead {
     interests: string[];
     decision_timeline: string | null;
     problems_to_solve: string | null;
-    status: 'new' | 'contacted' | 'qualified' | 'converted' | 'closed';
+    status: 'new' | 'contacted' | 'qualified' | 'converted' | 'closed_won' | 'closed_lost';
     admin_notes: string | null;
     claimed_by: string | null;
     claimed_by_name: string | null;
