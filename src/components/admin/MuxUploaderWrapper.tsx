@@ -9,7 +9,7 @@ interface MuxUploaderWrapperProps {
     onUploadStart?: () => void;
     onSuccess?: (playbackId: string, duration?: number) => void;
     onError?: (error: any) => void;
-    onLargeFileProcessing?: (uploadId: string, assetId: string) => void;
+    onLargeFileProcessing?: (uploadId: string, assetId: string, fileSizeMB?: number) => void;
 }
 
 function formatElapsed(seconds: number): string {
@@ -25,7 +25,9 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStatus, setProcessingStatus] = useState<string>('');
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [fileSizeMB, setFileSizeMB] = useState<number | undefined>(undefined);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const uploaderRef = useRef<HTMLDivElement>(null);
 
     // Elapsed time counter during processing
     useEffect(() => {
@@ -59,6 +61,20 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
         prepareUpload();
     }, []);
 
+    // Capture file size from the native file input change event
+    useEffect(() => {
+        if (!uploaderRef.current) return;
+        const el = uploaderRef.current;
+        const handleFileSelected = (e: Event) => {
+            const input = (e.target as HTMLInputElement);
+            if (input?.files?.[0]) {
+                setFileSizeMB(Math.round(input.files[0].size / (1024 * 1024)));
+            }
+        };
+        el.addEventListener('change', handleFileSelected, true); // capture phase to intercept file input
+        return () => el.removeEventListener('change', handleFileSelected, true);
+    }, [uploadUrl]);
+
     const handleUploadSuccess = async () => {
         if (!uploadId) {
             console.error('No upload ID available');
@@ -91,7 +107,7 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
                 // Still encoding — delegate to background so user can save and close
                 console.log('Asset still encoding, delegating to background');
                 setIsProcessing(false);
-                onLargeFileProcessing(uploadId, assetId);
+                onLargeFileProcessing(uploadId, assetId, fileSizeMB);
             } else {
                 // No background handler — poll until ready (legacy fallback)
                 setProcessingStatus('Encoding video...');
@@ -144,7 +160,7 @@ export default function MuxUploaderWrapper({ onUploadStart, onSuccess, onError, 
     }
 
     return (
-        <div className="w-full">
+        <div className="w-full" ref={uploaderRef}>
             <MuxUploader
                 endpoint={uploadUrl}
                 onUploadStart={onUploadStart}
