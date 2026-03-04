@@ -5,13 +5,15 @@ import { Video, FileText, HelpCircle, Trash2, Loader2, CheckCircle, AlertTriangl
 import DropdownPanel from '@/components/DropdownPanel';
 import { createExpertLesson, updateExpertLesson, deleteExpertLesson, uploadExpertModuleResourceFile, updateExpertModuleResource, deleteExpertModuleResource } from '@/app/actions/expert-course-builder';
 import { generateTranscriptFromVideo } from '@/app/actions/course-builder';
-import { getDurationFromPlaybackId, deleteMuxAssetByPlaybackId, checkMuxAssetStatus } from '@/app/actions/mux';
+import { getDurationFromPlaybackId, deleteMuxAssetByPlaybackId } from '@/app/actions/mux';
 import { detectVideoPlatform, fetchVimeoMetadata, fetchWistiaMetadata } from '@/app/actions/video-metadata';
 import MuxUploaderWrapper from '@/components/admin/MuxUploaderWrapper';
 import QuizBuilder from '@/components/admin/QuizBuilder';
 import TranscriptRequiredModal from '@/components/TranscriptRequiredModal';
 import LessonVideoPreview from '@/components/admin/LessonVideoPreview';
 import FileUploadZone from '@/components/admin/FileUploadZone';
+import { useVideoProcessingPoller } from '@/hooks/useVideoProcessingPoller';
+import VideoProcessingBanner from '@/components/admin/VideoProcessingBanner';
 import { QuizData } from '@/types';
 
 type LessonType = 'video' | 'quiz' | 'article';
@@ -137,6 +139,7 @@ export default function ExpertLessonEditorPanel({
     const [videoErrored, setVideoErrored] = useState(lessonVideoStatus === 'errored');
     const [muxAssetId, setMuxAssetId] = useState<string | null>(lessonMuxAssetId || null);
     const [muxUploadId, setMuxUploadId] = useState<string | null>(null);
+    const [uploadFileSizeMB, setUploadFileSizeMB] = useState<number | undefined>(undefined);
 
     // Duration fetching state
     const [isFetchingDuration, setIsFetchingDuration] = useState(false);
@@ -191,27 +194,17 @@ export default function ExpertLessonEditorPanel({
         }
     }, [isOpen, lessonTitle, lessonType, lessonVideoUrl, lessonContent, lessonDuration, lessonQuizData, resourceEstimatedDuration, resourceDescription, lessonVideoStatus, lessonMuxAssetId]);
 
-    // Check if a processing video is now ready (when re-opening a lesson)
-    useEffect(() => {
-        if (!isOpen || !videoProcessing || !muxAssetId) return;
-
-        const checkStatus = async () => {
-            try {
-                const result = await checkMuxAssetStatus(muxAssetId);
-                if (result.ready && result.playbackId) {
-                    setVideoUrl(result.playbackId);
-                    setVideoProcessing(false);
-                    if (result.duration) {
-                        setDuration(formatDuration(result.duration));
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to check video processing status:', err);
-            }
-        };
-
-        checkStatus();
-    }, [isOpen, videoProcessing, muxAssetId]);
+    // Poll for video processing completion (replaces single check)
+    const { isPolling, lastChecked, checkNow } = useVideoProcessingPoller({
+        lessonId: lessonId || undefined,
+        assetId: muxAssetId,
+        isProcessing: videoProcessing && isOpen,
+        onRecovered: (playbackId, duration) => {
+            setVideoUrl(playbackId);
+            setVideoProcessing(false);
+            if (duration) setDuration(duration);
+        },
+    });
 
     // Detect if the user has made any changes
     const hasChanges = useCallback(() => {
@@ -843,12 +836,13 @@ export default function ExpertLessonEditorPanel({
                                         <MuxUploaderWrapper
                                             onUploadStart={() => { setIsUploading(true); setVideoErrored(false); }}
                                             onSuccess={handleUploadSuccess}
-                                            onLargeFileProcessing={(uploadId, assetId) => {
+                                            onLargeFileProcessing={(uploadId, assetId, fileSizeMB) => {
                                                 setIsUploading(false);
                                                 setVideoErrored(false);
                                                 setMuxAssetId(assetId);
                                                 setMuxUploadId(uploadId);
                                                 setVideoProcessing(true);
+                                                setUploadFileSizeMB(fileSizeMB);
                                             }}
                                             onError={(err) => {
                                                 setError('Upload failed: ' + err.message);
@@ -857,19 +851,12 @@ export default function ExpertLessonEditorPanel({
                                         />
                                     </div>
                                 ) : videoProcessing ? (
-                                    <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                                        <div className="flex items-start gap-4">
-                                            <div className="p-2 rounded-lg bg-amber-500/20">
-                                                <Loader2 size={24} className="text-amber-400 animate-spin" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="text-sm font-bold text-amber-400 mb-1">Video Encoding in Progress</h4>
-                                                <p className="text-xs text-slate-400">
-                                                    Your video uploaded successfully and is being encoded by Mux. You can save this lesson and come back later — the video will appear automatically when processing completes.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <VideoProcessingBanner
+                                        fileSizeMB={uploadFileSizeMB}
+                                        isPolling={isPolling}
+                                        lastChecked={lastChecked}
+                                        onCheckNow={checkNow}
+                                    />
                                 ) : videoUrl ? (
                                     <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -893,11 +880,12 @@ export default function ExpertLessonEditorPanel({
                                     <MuxUploaderWrapper
                                         onUploadStart={() => setIsUploading(true)}
                                         onSuccess={handleUploadSuccess}
-                                        onLargeFileProcessing={(uploadId, assetId) => {
+                                        onLargeFileProcessing={(uploadId, assetId, fileSizeMB) => {
                                             setIsUploading(false);
                                             setMuxAssetId(assetId);
                                             setMuxUploadId(uploadId);
                                             setVideoProcessing(true);
+                                            setUploadFileSizeMB(fileSizeMB);
                                         }}
                                         onError={(err) => {
                                             setError('Upload failed: ' + err.message);

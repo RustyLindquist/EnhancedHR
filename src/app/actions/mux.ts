@@ -537,6 +537,124 @@ export async function fetchMuxVTT(vttUrl: string): Promise<{
  * Get duration from a Mux playback ID
  * Looks up the asset by playback ID and returns the duration
  */
+/**
+ * Format seconds to duration string (MM:SS or HH:MM:SS)
+ * Local helper matching the webhook route's formatDuration logic.
+ */
+function formatDurationSeconds(seconds: number): string {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hrs > 0) {
+        return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Recover a video stuck in "processing" state.
+ * Called by client-side polling — checks Mux directly and updates the DB if the asset is ready.
+ */
+export async function recoverProcessingVideo(
+    lessonId: string,
+    assetId: string
+): Promise<{
+    recovered: boolean;
+    playbackId?: string;
+    duration?: string;
+    error?: string;
+}> {
+    try {
+        // 1. Check current status in Mux
+        const asset = await mux.video.assets.retrieve(assetId);
+
+        if (asset.status !== 'ready') {
+            return { recovered: false };
+        }
+
+        // 2. Extract playback ID and duration
+        const playbackId = asset.playback_ids?.[0]?.id;
+        const duration = asset.duration;
+
+        if (!playbackId) {
+            return { recovered: false, error: 'Asset ready but no playback ID found' };
+        }
+
+        // 3. Verify the lesson is still in processing state
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabase = createAdminClient();
+
+        const { data: lesson, error: findError } = await supabase
+            .from('lessons')
+            .select('id, module_id, deferred_transcript, video_status')
+            .eq('id', lessonId)
+            .eq('video_status', 'processing')
+            .single();
+
+        if (findError || !lesson) {
+            return { recovered: false, error: 'Lesson not found or not in processing state' };
+        }
+
+        // 4. Build update payload
+        const formattedDuration = duration ? formatDurationSeconds(duration) : undefined;
+        const updateData: Record<string, any> = {
+            video_url: playbackId,
+            video_status: 'ready',
+            ...(formattedDuration && { duration: formattedDuration }),
+        };
+
+        // 5. Handle deferred transcript
+        if (lesson.deferred_transcript === 'ai') {
+            try {
+                await requestMuxAutoCaption(assetId);
+                updateData.transcript_status = 'generating';
+                updateData.deferred_transcript = null;
+            } catch (err) {
+                console.error('[recoverProcessingVideo] Failed to request auto-caption:', err);
+                updateData.deferred_transcript = null;
+            }
+        }
+
+        // 6. Update the lesson row
+        const { error: updateError } = await supabase
+            .from('lessons')
+            .update(updateData)
+            .eq('id', lesson.id);
+
+        if (updateError) {
+            return { recovered: false, error: `Failed to update lesson: ${updateError.message}` };
+        }
+
+        // 7. Recalculate course duration
+        if (lesson.module_id) {
+            try {
+                const { data: module } = await supabase
+                    .from('modules')
+                    .select('course_id')
+                    .eq('id', lesson.module_id)
+                    .single();
+
+                if (module?.course_id) {
+                    const { recalculateCourseDuration } = await import('@/app/actions/course-builder');
+                    await recalculateCourseDuration(module.course_id);
+                }
+            } catch (err) {
+                console.error('[recoverProcessingVideo] Failed to recalculate course duration:', err);
+            }
+        }
+
+        console.log('[recoverProcessingVideo] Recovered lesson', lessonId, 'with playbackId', playbackId);
+        return { recovered: true, playbackId, duration: formattedDuration };
+    } catch (error: any) {
+        console.error('[recoverProcessingVideo] Error:', error);
+        return { recovered: false, error: error.message || 'Unknown error' };
+    }
+}
+
+/**
+ * Get duration from a Mux playback ID
+ * Looks up the asset by playback ID and returns the duration
+ */
 export async function getDurationFromPlaybackId(playbackId: string): Promise<{
     success: boolean;
     duration?: number;

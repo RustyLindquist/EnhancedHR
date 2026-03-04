@@ -5,6 +5,8 @@ import { requestMuxAutoCaption, fetchMuxVTT } from '@/app/actions/mux';
 import { parseVTTToTranscript } from '@/lib/vtt-parser';
 import { recalculateCourseDuration } from '@/app/actions/course-builder';
 
+export const maxDuration = 60;
+
 const mux = new Mux({
     tokenId: process.env.MUX_TOKEN_ID,
     tokenSecret: process.env.MUX_TOKEN_SECRET,
@@ -18,14 +20,14 @@ const mux = new Mux({
  * Handle video.asset.ready — encoding is complete.
  * Updates the lesson with the playback ID and triggers deferred transcript if needed.
  */
-async function handleAssetReady(data: any) {
+async function handleAssetReady(data: any): Promise<'processed' | 'not_found'> {
     const assetId = data.id;
     const playbackId = data.playback_ids?.[0]?.id;
     const duration = data.duration;
 
     if (!assetId || !playbackId) {
         console.error('video.asset.ready: Missing assetId or playbackId', { assetId, playbackId });
-        return;
+        return 'processed'; // Nothing to retry
     }
 
     const supabase = createAdminClient();
@@ -39,29 +41,14 @@ async function handleAssetReady(data: any) {
         .single();
 
     if (findError || !lesson) {
-        // No matching lesson yet — may not have been saved by the editor.
-        // Retry once after 10 seconds to handle the race condition where
-        // Mux finishes encoding before the user clicks "Save".
-        console.log('video.asset.ready: No processing lesson found for asset', assetId, '— retrying in 10s');
-        await new Promise(resolve => setTimeout(resolve, 10000));
-
-        const { data: retryLesson, error: retryError } = await supabase
-            .from('lessons')
-            .select('id, module_id, deferred_transcript, video_status')
-            .eq('mux_asset_id', assetId)
-            .eq('video_status', 'processing')
-            .single();
-
-        if (retryError || !retryLesson) {
-            console.log('video.asset.ready: Still no processing lesson after retry for asset', assetId);
-            return;
-        }
-
-        // Use the retry result for the rest of the handler
-        return handleAssetReadyForLesson(supabase, retryLesson, playbackId, duration, assetId);
+        // Lesson not saved yet — return not_found so Mux retries with exponential backoff.
+        // This is more robust than the previous 10-second sleep: Mux retries for up to 24 hours.
+        console.log('video.asset.ready: No processing lesson found for asset', assetId, '— returning for provider retry');
+        return 'not_found';
     }
 
     await handleAssetReadyForLesson(supabase, lesson, playbackId, duration, assetId);
+    return 'processed';
 }
 
 /**
@@ -289,7 +276,14 @@ export async function POST(request: Request) {
 
         // Handle video asset ready (encoding complete)
         if (eventType === 'video.asset.ready') {
-            await handleAssetReady(body.data);
+            const result = await handleAssetReady(body.data);
+            if (result === 'not_found') {
+                // Return 503 so Mux retries with exponential backoff (up to 24 hours)
+                return NextResponse.json(
+                    { error: 'Lesson not yet saved — will be retried' },
+                    { status: 503 }
+                );
+            }
         }
 
         // Handle video asset error
